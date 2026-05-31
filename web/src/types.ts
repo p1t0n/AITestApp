@@ -1,0 +1,148 @@
+// Mirrors the API DTOs. Enums are serialized as strings by the backend.
+
+export type SkillLevel = "Beginner" | "Intermediate" | "Advanced" | "Expert";
+export type LanguageLevel = "Basic" | "Conversational" | "Professional" | "Fluent" | "Native";
+export type QualificationType = "Degree" | "Certification";
+
+export interface EmployeeSummary {
+  id: string;
+  firstName: string;
+  lastName: string;
+  title: string;
+  location: string | null;
+  email: string;
+  currentCapacityPercent: number;
+}
+
+export interface SpokenLanguage {
+  id: string;
+  language: string;
+  level: LanguageLevel;
+}
+
+export interface AvailabilityEntry {
+  id: string;
+  effectiveFrom: string; // ISO date
+  capacityPercent: number;
+}
+
+export interface EmployeeSkill {
+  id: string;
+  skillId: string;
+  skillName: string;
+  categoryName: string;
+  level: SkillLevel;
+  yearsExperience: number;
+}
+
+export interface Qualification {
+  id: string;
+  type: QualificationType;
+  name: string;
+  institution: string | null;
+  field: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  issuer: string | null;
+  credentialId: string | null;
+  issueDate: string | null;
+  expiryDate: string | null;
+}
+
+export interface Achievement {
+  id: string;
+  order: number;
+  text: string;
+}
+
+export interface ExperienceSkillRef {
+  id: string;
+  skillId: string;
+  skillName: string;
+}
+
+export interface Experience {
+  id: string;
+  company: string;
+  title: string;
+  location: string | null;
+  startDate: string;
+  endDate: string | null;
+  summary: string | null;
+  achievements: Achievement[];
+  skills: ExperienceSkillRef[];
+}
+
+export interface EmployeeDetail {
+  id: string;
+  firstName: string;
+  lastName: string;
+  title: string;
+  email: string;
+  phone: string | null;
+  location: string | null;
+  summary: string | null;
+  photoUrl: string | null;
+  currentCapacityPercent: number;
+  spokenLanguages: SpokenLanguage[];
+  availabilityEntries: AvailabilityEntry[];
+  skills: EmployeeSkill[];
+  qualifications: Qualification[];
+  experiences: Experience[];
+}
+
+export interface SaveEmployee {
+  firstName: string;
+  lastName: string;
+  title: string;
+  email: string;
+  phone: string | null;
+  location: string | null;
+  summary: string | null;
+  photoUrl: string | null;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  parentId: string | null;
+}
+
+export interface CategoryNode {
+  id: string;
+  name: string;
+  children: CategoryNode[];
+  skills: SkillDto[];
+}
+
+export interface SkillDto {
+  id: string;
+  name: string;
+  categoryId: string;
+  categoryName: string;
+}
+
+// CV
+export interface Cv {
+  fullName: string;
+  title: string;
+  email: string;
+  phone: string | null;
+  location: string | null;
+  summary: string | null;
+  photoUrl: string | null;
+  availability: { currentCapacityPercent: number; schedule: AvailabilityEntry[] };
+  skillGroups: { category: string; skills: EmployeeSkill[] }[];
+  languages: SpokenLanguage[];
+  experiences: {
+    company: string;
+    title: string;
+    location: string | null;
+    period: string;
+    summary: string | null;
+    achievements: string[];
+    skills: string[];
+  }[];
+  education: Qualification[];
+  certifications: Qualification[];
+}

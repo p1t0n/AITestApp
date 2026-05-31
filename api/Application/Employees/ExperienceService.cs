@@ -1,0 +1,122 @@
+using EmployeeManager.Application.Abstractions;
+using EmployeeManager.Application.Common;
+using EmployeeManager.Domain.Entities;
+using FluentValidation;
+using Microsoft.EntityFrameworkCore;
+
+namespace EmployeeManager.Application.Employees;
+
+public record SaveAchievementDto(int Order, string Text);
+
+public record SaveExperienceDto(
+    string Company,
+    string Title,
+    string? Location,
+    DateOnly StartDate,
+    DateOnly? EndDate,
+    string? Summary,
+    IReadOnlyList<SaveAchievementDto> Achievements,
+    IReadOnlyList<Guid> SkillIds);
+
+public interface IExperienceService
+{
+    Task<ExperienceDto> AddAsync(Guid employeeId, SaveExperienceDto dto, CancellationToken ct = default);
+    Task<ExperienceDto> UpdateAsync(Guid experienceId, SaveExperienceDto dto, CancellationToken ct = default);
+    Task DeleteAsync(Guid experienceId, CancellationToken ct = default);
+}
+
+public class ExperienceService : IExperienceService
+{
+    private readonly IAppDbContext _db;
+    public ExperienceService(IAppDbContext db) => _db = db;
+
+    public async Task<ExperienceDto> AddAsync(Guid employeeId, SaveExperienceDto dto, CancellationToken ct = default)
+    {
+        if (!await _db.Employees.AnyAsync(e => e.Id == employeeId, ct))
+            throw new NotFoundException(nameof(Employee), employeeId);
+        await ValidateSkillsAsync(dto.SkillIds, ct);
+
+        var x = new Experience { Id = Guid.NewGuid(), EmployeeId = employeeId };
+        ApplyScalars(x, dto);
+        ReplaceChildren(x, dto);
+        _db.Experiences.Add(x);
+        await _db.SaveChangesAsync(ct);
+        return await ProjectAsync(x.Id, ct);
+    }
+
+    public async Task<ExperienceDto> UpdateAsync(Guid experienceId, SaveExperienceDto dto, CancellationToken ct = default)
+    {
+        var x = await _db.Experiences
+            .Include(e => e.Achievements)
+            .Include(e => e.Skills)
+            .FirstOrDefaultAsync(e => e.Id == experienceId, ct)
+            ?? throw new NotFoundException(nameof(Experience), experienceId);
+        await ValidateSkillsAsync(dto.SkillIds, ct);
+
+        ApplyScalars(x, dto);
+        x.Achievements.Clear();
+        x.Skills.Clear();
+        ReplaceChildren(x, dto);
+        await _db.SaveChangesAsync(ct);
+        return await ProjectAsync(x.Id, ct);
+    }
+
+    public async Task DeleteAsync(Guid experienceId, CancellationToken ct = default)
+    {
+        var x = await _db.Experiences.FirstOrDefaultAsync(e => e.Id == experienceId, ct)
+            ?? throw new NotFoundException(nameof(Experience), experienceId);
+        _db.Experiences.Remove(x);
+        await _db.SaveChangesAsync(ct);
+    }
+
+    private async Task ValidateSkillsAsync(IReadOnlyList<Guid> skillIds, CancellationToken ct)
+    {
+        if (skillIds.Count == 0) return;
+        var distinct = skillIds.Distinct().ToList();
+        var found = await _db.Skills.CountAsync(s => distinct.Contains(s.Id), ct);
+        if (found != distinct.Count)
+            throw new NotFoundException(nameof(Skill), "one or more skill ids");
+    }
+
+    private static void ApplyScalars(Experience x, SaveExperienceDto d)
+    {
+        x.Company = d.Company.Trim();
+        x.Title = d.Title.Trim();
+        x.Location = d.Location;
+        x.StartDate = d.StartDate;
+        x.EndDate = d.EndDate;
+        x.Summary = d.Summary;
+    }
+
+    private static void ReplaceChildren(Experience x, SaveExperienceDto d)
+    {
+        foreach (var a in d.Achievements.OrderBy(a => a.Order))
+            x.Achievements.Add(new Achievement { Id = Guid.NewGuid(), Order = a.Order, Text = a.Text.Trim() });
+        foreach (var sid in d.SkillIds.Distinct())
+            x.Skills.Add(new ExperienceSkill { Id = Guid.NewGuid(), SkillId = sid });
+    }
+
+    private async Task<ExperienceDto> ProjectAsync(Guid id, CancellationToken ct)
+    {
+        var x = await _db.Experiences.AsNoTracking()
+            .Include(e => e.Achievements)
+            .Include(e => e.Skills).ThenInclude(s => s.Skill)
+            .FirstAsync(e => e.Id == id, ct);
+        return x.ToDto();
+    }
+}
+
+public class SaveExperienceValidator : AbstractValidator<SaveExperienceDto>
+{
+    public SaveExperienceValidator()
+    {
+        RuleFor(x => x.Company).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.Title).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.EndDate)
+            .GreaterThanOrEqualTo(x => x.StartDate)
+            .When(x => x.EndDate.HasValue)
+            .WithMessage("EndDate must be on or after StartDate.");
+        RuleForEach(x => x.Achievements).ChildRules(a =>
+            a.RuleFor(y => y.Text).NotEmpty().MaximumLength(1000));
+    }
+}

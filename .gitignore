@@ -55,3 +55,15 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# Node / Vite SPA (web/)
+node_modules/
+web/dist/
+web/.vite/
+*.local
+
+# OS
+.DS_Store
+
+
+/*.idea/

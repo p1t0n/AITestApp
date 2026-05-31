@@ -1,0 +1,13 @@
+@media print {
+  .no-print,
+  header {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+  }
+  #cv-sheet {
+    box-shadow: none !important;
+    margin: 0 !important;
+  }
+}

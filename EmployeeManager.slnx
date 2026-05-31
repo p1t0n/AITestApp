@@ -1,0 +1,19 @@
+<Solution>
+  <Folder Name="/api/" />
+  <Folder Name="/api/Application/">
+    <Project Path="api/Application/EmployeeManager.Application.csproj" />
+  </Folder>
+  <Folder Name="/api/Domain/">
+    <Project Path="api/Domain/EmployeeManager.Domain.csproj" />
+  </Folder>
+  <Folder Name="/api/Infrastructure/">
+    <Project Path="api/Infrastructure/EmployeeManager.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/api/Web/">
+    <Project Path="api/Web/EmployeeManager.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/" />
+  <Folder Name="/tests/Application.Tests/">
+    <Project Path="tests/Application.Tests/EmployeeManager.Application.Tests.csproj" />
+  </Folder>
+</Solution>
