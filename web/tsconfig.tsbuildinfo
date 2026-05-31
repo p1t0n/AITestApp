@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/api.ts","./src/main.tsx","./src/types.ts","./src/pages/catalogpage.tsx","./src/pages/cvpage.tsx","./src/pages/employeedetailpage.tsx","./src/pages/employeeformdialog.tsx","./src/pages/employeespage.tsx"],"errors":true,"version":"5.9.3"}

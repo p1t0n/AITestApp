@@ -1,0 +1,108 @@
+using EmployeeManager.Application.Abstractions;
+using EmployeeManager.Application.Common;
+using EmployeeManager.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
+
+namespace EmployeeManager.Application.Skills;
+
+public interface ISkillCatalogService
+{
+    Task<IReadOnlyList<CategoryDto>> ListCategoriesAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<CategoryNodeDto>> GetTreeAsync(CancellationToken ct = default);
+    Task<CategoryDto> CreateCategoryAsync(SaveCategoryDto dto, CancellationToken ct = default);
+    Task DeleteCategoryAsync(Guid id, CancellationToken ct = default);
+
+    Task<IReadOnlyList<SkillDto>> ListSkillsAsync(CancellationToken ct = default);
+    Task<SkillDto> CreateSkillAsync(SaveSkillDto dto, CancellationToken ct = default);
+    Task DeleteSkillAsync(Guid id, CancellationToken ct = default);
+}
+
+public class SkillCatalogService : ISkillCatalogService
+{
+    private readonly IAppDbContext _db;
+    public SkillCatalogService(IAppDbContext db) => _db = db;
+
+    public async Task<IReadOnlyList<CategoryDto>> ListCategoriesAsync(CancellationToken ct = default) =>
+        await _db.Categories.AsNoTracking()
+            .OrderBy(c => c.Name)
+            .Select(c => new CategoryDto(c.Id, c.Name, c.ParentId))
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<CategoryNodeDto>> GetTreeAsync(CancellationToken ct = default)
+    {
+        var categories = await _db.Categories.AsNoTracking().ToListAsync(ct);
+        var skills = await _db.Skills.AsNoTracking().ToListAsync(ct);
+
+        var skillsByCat = skills
+            .GroupBy(s => s.CategoryId)
+            .ToDictionary(g => g.Key, g => g.OrderBy(s => s.Name).ToList());
+        var byParent = categories
+            .GroupBy(c => c.ParentId ?? Guid.Empty)
+            .ToDictionary(g => g.Key, g => g.OrderBy(c => c.Name).ToList());
+
+        List<CategoryNodeDto> Build(Guid? parentId) =>
+            (byParent.TryGetValue(parentId ?? Guid.Empty, out var nodes) ? nodes : new())
+            .Select(c => new CategoryNodeDto(
+                c.Id, c.Name,
+                Build(c.Id),
+                (skillsByCat.TryGetValue(c.Id, out var ss) ? ss : new())
+                    .Select(s => new SkillDto(s.Id, s.Name, s.CategoryId, c.Name)).ToList()))
+            .ToList();
+
+        return Build(null);
+    }
+
+    public async Task<CategoryDto> CreateCategoryAsync(SaveCategoryDto dto, CancellationToken ct = default)
+    {
+        if (dto.ParentId is { } pid && !await _db.Categories.AnyAsync(c => c.Id == pid, ct))
+            throw new NotFoundException(nameof(Category), pid);
+
+        var c = new Category { Id = Guid.NewGuid(), Name = dto.Name.Trim(), ParentId = dto.ParentId };
+        _db.Categories.Add(c);
+        await _db.SaveChangesAsync(ct);
+        return new CategoryDto(c.Id, c.Name, c.ParentId);
+    }
+
+    public async Task DeleteCategoryAsync(Guid id, CancellationToken ct = default)
+    {
+        var c = await _db.Categories.FirstOrDefaultAsync(x => x.Id == id, ct)
+            ?? throw new NotFoundException(nameof(Category), id);
+
+        if (await _db.Categories.AnyAsync(x => x.ParentId == id, ct) ||
+            await _db.Skills.AnyAsync(x => x.CategoryId == id, ct))
+            throw new ConflictException("Category has child categories or skills and cannot be deleted.");
+
+        _db.Categories.Remove(c);
+        await _db.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<SkillDto>> ListSkillsAsync(CancellationToken ct = default) =>
+        await _db.Skills.AsNoTracking()
+            .OrderBy(s => s.Name)
+            .Select(s => new SkillDto(s.Id, s.Name, s.CategoryId, s.Category.Name))
+            .ToListAsync(ct);
+
+    public async Task<SkillDto> CreateSkillAsync(SaveSkillDto dto, CancellationToken ct = default)
+    {
+        var cat = await _db.Categories.FirstOrDefaultAsync(c => c.Id == dto.CategoryId, ct)
+            ?? throw new NotFoundException(nameof(Category), dto.CategoryId);
+
+        var s = new Skill { Id = Guid.NewGuid(), Name = dto.Name.Trim(), CategoryId = dto.CategoryId };
+        _db.Skills.Add(s);
+        await _db.SaveChangesAsync(ct);
+        return new SkillDto(s.Id, s.Name, s.CategoryId, cat.Name);
+    }
+
+    public async Task DeleteSkillAsync(Guid id, CancellationToken ct = default)
+    {
+        var s = await _db.Skills.FirstOrDefaultAsync(x => x.Id == id, ct)
+            ?? throw new NotFoundException(nameof(Skill), id);
+
+        if (await _db.EmployeeSkills.AnyAsync(x => x.SkillId == id, ct) ||
+            await _db.ExperienceSkills.AnyAsync(x => x.SkillId == id, ct))
+            throw new ConflictException("Skill is in use by employees or experiences and cannot be deleted.");
+
+        _db.Skills.Remove(s);
+        await _db.SaveChangesAsync(ct);
+    }
+}
