@@ -19,7 +19,6 @@ import {
   Typography,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
-import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
@@ -240,14 +239,9 @@ export default function CatalogPage() {
           isEditing ? (
             editActions
           ) : (
-            <>
-              <IconButton edge="end" size="small" onClick={() => startEditSkill(id, name, categoryId)} aria-label="edit skill">
-                <EditIcon fontSize="small" />
-              </IconButton>
-              <IconButton edge="end" size="small" onClick={() => setConfirm({ kind: "skill", id, name })} aria-label="delete skill">
-                <DeleteIcon fontSize="small" />
-              </IconButton>
-            </>
+            <IconButton edge="end" size="small" onClick={() => setConfirm({ kind: "skill", id, name })} aria-label="delete skill">
+              <DeleteIcon fontSize="small" />
+            </IconButton>
           )
         }
       >
@@ -270,7 +264,12 @@ export default function CatalogPage() {
             </TextField>
           </Stack>
         ) : (
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            onClick={() => startEditSkill(id, name, categoryId)}
+            sx={{ cursor: "pointer", "&:hover": { textDecoration: "underline" } }}
+          >
             {name}
           </Typography>
         )}
@@ -298,9 +297,6 @@ export default function CatalogPage() {
                   aria-label="add to category"
                 >
                   <AddIcon fontSize="small" />
-                </IconButton>
-                <IconButton edge="end" size="small" onClick={() => startEditCategory(node, parent)} aria-label="edit category">
-                  <EditIcon fontSize="small" />
                 </IconButton>
                 <IconButton edge="end" size="small" onClick={() => setConfirm({ kind: "category", id: node.id, name: node.name })} aria-label="delete category">
                   <DeleteIcon fontSize="small" />
@@ -337,7 +333,13 @@ export default function CatalogPage() {
               ) : (
                 <Box sx={{ width: 28 }} />
               )}
-              <Typography fontWeight={600}>{node.name}</Typography>
+              <Typography
+                fontWeight={600}
+                onClick={() => startEditCategory(node, parent)}
+                sx={{ cursor: "pointer", "&:hover": { textDecoration: "underline" } }}
+              >
+                {node.name}
+              </Typography>
             </Stack>
           )}
         </ListItem>
