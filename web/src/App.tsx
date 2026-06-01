@@ -11,10 +11,10 @@ export default function App() {
       <AppBar position="static" elevation={0}>
         <Toolbar>
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            Employee Manager
+            CV Manager
           </Typography>
           <Button color="inherit" component={RouterLink} to="/">
-            Employees
+            CVs
           </Button>
           <Button color="inherit" component={RouterLink} to="/catalog">
             Skill Catalog

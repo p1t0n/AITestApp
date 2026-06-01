@@ -39,9 +39,9 @@ export default function EmployeesPage() {
   return (
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">Employees</Typography>
+        <Typography variant="h4">CVs</Typography>
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => setDialogOpen(true)}>
-          New employee
+          New CV
         </Button>
       </Stack>
 

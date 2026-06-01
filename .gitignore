@@ -67,3 +67,4 @@ web/.vite/
 
 
 /*.idea/
+*.user

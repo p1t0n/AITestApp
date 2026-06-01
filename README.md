@@ -1,4 +1,4 @@
-# Employee Manager + CV
+# CV Manager
 
 A .NET 10 + React (Vite) service to manage available employees — skills, qualifications,
 work experience, and time-based availability — and render their CVs. Base project, designed

@@ -78,7 +78,9 @@ public class AppDbContext : DbContext, IAppDbContext
         b.Entity<Skill>(e =>
         {
             e.Property(x => x.Name).HasMaxLength(150).IsRequired();
-            e.HasIndex(x => x.Name).IsUnique();
+            e.Property(x => x.Rank).HasDefaultValue(0);
+            // Skill names are unique per category (case-insensitive), enforced by a functional
+            // index created in raw SQL in the CatalogUniqueIndexes migration — not globally unique.
         });
 
         b.Entity<EmployeeSkill>(e =>

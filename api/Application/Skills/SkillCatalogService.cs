@@ -10,10 +10,12 @@ public interface ISkillCatalogService
     Task<IReadOnlyList<CategoryDto>> ListCategoriesAsync(CancellationToken ct = default);
     Task<IReadOnlyList<CategoryNodeDto>> GetTreeAsync(CancellationToken ct = default);
     Task<CategoryDto> CreateCategoryAsync(SaveCategoryDto dto, CancellationToken ct = default);
+    Task<CategoryDto> UpdateCategoryAsync(Guid id, SaveCategoryDto dto, CancellationToken ct = default);
     Task DeleteCategoryAsync(Guid id, CancellationToken ct = default);
 
     Task<IReadOnlyList<SkillDto>> ListSkillsAsync(CancellationToken ct = default);
     Task<SkillDto> CreateSkillAsync(SaveSkillDto dto, CancellationToken ct = default);
+    Task<SkillDto> UpdateSkillAsync(Guid id, SaveSkillDto dto, CancellationToken ct = default);
     Task DeleteSkillAsync(Guid id, CancellationToken ct = default);
 }
 
@@ -35,7 +37,7 @@ public class SkillCatalogService : ISkillCatalogService
 
         var skillsByCat = skills
             .GroupBy(s => s.CategoryId)
-            .ToDictionary(g => g.Key, g => g.OrderBy(s => s.Name).ToList());
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(s => s.Rank).ThenBy(s => s.Name).ToList());
         var byParent = categories
             .GroupBy(c => c.ParentId ?? Guid.Empty)
             .ToDictionary(g => g.Key, g => g.OrderBy(c => c.Name).ToList());
@@ -46,7 +48,7 @@ public class SkillCatalogService : ISkillCatalogService
                 c.Id, c.Name,
                 Build(c.Id),
                 (skillsByCat.TryGetValue(c.Id, out var ss) ? ss : new())
-                    .Select(s => new SkillDto(s.Id, s.Name, s.CategoryId, c.Name)).ToList()))
+                    .Select(s => new SkillDto(s.Id, s.Name, s.CategoryId, c.Name, s.Rank)).ToList()))
             .ToList();
 
         return Build(null);
@@ -54,13 +56,59 @@ public class SkillCatalogService : ISkillCatalogService
 
     public async Task<CategoryDto> CreateCategoryAsync(SaveCategoryDto dto, CancellationToken ct = default)
     {
+        var name = dto.Name.Trim();
         if (dto.ParentId is { } pid && !await _db.Categories.AnyAsync(c => c.Id == pid, ct))
             throw new NotFoundException(nameof(Category), pid);
+        await EnsureCategoryNameFreeAsync(name, dto.ParentId, Guid.Empty, ct);
 
-        var c = new Category { Id = Guid.NewGuid(), Name = dto.Name.Trim(), ParentId = dto.ParentId };
+        var c = new Category { Id = Guid.NewGuid(), Name = name, ParentId = dto.ParentId };
         _db.Categories.Add(c);
         await _db.SaveChangesAsync(ct);
         return new CategoryDto(c.Id, c.Name, c.ParentId);
+    }
+
+    public async Task<CategoryDto> UpdateCategoryAsync(Guid id, SaveCategoryDto dto, CancellationToken ct = default)
+    {
+        var c = await _db.Categories.FirstOrDefaultAsync(x => x.Id == id, ct)
+            ?? throw new NotFoundException(nameof(Category), id);
+
+        var name = dto.Name.Trim();
+        if (dto.ParentId is { } pid)
+        {
+            if (!await _db.Categories.AnyAsync(x => x.Id == pid, ct))
+                throw new NotFoundException(nameof(Category), pid);
+            await EnsureNoCycleAsync(id, pid, ct);
+        }
+        await EnsureCategoryNameFreeAsync(name, dto.ParentId, id, ct);
+
+        c.Name = name;
+        c.ParentId = dto.ParentId;
+        await _db.SaveChangesAsync(ct);
+        return new CategoryDto(c.Id, c.Name, c.ParentId);
+    }
+
+    // Rejects setting a category's parent to itself or to one of its own descendants.
+    private async Task EnsureNoCycleAsync(Guid id, Guid newParentId, CancellationToken ct)
+    {
+        var parents = await _db.Categories.AsNoTracking()
+            .Select(c => new { c.Id, c.ParentId })
+            .ToDictionaryAsync(c => c.Id, c => c.ParentId, ct);
+
+        Guid? cursor = newParentId;
+        while (cursor is { } cur)
+        {
+            if (cur == id)
+                throw new ConflictException("Cannot move a category under itself or its own descendant.");
+            cursor = parents.TryGetValue(cur, out var p) ? p : null;
+        }
+    }
+
+    private async Task EnsureCategoryNameFreeAsync(string name, Guid? parentId, Guid excludeId, CancellationToken ct)
+    {
+        var lower = name.ToLower();
+        if (await _db.Categories.AnyAsync(
+                c => c.ParentId == parentId && c.Id != excludeId && c.Name.ToLower() == lower, ct))
+            throw new ConflictException($"A category named \"{name}\" already exists here.");
     }
 
     public async Task DeleteCategoryAsync(Guid id, CancellationToken ct = default)
@@ -78,19 +126,46 @@ public class SkillCatalogService : ISkillCatalogService
 
     public async Task<IReadOnlyList<SkillDto>> ListSkillsAsync(CancellationToken ct = default) =>
         await _db.Skills.AsNoTracking()
-            .OrderBy(s => s.Name)
-            .Select(s => new SkillDto(s.Id, s.Name, s.CategoryId, s.Category.Name))
+            .OrderByDescending(s => s.Rank).ThenBy(s => s.Name)
+            .Select(s => new SkillDto(s.Id, s.Name, s.CategoryId, s.Category.Name, s.Rank))
             .ToListAsync(ct);
 
     public async Task<SkillDto> CreateSkillAsync(SaveSkillDto dto, CancellationToken ct = default)
     {
+        var name = dto.Name.Trim();
         var cat = await _db.Categories.FirstOrDefaultAsync(c => c.Id == dto.CategoryId, ct)
             ?? throw new NotFoundException(nameof(Category), dto.CategoryId);
+        await EnsureSkillNameFreeAsync(name, dto.CategoryId, Guid.Empty, ct);
 
-        var s = new Skill { Id = Guid.NewGuid(), Name = dto.Name.Trim(), CategoryId = dto.CategoryId };
+        var s = new Skill { Id = Guid.NewGuid(), Name = name, CategoryId = dto.CategoryId };
         _db.Skills.Add(s);
         await _db.SaveChangesAsync(ct);
-        return new SkillDto(s.Id, s.Name, s.CategoryId, cat.Name);
+        return new SkillDto(s.Id, s.Name, s.CategoryId, cat.Name, s.Rank);
+    }
+
+    public async Task<SkillDto> UpdateSkillAsync(Guid id, SaveSkillDto dto, CancellationToken ct = default)
+    {
+        var s = await _db.Skills.FirstOrDefaultAsync(x => x.Id == id, ct)
+            ?? throw new NotFoundException(nameof(Skill), id);
+
+        var name = dto.Name.Trim();
+        var cat = await _db.Categories.FirstOrDefaultAsync(c => c.Id == dto.CategoryId, ct)
+            ?? throw new NotFoundException(nameof(Category), dto.CategoryId);
+        await EnsureSkillNameFreeAsync(name, dto.CategoryId, id, ct);
+
+        // Rank is left untouched here — it is owned by the ranking calculation, not this edit.
+        s.Name = name;
+        s.CategoryId = dto.CategoryId;
+        await _db.SaveChangesAsync(ct);
+        return new SkillDto(s.Id, s.Name, s.CategoryId, cat.Name, s.Rank);
+    }
+
+    private async Task EnsureSkillNameFreeAsync(string name, Guid categoryId, Guid excludeId, CancellationToken ct)
+    {
+        var lower = name.ToLower();
+        if (await _db.Skills.AnyAsync(
+                s => s.CategoryId == categoryId && s.Id != excludeId && s.Name.ToLower() == lower, ct))
+            throw new ConflictException($"A skill named \"{name}\" already exists in this category.");
     }
 
     public async Task DeleteSkillAsync(Guid id, CancellationToken ct = default)
