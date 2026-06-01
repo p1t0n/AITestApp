@@ -9,6 +9,12 @@ public class Skill
 
     public string Name { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Computed ranking score (higher = more prominent). Populated by a later ranking
+    /// calculation; defaults to 0. Skills are listed by Rank descending, then Name.
+    /// </summary>
+    public int Rank { get; set; }
+
     public Guid CategoryId { get; set; }
     public Category Category { get; set; } = null!;
 

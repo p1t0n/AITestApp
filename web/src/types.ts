@@ -120,6 +120,7 @@ export interface SkillDto {
   name: string;
   categoryId: string;
   categoryName: string;
+  rank: number;
 }
 
 // CV

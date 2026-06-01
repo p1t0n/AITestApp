@@ -142,11 +142,54 @@ export function useCreateCategory() {
   });
 }
 
+export function useUpdateCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...dto }: { id: string; name: string; parentId: string | null }) =>
+      (await http.put<Category>(`/catalog/categories/${id}`, dto)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["categories"] });
+      qc.invalidateQueries({ queryKey: ["skills"] });
+    },
+  });
+}
+
+export function useDeleteCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => http.delete(`/catalog/categories/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["categories"] }),
+  });
+}
+
 export function useCreateSkill() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (dto: { name: string; categoryId: string }) =>
       (await http.post<SkillDto>("/catalog/skills", dto)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["skills"] });
+      qc.invalidateQueries({ queryKey: ["categories"] });
+    },
+  });
+}
+
+export function useUpdateSkill() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...dto }: { id: string; name: string; categoryId: string }) =>
+      (await http.put<SkillDto>(`/catalog/skills/${id}`, dto)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["skills"] });
+      qc.invalidateQueries({ queryKey: ["categories"] });
+    },
+  });
+}
+
+export function useDeleteSkill() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => http.delete(`/catalog/skills/${id}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["skills"] });
       qc.invalidateQueries({ queryKey: ["categories"] });

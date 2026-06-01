@@ -20,6 +20,10 @@ public class CatalogController : ControllerBase
     public Task<CategoryDto> CreateCategory(SaveCategoryDto dto, CancellationToken ct) =>
         _catalog.CreateCategoryAsync(dto, ct);
 
+    [HttpPut("categories/{id:guid}")]
+    public Task<CategoryDto> UpdateCategory(Guid id, SaveCategoryDto dto, CancellationToken ct) =>
+        _catalog.UpdateCategoryAsync(id, dto, ct);
+
     [HttpDelete("categories/{id:guid}")]
     public async Task<IActionResult> DeleteCategory(Guid id, CancellationToken ct)
     {
@@ -32,6 +36,10 @@ public class CatalogController : ControllerBase
 
     [HttpPost("skills")]
     public Task<SkillDto> CreateSkill(SaveSkillDto dto, CancellationToken ct) => _catalog.CreateSkillAsync(dto, ct);
+
+    [HttpPut("skills/{id:guid}")]
+    public Task<SkillDto> UpdateSkill(Guid id, SaveSkillDto dto, CancellationToken ct) =>
+        _catalog.UpdateSkillAsync(id, dto, ct);
 
     [HttpDelete("skills/{id:guid}")]
     public async Task<IActionResult> DeleteSkill(Guid id, CancellationToken ct)
