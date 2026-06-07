@@ -5,7 +5,9 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.Text.Json;
 using ModelContextProtocol.Client;
+using ModelContextProtocol.Protocol;
 
 namespace EmployeeManager.Mcp.Tests;
 
@@ -69,4 +71,15 @@ internal static class McpTestHost
         db.SaveChanges();
         return employee;
     }
+
+    public static string Text(CallToolResult result) =>
+        (result.StructuredContent?.ToString() ?? "")
+        + string.Join("\n", result.Content.OfType<TextContentBlock>().Select(c => c.Text));
+
+    public static string IdOf(CallToolResult result)
+    {
+        using var doc = JsonDocument.Parse(Text(result));
+        return doc.RootElement.GetProperty("id").GetString()!;
+    }
 }
+

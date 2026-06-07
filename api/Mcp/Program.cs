@@ -21,7 +21,16 @@ var toolSerializerOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web
 builder.Services
     .AddMcpServer()
     .WithHttpTransport()
-    .WithTools<EmployeeTools>(toolSerializerOptions);
+    .WithTools<EmployeeTools>(toolSerializerOptions)
+    .WithTools<LanguageTools>(toolSerializerOptions)
+    .WithTools<AvailabilityTools>(toolSerializerOptions)
+    .WithTools<EmployeeSkillTools>(toolSerializerOptions)
+    .WithTools<QualificationTools>(toolSerializerOptions)
+    .WithTools<ExperienceTools>(toolSerializerOptions)
+    .WithTools<AchievementTools>(toolSerializerOptions)
+    .WithTools<ExperienceSkillTools>(toolSerializerOptions)
+    .WithTools<CatalogTools>(toolSerializerOptions)
+    .WithTools<CvTools>(toolSerializerOptions);
 
 var app = builder.Build();
 

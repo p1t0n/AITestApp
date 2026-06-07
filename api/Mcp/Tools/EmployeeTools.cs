@@ -44,9 +44,5 @@ public class EmployeeTools
         IEmployeeService employees,
         [Description("Employee id (GUID).")] Guid id,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync<object?>(async () =>
-        {
-            await employees.DeleteAsync(id, ct);
-            return null;
-        });
+        => McpToolExecutor.RunAsync(() => employees.DeleteAsync(id, ct));
 }

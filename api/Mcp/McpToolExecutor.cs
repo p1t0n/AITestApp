@@ -13,6 +13,14 @@ internal static class McpToolExecutor
 {
     private static readonly JsonSerializerOptions ErrorJson = new(JsonSerializerDefaults.Web);
 
+    /// <summary>Runs a void operation (e.g. delete); returns <c>{ ok = true }</c> on success.</summary>
+    public static Task<object> RunAsync(Func<Task> body) =>
+        RunAsync(async () =>
+        {
+            await body();
+            return (object)new { ok = true };
+        });
+
     public static async Task<object> RunAsync<T>(Func<Task<T>> body)
     {
         try
