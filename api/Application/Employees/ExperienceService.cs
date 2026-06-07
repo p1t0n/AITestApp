@@ -28,10 +28,16 @@ public interface IExperienceService
 public class ExperienceService : IExperienceService
 {
     private readonly IAppDbContext _db;
-    public ExperienceService(IAppDbContext db) => _db = db;
+    private readonly IValidator<SaveExperienceDto> _validator;
+    public ExperienceService(IAppDbContext db, IValidator<SaveExperienceDto> validator)
+    {
+        _db = db;
+        _validator = validator;
+    }
 
     public async Task<ExperienceDto> AddAsync(Guid employeeId, SaveExperienceDto dto, CancellationToken ct = default)
     {
+        await _validator.ValidateAndThrowAsync(dto, ct);
         if (!await _db.Employees.AnyAsync(e => e.Id == employeeId, ct))
             throw new NotFoundException(nameof(Employee), employeeId);
         await ValidateSkillsAsync(dto.SkillIds, ct);
@@ -51,6 +57,7 @@ public class ExperienceService : IExperienceService
             .Include(e => e.Skills)
             .FirstOrDefaultAsync(e => e.Id == experienceId, ct)
             ?? throw new NotFoundException(nameof(Experience), experienceId);
+        await _validator.ValidateAndThrowAsync(dto, ct);
         await ValidateSkillsAsync(dto.SkillIds, ct);
 
         ApplyScalars(x, dto);

@@ -27,7 +27,7 @@ public class SkillCatalogServiceTests
     public async Task ReParent_under_self_is_rejected()
     {
         await using var db = NewDb();
-        var svc = new SkillCatalogService(db);
+        var svc = new SkillCatalogService(db, new SaveCategoryValidator(), new SaveSkillValidator());
         var cat = await AddCategory(db, "Languages");
 
         var act = () => svc.UpdateCategoryAsync(cat.Id, new SaveCategoryDto("Languages", cat.Id));
@@ -39,7 +39,7 @@ public class SkillCatalogServiceTests
     public async Task ReParent_under_own_descendant_is_rejected()
     {
         await using var db = NewDb();
-        var svc = new SkillCatalogService(db);
+        var svc = new SkillCatalogService(db, new SaveCategoryValidator(), new SaveSkillValidator());
         var root = await AddCategory(db, "Languages");
         var child = await AddCategory(db, "JavaScript", root.Id);
         var grandchild = await AddCategory(db, "Frontend", child.Id);
@@ -54,7 +54,7 @@ public class SkillCatalogServiceTests
     public async Task ReParent_to_unrelated_category_succeeds()
     {
         await using var db = NewDb();
-        var svc = new SkillCatalogService(db);
+        var svc = new SkillCatalogService(db, new SaveCategoryValidator(), new SaveSkillValidator());
         var a = await AddCategory(db, "A");
         var b = await AddCategory(db, "B");
 
@@ -67,7 +67,7 @@ public class SkillCatalogServiceTests
     public async Task CreateCategory_duplicate_sibling_name_is_rejected_case_insensitively()
     {
         await using var db = NewDb();
-        var svc = new SkillCatalogService(db);
+        var svc = new SkillCatalogService(db, new SaveCategoryValidator(), new SaveSkillValidator());
         var parent = await AddCategory(db, "Languages");
         await svc.CreateCategoryAsync(new SaveCategoryDto("JavaScript", parent.Id));
 
@@ -80,7 +80,7 @@ public class SkillCatalogServiceTests
     public async Task CreateCategory_same_name_under_different_parent_succeeds()
     {
         await using var db = NewDb();
-        var svc = new SkillCatalogService(db);
+        var svc = new SkillCatalogService(db, new SaveCategoryValidator(), new SaveSkillValidator());
         var frontend = await AddCategory(db, "Frontend");
         var mobile = await AddCategory(db, "Mobile");
 
@@ -94,7 +94,7 @@ public class SkillCatalogServiceTests
     public async Task UpdateCategory_rename_to_self_is_allowed()
     {
         await using var db = NewDb();
-        var svc = new SkillCatalogService(db);
+        var svc = new SkillCatalogService(db, new SaveCategoryValidator(), new SaveSkillValidator());
         var cat = await AddCategory(db, "Languages");
 
         var act = () => svc.UpdateCategoryAsync(cat.Id, new SaveCategoryDto("Languages", null));
@@ -106,7 +106,7 @@ public class SkillCatalogServiceTests
     public async Task CreateSkill_same_name_in_different_category_succeeds()
     {
         await using var db = NewDb();
-        var svc = new SkillCatalogService(db);
+        var svc = new SkillCatalogService(db, new SaveCategoryValidator(), new SaveSkillValidator());
         var data = await AddCategory(db, "Data");
         var lang = await AddCategory(db, "Languages");
 
@@ -120,7 +120,7 @@ public class SkillCatalogServiceTests
     public async Task CreateSkill_duplicate_name_in_same_category_is_rejected()
     {
         await using var db = NewDb();
-        var svc = new SkillCatalogService(db);
+        var svc = new SkillCatalogService(db, new SaveCategoryValidator(), new SaveSkillValidator());
         var data = await AddCategory(db, "Data");
         await svc.CreateSkillAsync(new SaveSkillDto("PostgreSQL", data.Id));
 
@@ -133,7 +133,7 @@ public class SkillCatalogServiceTests
     public async Task UpdateSkill_move_to_another_category_recomputes_category_name()
     {
         await using var db = NewDb();
-        var svc = new SkillCatalogService(db);
+        var svc = new SkillCatalogService(db, new SaveCategoryValidator(), new SaveSkillValidator());
         var data = await AddCategory(db, "Data");
         var backend = await AddCategory(db, "Backend");
         var skill = await svc.CreateSkillAsync(new SaveSkillDto("PostgreSQL", data.Id));
@@ -148,7 +148,7 @@ public class SkillCatalogServiceTests
     public async Task GetTree_orders_skills_by_rank_desc_then_name_asc()
     {
         await using var db = NewDb();
-        var svc = new SkillCatalogService(db);
+        var svc = new SkillCatalogService(db, new SaveCategoryValidator(), new SaveSkillValidator());
         var cat = await AddCategory(db, "Data");
         db.Skills.AddRange(
             new Skill { Id = Guid.NewGuid(), Name = "Alpha", CategoryId = cat.Id, Rank = 1 },
@@ -166,7 +166,7 @@ public class SkillCatalogServiceTests
     public async Task UpdateSkill_preserves_existing_rank()
     {
         await using var db = NewDb();
-        var svc = new SkillCatalogService(db);
+        var svc = new SkillCatalogService(db, new SaveCategoryValidator(), new SaveSkillValidator());
         var cat = await AddCategory(db, "Data");
         var skill = new Skill { Id = Guid.NewGuid(), Name = "SQL", CategoryId = cat.Id, Rank = 7 };
         db.Skills.Add(skill);

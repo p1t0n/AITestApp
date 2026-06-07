@@ -1,6 +1,7 @@
 using EmployeeManager.Application.Abstractions;
 using EmployeeManager.Application.Common;
 using EmployeeManager.Domain.Entities;
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 
 namespace EmployeeManager.Application.Employees;
@@ -17,7 +18,12 @@ public interface IEmployeeService
 public class EmployeeService : IEmployeeService
 {
     private readonly IAppDbContext _db;
-    public EmployeeService(IAppDbContext db) => _db = db;
+    private readonly IValidator<SaveEmployeeDto> _validator;
+    public EmployeeService(IAppDbContext db, IValidator<SaveEmployeeDto> validator)
+    {
+        _db = db;
+        _validator = validator;
+    }
 
     private static DateOnly Today => DateOnly.FromDateTime(DateTime.UtcNow);
 
@@ -41,6 +47,7 @@ public class EmployeeService : IEmployeeService
 
     public async Task<EmployeeDetailDto> CreateAsync(SaveEmployeeDto dto, CancellationToken ct = default)
     {
+        await _validator.ValidateAndThrowAsync(dto, ct);
         var e = new Employee { Id = Guid.NewGuid() };
         Apply(e, dto);
         _db.Employees.Add(e);
@@ -50,6 +57,7 @@ public class EmployeeService : IEmployeeService
 
     public async Task<EmployeeDetailDto> UpdateAsync(Guid id, SaveEmployeeDto dto, CancellationToken ct = default)
     {
+        await _validator.ValidateAndThrowAsync(dto, ct);
         var e = await _db.Employees.FirstOrDefaultAsync(x => x.Id == id, ct)
             ?? throw new NotFoundException(nameof(Employee), id);
         Apply(e, dto);

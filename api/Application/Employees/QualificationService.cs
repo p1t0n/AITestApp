@@ -29,10 +29,16 @@ public interface IQualificationService
 public class QualificationService : IQualificationService
 {
     private readonly IAppDbContext _db;
-    public QualificationService(IAppDbContext db) => _db = db;
+    private readonly IValidator<SaveQualificationDto> _validator;
+    public QualificationService(IAppDbContext db, IValidator<SaveQualificationDto> validator)
+    {
+        _db = db;
+        _validator = validator;
+    }
 
     public async Task<QualificationDto> AddAsync(Guid employeeId, SaveQualificationDto dto, CancellationToken ct = default)
     {
+        await _validator.ValidateAndThrowAsync(dto, ct);
         if (!await _db.Employees.AnyAsync(e => e.Id == employeeId, ct))
             throw new NotFoundException(nameof(Employee), employeeId);
 
@@ -45,6 +51,7 @@ public class QualificationService : IQualificationService
 
     public async Task<QualificationDto> UpdateAsync(Guid qualificationId, SaveQualificationDto dto, CancellationToken ct = default)
     {
+        await _validator.ValidateAndThrowAsync(dto, ct);
         var q = await _db.Qualifications.FirstOrDefaultAsync(x => x.Id == qualificationId, ct)
             ?? throw new NotFoundException(nameof(Qualification), qualificationId);
         Apply(q, dto);
