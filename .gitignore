@@ -68,3 +68,6 @@ web/.vite/
 
 /*.idea/
 *.user
+
+/docs
+/issues

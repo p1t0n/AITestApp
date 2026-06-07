@@ -9,11 +9,17 @@
   <Folder Name="/api/Infrastructure/">
     <Project Path="api/Infrastructure/EmployeeManager.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/api/Mcp/">
+    <Project Path="api/Mcp/EmployeeManager.Mcp.csproj" />
+  </Folder>
   <Folder Name="/api/Web/">
     <Project Path="api/Web/EmployeeManager.Web.csproj" />
   </Folder>
   <Folder Name="/tests/" />
   <Folder Name="/tests/Application.Tests/">
     <Project Path="tests/Application.Tests/EmployeeManager.Application.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tests/Mcp.Tests/">
+    <Project Path="tests/Mcp.Tests/EmployeeManager.Mcp.Tests.csproj" />
   </Folder>
 </Solution>
