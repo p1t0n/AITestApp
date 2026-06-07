@@ -20,7 +20,12 @@ public interface IAvailabilityService
 public class AvailabilityService : IAvailabilityService
 {
     private readonly IAppDbContext _db;
-    public AvailabilityService(IAppDbContext db) => _db = db;
+    private readonly IValidator<SaveAvailabilityEntryDto> _validator;
+    public AvailabilityService(IAppDbContext db, IValidator<SaveAvailabilityEntryDto> validator)
+    {
+        _db = db;
+        _validator = validator;
+    }
 
     public async Task<IReadOnlyList<AvailabilityEntryDto>> ListAsync(Guid employeeId, CancellationToken ct = default) =>
         await _db.AvailabilityEntries.AsNoTracking()
@@ -31,6 +36,7 @@ public class AvailabilityService : IAvailabilityService
 
     public async Task<AvailabilityEntryDto> AddAsync(Guid employeeId, SaveAvailabilityEntryDto dto, CancellationToken ct = default)
     {
+        await _validator.ValidateAndThrowAsync(dto, ct);
         if (!await _db.Employees.AnyAsync(e => e.Id == employeeId, ct))
             throw new NotFoundException(nameof(Employee), employeeId);
         if (await _db.AvailabilityEntries.AnyAsync(a => a.EmployeeId == employeeId && a.EffectiveFrom == dto.EffectiveFrom, ct))
@@ -50,6 +56,7 @@ public class AvailabilityService : IAvailabilityService
 
     public async Task<AvailabilityEntryDto> UpdateAsync(Guid entryId, SaveAvailabilityEntryDto dto, CancellationToken ct = default)
     {
+        await _validator.ValidateAndThrowAsync(dto, ct);
         var a = await _db.AvailabilityEntries.FirstOrDefaultAsync(x => x.Id == entryId, ct)
             ?? throw new NotFoundException(nameof(AvailabilityEntry), entryId);
         if (a.EffectiveFrom != dto.EffectiveFrom &&

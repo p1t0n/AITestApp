@@ -1,6 +1,7 @@
 using EmployeeManager.Application.Abstractions;
 using EmployeeManager.Application.Common;
 using EmployeeManager.Domain.Entities;
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 
 namespace EmployeeManager.Application.Skills;
@@ -22,7 +23,17 @@ public interface ISkillCatalogService
 public class SkillCatalogService : ISkillCatalogService
 {
     private readonly IAppDbContext _db;
-    public SkillCatalogService(IAppDbContext db) => _db = db;
+    private readonly IValidator<SaveCategoryDto> _categoryValidator;
+    private readonly IValidator<SaveSkillDto> _skillValidator;
+    public SkillCatalogService(
+        IAppDbContext db,
+        IValidator<SaveCategoryDto> categoryValidator,
+        IValidator<SaveSkillDto> skillValidator)
+    {
+        _db = db;
+        _categoryValidator = categoryValidator;
+        _skillValidator = skillValidator;
+    }
 
     public async Task<IReadOnlyList<CategoryDto>> ListCategoriesAsync(CancellationToken ct = default) =>
         await _db.Categories.AsNoTracking()
@@ -56,6 +67,7 @@ public class SkillCatalogService : ISkillCatalogService
 
     public async Task<CategoryDto> CreateCategoryAsync(SaveCategoryDto dto, CancellationToken ct = default)
     {
+        await _categoryValidator.ValidateAndThrowAsync(dto, ct);
         var name = dto.Name.Trim();
         if (dto.ParentId is { } pid && !await _db.Categories.AnyAsync(c => c.Id == pid, ct))
             throw new NotFoundException(nameof(Category), pid);
@@ -69,6 +81,7 @@ public class SkillCatalogService : ISkillCatalogService
 
     public async Task<CategoryDto> UpdateCategoryAsync(Guid id, SaveCategoryDto dto, CancellationToken ct = default)
     {
+        await _categoryValidator.ValidateAndThrowAsync(dto, ct);
         var c = await _db.Categories.FirstOrDefaultAsync(x => x.Id == id, ct)
             ?? throw new NotFoundException(nameof(Category), id);
 
@@ -132,6 +145,7 @@ public class SkillCatalogService : ISkillCatalogService
 
     public async Task<SkillDto> CreateSkillAsync(SaveSkillDto dto, CancellationToken ct = default)
     {
+        await _skillValidator.ValidateAndThrowAsync(dto, ct);
         var name = dto.Name.Trim();
         var cat = await _db.Categories.FirstOrDefaultAsync(c => c.Id == dto.CategoryId, ct)
             ?? throw new NotFoundException(nameof(Category), dto.CategoryId);
@@ -145,6 +159,7 @@ public class SkillCatalogService : ISkillCatalogService
 
     public async Task<SkillDto> UpdateSkillAsync(Guid id, SaveSkillDto dto, CancellationToken ct = default)
     {
+        await _skillValidator.ValidateAndThrowAsync(dto, ct);
         var s = await _db.Skills.FirstOrDefaultAsync(x => x.Id == id, ct)
             ?? throw new NotFoundException(nameof(Skill), id);
 

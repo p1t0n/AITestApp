@@ -9,10 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 const string SpaCors = "spa";
 
-builder.Services.AddControllers(options =>
-{
-    options.Filters.Add<ValidationActionFilter>();
-})
+builder.Services.AddControllers()
 .AddJsonOptions(o =>
 {
     // Serialize enums as their string names (matches the DB representation).

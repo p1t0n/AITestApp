@@ -19,10 +19,16 @@ public interface ILanguageService
 public class LanguageService : ILanguageService
 {
     private readonly IAppDbContext _db;
-    public LanguageService(IAppDbContext db) => _db = db;
+    private readonly IValidator<SaveSpokenLanguageDto> _validator;
+    public LanguageService(IAppDbContext db, IValidator<SaveSpokenLanguageDto> validator)
+    {
+        _db = db;
+        _validator = validator;
+    }
 
     public async Task<SpokenLanguageDto> AddAsync(Guid employeeId, SaveSpokenLanguageDto dto, CancellationToken ct = default)
     {
+        await _validator.ValidateAndThrowAsync(dto, ct);
         if (!await _db.Employees.AnyAsync(e => e.Id == employeeId, ct))
             throw new NotFoundException(nameof(Employee), employeeId);
 
@@ -40,6 +46,7 @@ public class LanguageService : ILanguageService
 
     public async Task<SpokenLanguageDto> UpdateAsync(Guid languageId, SaveSpokenLanguageDto dto, CancellationToken ct = default)
     {
+        await _validator.ValidateAndThrowAsync(dto, ct);
         var l = await _db.SpokenLanguages.FirstOrDefaultAsync(x => x.Id == languageId, ct)
             ?? throw new NotFoundException(nameof(SpokenLanguage), languageId);
         l.Language = dto.Language.Trim();

@@ -19,10 +19,16 @@ public interface IEmployeeSkillService
 public class EmployeeSkillService : IEmployeeSkillService
 {
     private readonly IAppDbContext _db;
-    public EmployeeSkillService(IAppDbContext db) => _db = db;
+    private readonly IValidator<SaveEmployeeSkillDto> _validator;
+    public EmployeeSkillService(IAppDbContext db, IValidator<SaveEmployeeSkillDto> validator)
+    {
+        _db = db;
+        _validator = validator;
+    }
 
     public async Task<EmployeeSkillDto> AddAsync(Guid employeeId, SaveEmployeeSkillDto dto, CancellationToken ct = default)
     {
+        await _validator.ValidateAndThrowAsync(dto, ct);
         if (!await _db.Employees.AnyAsync(e => e.Id == employeeId, ct))
             throw new NotFoundException(nameof(Employee), employeeId);
         if (!await _db.Skills.AnyAsync(s => s.Id == dto.SkillId, ct))
@@ -45,6 +51,7 @@ public class EmployeeSkillService : IEmployeeSkillService
 
     public async Task<EmployeeSkillDto> UpdateAsync(Guid employeeSkillId, SaveEmployeeSkillDto dto, CancellationToken ct = default)
     {
+        await _validator.ValidateAndThrowAsync(dto, ct);
         var es = await _db.EmployeeSkills.FirstOrDefaultAsync(x => x.Id == employeeSkillId, ct)
             ?? throw new NotFoundException(nameof(EmployeeSkill), employeeSkillId);
         es.Level = dto.Level;
