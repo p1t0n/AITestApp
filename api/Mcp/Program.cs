@@ -5,11 +5,49 @@ using EmployeeManager.Application;
 using EmployeeManager.Infrastructure;
 using EmployeeManager.Mcp;
 using EmployeeManager.Mcp.Tools;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using ModelContextProtocol.AspNetCore.Authentication;
+using ModelContextProtocol.Authentication;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+
+// OAuth 2.1: this server is the Resource Server. Keycloak (the Authorization Server) issues
+// tokens and runs the PKCE auth-code flow; here we only validate JWTs and advertise the AS.
+var authority = builder.Configuration["Mcp:Authority"] ?? "http://localhost:8080/realms/cv-manager";
+var resource = builder.Configuration["Mcp:Resource"] ?? "https://localhost/mcp";
+
+builder.Services
+    .AddAuthentication(options =>
+    {
+        options.DefaultChallengeScheme = McpAuthenticationDefaults.AuthenticationScheme;
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.Authority = authority;
+        options.Audience = resource;
+        options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
+    })
+    .AddMcp(options =>
+    {
+        options.ResourceMetadata = new ProtectedResourceMetadata
+        {
+            Resource = resource,
+            AuthorizationServers = { authority },
+            ScopesSupported = { McpScopes.Read, McpScopes.Write, McpScopes.Admin },
+            BearerMethodsSupported = { "header" },
+        };
+    });
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(McpScopes.Read, p => p.RequireAssertion(McpScopes.Has(McpScopes.Read)));
+    options.AddPolicy(McpScopes.Write, p => p.RequireAssertion(McpScopes.Has(McpScopes.Write)));
+    options.AddPolicy(McpScopes.Admin, p => p.RequireAssertion(McpScopes.Has(McpScopes.Admin)));
+});
 
 // Tool results serialize like the Web API: enums as string names, DateOnly as ISO dates.
 var toolSerializerOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
@@ -21,6 +59,7 @@ var toolSerializerOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web
 builder.Services
     .AddMcpServer()
     .WithHttpTransport()
+    .AddAuthorizationFilters()
     .WithTools<EmployeeTools>(toolSerializerOptions)
     .WithTools<LanguageTools>(toolSerializerOptions)
     .WithTools<AvailabilityTools>(toolSerializerOptions)
@@ -34,9 +73,9 @@ builder.Services
 
 var app = builder.Build();
 
-// Static bearer gate before the MCP endpoint — see PRD (auth deferred to OAuth later).
-app.UseMcpBearerAuth();
-app.MapMcp();
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapMcp().RequireAuthorization();
 
 app.Run();
 

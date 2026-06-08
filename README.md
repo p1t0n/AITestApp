@@ -8,7 +8,7 @@ See [SPEC.md](SPEC.md).
 ## Stack
 
 - **Backend:** ASP.NET Core Web API (.NET 10), layered Domain / Application / Infrastructure / Web
-- **MCP server:** ModelContextProtocol (Streamable HTTP), thin adapters over the Application layer
+- **MCP server:** ModelContextProtocol (Streamable HTTP), thin adapters over the Application layer, OAuth 2.1 (Keycloak) with per-tool scopes
 - **Frontend:** React + Vite + TypeScript, MUI, TanStack Query
 - **Database:** PostgreSQL via EF Core
 - **Validation:** FluentValidation (enforced in the Application layer, so REST and MCP validate identically)
@@ -24,10 +24,11 @@ api/
   Web/             controllers, Swagger, DI
   Mcp/             MCP server: tools, bearer auth, error mapping
 web/               React SPA
+keycloak/          realm-export.json (OAuth realm: clients, scopes, audience mapper)
 tests/
   Application.Tests/  Application unit tests
-  Mcp.Tests/          MCP integration tests (in-process client)
-docker-compose.yml Postgres
+  Mcp.Tests/          MCP integration tests (in-process client + Keycloak e2e)
+docker-compose.yml Postgres + Keycloak
 SPEC.md            full design + decisions
 ```
 
@@ -61,20 +62,21 @@ Opens on `http://localhost:5173` and proxies `/api/*` to the backend.
 
 ### 4. Start the MCP server (optional)
 
+The MCP server is an **OAuth 2.1 Resource Server**. Keycloak (the Authorization Server)
+runs in `docker compose up -d` and imports a `cv-manager` realm with a public PKCE client
+(`cv-manager-mcp`), the `mcp:read` / `mcp:write` / `mcp:admin` scopes, and an audience mapper.
+
 ```bash
 cd api/Mcp
 dotnet run
 ```
 
-Serves MCP over Streamable HTTP. A bearer token is **required** — set it first
-(the server denies all requests when no key is configured):
-
-```bash
-dotnet user-secrets set "Mcp:ApiKey" "<your-token>"   # or env: Mcp__ApiKey
-```
-
-Point any MCP-capable agent at the server URL with header
-`Authorization: Bearer <your-token>`. It shares the API's database/connection string.
+Config (`Mcp:Authority` = Keycloak realm issuer, `Mcp:Resource` = this server's audience)
+defaults to the compose Keycloak. An MCP-capable agent discovers the AS via
+`/.well-known/oauth-protected-resource`, runs the **authorization-code + PKCE** flow against
+Keycloak, and calls tools with `Authorization: Bearer <access-token>`. Tokens are validated
+against Keycloak's JWKS (issuer, audience, signature, lifetime). The server shares the API's
+database. Dynamic Client Registration is enabled on the realm for self-service onboarding.
 
 ## MCP tools
 
@@ -87,6 +89,8 @@ destructive so clients can gate dangerous calls:
 - **Skill catalog:** `category_list/tree/create/update/delete`, `skill_list/create/update/delete`
 - **CV:** `cv_get` (assembled data, not a PDF)
 
+Each tool requires a scope: read-only tools need `mcp:read`, create/update need `mcp:write`,
+deletes need `mcp:admin`. The server hides tools the token isn't scoped for and forbids the call.
 Failures return a structured error (`not_found` / `conflict` / `validation` with per-field detail)
 so an agent can self-correct.
 
@@ -116,7 +120,6 @@ dotnet ef migrations add <Name> \
 ## Not yet built (next increments)
 
 - Server-side PDF rendering (CV is React-rendered; print to PDF for now)
-- MCP auth hardening: OAuth 2.1 / the MCP authorization spec (static bearer key for now)
 - Web integration tests (WebApplicationFactory + Testcontainers) and Playwright e2e
 - SPA edit forms for languages / qualifications / experiences (API already supports them)
-- Authentication for the Web API
+- Authentication for the Web API (the MCP server is already OAuth-protected)

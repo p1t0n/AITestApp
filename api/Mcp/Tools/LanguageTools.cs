@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using EmployeeManager.Application.Employees;
+using Microsoft.AspNetCore.Authorization;
 using ModelContextProtocol.Server;
 
 namespace EmployeeManager.Mcp.Tools;
@@ -8,7 +9,8 @@ namespace EmployeeManager.Mcp.Tools;
 public class LanguageTools
 {
     [McpServerTool(Name = "language_add", ReadOnly = false, Destructive = false),
-     Description("Add a spoken language (with proficiency level) to an employee.")]
+     Description("Add a spoken language (with proficiency level) to an employee."),
+     Authorize(Policy = McpScopes.Write)]
     public static Task<object> Add(
         ILanguageService languages,
         [Description("Employee id (GUID).")] Guid employeeId,
@@ -17,7 +19,8 @@ public class LanguageTools
         => McpToolExecutor.RunAsync(() => languages.AddAsync(employeeId, dto, ct));
 
     [McpServerTool(Name = "language_update", ReadOnly = false, Destructive = false),
-     Description("Update a spoken language by id.")]
+     Description("Update a spoken language by id."),
+     Authorize(Policy = McpScopes.Write)]
     public static Task<object> Update(
         ILanguageService languages,
         [Description("Spoken-language id (GUID).")] Guid id,
@@ -26,7 +29,8 @@ public class LanguageTools
         => McpToolExecutor.RunAsync(() => languages.UpdateAsync(id, dto, ct));
 
     [McpServerTool(Name = "language_delete", ReadOnly = false, Destructive = true, Idempotent = true),
-     Description("Delete a spoken language by id.")]
+     Description("Delete a spoken language by id."),
+     Authorize(Policy = McpScopes.Admin)]
     public static Task<object> Delete(
         ILanguageService languages,
         [Description("Spoken-language id (GUID).")] Guid id,
