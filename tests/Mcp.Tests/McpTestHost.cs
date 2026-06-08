@@ -34,22 +34,24 @@ internal static class McpTestHost
     private static readonly SymmetricSecurityKey SigningKey =
         new(Encoding.UTF8.GetBytes("cv-manager-mcp-test-signing-key-which-is-long-enough"));
 
+    private static void UseInMemoryDatabase(IServiceCollection services, string dbName)
+    {
+        var toRemove = services.Where(d =>
+            d.ServiceType == typeof(DbContextOptions<AppDbContext>) ||
+            d.ServiceType == typeof(DbContextOptions) ||
+            d.ServiceType == typeof(AppDbContext) ||
+            (d.ServiceType.IsGenericType &&
+             d.ServiceType.GetGenericTypeDefinition().Name == "IDbContextOptionsConfiguration`1"))
+            .ToList();
+        foreach (var d in toRemove) services.Remove(d);
+
+        services.AddDbContext<AppDbContext>(o => o.UseInMemoryDatabase(dbName));
+    }
+
     public static WebApplicationFactory<Program> CreateFactory(string dbName) =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
-            builder.ConfigureServices(services =>
-            {
-                var toRemove = services.Where(d =>
-                    d.ServiceType == typeof(DbContextOptions<AppDbContext>) ||
-                    d.ServiceType == typeof(DbContextOptions) ||
-                    d.ServiceType == typeof(AppDbContext) ||
-                    (d.ServiceType.IsGenericType &&
-                     d.ServiceType.GetGenericTypeDefinition().Name == "IDbContextOptionsConfiguration`1"))
-                    .ToList();
-                foreach (var d in toRemove) services.Remove(d);
-
-                services.AddDbContext<AppDbContext>(o => o.UseInMemoryDatabase(dbName));
-            });
+            builder.ConfigureServices(services => UseInMemoryDatabase(services, dbName));
 
             // Override JWT validation to trust locally-minted test tokens.
             builder.ConfigureTestServices(services =>
@@ -67,6 +69,36 @@ internal static class McpTestHost
                         ValidAudience = Resource,
                         ValidateIssuerSigningKey = true,
                         IssuerSigningKey = SigningKey,
+                        ValidateLifetime = true,
+                    };
+                });
+            });
+        });
+
+    /// <summary>
+    /// Factory for the Keycloak e2e test: swaps the DB to InMemory and points JwtBearer at a real
+    /// authorization server (validates the signature against its JWKS), instead of the local test key.
+    /// </summary>
+    public static WebApplicationFactory<Program> CreateFactoryWithAuthority(string dbName, string authority, string audience) =>
+        new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureServices(services => UseInMemoryDatabase(services, dbName));
+
+            builder.ConfigureTestServices(services =>
+            {
+                services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, o =>
+                {
+                    o.Authority = authority;
+                    o.MetadataAddress = null!;
+                    o.RequireHttpsMetadata = false;
+                    o.Audience = audience;
+                    o.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidIssuer = authority,
+                        ValidateAudience = true,
+                        ValidAudience = audience,
+                        ValidateIssuerSigningKey = true,
                         ValidateLifetime = true,
                     };
                 });

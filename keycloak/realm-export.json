@@ -1,0 +1,76 @@
+{
+  "realm": "cv-manager",
+  "enabled": true,
+  "accessTokenLifespan": 3600,
+  "clientScopes": [
+    {
+      "name": "mcp-audience",
+      "description": "Adds the MCP server as the token audience (RFC 8707).",
+      "protocol": "openid-connect",
+      "attributes": { "include.in.token.scope": "false", "display.on.consent.screen": "false" },
+      "protocolMappers": [
+        {
+          "name": "mcp-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "https://localhost/mcp",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
+      "name": "mcp:read",
+      "description": "Read-only MCP tools.",
+      "protocol": "openid-connect",
+      "attributes": { "include.in.token.scope": "true", "display.on.consent.screen": "true" }
+    },
+    {
+      "name": "mcp:write",
+      "description": "Create/update MCP tools.",
+      "protocol": "openid-connect",
+      "attributes": { "include.in.token.scope": "true", "display.on.consent.screen": "true" }
+    },
+    {
+      "name": "mcp:admin",
+      "description": "Destructive (delete) MCP tools.",
+      "protocol": "openid-connect",
+      "attributes": { "include.in.token.scope": "true", "display.on.consent.screen": "true" }
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "cv-manager-mcp",
+      "name": "CV Manager MCP (public PKCE client)",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost/*",
+        "http://127.0.0.1/*",
+        "http://localhost:*",
+        "http://127.0.0.1:*"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "require.pushed.authorization.requests": "false"
+      },
+      "defaultClientScopes": ["mcp-audience", "mcp:read", "mcp:write"],
+      "optionalClientScopes": ["mcp:admin"]
+    },
+    {
+      "clientId": "cv-manager-e2e",
+      "name": "CV Manager e2e (confidential, test only)",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "e2e-secret",
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "defaultClientScopes": ["mcp-audience", "mcp:read", "mcp:write", "mcp:admin"]
+    }
+  ]
+}
