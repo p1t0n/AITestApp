@@ -17,7 +17,9 @@ namespace EmployeeManager.Mcp.Tests;
 [Trait("Category", "e2e")]
 public class KeycloakE2ETests : IAsyncLifetime
 {
+#pragma warning disable CS0618 // parameterless ContainerBuilder is deprecated; the generic builder is the supported path for a plain image
     private readonly IContainer _keycloak = new ContainerBuilder()
+#pragma warning restore CS0618
         .WithImage("quay.io/keycloak/keycloak:26.0")
         .WithEnvironment("KC_BOOTSTRAP_ADMIN_USERNAME", "admin")
         .WithEnvironment("KC_BOOTSTRAP_ADMIN_PASSWORD", "admin")
