@@ -2,22 +2,22 @@
 
 A .NET + React service to manage a roster of available employees — their skills,
 qualifications, work experience, and time-based availability — and render their CVs
-from that data. This is a **base project**: it is deliberately scoped to be extended
-later with AI functionality, starting with an MCP server that manages all employee data.
+from that data. Built as a base project and now extended with an **MCP server** that
+exposes every operation on every entity to external AI agents over the same Application
+layer, protected by OAuth 2.1.
 
 ## Goals
 
 - Store and fully manage employee professional data.
 - Render a CV for any employee from the stored data.
-- Be structured so a future MCP server reuses the same data logic with zero duplication.
+- Let external AI agents perform all operations via MCP, reusing the data logic with zero duplication.
 - Be a clean training/POC foundation, not a finished product.
 
 ## Out of scope (deferred to later exercises)
 
-- Authentication / authorization.
 - Server-side PDF generation (CV is React-rendered for now).
 - AI-tailored / curated CVs.
-- The MCP server itself (only the architectural seam is prepared now).
+- Authentication for the **Web API** (the MCP server is OAuth-protected; the REST API is not yet).
 
 ---
 
@@ -27,14 +27,15 @@ later with AI functionality, starting with an MCP server that manages all employ
 |-------------|---------------------------------------------------------------|
 | Front end   | React + Vite + TypeScript, MUI, TanStack Query                |
 | Back end    | ASP.NET Core Web API (**.NET 10**), Controllers + DTOs + Swagger |
-| Hosting     | Separate API + standalone Vite dev server with proxy          |
+| MCP server  | ModelContextProtocol (Streamable HTTP), thin adapters over Application |
+| Hosting     | Separate API + MCP server + standalone Vite dev server with proxy |
 | Database    | PostgreSQL via EF Core (JSONB available)                      |
-| Validation  | FluentValidation (in Application layer)                       |
-| Local infra | Docker Compose for Postgres                                   |
-| Auth        | None (added later as its own exercise)                        |
+| Validation  | FluentValidation (enforced **in the Application layer** — REST + MCP validate identically) |
+| Local infra | Docker Compose for Postgres + Keycloak                        |
+| Auth        | MCP server: OAuth 2.1 Resource Server (Keycloak AS, PKCE), per-tool scopes. Web API: none yet |
 
-The future MCP server joins as a third sibling alongside the API and SPA, referencing
-the Application layer directly.
+The MCP server runs as a third sibling alongside the API and SPA, referencing the
+Application layer directly.
 
 ---
 
@@ -43,16 +44,20 @@ the Application layer directly.
 ```
 /api
   Domain/          entities, enums
-  Application/     services, use-cases, DTOs, FluentValidation, CV-assembly  ← MCP reuses this
+  Application/     services, use-cases, DTOs, FluentValidation, CV-assembly  ← Web + MCP reuse this
   Infrastructure/  EF Core, DbContext, migrations, seed
   Web/             controllers, Swagger, DI wiring
+  Mcp/             MCP server: tools, OAuth (JWT) auth, scope policies, error mapping
 /web               React SPA (Vite)
-/tests             Application unit tests (xUnit + FluentValidation)
-docker-compose.yml Postgres
+/keycloak          realm-export.json (OAuth realm: clients, scopes, audience mapper)
+/tests
+  Application.Tests  Application unit tests (xUnit + FluentValidation)
+  Mcp.Tests          MCP integration tests (in-process client) + Keycloak e2e
+docker-compose.yml Postgres + Keycloak
 ```
 
-**Layering rule:** both the Web API and the future MCP server reference **Application**.
-No business logic lives in controllers or the eventual MCP tools — they are thin adapters.
+**Layering rule:** both the Web API and the MCP server reference **Application**.
+No business logic lives in controllers or MCP tools — they are thin adapters.
 
 ---
 
@@ -97,17 +102,24 @@ One table with a `Type` enum (`Degree` | `Certification`) and nullable fields pe
 
 ### Experience
 - `Company`, `Title`, `Location`, `StartDate`, `EndDate` (nullable = current), `Summary`
-- Children:
+- Children (each with its own Application service + MCP tools):
   - **Achievement** — ordered bullet points (`Order`, `Text`)
   - **ExperienceSkill** — links to `Skill` used in that role (evidence trail for AI:
     "used React at Acme 2020–22")
 
 ---
 
-## Features (base build)
+## Features
 
 - **Full CRUD** (UI + API) for: employees and all children, the skill catalog
   (categories + skills), qualifications, experience, achievements, availability entries.
+- **MCP server**: 36 tools (1:1 over the Application services) exposing every operation on
+  every entity to external AI agents. Read/write/destructive annotations; structured tool
+  errors (`not_found` / `conflict` / `validation` with per-field detail) for agent
+  self-correction; `cv_get` assembles a CV.
+- **OAuth 2.1**: the MCP server is a Resource Server (validates JWTs, serves
+  `/.well-known/oauth-protected-resource`); Keycloak is the Authorization Server (PKCE,
+  Dynamic Client Registration). Per-tool scopes — `mcp:read` / `mcp:write` / `mcp:admin`.
 - **Seed data**: a seeded skill catalog + 3–5 sample employees with complete data.
 - **CV rendering**: React-only live view; renders **all** sections in a fixed, sensible
   order (full dump). Export via browser print → PDF for now.
@@ -116,10 +128,16 @@ One table with a `Type` enum (`Degree` | `Certification`) and nullable fields pe
 
 ## Testing
 
-- **Now:** Application-layer unit tests (xUnit) — capacity-at-date step function,
-  CV assembly, skill mapping — plus FluentValidation rule tests.
-- **Later:** API integration tests (WebApplicationFactory + Testcontainers Postgres)
-  and Playwright end-to-end tests. Structure the solution so these slot in without rework.
+- **Application unit tests** (xUnit) — capacity-at-date step function, CV assembly, skill
+  mapping, FluentValidation rules, and the relocated service-boundary validation; plus the
+  new `AchievementService` / `ExperienceSkillService`.
+- **MCP integration tests** — an in-process MCP client over `WebApplicationFactory` (InMemory
+  DB, locally-minted JWTs): tool registry, CRUD round-trips, structured errors, OAuth gate,
+  scope filtering, audience binding.
+- **Keycloak e2e** (Testcontainers, `Category=e2e`) — a real Keycloak issues a token; the
+  server validates it via JWKS. Run `dotnet test --filter "Category!=e2e"` to skip it.
+- **Later:** Web API integration tests (WebApplicationFactory + Testcontainers Postgres) and
+  Playwright end-to-end tests. Structure already supports slotting these in.
 
 ---
 
@@ -134,7 +152,7 @@ One table with a `Type` enum (`Degree` | `Certification`) and nullable fields pe
 ## Likely next steps (after this base)
 
 - Server-side PDF render path (e.g. QuestPDF) reusable headlessly.
-- MCP server exposing employee-data management tools over the Application layer.
 - AI-tailored CVs: select relevant skills/experience for a target role.
-- Integration + Playwright e2e test layers.
-- Auth (JWT or ASP.NET Identity).
+- Web API integration + Playwright e2e test layers.
+- Auth for the Web API (JWT or ASP.NET Identity).
+- MCP auth hardening: external IdP, tighter Dynamic Client Registration policy.
