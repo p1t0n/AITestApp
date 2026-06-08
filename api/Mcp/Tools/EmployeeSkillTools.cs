@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using EmployeeManager.Application.Employees;
+using Microsoft.AspNetCore.Authorization;
 using ModelContextProtocol.Server;
 
 namespace EmployeeManager.Mcp.Tools;
@@ -8,7 +9,8 @@ namespace EmployeeManager.Mcp.Tools;
 public class EmployeeSkillTools
 {
     [McpServerTool(Name = "employee_skill_add", ReadOnly = false, Destructive = false),
-     Description("Add a catalog skill to an employee with a level and years of experience.")]
+     Description("Add a catalog skill to an employee with a level and years of experience."),
+     Authorize(Policy = McpScopes.Write)]
     public static Task<object> Add(
         IEmployeeSkillService skills,
         [Description("Employee id (GUID).")] Guid employeeId,
@@ -17,7 +19,8 @@ public class EmployeeSkillTools
         => McpToolExecutor.RunAsync(() => skills.AddAsync(employeeId, dto, ct));
 
     [McpServerTool(Name = "employee_skill_update", ReadOnly = false, Destructive = false),
-     Description("Update an employee skill (level / years) by id.")]
+     Description("Update an employee skill (level / years) by id."),
+     Authorize(Policy = McpScopes.Write)]
     public static Task<object> Update(
         IEmployeeSkillService skills,
         [Description("Employee-skill id (GUID).")] Guid id,
@@ -26,7 +29,8 @@ public class EmployeeSkillTools
         => McpToolExecutor.RunAsync(() => skills.UpdateAsync(id, dto, ct));
 
     [McpServerTool(Name = "employee_skill_delete", ReadOnly = false, Destructive = true, Idempotent = true),
-     Description("Delete an employee skill by id.")]
+     Description("Delete an employee skill by id."),
+     Authorize(Policy = McpScopes.Admin)]
     public static Task<object> Delete(
         IEmployeeSkillService skills,
         [Description("Employee-skill id (GUID).")] Guid id,
