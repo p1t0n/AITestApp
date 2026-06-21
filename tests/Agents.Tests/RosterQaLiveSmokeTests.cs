@@ -16,11 +16,15 @@ namespace EmployeeManager.Agents.Tests;
 [Trait("Category", "live")]
 public class RosterQaLiveSmokeTests
 {
-    [Fact]
+    [SkippableFact]
     public async Task Answers_a_roster_question_end_to_end()
     {
-        Environment.GetEnvironmentVariable("GITHUB_TOKEN")
-            .Should().NotBeNullOrWhiteSpace("the live smoke test needs a GitHub Models PAT in GITHUB_TOKEN");
+        // Skip (don't fail) when credentials are absent — this test only runs when opted into,
+        // with a real PAT and the MCP server + Keycloak up. So it stays green in a plain
+        // "run all tests" from the IDE.
+        Skip.If(
+            string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GITHUB_TOKEN")),
+            "Live smoke test needs a GitHub Models PAT in GITHUB_TOKEN (and a running MCP server + Keycloak).");
 
         using var factory = new WebApplicationFactory<Program>();
         using var client = factory.CreateClient();
