@@ -17,6 +17,26 @@ import type {
 
 export const http = axios.create({ baseURL: "/api" });
 
+// Roster Q&A agent lives on its own sibling service (proxied at /agents), not the CRUD API.
+export const agentHttp = axios.create({ baseURL: "/agents" });
+
+// ---- Roster Q&A agent ----
+
+export interface RosterQaResponse {
+  answer: string;
+}
+
+/**
+ * Ask the Roster Q&A agent a single question. The endpoint is stateless today (issue #15);
+ * a threadId will be threaded through here once threaded sessions land (issue #16).
+ */
+export function useRosterQa() {
+  return useMutation({
+    mutationFn: async (question: string) =>
+      (await agentHttp.post<RosterQaResponse>("/roster-qa", { question })).data,
+  });
+}
+
 // ---- Employees ----
 
 export function useEmployees() {

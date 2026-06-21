@@ -57,8 +57,19 @@ app.MapPost("/agents/roster-qa", async (
     }
 
     var agent = agents.First(a => a.Name == "roster-qa");
-    var answer = await agent.AskAsync(request.Question, ct);
-    return Results.Ok(new RosterQaResponse(answer));
+    try
+    {
+        var answer = await agent.AskAsync(request.Question, ct);
+        return Results.Ok(new RosterQaResponse(answer));
+    }
+    catch (HttpRequestException ex)
+    {
+        // MCP server unreachable, Keycloak token failure, or model endpoint error: upstream fault.
+        return Results.Problem(
+            title: "Upstream dependency failed (MCP server, auth, or model).",
+            detail: ex.Message,
+            statusCode: StatusCodes.Status502BadGateway);
+    }
 });
 
 app.Run();

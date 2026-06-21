@@ -48,23 +48,38 @@ public sealed class McpToolSource : IMcpToolSource, IAsyncDisposable
                 return stillCached;
             }
 
-            _httpClient = new HttpClient(new BearerTokenHandler(_tokens) { InnerHandler = new SocketsHttpHandler() });
+            var httpClient = new HttpClient(new BearerTokenHandler(_tokens) { InnerHandler = new SocketsHttpHandler() });
+            try
+            {
+                var transport = new HttpClientTransport(
+                    new HttpClientTransportOptions
+                    {
+                        Endpoint = new Uri(_server.BaseUrl),
+                        TransportMode = HttpTransportMode.StreamableHttp,
+                    },
+                    httpClient,
+                    _loggerFactory,
+                    ownsHttpClient: false);
 
-            var transport = new HttpClientTransport(
-                new HttpClientTransportOptions
+                _client = await McpClient.CreateAsync(transport, loggerFactory: _loggerFactory, cancellationToken: ct);
+
+                var tools = await _client.ListToolsAsync(cancellationToken: ct);
+                _httpClient = httpClient;
+                _tools = tools.Cast<AITool>().ToList();
+                return _tools;
+            }
+            catch
+            {
+                // Failed connect (MCP down, auth rejected): release resources so the next call retries clean.
+                if (_client is not null)
                 {
-                    Endpoint = new Uri(_server.BaseUrl),
-                    TransportMode = HttpTransportMode.StreamableHttp,
-                },
-                _httpClient,
-                _loggerFactory,
-                ownsHttpClient: false);
+                    await _client.DisposeAsync();
+                    _client = null;
+                }
 
-            _client = await McpClient.CreateAsync(transport, loggerFactory: _loggerFactory, cancellationToken: ct);
-
-            var tools = await _client.ListToolsAsync(cancellationToken: ct);
-            _tools = tools.Cast<AITool>().ToList();
-            return _tools;
+                httpClient.Dispose();
+                throw;
+            }
         }
         finally
         {

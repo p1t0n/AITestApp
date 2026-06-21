@@ -12,6 +12,11 @@ export default defineConfig({
         target: "http://localhost:5069",
         changeOrigin: true,
       },
+      // Roster Q&A agent (Microsoft Agent Framework) — separate sibling service on :5200.
+      "/agents": {
+        target: "http://localhost:5200",
+        changeOrigin: true,
+      },
     },
   },
 });
