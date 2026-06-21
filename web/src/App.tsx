@@ -4,6 +4,7 @@ import EmployeesPage from "./pages/EmployeesPage";
 import EmployeeDetailPage from "./pages/EmployeeDetailPage";
 import CvPage from "./pages/CvPage";
 import CatalogPage from "./pages/CatalogPage";
+import RosterChatWidget from "./components/RosterChatWidget";
 
 export default function App() {
   return (
@@ -30,6 +31,8 @@ export default function App() {
           <Route path="/catalog" element={<CatalogPage />} />
         </Routes>
       </Container>
+
+      <RosterChatWidget />
     </Box>
   );
 }

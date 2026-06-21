@@ -149,6 +149,61 @@ One table with a `Type` enum (`Degree` | `Certification`) and nullable fields pe
 
 ---
 
+## Agent layer (Microsoft Agent Framework)
+
+A fourth sibling process — `/api/Agents` — hosts AI agents built on the **Microsoft Agent
+Framework (MAF)**. Agents do **not** reference the Application layer; they call the existing
+**MCP server** over HTTP via MAF's native MCP client, reusing the 36 tools with zero
+duplication. This is a training/POC layer: the bar is idiomatic MAF + tests, not product polish.
+
+### Topology
+
+Five processes total: Web API · MCP server · **Agents** · SPA · (Postgres + Keycloak).
+The Agents service exposes REST endpoints; a SPA chat/action UI is deferred.
+
+### Integration & auth
+
+- **Tool access:** MAF MCP client → MCP server over Streamable HTTP. No tool re-declaration.
+- **Identity:** each agent is a Keycloak **client-credentials** service account carrying the
+  **minimal scope** it needs. The MCP server's scope-filtering means a `mcp:read`-only agent
+  is never even shown write/destructive tools — capability is enforced by the token, not by prompt.
+- **Model:** code is provider-agnostic via `IChatClient` (Microsoft.Extensions.AI). Default
+  wiring is **GitHub Models** (free, PAT-authenticated, OpenAI-compatible, strong tool-calling);
+  swappable to Azure OpenAI / OpenAI / Anthropic / Ollama in one line.
+
+### Structure
+
+- An `IAgent` abstraction with one class per agent under `/api/Agents`.
+- Shared DI services: MCP-client factory, client-credentials token acquisition, thread store.
+- New agents slot in as a class + an endpoint; infra (Keycloak client, compose service) is shared.
+
+### Agents
+
+**Built now — Roster Q&A** (`mcp:read`):
+- A `ChatClientAgent` over the MCP read tools, conversational.
+- **In-memory threaded sessions** — a MAF `AgentThread` per `sessionId`; the REST contract
+  takes/returns a `threadId` so follow-ups keep context (lost on restart — fine for POC).
+- Returns a natural-language answer + `threadId`; employees are cited by name **and id** so the
+  SPA can deep-link later. Read-only scope ⇒ structurally cannot mutate data.
+
+**Recorded for future (not built):**
+- **CV Tailoring** (`mcp:read`) — target role/JD → select relevant skills/experience →
+  tailored CV. Pattern: structured output + prompt design. (Realises the "AI-tailored CVs" step.)
+- **Resume Ingestion** (`mcp:write`) — raw resume/LinkedIn text → populate Employee + children.
+  Pattern: structured extraction → chained tool-call writes + validation-error self-correction.
+- **Staffing / Match** (`mcp:read`) — a need (skills + level + time window) → rank available
+  employees by skill match × capacity-at-date. Pattern: multi-agent MAF orchestration
+  (skill-matcher + availability-checker + ranker sub-agents).
+
+### Testing
+
+- **Deterministic unit tests** with a fake `IChatClient` — assert tool wiring, thread state,
+  MCP plumbing, error mapping. No live model in CI.
+- **Live smoke tests** behind `Category=live` (skipped by default, mirrors the `Category=e2e`
+  Keycloak pattern): hit the real model + real MCP loop on demand.
+
+---
+
 ## Likely next steps (after this base)
 
 - Server-side PDF render path (e.g. QuestPDF) reusable headlessly.

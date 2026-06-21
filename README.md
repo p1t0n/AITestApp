@@ -78,6 +78,33 @@ Keycloak, and calls tools with `Authorization: Bearer <access-token>`. Tokens ar
 against Keycloak's JWKS (issuer, audience, signature, lifetime). The server shares the API's
 database. Dynamic Client Registration is enabled on the realm for self-service onboarding.
 
+The MCP server binds `http://localhost:5100` (its launch profile).
+
+### 5. Start the Agents service (optional)
+
+AI agents built on the **Microsoft Agent Framework** that *consume* the MCP server (they hold
+a `mcp:read` token from the `agent-roster-qa` Keycloak service-account client, so the MCP server
+shows them read tools only). Needs a free **GitHub Models** PAT:
+
+```bash
+export GITHUB_TOKEN=<your-github-models-pat>
+cd api/Agents
+dotnet run
+```
+
+Binds `http://localhost:5200`. Ask the **Roster Q&A** agent a question:
+
+```bash
+curl -s http://localhost:5200/agents/roster-qa \
+  -H 'Content-Type: application/json' \
+  -d '{"question":"Who knows React and is available this summer?"}'
+```
+
+The agent calls the MCP read tools, then answers in natural language, citing employees by
+name + id. Requires the MCP server (step 4) + Keycloak (step 1) running. Model/auth/MCP-URL
+are configurable in `api/Agents/appsettings.json`; the chat backend is provider-agnostic
+(`IChatClient`) and swaps to Azure OpenAI / OpenAI / Anthropic / Ollama in one line.
+
 ## MCP tools
 
 36 tools, 1:1 thin adapters over the Application layer, annotated read-only / write /
