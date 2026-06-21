@@ -1,5 +1,8 @@
 <Solution>
   <Folder Name="/api/" />
+  <Folder Name="/api/Agents/">
+    <Project Path="api/Agents/EmployeeManager.Agents.csproj" />
+  </Folder>
   <Folder Name="/api/Application/">
     <Project Path="api/Application/EmployeeManager.Application.csproj" />
   </Folder>
@@ -16,6 +19,9 @@
     <Project Path="api/Web/EmployeeManager.Web.csproj" />
   </Folder>
   <Folder Name="/tests/" />
+  <Folder Name="/tests/Agents.Tests/">
+    <Project Path="tests/Agents.Tests/EmployeeManager.Agents.Tests.csproj" />
+  </Folder>
   <Folder Name="/tests/Application.Tests/">
     <Project Path="tests/Application.Tests/EmployeeManager.Application.Tests.csproj" />
   </Folder>

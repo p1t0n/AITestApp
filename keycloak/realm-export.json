@@ -7,7 +7,10 @@
       "name": "mcp-audience",
       "description": "Adds the MCP server as the token audience (RFC 8707).",
       "protocol": "openid-connect",
-      "attributes": { "include.in.token.scope": "false", "display.on.consent.screen": "false" },
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "false"
+      },
       "protocolMappers": [
         {
           "name": "mcp-audience",
@@ -25,19 +28,28 @@
       "name": "mcp:read",
       "description": "Read-only MCP tools.",
       "protocol": "openid-connect",
-      "attributes": { "include.in.token.scope": "true", "display.on.consent.screen": "true" }
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true"
+      }
     },
     {
       "name": "mcp:write",
       "description": "Create/update MCP tools.",
       "protocol": "openid-connect",
-      "attributes": { "include.in.token.scope": "true", "display.on.consent.screen": "true" }
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true"
+      }
     },
     {
       "name": "mcp:admin",
       "description": "Destructive (delete) MCP tools.",
       "protocol": "openid-connect",
-      "attributes": { "include.in.token.scope": "true", "display.on.consent.screen": "true" }
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true"
+      }
     }
   ],
   "clients": [
@@ -58,8 +70,14 @@
         "pkce.code.challenge.method": "S256",
         "require.pushed.authorization.requests": "false"
       },
-      "defaultClientScopes": ["mcp-audience", "mcp:read", "mcp:write"],
-      "optionalClientScopes": ["mcp:admin"]
+      "defaultClientScopes": [
+        "mcp-audience",
+        "mcp:read",
+        "mcp:write"
+      ],
+      "optionalClientScopes": [
+        "mcp:admin"
+      ]
     },
     {
       "clientId": "cv-manager-e2e",
@@ -70,7 +88,26 @@
       "standardFlowEnabled": false,
       "serviceAccountsEnabled": true,
       "directAccessGrantsEnabled": true,
-      "defaultClientScopes": ["mcp-audience", "mcp:read", "mcp:write", "mcp:admin"]
+      "defaultClientScopes": [
+        "mcp-audience",
+        "mcp:read",
+        "mcp:write",
+        "mcp:admin"
+      ]
+    },
+    {
+      "clientId": "agent-roster-qa",
+      "name": "Roster Q&A agent (confidential, mcp:read only)",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "agent-roster-qa-secret",
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": [
+        "mcp-audience",
+        "mcp:read"
+      ]
     }
   ]
 }
