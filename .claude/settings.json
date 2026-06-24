@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.command // \"\"' | grep -qE '\\bgit\\b.*\\bpush\\b|\\bgh\\b.*\\bpr\\b.*\\bcreate\\b' && echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"A git push or PR create just ran. Before treating the task as done: check CI — run gh pr checks <n> --watch (or gh run list), and fix any failures.\"}}' || true"
+          }
+        ]
+      }
+    ]
+  }
+}
