@@ -1,35 +1,20 @@
-using System.ClientModel;
 using EmployeeManager.Agents.Agents;
 using EmployeeManager.Agents.Configuration;
 using EmployeeManager.Agents.Mcp;
 using Microsoft.Extensions.AI;
-using OpenAI;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddOptions<GitHubModelsOptions>()
-    .Bind(builder.Configuration.GetSection(GitHubModelsOptions.Section));
 builder.Services.AddOptions<McpServerOptions>()
     .Bind(builder.Configuration.GetSection(McpServerOptions.Section));
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddHttpClient();
 
-// Chat model: provider-agnostic IChatClient. Default backend = GitHub Models (OpenAI-compatible,
-// free with a PAT). Swappable here in one line for Azure OpenAI / OpenAI / Anthropic / Ollama.
-builder.Services.AddSingleton<IChatClient>(sp =>
-{
-    var cfg = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<GitHubModelsOptions>>().Value;
-    var apiKey = Environment.GetEnvironmentVariable("GITHUB_TOKEN") is { Length: > 0 } envToken
-        ? envToken
-        : cfg.ApiKey;
-
-    var openAi = new OpenAIClient(
-        new ApiKeyCredential(apiKey),
-        new OpenAIClientOptions { Endpoint = new Uri(cfg.Endpoint) });
-
-    return openAi.GetChatClient(cfg.Model).AsIChatClient();
-});
+// Chat model: provider-agnostic IChatClient over GitHub Models (OpenAI-compatible, free with a
+// PAT). One shared default client, plus a keyed client for any agent that overrides its model via
+// GitHubModels:Agents:<agent>. Swap the backend here in one place for Azure OpenAI / Anthropic / etc.
+builder.Services.AddGitHubModelsChatClient(builder.Configuration);
 
 // MCP access: each agent gets its own keyed client-credentials identity + tool source, bound to
 // its McpAuth:<agent> config section. Register a new agent's identity here before its agent below.
@@ -37,18 +22,18 @@ builder.Services.AddAgentMcpIdentity(builder.Configuration, "roster-qa");
 builder.Services.AddAgentMcpIdentity(builder.Configuration, "cv-tailoring");
 builder.Services.AddAgentMcpIdentity(builder.Configuration, "match");
 
-// Agents. Add future agents (Resume Ingestion, Staffing/Match) here, each resolving its own keyed
-// IMcpToolSource so it authenticates to MCP as its own Keycloak client.
+// Agents. Add future agents (Resume Ingestion, Staffing/Match) here. Each resolves its own keyed
+// IMcpToolSource (own MCP identity) and its model-appropriate chat client (default or override).
 builder.Services.AddSingleton<IChatAgent>(sp => new RosterQaAgent(
-    sp.GetRequiredService<IChatClient>(),
+    sp.ResolveAgentChatClient("roster-qa"),
     sp.GetRequiredKeyedService<IMcpToolSource>("roster-qa"),
     sp.GetRequiredService<ILoggerFactory>()));
 builder.Services.AddSingleton<IChatAgent>(sp => new CvTailoringAgent(
-    sp.GetRequiredService<IChatClient>(),
+    sp.ResolveAgentChatClient("cv-tailoring"),
     sp.GetRequiredKeyedService<IMcpToolSource>("cv-tailoring"),
     sp.GetRequiredService<ILoggerFactory>()));
 builder.Services.AddSingleton<IChatAgent>(sp => new MatchAgent(
-    sp.GetRequiredService<IChatClient>(),
+    sp.ResolveAgentChatClient("match"),
     sp.GetRequiredKeyedService<IMcpToolSource>("match"),
     sp.GetRequiredService<ILoggerFactory>()));
 

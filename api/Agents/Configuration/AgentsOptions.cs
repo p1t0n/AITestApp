@@ -13,11 +13,17 @@ public sealed class GitHubModelsOptions
     /// <summary>OpenAI-compatible inference endpoint.</summary>
     public string Endpoint { get; set; } = "https://models.github.ai/inference";
 
-    /// <summary>Model id (GitHub Models namespaces them, e.g. <c>openai/gpt-4o-mini</c>).</summary>
+    /// <summary>Default model id (GitHub Models namespaces them, e.g. <c>openai/gpt-4o-mini</c>).
+    /// Used by any agent without a per-agent override in <see cref="Agents"/>.</summary>
     public string Model { get; set; } = "openai/gpt-4o-mini";
 
     /// <summary>GitHub PAT. Prefer the GITHUB_TOKEN env var over config in real use.</summary>
     public string ApiKey { get; set; } = "";
+
+    /// <summary>Optional per-agent model overrides, keyed by agent name (e.g. <c>cv-tailoring</c>).
+    /// An agent listed here gets its own chat client on the named model; everyone else uses
+    /// <see cref="Model"/>. Bound from <c>GitHubModels:Agents:&lt;agent&gt;</c>.</summary>
+    public Dictionary<string, string> Agents { get; set; } = new();
 }
 
 /// <summary>
