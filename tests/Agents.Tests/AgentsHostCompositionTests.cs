@@ -1,4 +1,4 @@
-using EmployeeManager.Agents.Agents;
+using EmployeeManager.Agents.Mcp;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -6,19 +6,20 @@ using Microsoft.Extensions.DependencyInjection;
 namespace EmployeeManager.Agents.Tests;
 
 /// <summary>
-/// Boots the real application host and resolves the registered agent, exercising the production
-/// DI composition in <c>Program.cs</c> — including the keyed <c>IMcpToolSource</c> resolution.
-/// No network: agents and the chat/tool clients construct lazily and only reach out on a request.
+/// Boots the real application host and resolves the keyed MCP tool source registered in
+/// <c>Program.cs</c>, exercising the production keyed-identity wiring. Resolving the tool source
+/// (rather than the agent) keeps this offline and key-free: it constructs no chat client and
+/// reaches out to nothing until a request is served.
 /// </summary>
 public class AgentsHostCompositionTests
 {
     [Fact]
-    public void Resolves_the_roster_qa_agent_with_its_keyed_mcp_identity()
+    public void Registers_the_roster_qa_agents_keyed_mcp_tool_source()
     {
         using var factory = new WebApplicationFactory<Program>();
 
-        var agent = factory.Services.GetRequiredService<IChatAgent>();
+        var toolSource = factory.Services.GetRequiredKeyedService<IMcpToolSource>("roster-qa");
 
-        agent.Name.Should().Be("roster-qa");
+        toolSource.Should().NotBeNull();
     }
 }
