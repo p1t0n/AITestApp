@@ -4,7 +4,7 @@ import EmployeesPage from "./pages/EmployeesPage";
 import EmployeeDetailPage from "./pages/EmployeeDetailPage";
 import CvPage from "./pages/CvPage";
 import CatalogPage from "./pages/CatalogPage";
-import RosterChatWidget from "./components/RosterChatWidget";
+import AgentWidget from "./components/AgentWidget";
 
 export default function App() {
   return (
@@ -32,7 +32,7 @@ export default function App() {
         </Routes>
       </Container>
 
-      <RosterChatWidget />
+      <AgentWidget />
     </Box>
   );
 }
