@@ -22,4 +22,14 @@ public class AgentsHostCompositionTests
 
         toolSource.Should().NotBeNull();
     }
+
+    [Fact]
+    public void Registers_the_cv_tailoring_agents_keyed_mcp_tool_source()
+    {
+        using var factory = new WebApplicationFactory<Program>();
+
+        var toolSource = factory.Services.GetRequiredKeyedService<IMcpToolSource>("cv-tailoring");
+
+        toolSource.Should().NotBeNull();
+    }
 }

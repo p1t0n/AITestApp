@@ -34,12 +34,17 @@ builder.Services.AddSingleton<IChatClient>(sp =>
 // MCP access: each agent gets its own keyed client-credentials identity + tool source, bound to
 // its McpAuth:<agent> config section. Register a new agent's identity here before its agent below.
 builder.Services.AddAgentMcpIdentity(builder.Configuration, "roster-qa");
+builder.Services.AddAgentMcpIdentity(builder.Configuration, "cv-tailoring");
 
-// Agents. Add future agents (CV Tailoring, Resume Ingestion, Staffing/Match) here, each resolving
-// its own keyed IMcpToolSource so it authenticates to MCP as its own Keycloak client.
+// Agents. Add future agents (Resume Ingestion, Staffing/Match) here, each resolving its own keyed
+// IMcpToolSource so it authenticates to MCP as its own Keycloak client.
 builder.Services.AddSingleton<IChatAgent>(sp => new RosterQaAgent(
     sp.GetRequiredService<IChatClient>(),
     sp.GetRequiredKeyedService<IMcpToolSource>("roster-qa"),
+    sp.GetRequiredService<ILoggerFactory>()));
+builder.Services.AddSingleton<IChatAgent>(sp => new CvTailoringAgent(
+    sp.GetRequiredService<IChatClient>(),
+    sp.GetRequiredKeyedService<IMcpToolSource>("cv-tailoring"),
     sp.GetRequiredService<ILoggerFactory>()));
 
 var app = builder.Build();
@@ -73,10 +78,48 @@ app.MapPost("/agents/roster-qa", async (
     }
 });
 
+// POST /agents/cv-tailoring  { "employeeId": "guid", "jobDescription": "..." }  ->  { "answer": "..." }
+app.MapPost("/agents/cv-tailoring", async (
+    CvTailoringRequest request,
+    IEnumerable<IChatAgent> agents,
+    CancellationToken ct) =>
+{
+    if (request.EmployeeId == Guid.Empty)
+    {
+        return Results.BadRequest(new { error = "employeeId is required." });
+    }
+
+    if (string.IsNullOrWhiteSpace(request.JobDescription))
+    {
+        return Results.BadRequest(new { error = "jobDescription is required." });
+    }
+
+    // Compose the two typed fields into the single-turn prompt the agent expects. Keeping the
+    // structured contract at the edge means the agent stays a generic IChatAgent.
+    var prompt = $"Tailor the CV of employee {request.EmployeeId} to this job description:\n\n{request.JobDescription}";
+
+    var agent = agents.First(a => a.Name == "cv-tailoring");
+    try
+    {
+        var answer = await agent.AskAsync(prompt, ct);
+        return Results.Ok(new CvTailoringResponse(answer));
+    }
+    catch (HttpRequestException ex)
+    {
+        // MCP server unreachable, Keycloak token failure, or model endpoint error: upstream fault.
+        return Results.Problem(
+            title: "Upstream dependency failed (MCP server, auth, or model).",
+            detail: ex.Message,
+            statusCode: StatusCodes.Status502BadGateway);
+    }
+});
+
 app.Run();
 
 internal sealed record RosterQaRequest(string Question);
 internal sealed record RosterQaResponse(string Answer);
+internal sealed record CvTailoringRequest(Guid EmployeeId, string JobDescription);
+internal sealed record CvTailoringResponse(string Answer);
 
 // Exposed so the integration/smoke tests (WebApplicationFactory) can reference the entry point.
 public partial class Program { }
