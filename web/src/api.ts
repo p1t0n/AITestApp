@@ -37,6 +37,33 @@ export function useRosterQa() {
   });
 }
 
+// ---- CV Tailoring & Match agents ----
+// Both take the same input and return { answer } (markdown prose). CV Tailoring rewrites a CV for
+// a job description; Match assesses fit (gap analysis + rubric). They hit their own endpoints.
+
+export interface AgentJobRequest {
+  employeeId: string;
+  jobDescription: string;
+}
+
+export interface AgentAnswer {
+  answer: string;
+}
+
+export function useCvTailoring() {
+  return useMutation({
+    mutationFn: async (req: AgentJobRequest) =>
+      (await agentHttp.post<AgentAnswer>("/cv-tailoring", req)).data,
+  });
+}
+
+export function useMatch() {
+  return useMutation({
+    mutationFn: async (req: AgentJobRequest) =>
+      (await agentHttp.post<AgentAnswer>("/match", req)).data,
+  });
+}
+
 // ---- Employees ----
 
 export function useEmployees() {
