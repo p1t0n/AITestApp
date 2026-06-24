@@ -108,6 +108,20 @@
         "mcp-audience",
         "mcp:read"
       ]
+    },
+    {
+      "clientId": "agent-cv-tailoring",
+      "name": "CV Tailoring agent (confidential, mcp:read only)",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "agent-cv-tailoring-secret",
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": [
+        "mcp-audience",
+        "mcp:read"
+      ]
     }
   ]
 }
