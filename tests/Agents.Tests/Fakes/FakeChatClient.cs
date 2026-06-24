@@ -14,6 +14,7 @@ internal sealed class FakeChatClient : IChatClient
     public FakeChatClient(params Func<ChatResponse>[] responses) => _responses = new(responses);
 
     public List<ChatOptions?> ReceivedOptions { get; } = [];
+    public List<IReadOnlyList<ChatMessage>> ReceivedMessages { get; } = [];
     public int CallCount { get; private set; }
 
     public Task<ChatResponse> GetResponseAsync(
@@ -21,6 +22,7 @@ internal sealed class FakeChatClient : IChatClient
     {
         CallCount++;
         ReceivedOptions.Add(options);
+        ReceivedMessages.Add(messages.ToList());
         // Replay each scripted response once; hold the last one for any extra turns.
         var next = _responses.Count > 1 ? _responses.Dequeue() : _responses.Peek();
         return Task.FromResult(next());
