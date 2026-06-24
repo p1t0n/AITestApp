@@ -1,6 +1,5 @@
 using System.ClientModel;
 using EmployeeManager.Agents.Agents;
-using EmployeeManager.Agents.Auth;
 using EmployeeManager.Agents.Configuration;
 using EmployeeManager.Agents.Mcp;
 using Microsoft.Extensions.AI;
@@ -10,8 +9,6 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOptions<GitHubModelsOptions>()
     .Bind(builder.Configuration.GetSection(GitHubModelsOptions.Section));
-builder.Services.AddOptions<McpClientAuthOptions>()
-    .Bind(builder.Configuration.GetSection(McpClientAuthOptions.Section));
 builder.Services.AddOptions<McpServerOptions>()
     .Bind(builder.Configuration.GetSection(McpServerOptions.Section));
 
@@ -34,12 +31,16 @@ builder.Services.AddSingleton<IChatClient>(sp =>
     return openAi.GetChatClient(cfg.Model).AsIChatClient();
 });
 
-// MCP access: client-credentials token + Streamable-HTTP tool source, shared by all agents.
-builder.Services.AddSingleton<IAccessTokenProvider, ClientCredentialsTokenProvider>();
-builder.Services.AddSingleton<IMcpToolSource, McpToolSource>();
+// MCP access: each agent gets its own keyed client-credentials identity + tool source, bound to
+// its McpAuth:<agent> config section. Register a new agent's identity here before its agent below.
+builder.Services.AddAgentMcpIdentity(builder.Configuration, "roster-qa");
 
-// Agents. Add future agents (CV Tailoring, Resume Ingestion, Staffing/Match) here.
-builder.Services.AddSingleton<IChatAgent, RosterQaAgent>();
+// Agents. Add future agents (CV Tailoring, Resume Ingestion, Staffing/Match) here, each resolving
+// its own keyed IMcpToolSource so it authenticates to MCP as its own Keycloak client.
+builder.Services.AddSingleton<IChatAgent>(sp => new RosterQaAgent(
+    sp.GetRequiredService<IChatClient>(),
+    sp.GetRequiredKeyedService<IMcpToolSource>("roster-qa"),
+    sp.GetRequiredService<ILoggerFactory>()));
 
 var app = builder.Build();
 

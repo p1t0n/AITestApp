@@ -1,7 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using EmployeeManager.Agents.Configuration;
-using Microsoft.Extensions.Options;
 
 namespace EmployeeManager.Agents.Auth;
 
@@ -24,11 +23,11 @@ public sealed class ClientCredentialsTokenProvider : IAccessTokenProvider
 
     public ClientCredentialsTokenProvider(
         IHttpClientFactory httpClientFactory,
-        IOptions<McpClientAuthOptions> options,
+        McpClientAuthOptions options,
         TimeProvider time)
     {
         _httpClientFactory = httpClientFactory;
-        _options = options.Value;
+        _options = options;
         _time = time;
     }
 

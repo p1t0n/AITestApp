@@ -1,0 +1,96 @@
+using EmployeeManager.Agents.Auth;
+using EmployeeManager.Agents.Configuration;
+using EmployeeManager.Agents.Mcp;
+using EmployeeManager.Agents.Tests.Fakes;
+using FluentAssertions;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace EmployeeManager.Agents.Tests;
+
+/// <summary>
+/// Tests the keyed multi-identity wiring: each agent registers its own MCP identity from a named
+/// <c>McpAuth:&lt;agent&gt;</c> config section, and resolves its own keyed token provider + tool
+/// source. Asserted through the DI container and a capturing Keycloak stand-in — no live servers.
+/// </summary>
+public class AgentMcpIdentityRegistrationTests
+{
+    private static IServiceProvider BuildProvider(CapturingHandler capture, params (string Key, string ClientId)[] agents)
+    {
+        var settings = new Dictionary<string, string?>
+        {
+            ["McpServer:BaseUrl"] = "http://localhost:5100",
+        };
+        foreach (var (key, clientId) in agents)
+        {
+            settings[$"McpAuth:{key}:Authority"] = "http://localhost:8080/realms/cv-manager";
+            settings[$"McpAuth:{key}:ClientId"] = clientId;
+            settings[$"McpAuth:{key}:ClientSecret"] = $"{clientId}-secret";
+            settings[$"McpAuth:{key}:Scope"] = "mcp:read";
+        }
+
+        var config = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(TimeProvider.System);
+        services.AddSingleton<IHttpClientFactory>(new SingleHandlerHttpClientFactory(capture));
+        services.AddOptions<McpServerOptions>().Bind(config.GetSection(McpServerOptions.Section));
+        foreach (var (key, _) in agents)
+        {
+            services.AddAgentMcpIdentity(config, key);
+        }
+
+        return services.BuildServiceProvider();
+    }
+
+    [Fact]
+    public async Task Resolves_a_keyed_token_provider_that_authenticates_as_the_configured_client()
+    {
+        var capture = new CapturingHandler(accessToken: "tok-rqa");
+        var sp = BuildProvider(capture, ("roster-qa", "agent-roster-qa"));
+
+        var provider = sp.GetRequiredKeyedService<IAccessTokenProvider>("roster-qa");
+        var token = await provider.GetTokenAsync();
+
+        token.Should().Be("tok-rqa");
+        capture.Form["client_id"].Should().Be("agent-roster-qa");
+        capture.Form["scope"].Should().Be("mcp:read");
+    }
+
+    [Fact]
+    public async Task Two_agents_resolve_distinct_providers_each_with_its_own_client_identity()
+    {
+        var capture = new CapturingHandler(accessToken: "tok");
+        var sp = BuildProvider(capture,
+            ("roster-qa", "agent-roster-qa"),
+            ("cv-tailoring", "agent-cv-tailoring"));
+
+        var rosterQa = sp.GetRequiredKeyedService<IAccessTokenProvider>("roster-qa");
+        var cvTailoring = sp.GetRequiredKeyedService<IAccessTokenProvider>("cv-tailoring");
+
+        cvTailoring.Should().NotBeSameAs(rosterQa);
+
+        await rosterQa.GetTokenAsync();
+        await cvTailoring.GetTokenAsync();
+
+        capture.Requests.Select(r => r["client_id"])
+            .Should().BeEquivalentTo(["agent-roster-qa", "agent-cv-tailoring"]);
+    }
+
+    [Fact]
+    public void Each_agent_resolves_its_own_keyed_tool_source()
+    {
+        var capture = new CapturingHandler(accessToken: "tok");
+        var sp = BuildProvider(capture,
+            ("roster-qa", "agent-roster-qa"),
+            ("cv-tailoring", "agent-cv-tailoring"));
+
+        var rosterQaTools = sp.GetRequiredKeyedService<IMcpToolSource>("roster-qa");
+        var cvTailoringTools = sp.GetRequiredKeyedService<IMcpToolSource>("cv-tailoring");
+
+        rosterQaTools.Should().NotBeNull();
+        cvTailoringTools.Should().NotBeNull();
+        cvTailoringTools.Should().NotBeSameAs(rosterQaTools);
+    }
+}
