@@ -122,6 +122,20 @@
         "mcp-audience",
         "mcp:read"
       ]
+    },
+    {
+      "clientId": "agent-match",
+      "name": "Match agent (confidential, mcp:read only)",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "agent-match-secret",
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": [
+        "mcp-audience",
+        "mcp:read"
+      ]
     }
   ]
 }
