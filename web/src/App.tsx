@@ -14,6 +14,7 @@ import CatalogPage from "./pages/CatalogPage";
 import SignupPage from "./pages/SignupPage";
 import SigninPage from "./pages/SigninPage";
 import RecoverPage from "./pages/RecoverPage";
+import UsersPage from "./pages/UsersPage";
 import AgentWidget from "./components/AgentWidget";
 import { signOut } from "./api";
 import { useIsAuthenticated } from "./auth/useAuth";
@@ -65,6 +66,9 @@ export default function App() {
               <Button color="inherit" component={RouterLink} to="/catalog">
                 Skill Catalog
               </Button>
+              <Button color="inherit" component={RouterLink} to="/users">
+                Users
+              </Button>
             </>
           )}
           <AuthButton />
@@ -84,6 +88,7 @@ export default function App() {
             <Route path="/employees/:id" element={<EmployeeDetailPage />} />
             <Route path="/employees/:id/cv" element={<CvPage />} />
             <Route path="/catalog" element={<CatalogPage />} />
+            <Route path="/users" element={<UsersPage />} />
           </Route>
         </Routes>
       </Container>
