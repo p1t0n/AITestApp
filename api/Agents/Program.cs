@@ -1,7 +1,10 @@
+using System.Security.Claims;
 using EmployeeManager.Agents.Agents;
 using EmployeeManager.Agents.Auth;
 using EmployeeManager.Agents.Configuration;
 using EmployeeManager.Agents.Mcp;
+using EmployeeManager.Agents.Usage;
+using EmployeeManager.Infrastructure;
 using Microsoft.Extensions.AI;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -10,8 +13,12 @@ builder.Services.AddOptions<McpServerOptions>()
     .Bind(builder.Configuration.GetSection(McpServerOptions.Section));
 
 // Validate the shared session JWT issued by the Web host (same signing key/issuer/audience).
-// The agent endpoints get [Authorize] + per-user attribution in later issues (gate + token caps).
 builder.Services.AddSessionJwtAuthentication(builder.Configuration);
+
+// DB access for token-usage metering (and, next, per-user cap enforcement). Employee data still
+// flows only through MCP; this is the operational usage log.
+builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddScoped<IUsageMeter, UsageMeter>();
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddHttpClient();
@@ -53,6 +60,8 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapPost("/agents/roster-qa", async (
     RosterQaRequest request,
     IEnumerable<IChatAgent> agents,
+    ClaimsPrincipal user,
+    IUsageMeter meter,
     CancellationToken ct) =>
 {
     if (string.IsNullOrWhiteSpace(request.Question))
@@ -63,8 +72,12 @@ app.MapPost("/agents/roster-qa", async (
     var agent = agents.First(a => a.Name == "roster-qa");
     try
     {
-        var answer = await agent.AskAsync(request.Question, ct);
-        return Results.Ok(new RosterQaResponse(answer));
+        var reply = await agent.AskAsync(request.Question, ct);
+        if (user.GetUserId() is { } userId)
+        {
+            await meter.RecordAsync(userId, agent.Name, reply, ct);
+        }
+        return Results.Ok(new RosterQaResponse(reply.Text));
     }
     catch (HttpRequestException ex)
     {
@@ -80,6 +93,8 @@ app.MapPost("/agents/roster-qa", async (
 app.MapPost("/agents/cv-tailoring", async (
     CvTailoringRequest request,
     IEnumerable<IChatAgent> agents,
+    ClaimsPrincipal user,
+    IUsageMeter meter,
     CancellationToken ct) =>
 {
     if (request.EmployeeId == Guid.Empty)
@@ -99,8 +114,12 @@ app.MapPost("/agents/cv-tailoring", async (
     var agent = agents.First(a => a.Name == "cv-tailoring");
     try
     {
-        var answer = await agent.AskAsync(prompt, ct);
-        return Results.Ok(new CvTailoringResponse(answer));
+        var reply = await agent.AskAsync(prompt, ct);
+        if (user.GetUserId() is { } userId)
+        {
+            await meter.RecordAsync(userId, agent.Name, reply, ct);
+        }
+        return Results.Ok(new CvTailoringResponse(reply.Text));
     }
     catch (HttpRequestException ex)
     {
@@ -116,6 +135,8 @@ app.MapPost("/agents/cv-tailoring", async (
 app.MapPost("/agents/match", async (
     MatchRequest request,
     IEnumerable<IChatAgent> agents,
+    ClaimsPrincipal user,
+    IUsageMeter meter,
     CancellationToken ct) =>
 {
     if (request.EmployeeId == Guid.Empty)
@@ -133,8 +154,12 @@ app.MapPost("/agents/match", async (
     var agent = agents.First(a => a.Name == "match");
     try
     {
-        var answer = await agent.AskAsync(prompt, ct);
-        return Results.Ok(new MatchResponse(answer));
+        var reply = await agent.AskAsync(prompt, ct);
+        if (user.GetUserId() is { } userId)
+        {
+            await meter.RecordAsync(userId, agent.Name, reply, ct);
+        }
+        return Results.Ok(new MatchResponse(reply.Text));
     }
     catch (HttpRequestException ex)
     {

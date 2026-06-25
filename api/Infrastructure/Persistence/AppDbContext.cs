@@ -20,6 +20,7 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<ExperienceSkill> ExperienceSkills => Set<ExperienceSkill>();
     public DbSet<User> Users => Set<User>();
     public DbSet<PasskeyCredential> PasskeyCredentials => Set<PasskeyCredential>();
+    public DbSet<AgentUsage> AgentUsages => Set<AgentUsage>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -142,6 +143,16 @@ public class AppDbContext : DbContext, IAppDbContext
             e.HasIndex(x => x.CredentialId).IsUnique();
             e.Property(x => x.Transports).HasMaxLength(200);
             e.Property(x => x.Label).HasMaxLength(200);
+        });
+
+        b.Entity<AgentUsage>(e =>
+        {
+            e.Property(x => x.AgentName).HasMaxLength(100).IsRequired();
+            e.Property(x => x.Model).HasMaxLength(200);
+            // Window aggregation always filters by user + time range.
+            e.HasIndex(x => new { x.UserId, x.Timestamp });
+            e.HasOne<User>().WithMany()
+                .HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

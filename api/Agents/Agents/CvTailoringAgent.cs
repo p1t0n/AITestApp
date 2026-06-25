@@ -47,12 +47,17 @@ public sealed class CvTailoringAgent : IChatAgent
 
     public string Name => "cv-tailoring";
 
-    public async Task<string> AskAsync(string question, CancellationToken ct = default)
+    public async Task<AgentReply> AskAsync(string question, CancellationToken ct = default)
     {
         var agent = await GetAgentAsync(ct);
         var session = await agent.CreateSessionAsync(ct);
         var response = await agent.RunAsync(question, session, null, ct);
-        return response.Text;
+        var usage = response.Usage;
+        return new AgentReply(
+            response.Text,
+            usage?.InputTokenCount ?? 0,
+            usage?.OutputTokenCount ?? 0,
+            usage?.TotalTokenCount ?? 0);
     }
 
     private async Task<AIAgent> GetAgentAsync(CancellationToken ct)
