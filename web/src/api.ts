@@ -176,6 +176,36 @@ export function useDeleteUser() {
   });
 }
 
+// ---- AI usage & caps ----
+
+export interface WindowUsage {
+  window: "daily" | "weekly" | "monthly";
+  used: number;
+  cap: number;
+  resetAt: string;
+  exceeded: boolean;
+}
+
+export interface AgentBreakdown {
+  agentName: string;
+  totalTokens: number;
+}
+
+export interface UsageSnapshot {
+  daily: WindowUsage;
+  weekly: WindowUsage;
+  monthly: WindowUsage;
+  byAgent: AgentBreakdown[];
+}
+
+/** The current user's token usage across all windows + per-agent breakdown. */
+export function useUsage() {
+  return useQuery({
+    queryKey: ["usage"],
+    queryFn: async () => (await agentHttp.get<UsageSnapshot>("/usage")).data,
+  });
+}
+
 // ---- Roster Q&A agent ----
 
 export interface RosterQaResponse {
@@ -187,9 +217,11 @@ export interface RosterQaResponse {
  * a threadId will be threaded through here once threaded sessions land (issue #16).
  */
 export function useRosterQa() {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: async (question: string) =>
       (await agentHttp.post<RosterQaResponse>("/roster-qa", { question })).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["usage"] }),
   });
 }
 
@@ -207,16 +239,20 @@ export interface AgentAnswer {
 }
 
 export function useCvTailoring() {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: async (req: AgentJobRequest) =>
       (await agentHttp.post<AgentAnswer>("/cv-tailoring", req)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["usage"] }),
   });
 }
 
 export function useMatch() {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: async (req: AgentJobRequest) =>
       (await agentHttp.post<AgentAnswer>("/match", req)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["usage"] }),
   });
 }
 
@@ -402,8 +438,8 @@ export function useDeleteSkill() {
 
 export function apiErrorMessage(err: unknown): string {
   if (axios.isAxiosError(err)) {
-    const data = err.response?.data as { detail?: string; title?: string } | undefined;
-    return data?.detail ?? data?.title ?? err.message;
+    const data = err.response?.data as { error?: string; detail?: string; title?: string } | undefined;
+    return data?.error ?? data?.detail ?? data?.title ?? err.message;
   }
   return err instanceof Error ? err.message : "Unknown error";
 }
