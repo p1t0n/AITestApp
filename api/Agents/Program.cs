@@ -63,6 +63,17 @@ static IResult CapReached(WindowUsage w) => Results.Json(
     new { error = $"Your {w.Window} token cap has been reached.", window = w.Window, used = w.Used, cap = w.Cap, resetAt = w.ResetAt },
     statusCode: StatusCodes.Status429TooManyRequests);
 
+// GET /agents/usage -> the current user's usage across all windows + per-agent breakdown.
+app.MapGet("/agents/usage", async (ClaimsPrincipal user, IUsageService usage, CancellationToken ct) =>
+{
+    if (user.GetUserId() is not { } userId)
+    {
+        return Results.Unauthorized();
+    }
+
+    return Results.Ok(await usage.GetSnapshotAsync(userId, ct));
+}).RequireAuthorization();
+
 // POST /agents/roster-qa  { "question": "..." }  ->  { "answer": "..." }
 app.MapPost("/agents/roster-qa", async (
     RosterQaRequest request,
