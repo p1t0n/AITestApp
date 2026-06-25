@@ -22,6 +22,9 @@ import SmartToyIcon from "@mui/icons-material/SmartToy";
 import CloseIcon from "@mui/icons-material/Close";
 import SendIcon from "@mui/icons-material/Send";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import OpenInFullIcon from "@mui/icons-material/OpenInFull";
+import CloseFullscreenIcon from "@mui/icons-material/CloseFullscreen";
+import type { AgentDock } from "./useAgentDock";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -425,48 +428,107 @@ const TABS: { mode: Mode; label: string }[] = [
   { mode: "usage", label: "Usage" },
 ];
 
-export default function AgentWidget() {
-  const [open, setOpen] = useState(false);
+export default function AgentWidget({ dock, isNarrow }: { dock: AgentDock; isNarrow: boolean }) {
   const [mode, setMode] = useState<Mode>("roster");
+
+  // Drag the left edge of the docked sidebar to resize. Width is viewport-minus-cursor, clamped by
+  // the hook. Disabled on narrow screens (full-width overlay, no resize).
+  const startResize = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const onMove = (ev: MouseEvent) => dock.setWidth(window.innerWidth - ev.clientX);
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      document.body.style.userSelect = "";
+    };
+    document.body.style.userSelect = "none";
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+
+  const dockedWide = dock.docked && !isNarrow;
+  const dockedNarrow = dock.docked && isNarrow;
+
+  const panelSx = !dock.docked
+    ? {
+        bottom: 96,
+        right: 24,
+        width: 460,
+        maxWidth: "calc(100vw - 48px)",
+        height: 620,
+        maxHeight: "calc(100vh - 140px)",
+        borderRadius: 3,
+      }
+    : dockedNarrow
+      ? { inset: 0, width: "100vw", height: "100vh", borderRadius: 0 }
+      : { top: 0, right: 0, width: dock.width, height: "100vh", borderRadius: 0, borderLeft: 1, borderColor: "divider" };
 
   return (
     <>
-      <Fab
-        color="primary"
-        aria-label="Open the agents assistant"
-        onClick={() => setOpen((o) => !o)}
-        sx={{ position: "fixed", bottom: 24, right: 24, zIndex: 1300 }}
-      >
-        {open ? <CloseIcon /> : <SmartToyIcon />}
-      </Fab>
+      {!dock.open && (
+        <Fab
+          color="primary"
+          aria-label="Open the agents assistant"
+          onClick={dock.toggleOpen}
+          sx={{ position: "fixed", bottom: 24, right: 24, zIndex: 1300 }}
+        >
+          <SmartToyIcon />
+        </Fab>
+      )}
 
-      {open && (
+      {dock.open && (
         <Paper
-          elevation={8}
+          elevation={dockedWide ? 4 : 8}
+          square={dock.docked}
           sx={{
             position: "fixed",
-            bottom: 96,
-            right: 24,
-            width: 460,
-            maxWidth: "calc(100vw - 48px)",
-            height: 620,
-            maxHeight: "calc(100vh - 140px)",
             display: "flex",
             flexDirection: "column",
             zIndex: 1300,
-            borderRadius: 3,
             overflow: "hidden",
+            ...panelSx,
           }}
         >
+          {dockedWide && (
+            <Box
+              onMouseDown={startResize}
+              sx={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: 6,
+                cursor: "col-resize",
+                zIndex: 1,
+                "&:hover": { bgcolor: "primary.light" },
+              }}
+            />
+          )}
+
           <Box sx={{ px: 2, py: 1.5, bgcolor: "primary.main", color: "primary.contrastText" }}>
             <Stack direction="row" alignItems="center" justifyContent="space-between">
               <Stack direction="row" alignItems="center" spacing={1}>
                 <SmartToyIcon fontSize="small" />
                 <Typography variant="subtitle1">Agents</Typography>
               </Stack>
-              <IconButton size="small" onClick={() => setOpen(false)} sx={{ color: "inherit" }}>
-                <CloseIcon fontSize="small" />
-              </IconButton>
+              <Stack direction="row" alignItems="center">
+                <Tooltip title={dock.docked ? "Float" : "Dock to side"}>
+                  <IconButton
+                    size="small"
+                    onClick={() => dock.setDocked(!dock.docked)}
+                    sx={{ color: "inherit" }}
+                  >
+                    {dock.docked ? (
+                      <CloseFullscreenIcon fontSize="small" />
+                    ) : (
+                      <OpenInFullIcon fontSize="small" />
+                    )}
+                  </IconButton>
+                </Tooltip>
+                <IconButton size="small" onClick={dock.close} sx={{ color: "inherit" }}>
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              </Stack>
             </Stack>
           </Box>
 
