@@ -32,7 +32,7 @@ public class CvTailoringEndpointTests
     public async Task Returns_400_when_job_description_is_blank()
     {
         using var factory = FakedHost();
-        using var client = factory.CreateClient();
+        using var client = factory.CreateAuthenticatedClient();
 
         var response = await client.PostAsJsonAsync(
             "/agents/cv-tailoring",
@@ -45,7 +45,7 @@ public class CvTailoringEndpointTests
     public async Task Returns_400_when_employee_id_is_empty()
     {
         using var factory = FakedHost();
-        using var client = factory.CreateClient();
+        using var client = factory.CreateAuthenticatedClient();
 
         var response = await client.PostAsJsonAsync(
             "/agents/cv-tailoring",
@@ -58,7 +58,7 @@ public class CvTailoringEndpointTests
     public async Task Returns_the_agents_answer_for_a_valid_request()
     {
         using var factory = FakedHost();
-        using var client = factory.CreateClient();
+        using var client = factory.CreateAuthenticatedClient();
 
         var response = await client.PostAsJsonAsync(
             "/agents/cv-tailoring",

@@ -22,3 +22,9 @@ public enum QualificationType
     Degree = 1,
     Certification = 2
 }
+
+public enum UserStatus
+{
+    Active = 1,
+    Deactivated = 2
+}

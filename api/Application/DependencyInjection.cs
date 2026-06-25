@@ -2,6 +2,7 @@ using EmployeeManager.Application.Availability;
 using EmployeeManager.Application.Cv;
 using EmployeeManager.Application.Employees;
 using EmployeeManager.Application.Skills;
+using EmployeeManager.Application.Users;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -21,6 +22,7 @@ public static class DependencyInjection
         services.AddScoped<IAvailabilityService, AvailabilityService>();
         services.AddScoped<ISkillCatalogService, SkillCatalogService>();
         services.AddScoped<ICvService, CvService>();
+        services.AddScoped<IUserService, UserService>();
 
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 

@@ -1,0 +1,51 @@
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace EmployeeManager.Agents.Tests;
+
+internal static class AuthTestExtensions
+{
+    /// <summary>
+    /// A client carrying a valid session bearer token, minted from the host's own Auth:Jwt config
+    /// so it passes the same JWT validation the running app enforces (the agent endpoints require
+    /// authorization).
+    /// </summary>
+    public static HttpClient CreateAuthenticatedClient(this WebApplicationFactory<Program> factory)
+    {
+        var config = factory.Services.GetRequiredService<IConfiguration>();
+        var key = config["Auth:Jwt:SigningKey"]
+            ?? throw new InvalidOperationException("Auth:Jwt:SigningKey missing from test host config.");
+        var issuer = config["Auth:Jwt:Issuer"] ?? "employeemanager";
+        var audience = config["Auth:Jwt:Audience"] ?? "employeemanager-app";
+
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", MintHs256(key, issuer, audience));
+        return client;
+    }
+
+    private static string MintHs256(string key, string issuer, string audience)
+    {
+        static string B64(byte[] b) =>
+            Convert.ToBase64String(b).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+
+        var header = B64(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { alg = "HS256", typ = "JWT" })));
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var payload = B64(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new Dictionary<string, object>
+        {
+            ["sub"] = Guid.NewGuid().ToString(),
+            ["iss"] = issuer,
+            ["aud"] = audience,
+            ["nbf"] = now,
+            ["exp"] = now + 3600,
+        })));
+
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(key));
+        var signature = B64(hmac.ComputeHash(Encoding.UTF8.GetBytes($"{header}.{payload}")));
+        return $"{header}.{payload}.{signature}";
+    }
+}

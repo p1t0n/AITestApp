@@ -20,6 +20,8 @@ public interface IAppDbContext
     DbSet<Experience> Experiences { get; }
     DbSet<Achievement> Achievements { get; }
     DbSet<ExperienceSkill> ExperienceSkills { get; }
+    DbSet<User> Users { get; }
+    DbSet<PasskeyCredential> PasskeyCredentials { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

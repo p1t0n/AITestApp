@@ -18,6 +18,8 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<Experience> Experiences => Set<Experience>();
     public DbSet<Achievement> Achievements => Set<Achievement>();
     public DbSet<ExperienceSkill> ExperienceSkills => Set<ExperienceSkill>();
+    public DbSet<User> Users => Set<User>();
+    public DbSet<PasskeyCredential> PasskeyCredentials => Set<PasskeyCredential>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -123,6 +125,23 @@ public class AppDbContext : DbContext, IAppDbContext
             e.HasIndex(x => new { x.ExperienceId, x.SkillId }).IsUnique();
             e.HasOne(x => x.Skill).WithMany()
                 .HasForeignKey(x => x.SkillId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<User>(e =>
+        {
+            e.Property(x => x.Email).HasMaxLength(256).IsRequired();
+            e.HasIndex(x => x.Email).IsUnique();
+            e.Property(x => x.ControlWordHash).HasMaxLength(512).IsRequired();
+
+            e.HasMany(x => x.Passkeys).WithOne(x => x.User)
+                .HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<PasskeyCredential>(e =>
+        {
+            e.HasIndex(x => x.CredentialId).IsUnique();
+            e.Property(x => x.Transports).HasMaxLength(200);
+            e.Property(x => x.Label).HasMaxLength(200);
         });
     }
 }

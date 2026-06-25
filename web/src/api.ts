@@ -14,11 +14,167 @@ import type {
   SaveEmployee,
   SkillDto,
 } from "./types";
+import { clearSession, getToken, setSession } from "./auth/session";
+import { performAuthentication, performRegistration } from "./auth/webauthn";
 
 export const http = axios.create({ baseURL: "/api" });
 
 // Roster Q&A agent lives on its own sibling service (proxied at /agents), not the CRUD API.
 export const agentHttp = axios.create({ baseURL: "/agents" });
+
+// Attach the session token (if any) to every request on both services. The token is issued by the
+// Web host and validated by both Web and Agents (shared signing key).
+for (const client of [http, agentHttp]) {
+  client.interceptors.request.use((config) => {
+    const token = getToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  });
+}
+
+// ---- Auth (passwordless: passkey signup) ----
+
+export interface AuthSession {
+  token: string;
+  expiresAt: string;
+  userId: string;
+  email: string;
+}
+
+interface CeremonyBeginResponse {
+  ceremonyId: string;
+  optionsJson: string;
+}
+
+/**
+ * Self-serve signup. Two-step WebAuthn registration: the server returns credential-creation
+ * options, the browser drives the authenticator, and the server verifies + creates the account,
+ * returning a session token. The control word is the account's recovery secret (P1T-20).
+ */
+export function useSignup() {
+  return useMutation({
+    mutationFn: async (input: { email: string; controlWord: string }): Promise<AuthSession> => {
+      const begin = (await http.post<CeremonyBeginResponse>("/auth/signup/begin", input)).data;
+      const attestation = await performRegistration(begin.optionsJson);
+      const session = (
+        await http.post<AuthSession>("/auth/signup/complete", {
+          ceremonyId: begin.ceremonyId,
+          attestation,
+        })
+      ).data;
+      setSession(session.token);
+      return session;
+    },
+  });
+}
+
+/**
+ * Passkey sign-in. The server returns assertion options scoped to the email's registered
+ * credentials; the browser signs the challenge and the server verifies it, returning a session
+ * token. "No passkey on this device" surfaces as a server error pointing to recovery.
+ */
+export function useSignin() {
+  return useMutation({
+    mutationFn: async (input: { email?: string }): Promise<AuthSession> => {
+      const begin = (
+        await http.post<CeremonyBeginResponse>("/auth/signin/begin", {
+          email: input.email?.trim() || null,
+        })
+      ).data;
+      const assertion = await performAuthentication(begin.optionsJson);
+      const session = (
+        await http.post<AuthSession>("/auth/signin/complete", {
+          ceremonyId: begin.ceremonyId,
+          assertion,
+        })
+      ).data;
+      setSession(session.token);
+      return session;
+    },
+  });
+}
+
+/**
+ * Account recovery. Verifies email + control word, then registers a NEW passkey for the existing
+ * account (the old device's passkey is left intact). Signs the user in on success.
+ */
+export function useRecover() {
+  return useMutation({
+    mutationFn: async (input: { email: string; controlWord: string }): Promise<AuthSession> => {
+      const begin = (await http.post<CeremonyBeginResponse>("/auth/recover/begin", input)).data;
+      const attestation = await performRegistration(begin.optionsJson);
+      const session = (
+        await http.post<AuthSession>("/auth/recover/complete", {
+          ceremonyId: begin.ceremonyId,
+          attestation,
+        })
+      ).data;
+      setSession(session.token);
+      return session;
+    },
+  });
+}
+
+/** Clears the local session. Returns true if a session was present. */
+export function signOut(): boolean {
+  const had = getToken() !== null;
+  clearSession();
+  return had;
+}
+
+/** Whether a session token is currently stored (not a validity check). */
+export function isSignedIn(): boolean {
+  return getToken() !== null;
+}
+
+// ---- User management (flat roles: any signed-in user can manage any user) ----
+
+export type UserStatus = "Active" | "Deactivated";
+
+export interface UserSummary {
+  id: string;
+  email: string;
+  status: UserStatus;
+  dailyTokenCap: number | null;
+  weeklyTokenCap: number | null;
+  monthlyTokenCap: number | null;
+  passkeyCount: number;
+  createdAt: string;
+}
+
+export interface UpdateUser {
+  email: string;
+  status: UserStatus;
+  dailyTokenCap: number | null;
+  weeklyTokenCap: number | null;
+  monthlyTokenCap: number | null;
+}
+
+export function useUsers() {
+  return useQuery({
+    queryKey: ["users"],
+    queryFn: async () => (await http.get<UserSummary[]>("/users")).data,
+  });
+}
+
+export function useUpdateUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...dto }: { id: string } & UpdateUser) =>
+      (await http.put<UserSummary>(`/users/${id}`, dto)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["users"] }),
+  });
+}
+
+export function useDeleteUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => http.delete(`/users/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["users"] }),
+  });
+}
 
 // ---- Roster Q&A agent ----
 
