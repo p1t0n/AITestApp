@@ -30,6 +30,7 @@ public static class AuthServiceCollectionExtensions
         // when the app runs multi-instance.
         services.AddDistributedMemoryCache();
         services.AddSingleton<IChallengeStore, DistributedCacheChallengeStore>();
+        services.AddSingleton<IControlWordHasher, ControlWordHasher>();
         services.AddScoped<IJwtTokenIssuer, JwtTokenIssuer>();
 
         AddSessionJwtAuthentication(services, auth.Jwt);

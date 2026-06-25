@@ -4,6 +4,7 @@ import EmployeesPage from "./pages/EmployeesPage";
 import EmployeeDetailPage from "./pages/EmployeeDetailPage";
 import CvPage from "./pages/CvPage";
 import CatalogPage from "./pages/CatalogPage";
+import SignupPage from "./pages/SignupPage";
 import AgentWidget from "./components/AgentWidget";
 
 export default function App() {
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="/employees/:id" element={<EmployeeDetailPage />} />
           <Route path="/employees/:id/cv" element={<CvPage />} />
           <Route path="/catalog" element={<CatalogPage />} />
+          <Route path="/signup" element={<SignupPage />} />
         </Routes>
       </Container>
 

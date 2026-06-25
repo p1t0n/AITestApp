@@ -1,0 +1,94 @@
+import { useState } from "react";
+import {
+  Alert,
+  Box,
+  Button,
+  Link,
+  Paper,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
+import { apiErrorMessage, useSignup } from "../api";
+import { isPasskeySupported } from "../auth/webauthn";
+
+export default function SignupPage() {
+  const [email, setEmail] = useState("");
+  const [controlWord, setControlWord] = useState("");
+  const navigate = useNavigate();
+  const signup = useSignup();
+  const supported = isPasskeySupported();
+
+  const canSubmit = email.trim().length > 0 && controlWord.trim().length > 0 && supported;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canSubmit) return;
+    signup.mutate(
+      { email: email.trim(), controlWord: controlWord.trim() },
+      { onSuccess: () => navigate("/") },
+    );
+  };
+
+  return (
+    <Box sx={{ display: "flex", justifyContent: "center", pt: 6 }}>
+      <Paper elevation={2} sx={{ p: 4, width: "100%", maxWidth: 440 }}>
+        <Stack spacing={3} component="form" onSubmit={handleSubmit}>
+          <Box>
+            <Typography variant="h5" gutterBottom>
+              Create your account
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Passwordless — you'll register a passkey on this device. No password to remember.
+            </Typography>
+          </Box>
+
+          {!supported && (
+            <Alert severity="error">
+              This browser doesn't support passkeys. Use a current version of Chrome, Safari, Edge,
+              or Firefox.
+            </Alert>
+          )}
+
+          {signup.isError && <Alert severity="error">{apiErrorMessage(signup.error)}</Alert>}
+
+          <TextField
+            label="Email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="username"
+            required
+            fullWidth
+          />
+
+          <TextField
+            label="Control word"
+            value={controlWord}
+            onChange={(e) => setControlWord(e.target.value)}
+            required
+            fullWidth
+            helperText="A secret word you'll need to recover your account if you lose this device. Choose something memorable and keep it safe — it cannot be reset for you."
+          />
+
+          <Button
+            type="submit"
+            variant="contained"
+            size="large"
+            disabled={!canSubmit || signup.isPending}
+          >
+            {signup.isPending ? "Registering passkey…" : "Sign up with a passkey"}
+          </Button>
+
+          <Typography variant="body2" color="text.secondary" align="center">
+            Already have an account?{" "}
+            <Link component={RouterLink} to="/signin">
+              Sign in
+            </Link>
+          </Typography>
+        </Stack>
+      </Paper>
+    </Box>
+  );
+}

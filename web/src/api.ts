@@ -14,11 +14,61 @@ import type {
   SaveEmployee,
   SkillDto,
 } from "./types";
+import { getToken, setSession } from "./auth/session";
+import { performRegistration } from "./auth/webauthn";
 
 export const http = axios.create({ baseURL: "/api" });
 
 // Roster Q&A agent lives on its own sibling service (proxied at /agents), not the CRUD API.
 export const agentHttp = axios.create({ baseURL: "/agents" });
+
+// Attach the session token (if any) to every request on both services. The token is issued by the
+// Web host and validated by both Web and Agents (shared signing key).
+for (const client of [http, agentHttp]) {
+  client.interceptors.request.use((config) => {
+    const token = getToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  });
+}
+
+// ---- Auth (passwordless: passkey signup) ----
+
+export interface AuthSession {
+  token: string;
+  expiresAt: string;
+  userId: string;
+  email: string;
+}
+
+interface SignupBeginResponse {
+  ceremonyId: string;
+  optionsJson: string;
+}
+
+/**
+ * Self-serve signup. Two-step WebAuthn registration: the server returns credential-creation
+ * options, the browser drives the authenticator, and the server verifies + creates the account,
+ * returning a session token. The control word is the account's recovery secret (P1T-20).
+ */
+export function useSignup() {
+  return useMutation({
+    mutationFn: async (input: { email: string; controlWord: string }): Promise<AuthSession> => {
+      const begin = (await http.post<SignupBeginResponse>("/auth/signup/begin", input)).data;
+      const attestation = await performRegistration(begin.optionsJson);
+      const session = (
+        await http.post<AuthSession>("/auth/signup/complete", {
+          ceremonyId: begin.ceremonyId,
+          attestation,
+        })
+      ).data;
+      setSession(session.token);
+      return session;
+    },
+  });
+}
 
 // ---- Roster Q&A agent ----
 
