@@ -30,7 +30,7 @@ public class MatchEndpointTests
     public async Task Returns_400_when_job_description_is_blank()
     {
         using var factory = FakedHost();
-        using var client = factory.CreateClient();
+        using var client = factory.CreateAuthenticatedClient();
 
         var response = await client.PostAsJsonAsync(
             "/agents/match", new { employeeId = Guid.NewGuid(), jobDescription = "   " });
@@ -42,7 +42,7 @@ public class MatchEndpointTests
     public async Task Returns_400_when_employee_id_is_empty()
     {
         using var factory = FakedHost();
-        using var client = factory.CreateClient();
+        using var client = factory.CreateAuthenticatedClient();
 
         var response = await client.PostAsJsonAsync(
             "/agents/match", new { employeeId = Guid.Empty, jobDescription = "Senior React engineer." });
@@ -54,7 +54,7 @@ public class MatchEndpointTests
     public async Task Returns_the_agents_answer_for_a_valid_request()
     {
         using var factory = FakedHost();
-        using var client = factory.CreateClient();
+        using var client = factory.CreateAuthenticatedClient();
 
         var response = await client.PostAsJsonAsync(
             "/agents/match", new { employeeId = Guid.NewGuid(), jobDescription = "Senior React engineer, GraphQL." });
