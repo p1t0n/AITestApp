@@ -1,4 +1,4 @@
-import { AppBar, Box, Button, Container, Toolbar, Typography } from "@mui/material";
+import { AppBar, Box, Button, Container, Toolbar, Typography, useMediaQuery } from "@mui/material";
 import {
   Link as RouterLink,
   Navigate,
@@ -16,6 +16,7 @@ import SigninPage from "./pages/SigninPage";
 import RecoverPage from "./pages/RecoverPage";
 import UsersPage from "./pages/UsersPage";
 import AgentWidget from "./components/AgentWidget";
+import { useAgentDock } from "./components/useAgentDock";
 import { signOut } from "./api";
 import { useIsAuthenticated } from "./auth/useAuth";
 
@@ -50,9 +51,21 @@ function AuthButton() {
 
 export default function App() {
   const authed = useIsAuthenticated();
+  const dock = useAgentDock();
+  const isNarrow = useMediaQuery("(max-width:600px)");
+
+  // A docked sidebar pushes the whole app left (full-width overlay on narrow screens doesn't push).
+  const pushContent = authed && dock.open && dock.docked && !isNarrow;
 
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "grey.50" }}>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        bgcolor: "grey.50",
+        paddingRight: pushContent ? `${dock.width}px` : 0,
+        transition: "padding-right 150ms ease",
+      }}
+    >
       <AppBar position="static" elevation={0}>
         <Toolbar>
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
@@ -93,7 +106,7 @@ export default function App() {
         </Routes>
       </Container>
 
-      {authed && <AgentWidget />}
+      {authed && <AgentWidget dock={dock} isNarrow={isNarrow} />}
     </Box>
   );
 }
