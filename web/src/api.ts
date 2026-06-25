@@ -77,8 +77,12 @@ export function useSignup() {
  */
 export function useSignin() {
   return useMutation({
-    mutationFn: async (input: { email: string }): Promise<AuthSession> => {
-      const begin = (await http.post<CeremonyBeginResponse>("/auth/signin/begin", input)).data;
+    mutationFn: async (input: { email?: string }): Promise<AuthSession> => {
+      const begin = (
+        await http.post<CeremonyBeginResponse>("/auth/signin/begin", {
+          email: input.email?.trim() || null,
+        })
+      ).data;
       const assertion = await performAuthentication(begin.optionsJson);
       const session = (
         await http.post<AuthSession>("/auth/signin/complete", {

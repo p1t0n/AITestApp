@@ -63,7 +63,8 @@ public class AuthController(
             ExcludeCredentials = [],
             AuthenticatorSelection = new AuthenticatorSelection
             {
-                ResidentKey = ResidentKeyRequirement.Preferred,
+                // Required so the passkey is discoverable — enables usernameless sign-in.
+                ResidentKey = ResidentKeyRequirement.Required,
                 UserVerification = UserVerificationRequirement.Preferred,
             },
             AttestationPreference = AttestationConveyancePreference.None,
@@ -151,51 +152,52 @@ public class AuthController(
     [HttpPost("signin/begin")]
     public async Task<ActionResult<SigninBeginResponse>> SigninBegin(SigninBeginRequest request, CancellationToken ct)
     {
+        // Usernameless by default: with no email we send no allowed credentials and let the browser
+        // offer its discoverable passkeys. An email narrows the options to that account's
+        // credentials — a fallback for authenticators that didn't store a discoverable key.
+        var allowed = new List<PublicKeyCredentialDescriptor>();
         var email = request.Email?.Trim().ToLowerInvariant();
-        if (string.IsNullOrWhiteSpace(email))
+        if (!string.IsNullOrWhiteSpace(email))
         {
-            return BadRequest(new { error = "email is required." });
-        }
+            var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
+            if (user is null)
+            {
+                return BadRequest(new { error = "No account found for this email." });
+            }
 
-        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
-        if (user is null)
-        {
-            return BadRequest(new { error = "No account found for this email." });
-        }
+            var credentialIds = await db.PasskeyCredentials
+                .Where(p => p.UserId == user.Id)
+                .Select(p => p.CredentialId)
+                .ToListAsync(ct);
 
-        var credentialIds = await db.PasskeyCredentials
-            .Where(p => p.UserId == user.Id)
-            .Select(p => p.CredentialId)
-            .ToListAsync(ct);
+            if (credentialIds.Count == 0)
+            {
+                return BadRequest(new { error = "No passkey is registered for this account. Use account recovery." });
+            }
 
-        if (credentialIds.Count == 0)
-        {
-            return BadRequest(new { error = "No passkey is registered for this account. Use account recovery." });
+            allowed = credentialIds.Select(id => new PublicKeyCredentialDescriptor(id)).ToList();
         }
 
         var options = fido2.GetAssertionOptions(new GetAssertionOptionsParams
         {
-            AllowedCredentials = credentialIds.Select(id => new PublicKeyCredentialDescriptor(id)).ToList(),
+            AllowedCredentials = allowed,
             UserVerification = UserVerificationRequirement.Preferred,
         });
 
-        var ceremony = new SigninCeremony(user.Id, options.ToJson());
-        var ceremonyId = await challenges.StashAsync(JsonSerializer.Serialize(ceremony), ct);
-
+        var ceremonyId = await challenges.StashAsync(options.ToJson(), ct);
         return Ok(new SigninBeginResponse(ceremonyId, options.ToJson()));
     }
 
     [HttpPost("signin/complete")]
     public async Task<ActionResult<AuthSessionResponse>> SigninComplete(SigninCompleteRequest request, CancellationToken ct)
     {
-        var stashed = await challenges.ConsumeAsync(request.CeremonyId, ct);
-        if (stashed is null)
+        var optionsJson = await challenges.ConsumeAsync(request.CeremonyId, ct);
+        if (optionsJson is null)
         {
             return BadRequest(new { error = "Sign-in ceremony expired or not found. Start over." });
         }
 
-        var ceremony = JsonSerializer.Deserialize<SigninCeremony>(stashed)!;
-        var options = AssertionOptions.FromJson(ceremony.OptionsJson);
+        var options = AssertionOptions.FromJson(optionsJson);
 
         var assertion = request.Assertion.Deserialize<AuthenticatorAssertionRawResponse>(FidoJson);
         if (assertion is null)
@@ -203,12 +205,14 @@ public class AuthController(
             return BadRequest(new { error = "Invalid assertion response." });
         }
 
+        // Resolve the account from the credential that signed (credential ids are globally unique),
+        // so usernameless sign-in needs no email up front.
         var credentialId = assertion.RawId;
         var credential = await db.PasskeyCredentials
-            .FirstOrDefaultAsync(p => p.UserId == ceremony.UserId && p.CredentialId == credentialId, ct);
+            .FirstOrDefaultAsync(p => p.CredentialId == credentialId, ct);
         if (credential is null)
         {
-            return BadRequest(new { error = "Unknown credential for this account." });
+            return BadRequest(new { error = "Unknown passkey. Sign up or use account recovery." });
         }
 
         VerifyAssertionResult result;
@@ -238,7 +242,7 @@ public class AuthController(
             return BadRequest(new { error = $"Sign-in failed: {ex.Message}" });
         }
 
-        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == ceremony.UserId, ct);
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == credential.UserId, ct);
         if (user is null || user.Status != UserStatus.Active)
         {
             return StatusCode(StatusCodes.Status403Forbidden, new { error = "This account is not active." });
@@ -254,15 +258,12 @@ public class AuthController(
 
     /// <summary>Server-side signup state held between the begin and complete steps.</summary>
     private sealed record SignupCeremony(Guid UserId, string Email, string ControlWordHash, string OptionsJson);
-
-    /// <summary>Server-side signin state held between the begin and complete steps.</summary>
-    private sealed record SigninCeremony(Guid UserId, string OptionsJson);
 }
 
 public sealed record SignupBeginRequest(string Email, string ControlWord);
 public sealed record SignupBeginResponse(string CeremonyId, string OptionsJson);
 public sealed record SignupCompleteRequest(string CeremonyId, JsonElement Attestation);
-public sealed record SigninBeginRequest(string Email);
+public sealed record SigninBeginRequest(string? Email);
 public sealed record SigninBeginResponse(string CeremonyId, string OptionsJson);
 public sealed record SigninCompleteRequest(string CeremonyId, JsonElement Assertion);
 public sealed record AuthSessionResponse(string Token, DateTimeOffset ExpiresAt, Guid UserId, string Email);

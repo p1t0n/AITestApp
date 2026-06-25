@@ -19,12 +19,12 @@ export default function SigninPage() {
   const signin = useSignin();
   const supported = isPasskeySupported();
 
-  const canSubmit = email.trim().length > 0 && supported;
+  const canSubmit = supported;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit) return;
-    signin.mutate({ email: email.trim() }, { onSuccess: () => navigate("/") });
+    signin.mutate({ email: email.trim() || undefined }, { onSuccess: () => navigate("/") });
   };
 
   return (
@@ -36,7 +36,8 @@ export default function SigninPage() {
               Sign in
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Enter your email, then approve with your passkey.
+              Approve with your passkey — your browser will show your saved accounts. Email is only
+              needed if your device doesn't offer one.
             </Typography>
           </Box>
 
@@ -50,12 +51,11 @@ export default function SigninPage() {
           {signin.isError && <Alert severity="error">{apiErrorMessage(signin.error)}</Alert>}
 
           <TextField
-            label="Email"
+            label="Email (optional)"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="username webauthn"
-            required
             fullWidth
           />
 
