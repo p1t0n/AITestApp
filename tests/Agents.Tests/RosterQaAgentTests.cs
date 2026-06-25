@@ -28,9 +28,26 @@ public class RosterQaAgentTests
 
         var answer = await agent.AskAsync("Who knows React?");
 
-        answer.Should().Contain("Ada Lovelace");
+        answer.Text.Should().Contain("Ada Lovelace");
         chat.ReceivedOptions.Should().NotBeEmpty();
         chat.ReceivedOptions[0]!.Tools.Should().Contain(t => t.Name == "employee_list");
+    }
+
+    [Fact]
+    public async Task Surfaces_token_usage_from_the_model_response()
+    {
+        var chat = new FakeChatClient(
+            () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "Ada Lovelace (id-1) knows React."))
+            {
+                Usage = new UsageDetails { InputTokenCount = 123, OutputTokenCount = 45, TotalTokenCount = 168 },
+            });
+        var agent = new RosterQaAgent(chat, new FakeToolSource(EmployeeListTool(() => { })), NullLoggerFactory.Instance);
+
+        var reply = await agent.AskAsync("Who knows React?");
+
+        reply.InputTokens.Should().Be(123);
+        reply.OutputTokens.Should().Be(45);
+        reply.TotalTokens.Should().Be(168);
     }
 
     [Fact]
@@ -51,7 +68,7 @@ public class RosterQaAgentTests
         var answer = await agent.AskAsync("Who knows React?");
 
         toolInvoked.Should().BeTrue("the agent should run the tool the model asked for");
-        answer.Should().Contain("Ada Lovelace");
+        answer.Text.Should().Contain("Ada Lovelace");
         chat.CallCount.Should().BeGreaterThanOrEqualTo(2, "one turn to request the tool, one to answer");
     }
 }

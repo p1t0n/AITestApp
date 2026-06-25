@@ -11,5 +11,8 @@ public interface IChatAgent
     string Name { get; }
 
     /// <summary>Answer one question. Single-turn for now (no conversation memory).</summary>
-    Task<string> AskAsync(string question, CancellationToken ct = default);
+    Task<AgentReply> AskAsync(string question, CancellationToken ct = default);
 }
+
+/// <summary>An agent's answer plus the token usage the model reported for the call.</summary>
+public sealed record AgentReply(string Text, long InputTokens, long OutputTokens, long TotalTokens);

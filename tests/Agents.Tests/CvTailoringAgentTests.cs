@@ -32,7 +32,7 @@ public class CvTailoringAgentTests
 
         var answer = await agent.AskAsync("Tailor Ada's CV for a React role.");
 
-        answer.Should().Contain("Tailored summary");
+        answer.Text.Should().Contain("Tailored summary");
         agent.Name.Should().Be("cv-tailoring");
         chat.ReceivedOptions.Should().NotBeEmpty();
         chat.ReceivedOptions[0]!.Tools.Should().Contain(t => t.Name == "cv_get");
@@ -57,7 +57,7 @@ public class CvTailoringAgentTests
         var answer = await agent.AskAsync("Tailor Ada's CV for a React role.");
 
         toolInvoked.Should().BeTrue("the agent should run the cv_get tool the model asked for");
-        answer.Should().Contain("Tailored summary");
+        answer.Text.Should().Contain("Tailored summary");
         chat.CallCount.Should().BeGreaterThanOrEqualTo(2, "one turn to request the tool, one to answer");
     }
 
@@ -96,6 +96,6 @@ public class CvTailoringAgentTests
 
         var answer = await agent.AskAsync("Tailor employee 00000000-0000-0000-0000-000000000000 for a role.");
 
-        answer.Should().Contain("not found");
+        answer.Text.Should().Contain("not found");
     }
 }

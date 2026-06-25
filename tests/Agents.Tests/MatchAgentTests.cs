@@ -31,7 +31,7 @@ public class MatchAgentTests
 
         var answer = await agent.AskAsync("Assess Ada against a React role.");
 
-        answer.Should().Contain("MODERATE");
+        answer.Text.Should().Contain("MODERATE");
         agent.Name.Should().Be("match");
         chat.ReceivedOptions[0]!.Tools.Should().Contain(t => t.Name == "cv_get");
         chat.ReceivedOptions[0]!.Tools.Should().NotContain(t => t.Name == "employee_list");
@@ -53,7 +53,7 @@ public class MatchAgentTests
         var answer = await agent.AskAsync("Assess Ada against a React role.");
 
         toolInvoked.Should().BeTrue("the agent should run the cv_get tool the model asked for");
-        answer.Should().Contain("STRONG");
+        answer.Text.Should().Contain("STRONG");
         chat.CallCount.Should().BeGreaterThanOrEqualTo(2);
     }
 
@@ -86,6 +86,6 @@ public class MatchAgentTests
 
         var answer = await agent.AskAsync("Assess employee 00000000-0000-0000-0000-000000000000 for a role.");
 
-        answer.Should().Contain("not found");
+        answer.Text.Should().Contain("not found");
     }
 }

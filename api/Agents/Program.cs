@@ -1,7 +1,10 @@
+using System.Security.Claims;
 using EmployeeManager.Agents.Agents;
 using EmployeeManager.Agents.Auth;
 using EmployeeManager.Agents.Configuration;
 using EmployeeManager.Agents.Mcp;
+using EmployeeManager.Agents.Usage;
+using EmployeeManager.Infrastructure;
 using Microsoft.Extensions.AI;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -10,8 +13,14 @@ builder.Services.AddOptions<McpServerOptions>()
     .Bind(builder.Configuration.GetSection(McpServerOptions.Section));
 
 // Validate the shared session JWT issued by the Web host (same signing key/issuer/audience).
-// The agent endpoints get [Authorize] + per-user attribution in later issues (gate + token caps).
 builder.Services.AddSessionJwtAuthentication(builder.Configuration);
+
+// DB access for token-usage metering (and, next, per-user cap enforcement). Employee data still
+// flows only through MCP; this is the operational usage log.
+builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddOptions<UsageOptions>().Bind(builder.Configuration.GetSection(UsageOptions.Section));
+builder.Services.AddScoped<IUsageMeter, UsageMeter>();
+builder.Services.AddScoped<IUsageService, UsageService>();
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddHttpClient();
@@ -49,10 +58,29 @@ app.UseAuthorization();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
+// Structured 429 the SPA renders in the Usage tab: which window, how much, and when it resets.
+static IResult CapReached(WindowUsage w) => Results.Json(
+    new { error = $"Your {w.Window} token cap has been reached.", window = w.Window, used = w.Used, cap = w.Cap, resetAt = w.ResetAt },
+    statusCode: StatusCodes.Status429TooManyRequests);
+
+// GET /agents/usage -> the current user's usage across all windows + per-agent breakdown.
+app.MapGet("/agents/usage", async (ClaimsPrincipal user, IUsageService usage, CancellationToken ct) =>
+{
+    if (user.GetUserId() is not { } userId)
+    {
+        return Results.Unauthorized();
+    }
+
+    return Results.Ok(await usage.GetSnapshotAsync(userId, ct));
+}).RequireAuthorization();
+
 // POST /agents/roster-qa  { "question": "..." }  ->  { "answer": "..." }
 app.MapPost("/agents/roster-qa", async (
     RosterQaRequest request,
     IEnumerable<IChatAgent> agents,
+    ClaimsPrincipal user,
+    IUsageMeter meter,
+    IUsageService usage,
     CancellationToken ct) =>
 {
     if (string.IsNullOrWhiteSpace(request.Question))
@@ -60,11 +88,21 @@ app.MapPost("/agents/roster-qa", async (
         return Results.BadRequest(new { error = "question is required." });
     }
 
+    var userId = user.GetUserId();
+    if (userId is { } pre && await usage.FindExceededAsync(pre, ct) is { } exceeded)
+    {
+        return CapReached(exceeded);
+    }
+
     var agent = agents.First(a => a.Name == "roster-qa");
     try
     {
-        var answer = await agent.AskAsync(request.Question, ct);
-        return Results.Ok(new RosterQaResponse(answer));
+        var reply = await agent.AskAsync(request.Question, ct);
+        if (userId is { } uid)
+        {
+            await meter.RecordAsync(uid, agent.Name, reply, ct);
+        }
+        return Results.Ok(new RosterQaResponse(reply.Text));
     }
     catch (HttpRequestException ex)
     {
@@ -80,6 +118,9 @@ app.MapPost("/agents/roster-qa", async (
 app.MapPost("/agents/cv-tailoring", async (
     CvTailoringRequest request,
     IEnumerable<IChatAgent> agents,
+    ClaimsPrincipal user,
+    IUsageMeter meter,
+    IUsageService usage,
     CancellationToken ct) =>
 {
     if (request.EmployeeId == Guid.Empty)
@@ -92,6 +133,12 @@ app.MapPost("/agents/cv-tailoring", async (
         return Results.BadRequest(new { error = "jobDescription is required." });
     }
 
+    var userId = user.GetUserId();
+    if (userId is { } pre && await usage.FindExceededAsync(pre, ct) is { } exceeded)
+    {
+        return CapReached(exceeded);
+    }
+
     // Compose the two typed fields into the single-turn prompt the agent expects. Keeping the
     // structured contract at the edge means the agent stays a generic IChatAgent.
     var prompt = $"Tailor the CV of employee {request.EmployeeId} to this job description:\n\n{request.JobDescription}";
@@ -99,8 +146,12 @@ app.MapPost("/agents/cv-tailoring", async (
     var agent = agents.First(a => a.Name == "cv-tailoring");
     try
     {
-        var answer = await agent.AskAsync(prompt, ct);
-        return Results.Ok(new CvTailoringResponse(answer));
+        var reply = await agent.AskAsync(prompt, ct);
+        if (userId is { } uid)
+        {
+            await meter.RecordAsync(uid, agent.Name, reply, ct);
+        }
+        return Results.Ok(new CvTailoringResponse(reply.Text));
     }
     catch (HttpRequestException ex)
     {
@@ -116,6 +167,9 @@ app.MapPost("/agents/cv-tailoring", async (
 app.MapPost("/agents/match", async (
     MatchRequest request,
     IEnumerable<IChatAgent> agents,
+    ClaimsPrincipal user,
+    IUsageMeter meter,
+    IUsageService usage,
     CancellationToken ct) =>
 {
     if (request.EmployeeId == Guid.Empty)
@@ -128,13 +182,23 @@ app.MapPost("/agents/match", async (
         return Results.BadRequest(new { error = "jobDescription is required." });
     }
 
+    var userId = user.GetUserId();
+    if (userId is { } pre && await usage.FindExceededAsync(pre, ct) is { } exceeded)
+    {
+        return CapReached(exceeded);
+    }
+
     var prompt = $"Assess employee {request.EmployeeId} against this job description:\n\n{request.JobDescription}";
 
     var agent = agents.First(a => a.Name == "match");
     try
     {
-        var answer = await agent.AskAsync(prompt, ct);
-        return Results.Ok(new MatchResponse(answer));
+        var reply = await agent.AskAsync(prompt, ct);
+        if (userId is { } uid)
+        {
+            await meter.RecordAsync(uid, agent.Name, reply, ct);
+        }
+        return Results.Ok(new MatchResponse(reply.Text));
     }
     catch (HttpRequestException ex)
     {
