@@ -18,7 +18,9 @@ builder.Services.AddSessionJwtAuthentication(builder.Configuration);
 // DB access for token-usage metering (and, next, per-user cap enforcement). Employee data still
 // flows only through MCP; this is the operational usage log.
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddOptions<UsageOptions>().Bind(builder.Configuration.GetSection(UsageOptions.Section));
 builder.Services.AddScoped<IUsageMeter, UsageMeter>();
+builder.Services.AddScoped<IUsageService, UsageService>();
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddHttpClient();
@@ -56,12 +58,18 @@ app.UseAuthorization();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
+// Structured 429 the SPA renders in the Usage tab: which window, how much, and when it resets.
+static IResult CapReached(WindowUsage w) => Results.Json(
+    new { error = $"Your {w.Window} token cap has been reached.", window = w.Window, used = w.Used, cap = w.Cap, resetAt = w.ResetAt },
+    statusCode: StatusCodes.Status429TooManyRequests);
+
 // POST /agents/roster-qa  { "question": "..." }  ->  { "answer": "..." }
 app.MapPost("/agents/roster-qa", async (
     RosterQaRequest request,
     IEnumerable<IChatAgent> agents,
     ClaimsPrincipal user,
     IUsageMeter meter,
+    IUsageService usage,
     CancellationToken ct) =>
 {
     if (string.IsNullOrWhiteSpace(request.Question))
@@ -69,13 +77,19 @@ app.MapPost("/agents/roster-qa", async (
         return Results.BadRequest(new { error = "question is required." });
     }
 
+    var userId = user.GetUserId();
+    if (userId is { } pre && await usage.FindExceededAsync(pre, ct) is { } exceeded)
+    {
+        return CapReached(exceeded);
+    }
+
     var agent = agents.First(a => a.Name == "roster-qa");
     try
     {
         var reply = await agent.AskAsync(request.Question, ct);
-        if (user.GetUserId() is { } userId)
+        if (userId is { } uid)
         {
-            await meter.RecordAsync(userId, agent.Name, reply, ct);
+            await meter.RecordAsync(uid, agent.Name, reply, ct);
         }
         return Results.Ok(new RosterQaResponse(reply.Text));
     }
@@ -95,6 +109,7 @@ app.MapPost("/agents/cv-tailoring", async (
     IEnumerable<IChatAgent> agents,
     ClaimsPrincipal user,
     IUsageMeter meter,
+    IUsageService usage,
     CancellationToken ct) =>
 {
     if (request.EmployeeId == Guid.Empty)
@@ -107,6 +122,12 @@ app.MapPost("/agents/cv-tailoring", async (
         return Results.BadRequest(new { error = "jobDescription is required." });
     }
 
+    var userId = user.GetUserId();
+    if (userId is { } pre && await usage.FindExceededAsync(pre, ct) is { } exceeded)
+    {
+        return CapReached(exceeded);
+    }
+
     // Compose the two typed fields into the single-turn prompt the agent expects. Keeping the
     // structured contract at the edge means the agent stays a generic IChatAgent.
     var prompt = $"Tailor the CV of employee {request.EmployeeId} to this job description:\n\n{request.JobDescription}";
@@ -115,9 +136,9 @@ app.MapPost("/agents/cv-tailoring", async (
     try
     {
         var reply = await agent.AskAsync(prompt, ct);
-        if (user.GetUserId() is { } userId)
+        if (userId is { } uid)
         {
-            await meter.RecordAsync(userId, agent.Name, reply, ct);
+            await meter.RecordAsync(uid, agent.Name, reply, ct);
         }
         return Results.Ok(new CvTailoringResponse(reply.Text));
     }
@@ -137,6 +158,7 @@ app.MapPost("/agents/match", async (
     IEnumerable<IChatAgent> agents,
     ClaimsPrincipal user,
     IUsageMeter meter,
+    IUsageService usage,
     CancellationToken ct) =>
 {
     if (request.EmployeeId == Guid.Empty)
@@ -149,15 +171,21 @@ app.MapPost("/agents/match", async (
         return Results.BadRequest(new { error = "jobDescription is required." });
     }
 
+    var userId = user.GetUserId();
+    if (userId is { } pre && await usage.FindExceededAsync(pre, ct) is { } exceeded)
+    {
+        return CapReached(exceeded);
+    }
+
     var prompt = $"Assess employee {request.EmployeeId} against this job description:\n\n{request.JobDescription}";
 
     var agent = agents.First(a => a.Name == "match");
     try
     {
         var reply = await agent.AskAsync(prompt, ct);
-        if (user.GetUserId() is { } userId)
+        if (userId is { } uid)
         {
-            await meter.RecordAsync(userId, agent.Name, reply, ct);
+            await meter.RecordAsync(uid, agent.Name, reply, ct);
         }
         return Results.Ok(new MatchResponse(reply.Text));
     }
