@@ -256,8 +256,115 @@ public class AuthController(
         return Ok(new AuthSessionResponse(token, expiresAt, user.Id, user.Email));
     }
 
+    [HttpPost("recover/begin")]
+    public async Task<ActionResult<RecoverBeginResponse>> RecoverBegin(RecoverBeginRequest request, CancellationToken ct)
+    {
+        var email = request.Email?.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(request.ControlWord))
+        {
+            return BadRequest(new { error = "email and controlWord are required." });
+        }
+
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
+
+        // One generic failure for "no such account", "wrong control word", and "deactivated" — don't
+        // leak which emails exist or whether the control word was the wrong part.
+        if (user is null
+            || user.Status != UserStatus.Active
+            || !controlWords.Verify(request.ControlWord, user.ControlWordHash))
+        {
+            return BadRequest(new { error = "Invalid email or control word." });
+        }
+
+        var existing = await db.PasskeyCredentials
+            .Where(p => p.UserId == user.Id)
+            .Select(p => p.CredentialId)
+            .ToListAsync(ct);
+
+        var fidoUser = new Fido2User { Id = user.Id.ToByteArray(), Name = user.Email, DisplayName = user.Email };
+        var options = fido2.RequestNewCredential(new RequestNewCredentialParams
+        {
+            User = fidoUser,
+            // Exclude already-registered authenticators so the user enrols a genuinely new device.
+            ExcludeCredentials = existing.Select(id => new PublicKeyCredentialDescriptor(id)).ToList(),
+            AuthenticatorSelection = new AuthenticatorSelection
+            {
+                ResidentKey = ResidentKeyRequirement.Required,
+                UserVerification = UserVerificationRequirement.Preferred,
+            },
+            AttestationPreference = AttestationConveyancePreference.None,
+        });
+
+        var ceremony = new RecoverCeremony(user.Id, options.ToJson());
+        var ceremonyId = await challenges.StashAsync(JsonSerializer.Serialize(ceremony), ct);
+
+        return Ok(new RecoverBeginResponse(ceremonyId, options.ToJson()));
+    }
+
+    [HttpPost("recover/complete")]
+    public async Task<ActionResult<AuthSessionResponse>> RecoverComplete(RecoverCompleteRequest request, CancellationToken ct)
+    {
+        var stashed = await challenges.ConsumeAsync(request.CeremonyId, ct);
+        if (stashed is null)
+        {
+            return BadRequest(new { error = "Recovery ceremony expired or not found. Start over." });
+        }
+
+        var ceremony = JsonSerializer.Deserialize<RecoverCeremony>(stashed)!;
+        var options = CredentialCreateOptions.FromJson(ceremony.OptionsJson);
+
+        var attestation = request.Attestation.Deserialize<AuthenticatorAttestationRawResponse>(FidoJson);
+        if (attestation is null)
+        {
+            return BadRequest(new { error = "Invalid attestation response." });
+        }
+
+        RegisteredPublicKeyCredential credential;
+        try
+        {
+            credential = await fido2.MakeNewCredentialAsync(new MakeNewCredentialParams
+            {
+                AttestationResponse = attestation,
+                OriginalOptions = options,
+                IsCredentialIdUniqueToUserCallback = async (args, innerCt) =>
+                    !await db.PasskeyCredentials.AnyAsync(p => p.CredentialId == args.CredentialId, innerCt),
+            }, ct);
+        }
+        catch (Fido2VerificationException ex)
+        {
+            return BadRequest(new { error = $"Passkey registration failed: {ex.Message}" });
+        }
+
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == ceremony.UserId, ct);
+        if (user is null || user.Status != UserStatus.Active)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { error = "This account is not active." });
+        }
+
+        var now = clock.GetUtcNow();
+        db.PasskeyCredentials.Add(new PasskeyCredential
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            CredentialId = credential.Id,
+            PublicKey = credential.PublicKey,
+            SignatureCounter = credential.SignCount,
+            AaGuid = credential.AaGuid == Guid.Empty ? null : credential.AaGuid,
+            Transports = credential.Transports is { Length: > 0 } ? string.Join(",", credential.Transports) : null,
+            CreatedAt = now,
+        });
+        user.UpdatedAt = now;
+        await db.SaveChangesAsync(ct);
+
+        var (token, expiresAt) = tokens.Issue(user);
+        return Ok(new AuthSessionResponse(token, expiresAt, user.Id, user.Email));
+    }
+
     /// <summary>Server-side signup state held between the begin and complete steps.</summary>
     private sealed record SignupCeremony(Guid UserId, string Email, string ControlWordHash, string OptionsJson);
+
+    /// <summary>Server-side recovery state held between the begin and complete steps.</summary>
+    private sealed record RecoverCeremony(Guid UserId, string OptionsJson);
 }
 
 public sealed record SignupBeginRequest(string Email, string ControlWord);
@@ -266,4 +373,7 @@ public sealed record SignupCompleteRequest(string CeremonyId, JsonElement Attest
 public sealed record SigninBeginRequest(string? Email);
 public sealed record SigninBeginResponse(string CeremonyId, string OptionsJson);
 public sealed record SigninCompleteRequest(string CeremonyId, JsonElement Assertion);
+public sealed record RecoverBeginRequest(string Email, string ControlWord);
+public sealed record RecoverBeginResponse(string CeremonyId, string OptionsJson);
+public sealed record RecoverCompleteRequest(string CeremonyId, JsonElement Attestation);
 public sealed record AuthSessionResponse(string Token, DateTimeOffset ExpiresAt, Guid UserId, string Email);

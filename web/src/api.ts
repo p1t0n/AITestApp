@@ -96,6 +96,27 @@ export function useSignin() {
   });
 }
 
+/**
+ * Account recovery. Verifies email + control word, then registers a NEW passkey for the existing
+ * account (the old device's passkey is left intact). Signs the user in on success.
+ */
+export function useRecover() {
+  return useMutation({
+    mutationFn: async (input: { email: string; controlWord: string }): Promise<AuthSession> => {
+      const begin = (await http.post<CeremonyBeginResponse>("/auth/recover/begin", input)).data;
+      const attestation = await performRegistration(begin.optionsJson);
+      const session = (
+        await http.post<AuthSession>("/auth/recover/complete", {
+          ceremonyId: begin.ceremonyId,
+          attestation,
+        })
+      ).data;
+      setSession(session.token);
+      return session;
+    },
+  });
+}
+
 /** Clears the local session. Returns true if a session was present. */
 export function signOut(): boolean {
   const had = getToken() !== null;

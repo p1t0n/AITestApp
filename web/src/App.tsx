@@ -13,6 +13,7 @@ import CvPage from "./pages/CvPage";
 import CatalogPage from "./pages/CatalogPage";
 import SignupPage from "./pages/SignupPage";
 import SigninPage from "./pages/SigninPage";
+import RecoverPage from "./pages/RecoverPage";
 import AgentWidget from "./components/AgentWidget";
 import { signOut } from "./api";
 import { useIsAuthenticated } from "./auth/useAuth";
@@ -75,6 +76,7 @@ export default function App() {
           {/* Public auth pages */}
           <Route path="/signin" element={<SigninPage />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route path="/recover" element={<RecoverPage />} />
 
           {/* Everything else requires authentication */}
           <Route element={<RequireAuth />}>
