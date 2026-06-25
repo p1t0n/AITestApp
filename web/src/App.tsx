@@ -1,11 +1,37 @@
 import { AppBar, Box, Button, Container, Toolbar, Typography } from "@mui/material";
-import { Link as RouterLink, Route, Routes } from "react-router-dom";
+import { Link as RouterLink, Route, Routes, useNavigate } from "react-router-dom";
 import EmployeesPage from "./pages/EmployeesPage";
 import EmployeeDetailPage from "./pages/EmployeeDetailPage";
 import CvPage from "./pages/CvPage";
 import CatalogPage from "./pages/CatalogPage";
 import SignupPage from "./pages/SignupPage";
+import SigninPage from "./pages/SigninPage";
 import AgentWidget from "./components/AgentWidget";
+import { isSignedIn, signOut } from "./api";
+
+function AuthButton() {
+  const navigate = useNavigate();
+  // localStorage isn't reactive; this reflects the token at render time. P1T-22 (app-wide gate)
+  // introduces a proper auth context that updates live.
+  if (isSignedIn()) {
+    return (
+      <Button
+        color="inherit"
+        onClick={() => {
+          signOut();
+          navigate("/signin");
+        }}
+      >
+        Sign out
+      </Button>
+    );
+  }
+  return (
+    <Button color="inherit" component={RouterLink} to="/signin">
+      Sign in
+    </Button>
+  );
+}
 
 export default function App() {
   return (
@@ -21,6 +47,7 @@ export default function App() {
           <Button color="inherit" component={RouterLink} to="/catalog">
             Skill Catalog
           </Button>
+          <AuthButton />
         </Toolbar>
       </AppBar>
 
@@ -31,6 +58,7 @@ export default function App() {
           <Route path="/employees/:id/cv" element={<CvPage />} />
           <Route path="/catalog" element={<CatalogPage />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route path="/signin" element={<SigninPage />} />
         </Routes>
       </Container>
 

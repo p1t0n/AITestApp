@@ -14,8 +14,8 @@ import type {
   SaveEmployee,
   SkillDto,
 } from "./types";
-import { getToken, setSession } from "./auth/session";
-import { performRegistration } from "./auth/webauthn";
+import { clearSession, getToken, setSession } from "./auth/session";
+import { performAuthentication, performRegistration } from "./auth/webauthn";
 
 export const http = axios.create({ baseURL: "/api" });
 
@@ -43,7 +43,7 @@ export interface AuthSession {
   email: string;
 }
 
-interface SignupBeginResponse {
+interface CeremonyBeginResponse {
   ceremonyId: string;
   optionsJson: string;
 }
@@ -56,7 +56,7 @@ interface SignupBeginResponse {
 export function useSignup() {
   return useMutation({
     mutationFn: async (input: { email: string; controlWord: string }): Promise<AuthSession> => {
-      const begin = (await http.post<SignupBeginResponse>("/auth/signup/begin", input)).data;
+      const begin = (await http.post<CeremonyBeginResponse>("/auth/signup/begin", input)).data;
       const attestation = await performRegistration(begin.optionsJson);
       const session = (
         await http.post<AuthSession>("/auth/signup/complete", {
@@ -68,6 +68,40 @@ export function useSignup() {
       return session;
     },
   });
+}
+
+/**
+ * Passkey sign-in. The server returns assertion options scoped to the email's registered
+ * credentials; the browser signs the challenge and the server verifies it, returning a session
+ * token. "No passkey on this device" surfaces as a server error pointing to recovery.
+ */
+export function useSignin() {
+  return useMutation({
+    mutationFn: async (input: { email: string }): Promise<AuthSession> => {
+      const begin = (await http.post<CeremonyBeginResponse>("/auth/signin/begin", input)).data;
+      const assertion = await performAuthentication(begin.optionsJson);
+      const session = (
+        await http.post<AuthSession>("/auth/signin/complete", {
+          ceremonyId: begin.ceremonyId,
+          assertion,
+        })
+      ).data;
+      setSession(session.token);
+      return session;
+    },
+  });
+}
+
+/** Clears the local session. Returns true if a session was present. */
+export function signOut(): boolean {
+  const had = getToken() !== null;
+  clearSession();
+  return had;
+}
+
+/** Whether a session token is currently stored (not a validity check). */
+export function isSignedIn(): boolean {
+  return getToken() !== null;
 }
 
 // ---- Roster Q&A agent ----

@@ -70,3 +70,46 @@ export async function performRegistration(optionsJson: string): Promise<unknown>
     },
   };
 }
+
+interface AssertionRequestOptions {
+  challenge: string;
+  allowCredentials?: { id: string; type: string; transports?: string[] }[];
+  [key: string]: unknown;
+}
+
+/**
+ * Runs the authentication ceremony: decodes the server options, prompts the authenticator to sign
+ * the challenge, and returns the assertion in the server's expected JSON shape.
+ */
+export async function performAuthentication(optionsJson: string): Promise<unknown> {
+  const options = JSON.parse(optionsJson) as AssertionRequestOptions;
+
+  const publicKey: PublicKeyCredentialRequestOptions = {
+    ...(options as unknown as PublicKeyCredentialRequestOptions),
+    challenge: base64urlToBuffer(options.challenge),
+    allowCredentials: options.allowCredentials?.map((c) => ({
+      ...c,
+      id: base64urlToBuffer(c.id),
+    })) as PublicKeyCredentialDescriptor[] | undefined,
+  };
+
+  const credential = (await navigator.credentials.get({ publicKey })) as PublicKeyCredential | null;
+  if (!credential) {
+    throw new Error("Sign-in was cancelled.");
+  }
+
+  const response = credential.response as AuthenticatorAssertionResponse;
+
+  return {
+    id: credential.id,
+    rawId: bufferToBase64url(credential.rawId),
+    type: credential.type,
+    extensions: credential.getClientExtensionResults(),
+    response: {
+      authenticatorData: bufferToBase64url(response.authenticatorData),
+      clientDataJSON: bufferToBase64url(response.clientDataJSON),
+      signature: bufferToBase64url(response.signature),
+      userHandle: response.userHandle ? bufferToBase64url(response.userHandle) : null,
+    },
+  };
+}

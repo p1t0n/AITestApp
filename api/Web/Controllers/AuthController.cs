@@ -127,11 +127,107 @@ public class AuthController(
         return Ok(new AuthSessionResponse(token, expiresAt, user.Id, user.Email));
     }
 
+    [HttpPost("signin/begin")]
+    public async Task<ActionResult<SigninBeginResponse>> SigninBegin(SigninBeginRequest request, CancellationToken ct)
+    {
+        var email = request.Email?.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return BadRequest(new { error = "email is required." });
+        }
+
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
+        if (user is null)
+        {
+            return BadRequest(new { error = "No account found for this email." });
+        }
+
+        var credentialIds = await db.PasskeyCredentials
+            .Where(p => p.UserId == user.Id)
+            .Select(p => p.CredentialId)
+            .ToListAsync(ct);
+
+        if (credentialIds.Count == 0)
+        {
+            return BadRequest(new { error = "No passkey is registered for this account. Use account recovery." });
+        }
+
+        var options = fido2.GetAssertionOptions(new GetAssertionOptionsParams
+        {
+            AllowedCredentials = credentialIds.Select(id => new PublicKeyCredentialDescriptor(id)).ToList(),
+            UserVerification = UserVerificationRequirement.Preferred,
+        });
+
+        var ceremony = new SigninCeremony(user.Id, options.ToJson());
+        var ceremonyId = await challenges.StashAsync(JsonSerializer.Serialize(ceremony), ct);
+
+        return Ok(new SigninBeginResponse(ceremonyId, options.ToJson()));
+    }
+
+    [HttpPost("signin/complete")]
+    public async Task<ActionResult<AuthSessionResponse>> SigninComplete(SigninCompleteRequest request, CancellationToken ct)
+    {
+        var stashed = await challenges.ConsumeAsync(request.CeremonyId, ct);
+        if (stashed is null)
+        {
+            return BadRequest(new { error = "Sign-in ceremony expired or not found. Start over." });
+        }
+
+        var ceremony = JsonSerializer.Deserialize<SigninCeremony>(stashed)!;
+        var options = AssertionOptions.FromJson(ceremony.OptionsJson);
+
+        var credentialId = request.Assertion.RawId;
+        var credential = await db.PasskeyCredentials
+            .FirstOrDefaultAsync(p => p.UserId == ceremony.UserId && p.CredentialId == credentialId, ct);
+        if (credential is null)
+        {
+            return BadRequest(new { error = "Unknown credential for this account." });
+        }
+
+        var result = await fido2.MakeAssertionAsync(new MakeAssertionParams
+        {
+            AssertionResponse = request.Assertion,
+            OriginalOptions = options,
+            StoredPublicKey = credential.PublicKey,
+            StoredSignatureCounter = (uint)credential.SignatureCounter,
+            IsUserHandleOwnerOfCredentialIdCallback = async (args, innerCt) =>
+            {
+                if (args.UserHandle is not { Length: 16 })
+                {
+                    return false;
+                }
+
+                var handle = new Guid(args.UserHandle);
+                return await db.PasskeyCredentials
+                    .AnyAsync(p => p.CredentialId == args.CredentialId && p.UserId == handle, innerCt);
+            },
+        }, ct);
+
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == ceremony.UserId, ct);
+        if (user is null || user.Status != UserStatus.Active)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { error = "This account is not active." });
+        }
+
+        // Advance the stored counter to the authenticator's latest value (clone-detection guard).
+        credential.SignatureCounter = result.SignCount;
+        await db.SaveChangesAsync(ct);
+
+        var (token, expiresAt) = tokens.Issue(user);
+        return Ok(new AuthSessionResponse(token, expiresAt, user.Id, user.Email));
+    }
+
     /// <summary>Server-side signup state held between the begin and complete steps.</summary>
     private sealed record SignupCeremony(Guid UserId, string Email, string ControlWordHash, string OptionsJson);
+
+    /// <summary>Server-side signin state held between the begin and complete steps.</summary>
+    private sealed record SigninCeremony(Guid UserId, string OptionsJson);
 }
 
 public sealed record SignupBeginRequest(string Email, string ControlWord);
 public sealed record SignupBeginResponse(string CeremonyId, string OptionsJson);
 public sealed record SignupCompleteRequest(string CeremonyId, AuthenticatorAttestationRawResponse Attestation);
+public sealed record SigninBeginRequest(string Email);
+public sealed record SigninBeginResponse(string CeremonyId, string OptionsJson);
+public sealed record SigninCompleteRequest(string CeremonyId, AuthenticatorAssertionRawResponse Assertion);
 public sealed record AuthSessionResponse(string Token, DateTimeOffset ExpiresAt, Guid UserId, string Email);
