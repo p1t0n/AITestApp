@@ -1,5 +1,12 @@
 import { AppBar, Box, Button, Container, Toolbar, Typography } from "@mui/material";
-import { Link as RouterLink, Route, Routes, useNavigate } from "react-router-dom";
+import {
+  Link as RouterLink,
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+  useNavigate,
+} from "react-router-dom";
 import EmployeesPage from "./pages/EmployeesPage";
 import EmployeeDetailPage from "./pages/EmployeeDetailPage";
 import CvPage from "./pages/CvPage";
@@ -7,13 +14,19 @@ import CatalogPage from "./pages/CatalogPage";
 import SignupPage from "./pages/SignupPage";
 import SigninPage from "./pages/SigninPage";
 import AgentWidget from "./components/AgentWidget";
-import { isSignedIn, signOut } from "./api";
+import { signOut } from "./api";
+import { useIsAuthenticated } from "./auth/useAuth";
+
+/** Guards the protected area: renders children when signed in, else bounces to sign-in. */
+function RequireAuth() {
+  const authed = useIsAuthenticated();
+  return authed ? <Outlet /> : <Navigate to="/signin" replace />;
+}
 
 function AuthButton() {
+  const authed = useIsAuthenticated();
   const navigate = useNavigate();
-  // localStorage isn't reactive; this reflects the token at render time. P1T-22 (app-wide gate)
-  // introduces a proper auth context that updates live.
-  if (isSignedIn()) {
+  if (authed) {
     return (
       <Button
         color="inherit"
@@ -34,6 +47,8 @@ function AuthButton() {
 }
 
 export default function App() {
+  const authed = useIsAuthenticated();
+
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "grey.50" }}>
       <AppBar position="static" elevation={0}>
@@ -41,28 +56,37 @@ export default function App() {
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
             CV Manager
           </Typography>
-          <Button color="inherit" component={RouterLink} to="/">
-            CVs
-          </Button>
-          <Button color="inherit" component={RouterLink} to="/catalog">
-            Skill Catalog
-          </Button>
+          {authed && (
+            <>
+              <Button color="inherit" component={RouterLink} to="/">
+                CVs
+              </Button>
+              <Button color="inherit" component={RouterLink} to="/catalog">
+                Skill Catalog
+              </Button>
+            </>
+          )}
           <AuthButton />
         </Toolbar>
       </AppBar>
 
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Routes>
-          <Route path="/" element={<EmployeesPage />} />
-          <Route path="/employees/:id" element={<EmployeeDetailPage />} />
-          <Route path="/employees/:id/cv" element={<CvPage />} />
-          <Route path="/catalog" element={<CatalogPage />} />
-          <Route path="/signup" element={<SignupPage />} />
+          {/* Public auth pages */}
           <Route path="/signin" element={<SigninPage />} />
+          <Route path="/signup" element={<SignupPage />} />
+
+          {/* Everything else requires authentication */}
+          <Route element={<RequireAuth />}>
+            <Route path="/" element={<EmployeesPage />} />
+            <Route path="/employees/:id" element={<EmployeeDetailPage />} />
+            <Route path="/employees/:id/cv" element={<CvPage />} />
+            <Route path="/catalog" element={<CatalogPage />} />
+          </Route>
         </Routes>
       </Container>
 
-      <AgentWidget />
+      {authed && <AgentWidget />}
     </Box>
   );
 }

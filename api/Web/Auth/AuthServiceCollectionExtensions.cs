@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 
 namespace EmployeeManager.Web.Auth;
@@ -62,6 +63,13 @@ public static class AuthServiceCollectionExtensions
                 };
             });
 
-        services.AddAuthorization();
+        // Gate the whole app: every endpoint requires an authenticated user unless it opts out with
+        // [AllowAnonymous] (the auth ceremonies do). The SPA enforces the same rule client-side.
+        services.AddAuthorization(options =>
+        {
+            options.FallbackPolicy = new AuthorizationPolicyBuilder()
+                .RequireAuthenticatedUser()
+                .Build();
+        });
     }
 }

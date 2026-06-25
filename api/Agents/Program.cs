@@ -74,7 +74,7 @@ app.MapPost("/agents/roster-qa", async (
             detail: ex.Message,
             statusCode: StatusCodes.Status502BadGateway);
     }
-});
+}).RequireAuthorization();
 
 // POST /agents/cv-tailoring  { "employeeId": "guid", "jobDescription": "..." }  ->  { "answer": "..." }
 app.MapPost("/agents/cv-tailoring", async (
@@ -110,7 +110,7 @@ app.MapPost("/agents/cv-tailoring", async (
             detail: ex.Message,
             statusCode: StatusCodes.Status502BadGateway);
     }
-});
+}).RequireAuthorization();
 
 // POST /agents/match  { "employeeId": "guid", "jobDescription": "..." }  ->  { "answer": "..." }
 app.MapPost("/agents/match", async (
@@ -144,7 +144,7 @@ app.MapPost("/agents/match", async (
             detail: ex.Message,
             statusCode: StatusCodes.Status502BadGateway);
     }
-});
+}).RequireAuthorization();
 
 app.Run();
 
