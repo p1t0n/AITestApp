@@ -1,4 +1,5 @@
 using EmployeeManager.Agents.Agents;
+using EmployeeManager.Agents.Auth;
 using EmployeeManager.Agents.Configuration;
 using EmployeeManager.Agents.Mcp;
 using Microsoft.Extensions.AI;
@@ -7,6 +8,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOptions<McpServerOptions>()
     .Bind(builder.Configuration.GetSection(McpServerOptions.Section));
+
+// Validate the shared session JWT issued by the Web host (same signing key/issuer/audience).
+// The agent endpoints get [Authorize] + per-user attribution in later issues (gate + token caps).
+builder.Services.AddSessionJwtAuthentication(builder.Configuration);
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddHttpClient();
@@ -38,6 +43,9 @@ builder.Services.AddSingleton<IChatAgent>(sp => new MatchAgent(
     sp.GetRequiredService<ILoggerFactory>()));
 
 var app = builder.Build();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 

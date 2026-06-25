@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using EmployeeManager.Application;
 using EmployeeManager.Infrastructure;
 using EmployeeManager.Infrastructure.Persistence;
+using EmployeeManager.Web.Auth;
 using EmployeeManager.Web.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,6 +19,11 @@ builder.Services.AddControllers()
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddSingleton(TimeProvider.System);
+
+// Passwordless auth: WebAuthn ceremonies + shared session JWT. The signup/signin/recovery
+// endpoints (separate issues) drive the ceremonies via IFido2 + IChallengeStore + IJwtTokenIssuer.
+builder.Services.AddPasskeyAuth(builder.Configuration);
 
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -47,6 +53,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors(SpaCors);
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
