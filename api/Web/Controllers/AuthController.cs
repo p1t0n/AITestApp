@@ -5,6 +5,7 @@ using EmployeeManager.Domain.Enums;
 using EmployeeManager.Web.Auth;
 using Fido2NetLib;
 using Fido2NetLib.Objects;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,6 +18,7 @@ namespace EmployeeManager.Web.Controllers;
 /// Signin and recovery are added by their own issues.
 /// </summary>
 [ApiController]
+[AllowAnonymous]
 [Route("api/auth")]
 public class AuthController(
     IFido2 fido2,
@@ -26,6 +28,11 @@ public class AuthController(
     IAppDbContext db,
     TimeProvider clock) : ControllerBase
 {
+    // fido2 models carry their own enum converters (e.g. "public-key"). The app's global MVC
+    // JsonStringEnumConverter outranks those type-level converters, so the authenticator responses
+    // are bound as raw JSON and deserialized here with clean web defaults instead.
+    private static readonly JsonSerializerOptions FidoJson = new(JsonSerializerDefaults.Web);
+
     [HttpPost("signup/begin")]
     public async Task<ActionResult<SignupBeginResponse>> SignupBegin(SignupBeginRequest request, CancellationToken ct)
     {
@@ -80,13 +87,27 @@ public class AuthController(
         var ceremony = JsonSerializer.Deserialize<SignupCeremony>(stashed)!;
         var options = CredentialCreateOptions.FromJson(ceremony.OptionsJson);
 
-        var credential = await fido2.MakeNewCredentialAsync(new MakeNewCredentialParams
+        var attestation = request.Attestation.Deserialize<AuthenticatorAttestationRawResponse>(FidoJson);
+        if (attestation is null)
         {
-            AttestationResponse = request.Attestation,
-            OriginalOptions = options,
-            IsCredentialIdUniqueToUserCallback = async (args, innerCt) =>
-                !await db.PasskeyCredentials.AnyAsync(p => p.CredentialId == args.CredentialId, innerCt),
-        }, ct);
+            return BadRequest(new { error = "Invalid attestation response." });
+        }
+
+        RegisteredPublicKeyCredential credential;
+        try
+        {
+            credential = await fido2.MakeNewCredentialAsync(new MakeNewCredentialParams
+            {
+                AttestationResponse = attestation,
+                OriginalOptions = options,
+                IsCredentialIdUniqueToUserCallback = async (args, innerCt) =>
+                    !await db.PasskeyCredentials.AnyAsync(p => p.CredentialId == args.CredentialId, innerCt),
+            }, ct);
+        }
+        catch (Fido2VerificationException ex)
+        {
+            return BadRequest(new { error = $"Passkey registration failed: {ex.Message}" });
+        }
 
         // Re-check uniqueness: another signup with the same email could have completed since begin.
         if (await db.Users.AnyAsync(u => u.Email == ceremony.Email, ct))
@@ -176,7 +197,13 @@ public class AuthController(
         var ceremony = JsonSerializer.Deserialize<SigninCeremony>(stashed)!;
         var options = AssertionOptions.FromJson(ceremony.OptionsJson);
 
-        var credentialId = request.Assertion.RawId;
+        var assertion = request.Assertion.Deserialize<AuthenticatorAssertionRawResponse>(FidoJson);
+        if (assertion is null)
+        {
+            return BadRequest(new { error = "Invalid assertion response." });
+        }
+
+        var credentialId = assertion.RawId;
         var credential = await db.PasskeyCredentials
             .FirstOrDefaultAsync(p => p.UserId == ceremony.UserId && p.CredentialId == credentialId, ct);
         if (credential is null)
@@ -184,24 +211,32 @@ public class AuthController(
             return BadRequest(new { error = "Unknown credential for this account." });
         }
 
-        var result = await fido2.MakeAssertionAsync(new MakeAssertionParams
+        VerifyAssertionResult result;
+        try
         {
-            AssertionResponse = request.Assertion,
-            OriginalOptions = options,
-            StoredPublicKey = credential.PublicKey,
-            StoredSignatureCounter = (uint)credential.SignatureCounter,
-            IsUserHandleOwnerOfCredentialIdCallback = async (args, innerCt) =>
+            result = await fido2.MakeAssertionAsync(new MakeAssertionParams
             {
-                if (args.UserHandle is not { Length: 16 })
+                AssertionResponse = assertion,
+                OriginalOptions = options,
+                StoredPublicKey = credential.PublicKey,
+                StoredSignatureCounter = (uint)credential.SignatureCounter,
+                IsUserHandleOwnerOfCredentialIdCallback = async (args, innerCt) =>
                 {
-                    return false;
-                }
+                    if (args.UserHandle is not { Length: 16 })
+                    {
+                        return false;
+                    }
 
-                var handle = new Guid(args.UserHandle);
-                return await db.PasskeyCredentials
-                    .AnyAsync(p => p.CredentialId == args.CredentialId && p.UserId == handle, innerCt);
-            },
-        }, ct);
+                    var handle = new Guid(args.UserHandle);
+                    return await db.PasskeyCredentials
+                        .AnyAsync(p => p.CredentialId == args.CredentialId && p.UserId == handle, innerCt);
+                },
+            }, ct);
+        }
+        catch (Fido2VerificationException ex)
+        {
+            return BadRequest(new { error = $"Sign-in failed: {ex.Message}" });
+        }
 
         var user = await db.Users.FirstOrDefaultAsync(u => u.Id == ceremony.UserId, ct);
         if (user is null || user.Status != UserStatus.Active)
@@ -226,8 +261,8 @@ public class AuthController(
 
 public sealed record SignupBeginRequest(string Email, string ControlWord);
 public sealed record SignupBeginResponse(string CeremonyId, string OptionsJson);
-public sealed record SignupCompleteRequest(string CeremonyId, AuthenticatorAttestationRawResponse Attestation);
+public sealed record SignupCompleteRequest(string CeremonyId, JsonElement Attestation);
 public sealed record SigninBeginRequest(string Email);
 public sealed record SigninBeginResponse(string CeremonyId, string OptionsJson);
-public sealed record SigninCompleteRequest(string CeremonyId, AuthenticatorAssertionRawResponse Assertion);
+public sealed record SigninCompleteRequest(string CeremonyId, JsonElement Assertion);
 public sealed record AuthSessionResponse(string Token, DateTimeOffset ExpiresAt, Guid UserId, string Email);
