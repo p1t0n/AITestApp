@@ -28,3 +28,13 @@ public enum UserStatus
     Active = 1,
     Deactivated = 2
 }
+
+/// <summary>
+/// What a <see cref="Entities.EmployeeSearchChunk"/> was rendered from: one work
+/// <see cref="Entities.Experience"/>, or an employee's professional <c>Summary</c>.
+/// </summary>
+public enum SearchChunkSource
+{
+    Experience = 1,
+    Summary = 2
+}

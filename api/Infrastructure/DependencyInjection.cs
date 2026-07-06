@@ -13,7 +13,8 @@ public static class DependencyInjection
         var connectionString = config.GetConnectionString("Default")
             ?? "Host=localhost;Port=5432;Database=employeemanager;Username=postgres;Password=postgres";
 
-        services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
+        services.AddDbContext<AppDbContext>(options =>
+            options.UseNpgsql(connectionString, npgsql => npgsql.UseVector()));
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
 
         return services;
