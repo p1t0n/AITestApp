@@ -1,6 +1,8 @@
 services:
   postgres:
-    image: postgres:17
+    # pgvector/pgvector ships the stock postgres:17 image plus the `vector` extension,
+    # which the semantic roster search (RAG) feature enables via migration.
+    image: pgvector/pgvector:pg17
     container_name: employeemanager-db
     environment:
       POSTGRES_USER: postgres

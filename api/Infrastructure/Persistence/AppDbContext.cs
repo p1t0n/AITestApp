@@ -21,9 +21,18 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<PasskeyCredential> PasskeyCredentials => Set<PasskeyCredential>();
     public DbSet<AgentUsage> AgentUsages => Set<AgentUsage>();
+    public DbSet<EmployeeSearchChunk> EmployeeSearchChunks => Set<EmployeeSearchChunk>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
+        // Semantic roster search stores embeddings via the pgvector extension. Guarded because
+        // test/in-memory providers neither support the extension nor the Vector column type.
+        var isNpgsql = Database.IsNpgsql();
+        if (isNpgsql)
+        {
+            b.HasPostgresExtension("vector");
+        }
+
         // Store all enums as readable strings (better for inspection + future AI consumers).
         foreach (var entity in b.Model.GetEntityTypes())
         {
@@ -153,6 +162,31 @@ public class AppDbContext : DbContext, IAppDbContext
             e.HasIndex(x => new { x.UserId, x.Timestamp });
             e.HasOne<User>().WithMany()
                 .HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<EmployeeSearchChunk>(e =>
+        {
+            e.Property(x => x.SourceType).HasMaxLength(20);
+            e.Property(x => x.ContentHash).HasMaxLength(64).IsRequired();
+            e.Property(x => x.Model).HasMaxLength(200);
+
+            if (isNpgsql)
+            {
+                e.Property(x => x.Embedding).HasColumnType("vector(1536)");
+            }
+            else
+            {
+                // The pgvector Vector CLR type has no mapping under the in-memory test provider.
+                e.Ignore(x => x.Embedding);
+            }
+
+            // One chunk per source row; also the reconciler's upsert/lookup key.
+            e.HasIndex(x => new { x.SourceType, x.SourceId }).IsUnique();
+            // Pre-filter and aggregation always scope by employee.
+            e.HasIndex(x => x.EmployeeId);
+
+            e.HasOne<Employee>().WithMany()
+                .HasForeignKey(x => x.EmployeeId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

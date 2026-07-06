@@ -14,6 +14,8 @@
     <!-- Pin to unify the transitive EF Core version across consumers (Web pulls 10.0.8 via Design,
          Npgsql 10.0.2 pulls 10.0.4) — avoids the MSB3277 version-conflict warning. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.8" />
+    <PackageReference Include="Pgvector" Version="0.3.2" />
+    <PackageReference Include="Pgvector.EntityFrameworkCore" Version="0.3.0" />
   </ItemGroup>
 
   <PropertyGroup>
