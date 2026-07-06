@@ -51,6 +51,9 @@ internal static class McpTestHost
     public static WebApplicationFactory<Program> CreateFactory(string dbName) =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
+            // The semantic-search reconciler needs pgvector + a real embedding backend; keep its
+            // background worker off in these in-memory MCP tests.
+            builder.UseSetting("SearchIndex:Enabled", "false");
             builder.ConfigureServices(services => UseInMemoryDatabase(services, dbName));
 
             // Override JWT validation to trust locally-minted test tokens.
@@ -82,6 +85,9 @@ internal static class McpTestHost
     public static WebApplicationFactory<Program> CreateFactoryWithAuthority(string dbName, string authority, string audience) =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
+            // The semantic-search reconciler needs pgvector + a real embedding backend; keep its
+            // background worker off in these in-memory MCP tests.
+            builder.UseSetting("SearchIndex:Enabled", "false");
             builder.ConfigureServices(services => UseInMemoryDatabase(services, dbName));
 
             builder.ConfigureTestServices(services =>
