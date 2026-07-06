@@ -4,7 +4,9 @@ using System.Text.Json.Serialization.Metadata;
 using EmployeeManager.Application;
 using EmployeeManager.Infrastructure;
 using EmployeeManager.Infrastructure.Embeddings;
+using EmployeeManager.Infrastructure.Search;
 using EmployeeManager.Mcp;
+using EmployeeManager.Mcp.Search;
 using EmployeeManager.Mcp.Tools;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using ModelContextProtocol.AspNetCore.Authentication;
@@ -17,6 +19,8 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 // Embedding backend for semantic roster search (reconciliation worker + search query).
 builder.Services.AddGitHubModelsEmbeddings(builder.Configuration);
+builder.Services.AddSearchIndexing(builder.Configuration);
+builder.Services.AddHostedService<ReconcileWorker>();
 
 // OAuth 2.1: this server is the Resource Server. Keycloak (the Authorization Server) issues
 // tokens and runs the PKCE auth-code flow; here we only validate JWTs and advertise the AS.
