@@ -1,0 +1,185 @@
+using EmployeeManager.Application.Abstractions;
+using EmployeeManager.Application.Search;
+using EmployeeManager.Domain.Entities;
+using EmployeeManager.Domain.Enums;
+using EmployeeManager.Infrastructure.Persistence;
+using EmployeeManager.Infrastructure.Search;
+using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using Testcontainers.PostgreSql;
+
+namespace EmployeeManager.Mcp.Tests;
+
+/// <summary>
+/// Integration tests for <see cref="SemanticSearchService"/> against real pgvector. A keyword-based
+/// fake embedder makes similarity deterministic: a chunk mentioning a topic embeds near a query for
+/// that topic, and unrelated chunks fall below the similarity threshold.
+/// </summary>
+public sealed class SemanticSearchServiceTests : IAsyncLifetime
+{
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
+        .WithImage("pgvector/pgvector:pg17")
+        .Build();
+
+    private Guid _reactSkillId;
+
+    public async Task InitializeAsync()
+    {
+        await _postgres.StartAsync();
+        await using var db = NewDb();
+        await db.Database.MigrateAsync();
+        await SeedAsync(db);
+        // Backfill the index with the same embedder the search uses.
+        await new SearchIndexReconciler(db, new KeywordEmbedder(),
+            Options.Create(new SearchIndexOptions()), NullLogger<SearchIndexReconciler>.Instance)
+            .RunOnceAsync();
+    }
+
+    public async Task DisposeAsync() => await _postgres.DisposeAsync();
+
+    [Fact]
+    public async Task Ranks_topically_relevant_employees_and_excludes_others()
+    {
+        var result = await Service().SearchAsync("fintech");
+
+        result.Error.Should().BeNull();
+        result.Results.Select(r => r.Name)
+            .Should().Contain(["Fiona Fintech", "Pat Payments"])
+            .And.NotContain("Gary Gaming");
+        result.Results.Should().OnlyContain(r => r.Score >= 0.30);
+        result.Results[0].Snippets.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task Off_topic_query_returns_empty_rather_than_least_bad()
+    {
+        var result = await Service().SearchAsync("logistics");
+
+        result.Results.Should().BeEmpty();
+        result.Error.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Location_pre_filter_excludes_valid_topical_matches_elsewhere()
+    {
+        // Fiona (fintech) is in London; filtering to Berlin leaves only Gary (gaming) eligible,
+        // who is off-topic for "fintech" -> no hits.
+        var result = await Service().SearchAsync("fintech", new SemanticSearchFilters(Location: "Berlin"));
+
+        result.Results.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Skill_pre_filter_keeps_only_employees_with_the_skill()
+    {
+        // Only Fiona has React among the fintech people.
+        var result = await Service().SearchAsync("fintech",
+            new SemanticSearchFilters(SkillIds: [_reactSkillId]));
+
+        result.Results.Should().ContainSingle().Which.Name.Should().Be("Fiona Fintech");
+    }
+
+    [Fact]
+    public async Task Embedding_failure_returns_a_soft_error_not_an_exception()
+    {
+        await using var db = NewDb();
+        var service = new SemanticSearchService(db, new ThrowingEmbedder(),
+            Options.Create(new SemanticSearchOptions()), NullLogger<SemanticSearchService>.Instance);
+
+        var result = await service.SearchAsync("fintech");
+
+        result.Results.Should().BeEmpty();
+        result.Error.Should().NotBeNullOrWhiteSpace();
+    }
+
+    private SemanticSearchService Service() => new(
+        NewDb(), new KeywordEmbedder(),
+        Options.Create(new SemanticSearchOptions()), NullLogger<SemanticSearchService>.Instance);
+
+    private AppDbContext NewDb()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseNpgsql(_postgres.GetConnectionString(), npgsql => npgsql.UseVector())
+            .Options;
+        return new AppDbContext(options);
+    }
+
+    private async Task SeedAsync(AppDbContext db)
+    {
+        var category = new Category { Id = Guid.NewGuid(), Name = "Frontend" };
+        var react = new Skill { Id = Guid.NewGuid(), Name = "React", Category = category, CategoryId = category.Id };
+        _reactSkillId = react.Id;
+        db.Categories.Add(category);
+        db.Skills.Add(react);
+
+        var fiona = Employee("Fiona", "Fintech", "London", "Built fintech trading systems.");
+        fiona.Skills.Add(new EmployeeSkill
+        {
+            Id = Guid.NewGuid(), SkillId = react.Id, Level = SkillLevel.Advanced, YearsExperience = 5m,
+        });
+
+        var pat = Employee("Pat", "Payments", "London", "Ran a fintech payments platform.");
+        var gary = Employee("Gary", "Gaming", "Berlin", "Wrote gaming engines.");
+
+        db.Employees.AddRange(fiona, pat, gary);
+        await db.SaveChangesAsync();
+    }
+
+    private static Employee Employee(string first, string last, string location, string experienceSummary) => new()
+    {
+        Id = Guid.NewGuid(),
+        FirstName = first,
+        LastName = last,
+        Title = "Engineer",
+        Location = location,
+        Email = $"{first}-{Guid.NewGuid():N}@example.com".ToLower(),
+        Experiences =
+        [
+            new Experience
+            {
+                Id = Guid.NewGuid(),
+                Company = "Acme",
+                Title = "Engineer",
+                StartDate = new DateOnly(2020, 1, 1),
+                Summary = experienceSummary,
+            },
+        ],
+    };
+
+    /// <summary>Topical fake embedder: a small keyword vocabulary maps to basis dimensions, plus a
+    /// tiny baseline so no vector is all-zero (pgvector cosine distance is undefined for that).</summary>
+    private sealed class KeywordEmbedder : IEmbedder
+    {
+        private static readonly string[] Vocab = ["fintech", "gaming", "payments", "logistics"];
+
+        public string Model => "keyword-embedder";
+
+        public Task<EmbeddingBatch> EmbedAsync(IReadOnlyList<string> inputs, CancellationToken ct = default)
+            => Task.FromResult(new EmbeddingBatch(inputs.Select(Vectorize).ToList(), inputs.Count));
+
+        private static float[] Vectorize(string text)
+        {
+            var lower = text.ToLowerInvariant();
+            var v = new float[1536];
+            v[1000] = 0.01f; // baseline
+            for (var i = 0; i < Vocab.Length; i++)
+            {
+                if (lower.Contains(Vocab[i]))
+                {
+                    v[i] = 1f;
+                }
+            }
+
+            return v;
+        }
+    }
+
+    private sealed class ThrowingEmbedder : IEmbedder
+    {
+        public string Model => "throwing";
+        public Task<EmbeddingBatch> EmbedAsync(IReadOnlyList<string> inputs, CancellationToken ct = default)
+            => throw new InvalidOperationException("backend down");
+    }
+}
