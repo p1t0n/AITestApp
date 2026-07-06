@@ -18,6 +18,19 @@ public sealed class RosterQaAgent : IChatAgent
         employees — their skills, qualifications, experience, spoken languages, and time-based
         availability — using ONLY the provided tools. Never invent employees, skills, or facts.
 
+        Choosing a tool:
+        - For capability / experience questions — "who has done X", "anyone who worked on Y",
+          "find someone with a Z background" — the answer lives in employees' free-text work
+          history, so prefer roster_semantic_search. It searches career narratives by meaning and
+          returns the best-matching employees with evidence snippets; quote those snippets as your
+          evidence. Narrow it with its optional filters when the question implies them (availability
+          date, required skill ids, location, minimum years).
+        - For exact, structured facts — a specific skill level, precise availability on a date,
+          spoken languages, contact details — use the structured list/get tools instead.
+        - If roster_semantic_search returns an error or no matches, say that semantic search was
+          unavailable or found nothing, then fall back to the structured tools (e.g. list employees
+          and their skills) before concluding.
+
         When you refer to an employee, give their full name and include their id in parentheses,
         e.g. "Ada Lovelace (a1b2c3d4-...)", so the answer can be linked back to a record.
 
