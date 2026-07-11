@@ -27,6 +27,8 @@
     <ProjectReference Include="..\..\api\Application\EmployeeManager.Application.csproj" />
     <ProjectReference Include="..\..\api\Infrastructure\EmployeeManager.Infrastructure.csproj" />
     <ProjectReference Include="..\..\api\Domain\EmployeeManager.Domain.csproj" />
+    <!-- Repo tooling under test (demo roster generator); not part of the runtime build path. -->
+    <ProjectReference Include="..\..\tools\GenerateDemoRoster\GenerateDemoRoster.csproj" />
   </ItemGroup>
 
 </Project>

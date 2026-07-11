@@ -28,4 +28,8 @@
   <Folder Name="/tests/Mcp.Tests/">
     <Project Path="tests/Mcp.Tests/EmployeeManager.Mcp.Tests.csproj" />
   </Folder>
+  <Folder Name="/tools/" />
+  <Folder Name="/tools/GenerateDemoRoster/">
+    <Project Path="tools/GenerateDemoRoster/GenerateDemoRoster.csproj" />
+  </Folder>
 </Solution>
