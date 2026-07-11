@@ -35,6 +35,7 @@ builder.Services.AddGitHubModelsChatClient(builder.Configuration);
 builder.Services.AddAgentMcpIdentity(builder.Configuration, "roster-qa");
 builder.Services.AddAgentMcpIdentity(builder.Configuration, "cv-tailoring");
 builder.Services.AddAgentMcpIdentity(builder.Configuration, "match");
+builder.Services.AddAgentMcpIdentity(builder.Configuration, "shortlist");
 
 // Agents. Add future agents (Resume Ingestion, Staffing/Match) here. Each resolves its own keyed
 // IMcpToolSource (own MCP identity) and its model-appropriate chat client (default or override).
@@ -49,6 +50,13 @@ builder.Services.AddSingleton<IChatAgent>(sp => new CvTailoringAgent(
 builder.Services.AddSingleton<IChatAgent>(sp => new MatchAgent(
     sp.ResolveAgentChatClient("match"),
     sp.GetRequiredKeyedService<IMcpToolSource>("match"),
+    sp.GetRequiredService<ILoggerFactory>()));
+
+// The shortlist agent returns a structured outcome (captured tool result + rationale JSON) rather
+// than free text, so it is registered as its own type instead of through the IChatAgent seam.
+builder.Services.AddSingleton(sp => new ShortlistAgent(
+    sp.ResolveAgentChatClient("shortlist"),
+    sp.GetRequiredKeyedService<IMcpToolSource>("shortlist"),
     sp.GetRequiredService<ILoggerFactory>()));
 
 var app = builder.Build();
@@ -210,6 +218,68 @@ app.MapPost("/agents/match", async (
     }
 }).RequireAuthorization();
 
+// POST /agents/shortlist  { "jobDescription": "...", availableOn?, skillIds?, location?, minYears?, topK? }
+// -> { "requirements": [...], "candidates": [...] } (see ShortlistResponse). Deterministic fields
+// (ids, scores, coverage, evidence) are composed from the captured tool result — never model text.
+app.MapPost("/agents/shortlist", async (
+    ShortlistRequest request,
+    ShortlistAgent agent,
+    ClaimsPrincipal user,
+    IUsageMeter meter,
+    IUsageService usage,
+    CancellationToken ct) =>
+{
+    if (string.IsNullOrWhiteSpace(request.JobDescription))
+    {
+        return Results.BadRequest(new { error = "jobDescription is required." });
+    }
+
+    var userId = user.GetUserId();
+    if (userId is { } pre && await usage.FindExceededAsync(pre, ct) is { } exceeded)
+    {
+        return CapReached(exceeded);
+    }
+
+    try
+    {
+        var outcome = await agent.ShortlistAsync(
+            new ShortlistAgentRequest(
+                request.JobDescription,
+                request.AvailableOn,
+                request.SkillIds,
+                request.Location,
+                request.MinYears,
+                request.TopK),
+            ct);
+
+        // Meter first: tokens were spent even when the run degrades to a 502 below.
+        if (userId is { } uid)
+        {
+            await meter.RecordAsync(uid, agent.Name, outcome.Reply, ct);
+        }
+
+        // No captured tool result (the model skipped the tool) or a soft retrieval error from the
+        // tool (e.g. embedding backend down): upstream fault, same philosophy as the catch below.
+        if (outcome.Tool is null || outcome.Tool.Error is not null)
+        {
+            return Results.Problem(
+                title: "Upstream dependency failed (shortlist retrieval).",
+                detail: outcome.Tool?.Error ?? "The agent did not produce a roster_shortlist_search result.",
+                statusCode: StatusCodes.Status502BadGateway);
+        }
+
+        return Results.Ok(ShortlistComposer.Compose(outcome));
+    }
+    catch (HttpRequestException ex)
+    {
+        // MCP server unreachable, Keycloak token failure, or model endpoint error: upstream fault.
+        return Results.Problem(
+            title: "Upstream dependency failed (MCP server, auth, or model).",
+            detail: ex.Message,
+            statusCode: StatusCodes.Status502BadGateway);
+    }
+}).RequireAuthorization();
+
 app.Run();
 
 internal sealed record RosterQaRequest(string Question);
@@ -218,6 +288,13 @@ internal sealed record CvTailoringRequest(Guid EmployeeId, string JobDescription
 internal sealed record CvTailoringResponse(string Answer);
 internal sealed record MatchRequest(Guid EmployeeId, string JobDescription);
 internal sealed record MatchResponse(string Answer);
+internal sealed record ShortlistRequest(
+    string JobDescription,
+    DateOnly? AvailableOn = null,
+    Guid[]? SkillIds = null,
+    string? Location = null,
+    decimal? MinYears = null,
+    int? TopK = null);
 
 // Exposed so the integration/smoke tests (WebApplicationFactory) can reference the entry point.
 public partial class Program { }
