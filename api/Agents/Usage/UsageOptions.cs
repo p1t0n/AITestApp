@@ -9,7 +9,7 @@ public sealed class UsageOptions
 {
     public const string Section = "Usage";
 
-    public long DefaultDailyTokens { get; set; } = 1000;
-    public long DefaultWeeklyTokens { get; set; } = 7000;
-    public long DefaultMonthlyTokens { get; set; } = 30000;
+    public long DefaultDailyTokens { get; set; } = 25000;
+    public long DefaultWeeklyTokens { get; set; } = 150000;
+    public long DefaultMonthlyTokens { get; set; } = 500000;
 }

@@ -45,6 +45,16 @@ public class UsageServiceTests
     }
 
     [Fact]
+    public void Default_caps_are_25k_daily_150k_weekly_500k_monthly()
+    {
+        var defaults = new UsageOptions();
+
+        defaults.DefaultDailyTokens.Should().Be(25_000);
+        defaults.DefaultWeeklyTokens.Should().Be(150_000);
+        defaults.DefaultMonthlyTokens.Should().Be(500_000);
+    }
+
+    [Fact]
     public async Task No_usage_is_under_all_caps()
     {
         await using var db = NewDb();
@@ -56,7 +66,7 @@ public class UsageServiceTests
     {
         await using var db = NewDb();
         var user = Guid.NewGuid();
-        await AddUsage(db, user, "match", 1000, Now); // default daily cap is 1000
+        await AddUsage(db, user, "match", 25_000, Now); // default daily cap is 25000
 
         var exceeded = await Service(db).FindExceededAsync(user);
 
@@ -96,7 +106,7 @@ public class UsageServiceTests
             UpdatedAt = Now,
         });
         await db.SaveChangesAsync();
-        await AddUsage(db, user, "match", 150, Now); // over the 100 override, under the 1000 default
+        await AddUsage(db, user, "match", 150, Now); // over the 100 override, under the 25000 default
 
         var exceeded = await Service(db).FindExceededAsync(user);
 
