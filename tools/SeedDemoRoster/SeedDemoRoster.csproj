@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>EmployeeManager.Tools.SeedDemoRoster</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- For AppDbContext + DemoRosterSeeder (which carries the embedded dataset); no runtime project references this tool. -->
+    <ProjectReference Include="..\..\api\Infrastructure\EmployeeManager.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -21,6 +21,12 @@
     <PackageReference Include="Pgvector.EntityFrameworkCore" Version="0.3.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The committed demo roster ships inside the assembly so DemoRosterSeeder works from any
+         output directory (Web startup, the SeedDemoRoster tool, tests). -->
+    <EmbeddedResource Include="Persistence\SeedData\demo-roster.json" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>

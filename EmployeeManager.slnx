@@ -32,4 +32,7 @@
   <Folder Name="/tools/GenerateDemoRoster/">
     <Project Path="tools/GenerateDemoRoster/GenerateDemoRoster.csproj" />
   </Folder>
+  <Folder Name="/tools/SeedDemoRoster/">
+    <Project Path="tools/SeedDemoRoster/SeedDemoRoster.csproj" />
+  </Folder>
 </Solution>
