@@ -6,6 +6,7 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Collapse,
   Fab,
   IconButton,
   LinearProgress,
@@ -24,6 +25,11 @@ import SendIcon from "@mui/icons-material/Send";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import CloseFullscreenIcon from "@mui/icons-material/CloseFullscreen";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import FilterListIcon from "@mui/icons-material/FilterList";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import HighlightOffIcon from "@mui/icons-material/HighlightOff";
 import type { AgentDock } from "./useAgentDock";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -33,12 +39,17 @@ import {
   useEmployees,
   useMatch,
   useRosterQa,
+  useShortlist,
+  useSkills,
   useUsage,
   type AgentJobRequest,
+  type ShortlistCandidate,
+  type ShortlistRequest,
+  type ShortlistResponse,
   type WindowUsage,
 } from "../api";
 
-type Mode = "roster" | "cv-tailoring" | "match" | "usage";
+type Mode = "roster" | "cv-tailoring" | "match" | "shortlist" | "usage";
 
 // Matches a GUID anywhere in the text. The agents cite employees by name + id, so we turn those
 // ids into links to the employee detail page.
@@ -217,14 +228,21 @@ interface FormResult {
   latencyMs: number;
 }
 
-function AgentJobForm({ mode }: { mode: "cv-tailoring" | "match" }) {
+function AgentJobForm({
+  mode,
+  initial,
+}: {
+  mode: "cv-tailoring" | "match";
+  /** Pre-filled employee + JD (e.g. "Run full Match" from a shortlist card). Applied on mount. */
+  initial?: AgentJobRequest;
+}) {
   const employees = useEmployees();
   const tailoring = useCvTailoring();
   const match = useMatch();
   const run = mode === "cv-tailoring" ? tailoring : match;
 
-  const [employeeId, setEmployeeId] = useState<string | null>(null);
-  const [jobDescription, setJobDescription] = useState("");
+  const [employeeId, setEmployeeId] = useState<string | null>(initial?.employeeId ?? null);
+  const [jobDescription, setJobDescription] = useState(initial?.jobDescription ?? "");
   const [result, setResult] = useState<FormResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -342,6 +360,282 @@ function AgentJobForm({ mode }: { mode: "cv-tailoring" | "match" }) {
   );
 }
 
+// ---- Shortlist mode ----
+// Structured results (requirements + ranked candidate cards with evidence), not the markdown pane:
+// the endpoint returns a pinned JSON contract composed from the retrieval tool's output.
+
+function ShortlistCandidateCard({
+  candidate,
+  onRunMatch,
+}: {
+  candidate: ShortlistCandidate;
+  onRunMatch: (employeeId: string) => void;
+}) {
+  const [showEvidence, setShowEvidence] = useState(false);
+  const c = candidate;
+  return (
+    <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+        <Box sx={{ minWidth: 0 }}>
+          <Link
+            component={RouterLink}
+            to={`/employees/${c.employeeId}`}
+            variant="body2"
+            fontWeight={600}
+          >
+            {c.name}
+          </Link>
+          <Typography variant="body2" color="text.secondary">
+            {c.title}
+          </Typography>
+        </Box>
+        <Stack direction="row" spacing={0.5} flexShrink={0}>
+          <Tooltip title="Similarity score">
+            <Chip size="small" variant="outlined" label={c.score.toFixed(2)} />
+          </Tooltip>
+          <Tooltip title="Requirements matched">
+            <Chip
+              size="small"
+              color={c.coverage.matched === c.coverage.total ? "success" : "default"}
+              label={`${c.coverage.matched}/${c.coverage.total}`}
+            />
+          </Tooltip>
+        </Stack>
+      </Stack>
+
+      <Typography variant="body2" sx={{ mt: 1 }}>
+        {c.rationale}
+      </Typography>
+
+      <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.5 }}>
+        <Button
+          size="small"
+          onClick={() => setShowEvidence((v) => !v)}
+          endIcon={showEvidence ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+        >
+          Evidence
+        </Button>
+        <Button size="small" onClick={() => onRunMatch(c.employeeId)}>
+          Run full Match
+        </Button>
+      </Stack>
+
+      <Collapse in={showEvidence} unmountOnExit>
+        <Stack spacing={0.75} sx={{ mt: 1 }} data-testid={`evidence-${c.employeeId}`}>
+          {c.requirements.map((r, i) => (
+            <Stack key={i} direction="row" spacing={1} alignItems="flex-start" data-testid={`evidence-row-${i}`}>
+              {r.matched ? (
+                <CheckCircleOutlineIcon fontSize="small" color="success" data-testid="matched-icon" />
+              ) : (
+                <HighlightOffIcon fontSize="small" color="disabled" data-testid="missed-icon" />
+              )}
+              <Box>
+                <Typography variant="body2">{r.text}</Typography>
+                {r.snippet && (
+                  <Typography variant="caption" color="text.secondary" data-testid="snippet">
+                    {r.snippet}
+                  </Typography>
+                )}
+              </Box>
+            </Stack>
+          ))}
+        </Stack>
+      </Collapse>
+    </Paper>
+  );
+}
+
+function ShortlistPanel({
+  onRunMatch,
+}: {
+  onRunMatch: (employeeId: string, jobDescription: string) => void;
+}) {
+  const shortlist = useShortlist();
+  const skills = useSkills();
+
+  const [jobDescription, setJobDescription] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [availableOn, setAvailableOn] = useState("");
+  const [skillIds, setSkillIds] = useState<string[]>([]);
+  const [location, setLocation] = useState("");
+  const [minYears, setMinYears] = useState("");
+  const [topK, setTopK] = useState("");
+  const [result, setResult] = useState<{ data: ShortlistResponse; jobDescription: string } | null>(
+    null,
+  );
+  const [error, setError] = useState<string | null>(null);
+
+  const skillOptions = useMemo(
+    () => (skills.data ?? []).map((s) => ({ id: s.id, label: s.name })),
+    [skills.data],
+  );
+  const selectedSkills = skillOptions.filter((o) => skillIds.includes(o.id));
+
+  const canSubmit = jobDescription.trim().length > 0 && !shortlist.isPending;
+
+  async function submit() {
+    if (!canSubmit) return;
+    setError(null);
+    setResult(null);
+    const jd = jobDescription.trim();
+    // Only the filters the user actually set are sent; the server owns all defaults.
+    const req: ShortlistRequest = { jobDescription: jd };
+    if (availableOn) req.availableOn = availableOn;
+    if (skillIds.length > 0) req.skillIds = skillIds;
+    if (location.trim()) req.location = location.trim();
+    if (minYears !== "") req.minYears = Number(minYears);
+    if (topK !== "") req.topK = Number(topK);
+    try {
+      setResult({ data: await shortlist.mutateAsync(req), jobDescription: jd });
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    }
+  }
+
+  return (
+    <Box sx={{ flex: 1, overflowY: "auto", p: 1.5 }}>
+      <Stack spacing={1.5}>
+        <Box>
+          <Typography variant="caption" color="text.secondary">
+            Job description
+          </Typography>
+          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mb: 0.5 }}>
+            {PRESET_JDS.map((p) => (
+              <Chip
+                key={p.label}
+                label={p.label}
+                size="small"
+                variant="outlined"
+                onClick={() => setJobDescription(p.text)}
+              />
+            ))}
+          </Stack>
+          <TextField
+            fullWidth
+            size="small"
+            multiline
+            minRows={3}
+            maxRows={8}
+            placeholder="Paste a job description, or pick a preset above…"
+            value={jobDescription}
+            onChange={(e) => setJobDescription(e.target.value)}
+          />
+        </Box>
+
+        <Box>
+          <Button
+            size="small"
+            startIcon={<FilterListIcon />}
+            endIcon={showFilters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            onClick={() => setShowFilters((v) => !v)}
+          >
+            Filters (optional)
+          </Button>
+          <Collapse in={showFilters} unmountOnExit>
+            <Stack spacing={1.5} sx={{ mt: 1 }}>
+              <TextField
+                size="small"
+                type="date"
+                label="Available on"
+                InputLabelProps={{ shrink: true }}
+                value={availableOn}
+                onChange={(e) => setAvailableOn(e.target.value)}
+              />
+              <Autocomplete
+                multiple
+                size="small"
+                options={skillOptions}
+                value={selectedSkills}
+                onChange={(_, v) => setSkillIds(v.map((o) => o.id))}
+                loading={skills.isLoading}
+                isOptionEqualToValue={(o, v) => o.id === v.id}
+                renderInput={(params) => (
+                  <TextField {...params} label="Skills" placeholder="Any skill" />
+                )}
+              />
+              <TextField
+                size="small"
+                label="Location"
+                placeholder="Any location"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+              />
+              <Stack direction="row" spacing={1.5}>
+                <TextField
+                  size="small"
+                  type="number"
+                  label="Min years"
+                  inputProps={{ min: 0 }}
+                  value={minYears}
+                  onChange={(e) => setMinYears(e.target.value)}
+                />
+                <TextField
+                  size="small"
+                  type="number"
+                  label="Top K"
+                  placeholder="Server default"
+                  inputProps={{ min: 1 }}
+                  value={topK}
+                  onChange={(e) => setTopK(e.target.value)}
+                />
+              </Stack>
+            </Stack>
+          </Collapse>
+        </Box>
+
+        <Button
+          variant="contained"
+          disabled={!canSubmit}
+          startIcon={
+            shortlist.isPending ? <CircularProgress size={16} color="inherit" /> : <SmartToyIcon />
+          }
+          onClick={() => void submit()}
+        >
+          {shortlist.isPending ? "Shortlisting…" : "Build shortlist"}
+        </Button>
+
+        {error && (
+          <Paper
+            elevation={0}
+            sx={{ p: 1.5, bgcolor: "error.light", color: "error.contrastText", borderRadius: 2 }}
+          >
+            <Typography variant="body2">{error}</Typography>
+          </Paper>
+        )}
+
+        {result && (
+          <>
+            <Box>
+              <Typography variant="caption" color="text.secondary">
+                How the JD was read
+              </Typography>
+              <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
+                {result.data.requirements.map((r) => (
+                  <Chip key={r} label={r} size="small" />
+                ))}
+              </Stack>
+            </Box>
+
+            {result.data.candidates.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                No candidates matched this job description. Try loosening the filters.
+              </Typography>
+            ) : (
+              result.data.candidates.map((c) => (
+                <ShortlistCandidateCard
+                  key={c.employeeId}
+                  candidate={c}
+                  onRunMatch={(employeeId) => onRunMatch(employeeId, result.jobDescription)}
+                />
+              ))
+            )}
+          </>
+        )}
+      </Stack>
+    </Box>
+  );
+}
+
 // ---- Widget shell ----
 
 /** "in 5h" / "in 3d" until the window resets. */
@@ -425,11 +719,20 @@ const TABS: { mode: Mode; label: string }[] = [
   { mode: "roster", label: "Roster Q&A" },
   { mode: "cv-tailoring", label: "Tailor CV" },
   { mode: "match", label: "Match" },
+  { mode: "shortlist", label: "Shortlist" },
   { mode: "usage", label: "Usage" },
 ];
 
 export default function AgentWidget({ dock, isNarrow }: { dock: AgentDock; isNarrow: boolean }) {
   const [mode, setMode] = useState<Mode>("roster");
+
+  // "Run full Match" on a shortlist card jumps to the Match tab with the employee + JD pre-filled.
+  // Cleared on any manual tab click so a stale prefill never resurfaces later.
+  const [matchPrefill, setMatchPrefill] = useState<AgentJobRequest | null>(null);
+  function runFullMatch(employeeId: string, jobDescription: string) {
+    setMatchPrefill({ employeeId, jobDescription });
+    setMode("match");
+  }
 
   // Drag the left edge of the docked sidebar to resize. Width is viewport-minus-cursor, clamped by
   // the hook. Disabled on narrow screens (full-width overlay, no resize).
@@ -534,7 +837,10 @@ export default function AgentWidget({ dock, isNarrow }: { dock: AgentDock; isNar
 
           <Tabs
             value={mode}
-            onChange={(_, v: Mode) => setMode(v)}
+            onChange={(_, v: Mode) => {
+              setMatchPrefill(null);
+              setMode(v);
+            }}
             variant="fullWidth"
             sx={{ minHeight: 40, borderBottom: 1, borderColor: "divider" }}
           >
@@ -543,13 +849,20 @@ export default function AgentWidget({ dock, isNarrow }: { dock: AgentDock; isNar
             ))}
           </Tabs>
 
-          {/* Remount per mode so each keeps its own independent state. */}
+          {/* Remount per mode so each keeps its own independent state. The Match form also
+              remounts per prefill so a new "Run full Match" always lands its values. */}
           {mode === "roster" ? (
             <RosterChat key="roster" />
           ) : mode === "usage" ? (
             <UsagePanel key="usage" />
+          ) : mode === "shortlist" ? (
+            <ShortlistPanel key="shortlist" onRunMatch={runFullMatch} />
           ) : (
-            <AgentJobForm key={mode} mode={mode} />
+            <AgentJobForm
+              key={mode === "match" && matchPrefill ? `match-${matchPrefill.employeeId}` : mode}
+              mode={mode}
+              initial={mode === "match" ? (matchPrefill ?? undefined) : undefined}
+            />
           )}
         </Paper>
       )}
