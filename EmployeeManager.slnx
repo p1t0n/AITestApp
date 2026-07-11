@@ -29,10 +29,16 @@
     <Project Path="tests/Mcp.Tests/EmployeeManager.Mcp.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/" />
+  <Folder Name="/tools/GenerateDemoRoster/">
+    <Project Path="tools/GenerateDemoRoster/GenerateDemoRoster.csproj" />
+  </Folder>
   <Folder Name="/tools/RetrievalEval/">
     <Project Path="tools/RetrievalEval/RetrievalEval.csproj" />
   </Folder>
   <Folder Name="/tools/RetrievalEval.Core/">
     <Project Path="tools/RetrievalEval.Core/RetrievalEval.Core.csproj" />
+  </Folder>
+  <Folder Name="/tools/SeedDemoRoster/">
+    <Project Path="tools/SeedDemoRoster/SeedDemoRoster.csproj" />
   </Folder>
 </Solution>

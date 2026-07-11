@@ -136,6 +136,20 @@
         "mcp-audience",
         "mcp:read"
       ]
+    },
+    {
+      "clientId": "agent-shortlist",
+      "name": "Shortlist agent (confidential, mcp:read only)",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "agent-shortlist-secret",
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": [
+        "mcp-audience",
+        "mcp:read"
+      ]
     }
   ]
 }
