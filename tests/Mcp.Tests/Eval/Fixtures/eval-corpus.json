@@ -1,0 +1,770 @@
+[
+  {
+    "key": "amara-okafor",
+    "firstName": "Amara",
+    "lastName": "Okafor",
+    "title": "Senior Backend Engineer",
+    "location": "Lagos",
+    "summary": "Backend engineer specialising in payment processing and money movement. Eight years building card acquiring, settlement, and double-entry ledger systems for high-volume fintech platforms.",
+    "experiences": [
+      {
+        "company": "Kobo Payments",
+        "title": "Senior Backend Engineer",
+        "startMonth": "2021-03",
+        "endMonth": null,
+        "summary": "Own the card settlement and reconciliation services for a pan-African payments gateway handling millions of transactions daily.",
+        "achievements": [
+          "Led the PCI-DSS Level 1 recertification of the acquiring platform.",
+          "Cut settlement latency from hours to minutes by re-architecting the ledger around Kafka event streams."
+        ]
+      },
+      {
+        "company": "First Marine Bank",
+        "title": "Backend Engineer",
+        "startMonth": "2017-06",
+        "endMonth": "2021-02",
+        "summary": "Built core banking integrations and a double-entry ledger for retail accounts.",
+        "achievements": [
+          "Designed idempotent transfer APIs that eliminated duplicate postings.",
+          "Migrated batch interbank transfers to real-time rails."
+        ]
+      }
+    ]
+  },
+  {
+    "key": "bjorn-lindqvist",
+    "firstName": "Björn",
+    "lastName": "Lindqvist",
+    "title": "Embedded Firmware Engineer",
+    "location": "Stockholm",
+    "summary": "Embedded C developer for automotive control units. Deep experience with AUTOSAR classic stacks, CAN bus diagnostics, and functional-safety development under ISO 26262.",
+    "experiences": [
+      {
+        "company": "Norrsken Automotive",
+        "title": "Senior Firmware Engineer",
+        "startMonth": "2019-09",
+        "endMonth": null,
+        "summary": "Develop engine control unit firmware for hybrid drivetrains.",
+        "achievements": [
+          "Brought the battery management ECU through an ISO 26262 ASIL-C audit.",
+          "Reduced CAN bus load 40% by redesigning the diagnostic message scheduling."
+        ]
+      },
+      {
+        "company": "Svea Mekatronik",
+        "title": "Embedded Developer",
+        "startMonth": "2014-01",
+        "endMonth": "2019-08",
+        "summary": "Wrote bare-metal firmware for industrial sensor nodes.",
+        "achievements": [
+          "Ported a legacy RTOS codebase to an AUTOSAR classic platform.",
+          "Implemented over-the-air firmware updates with safe rollback."
+        ]
+      }
+    ]
+  },
+  {
+    "key": "carla-mendes",
+    "firstName": "Carla",
+    "lastName": "Mendes",
+    "title": "Data Engineer",
+    "location": "Lisbon",
+    "summary": "Data engineer building batch and streaming pipelines for retail analytics. Fluent in Spark, Airflow orchestration, and dbt-modelled warehouses.",
+    "experiences": [
+      {
+        "company": "Mercado Azul",
+        "title": "Senior Data Engineer",
+        "startMonth": "2020-05",
+        "endMonth": null,
+        "summary": "Run the data platform for a grocery e-commerce chain: ingestion, warehousing, and the metrics layer.",
+        "achievements": [
+          "Rebuilt the nightly Spark ingestion into incremental Airflow DAGs, cutting pipeline runtime by 70%.",
+          "Introduced dbt with tested models, ending a year of silent revenue-dashboard errors."
+        ]
+      },
+      {
+        "company": "Tejo Analytics",
+        "title": "Data Engineer",
+        "startMonth": "2016-10",
+        "endMonth": "2020-04",
+        "summary": "Consulted on data warehouse design for retail clients.",
+        "achievements": [
+          "Delivered a star-schema warehouse consolidating nine store systems.",
+          "Automated GDPR deletion workflows across the data lake."
+        ]
+      }
+    ]
+  },
+  {
+    "key": "deepa-krishnan",
+    "firstName": "Deepa",
+    "lastName": "Krishnan",
+    "title": "Machine Learning Engineer",
+    "location": "Bangalore",
+    "summary": "Machine learning engineer focused on recommender systems for online retail. Takes models from offline experimentation in PyTorch to low-latency serving in production.",
+    "experiences": [
+      {
+        "company": "BasketGuru",
+        "title": "Senior Machine Learning Engineer",
+        "startMonth": "2021-01",
+        "endMonth": null,
+        "summary": "Own the product recommendation stack of an e-commerce marketplace.",
+        "achievements": [
+          "Lifted add-to-cart rate 12% with a two-tower retrieval model trained in PyTorch.",
+          "Built a feature store that halved training-serving skew incidents."
+        ]
+      },
+      {
+        "company": "Chennai AI Labs",
+        "title": "Machine Learning Engineer",
+        "startMonth": "2018-04",
+        "endMonth": "2020-12",
+        "summary": "Built demand forecasting models for consumer brands.",
+        "achievements": [
+          "Shipped a hierarchical forecasting system covering 40,000 SKUs.",
+          "Reduced model retraining cost by moving to spot GPU clusters."
+        ]
+      }
+    ]
+  },
+  {
+    "key": "erik-johansson",
+    "firstName": "Erik",
+    "lastName": "Johansson",
+    "title": "Site Reliability Engineer",
+    "location": "Berlin",
+    "summary": "Site reliability engineer who keeps large Kubernetes fleets healthy. Obsessive about SLOs, error budgets, and calm on-call rotations.",
+    "experiences": [
+      {
+        "company": "Strom Cloud",
+        "title": "Senior Site Reliability Engineer",
+        "startMonth": "2020-08",
+        "endMonth": null,
+        "summary": "Operate the compute platform of a European hosting provider across three regions.",
+        "achievements": [
+          "Defined SLOs and error budgets for 40 services and wired them into Prometheus alerting.",
+          "Cut pages per on-call week from 25 to 4 by deleting noisy alerts and automating remediations."
+        ]
+      },
+      {
+        "company": "Fernweh Travel",
+        "title": "Platform Engineer",
+        "startMonth": "2016-02",
+        "endMonth": "2020-07",
+        "summary": "Ran the booking platform's infrastructure.",
+        "achievements": [
+          "Migrated 60 services from virtual machines to Kubernetes with zero booking downtime.",
+          "Led the incident review process after a major outage, cutting repeat incidents to zero."
+        ]
+      }
+    ]
+  },
+  {
+    "key": "fatima-alrashid",
+    "firstName": "Fatima",
+    "lastName": "Al-Rashid",
+    "title": "Mobile Developer",
+    "location": "Dubai",
+    "summary": "iOS engineer building consumer banking apps in Swift. Cares about biometric security flows and pixel-perfect Arabic right-to-left layouts.",
+    "experiences": [
+      {
+        "company": "Gulf National Bank",
+        "title": "Senior iOS Developer",
+        "startMonth": "2020-11",
+        "endMonth": null,
+        "summary": "Lead development of the retail banking app used by two million customers.",
+        "achievements": [
+          "Shipped Face ID payment authorisation, doubling mobile transfer adoption.",
+          "Rebuilt the app in Swift with full right-to-left localisation."
+        ]
+      },
+      {
+        "company": "Oasis Apps",
+        "title": "Mobile Developer",
+        "startMonth": "2017-03",
+        "endMonth": "2020-10",
+        "summary": "Agency work on iOS apps for regional clients.",
+        "achievements": [
+          "Delivered eleven App Store releases across retail and delivery clients.",
+          "Introduced snapshot testing that caught layout regressions before release."
+        ]
+      }
+    ]
+  },
+  {
+    "key": "george-papadopoulos",
+    "firstName": "George",
+    "lastName": "Papadopoulos",
+    "title": "Frontend Engineer",
+    "location": "Athens",
+    "summary": "Frontend engineer crafting React design systems in TypeScript. Champions accessibility: WCAG 2.2 compliance, screen-reader testing, and keyboard-first interaction.",
+    "experiences": [
+      {
+        "company": "Aegean Digital",
+        "title": "Senior Frontend Engineer",
+        "startMonth": "2021-06",
+        "endMonth": null,
+        "summary": "Maintain the design system and component library used by thirty product teams.",
+        "achievements": [
+          "Took the design system to WCAG 2.2 AA, verified with screen-reader test suites.",
+          "Halved bundle size by moving the React component library to code-split builds."
+        ]
+      },
+      {
+        "company": "Delphi Media",
+        "title": "Frontend Developer",
+        "startMonth": "2017-09",
+        "endMonth": "2021-05",
+        "summary": "Built newsroom publishing interfaces.",
+        "achievements": [
+          "Shipped a TypeScript rewrite of the article editor.",
+          "Added keyboard-only navigation across the CMS."
+        ]
+      }
+    ]
+  },
+  {
+    "key": "hana-sato",
+    "firstName": "Hana",
+    "lastName": "Sato",
+    "title": "Game Developer",
+    "location": "Tokyo",
+    "summary": "Gameplay programmer shipping mobile titles in Unity. Balances fun with the maths of free-to-play economies and live-ops events.",
+    "experiences": [
+      {
+        "company": "Sakura Interactive",
+        "title": "Senior Game Developer",
+        "startMonth": "2020-02",
+        "endMonth": null,
+        "summary": "Gameplay and live-ops for a match-three title with five million monthly players.",
+        "achievements": [
+          "Designed the seasonal event system that raised day-30 retention 8%.",
+          "Optimised Unity scene loading, cutting cold-start time in half."
+        ]
+      },
+      {
+        "company": "Pixel Shrine",
+        "title": "Game Developer",
+        "startMonth": "2016-07",
+        "endMonth": "2020-01",
+        "summary": "Prototyped and shipped small mobile games.",
+        "achievements": [
+          "Shipped four titles end to end in Unity.",
+          "Built an in-house animation tweening library adopted across all projects."
+        ]
+      }
+    ]
+  },
+  {
+    "key": "igor-petrov",
+    "firstName": "Igor",
+    "lastName": "Petrov",
+    "title": "Security Engineer",
+    "location": "Warsaw",
+    "summary": "Application security engineer: penetration testing, threat modelling, and secure code review. Runs OWASP-based developer training and leads SOC 2 audit preparation.",
+    "experiences": [
+      {
+        "company": "Wisla Security",
+        "title": "Senior Security Engineer",
+        "startMonth": "2021-04",
+        "endMonth": null,
+        "summary": "Deliver penetration tests and security programmes for SaaS scale-ups.",
+        "achievements": [
+          "Led fourteen SOC 2 Type II audit preparations with zero failed audits.",
+          "Found and coordinated disclosure of a critical authentication bypass in a client's single sign-on."
+        ]
+      },
+      {
+        "company": "Vistula Software",
+        "title": "Security Analyst",
+        "startMonth": "2017-08",
+        "endMonth": "2021-03",
+        "summary": "Ran the internal secure development lifecycle.",
+        "achievements": [
+          "Built the OWASP ASVS-based code review checklist adopted company-wide.",
+          "Cut mean time to patch critical vulnerabilities from 30 days to 5."
+        ]
+      }
+    ]
+  },
+  {
+    "key": "julia-weber",
+    "firstName": "Julia",
+    "lastName": "Weber",
+    "title": "QA Automation Engineer",
+    "location": "Munich",
+    "summary": "Test automation engineer for web platforms. Builds Playwright suites that run in minutes and fail only when the product is actually broken.",
+    "experiences": [
+      {
+        "company": "Alpen Software",
+        "title": "Senior QA Engineer",
+        "startMonth": "2020-09",
+        "endMonth": null,
+        "summary": "Own end-to-end test strategy for a B2B procurement platform.",
+        "achievements": [
+          "Replaced a flaky Selenium suite with Playwright, cutting CI time from 90 to 12 minutes.",
+          "Introduced contract tests that caught six breaking API changes before release."
+        ]
+      },
+      {
+        "company": "Isar Systems",
+        "title": "QA Engineer",
+        "startMonth": "2016-05",
+        "endMonth": "2020-08",
+        "summary": "Manual and automated testing of business software modules.",
+        "achievements": [
+          "Automated the regression pack, freeing two release days per cycle.",
+          "Set up test data factories replacing shared staging fixtures."
+        ]
+      }
+    ]
+  },
+  {
+    "key": "kwame-asante",
+    "firstName": "Kwame",
+    "lastName": "Asante",
+    "title": "DevOps Engineer",
+    "location": "Accra",
+    "summary": "DevOps engineer automating AWS infrastructure with Terraform. Equally happy building CI/CD pipelines and hunting down the cloud bill's worst offenders.",
+    "experiences": [
+      {
+        "company": "Savannah Tech",
+        "title": "Senior DevOps Engineer",
+        "startMonth": "2021-02",
+        "endMonth": null,
+        "summary": "Run infrastructure-as-code and deployment tooling for a delivery marketplace.",
+        "achievements": [
+          "Codified the entire AWS estate in Terraform modules reused by five teams.",
+          "Cut the monthly cloud bill 35% through rightsizing and spot instance adoption."
+        ]
+      },
+      {
+        "company": "Accra Digital Services",
+        "title": "Systems Administrator",
+        "startMonth": "2016-11",
+        "endMonth": "2021-01",
+        "summary": "Kept servers and deployments running for agency clients.",
+        "achievements": [
+          "Moved twenty client sites from manual deploys to CI/CD pipelines.",
+          "Introduced infrastructure monitoring that caught disk failures before outages."
+        ]
+      }
+    ]
+  },
+  {
+    "key": "lena-kovacs",
+    "firstName": "Lena",
+    "lastName": "Kovács",
+    "title": "Database Administrator",
+    "location": "Budapest",
+    "summary": "Database specialist keeping PostgreSQL fast under heavy load: query tuning, replication topologies, and zero-downtime schema migrations.",
+    "experiences": [
+      {
+        "company": "Danube Commerce",
+        "title": "Senior Database Engineer",
+        "startMonth": "2019-12",
+        "endMonth": null,
+        "summary": "Own the PostgreSQL fleet behind a ticketing platform with brutal on-sale spikes.",
+        "achievements": [
+          "Survived a 40x traffic spike by introducing connection pooling and read replicas.",
+          "Cut p99 query latency 80% through index and query-plan tuning."
+        ]
+      },
+      {
+        "company": "Pannonia Hosting",
+        "title": "Database Administrator",
+        "startMonth": "2015-06",
+        "endMonth": "2019-11",
+        "summary": "Managed hundreds of customer databases.",
+        "achievements": [
+          "Automated point-in-time recovery drills across the fleet.",
+          "Led the PostgreSQL major-version upgrade programme with zero data loss."
+        ]
+      }
+    ]
+  },
+  {
+    "key": "miguel-torres",
+    "firstName": "Miguel",
+    "lastName": "Torres",
+    "title": "ERP Consultant",
+    "location": "Madrid",
+    "summary": "SAP consultant customising ERP modules for manufacturers. Writes ABAP, untangles material-planning processes, and translates between plant floor and IT.",
+    "experiences": [
+      {
+        "company": "Iberia Consulting",
+        "title": "Senior SAP Consultant",
+        "startMonth": "2019-05",
+        "endMonth": null,
+        "summary": "Lead SAP rollouts for mid-size manufacturing clients.",
+        "achievements": [
+          "Delivered an S/4HANA migration for an auto-parts manufacturer on schedule.",
+          "Wrote ABAP extensions automating material requirements planning."
+        ]
+      },
+      {
+        "company": "Meseta Manufacturing",
+        "title": "ERP Analyst",
+        "startMonth": "2014-09",
+        "endMonth": "2019-04",
+        "summary": "Supported the in-house SAP landscape of a white-goods factory.",
+        "achievements": [
+          "Cut month-end close from ten days to three by streamlining finance module processes.",
+          "Trained sixty plant staff on new warehouse management workflows."
+        ]
+      }
+    ]
+  },
+  {
+    "key": "nadia-hussain",
+    "firstName": "Nadia",
+    "lastName": "Hussain",
+    "title": "Integration Engineer",
+    "location": "London",
+    "summary": "Healthcare integration engineer connecting hospital systems. Speaks HL7 v2 and FHIR fluently and knows why the electronic health record interface is always the hard part.",
+    "experiences": [
+      {
+        "company": "Thames Health Tech",
+        "title": "Senior Integration Engineer",
+        "startMonth": "2020-06",
+        "endMonth": null,
+        "summary": "Build integration services between hospital trusts' electronic health record systems.",
+        "achievements": [
+          "Delivered a FHIR API layer over three legacy EHR systems, powering a patient-facing app.",
+          "Reduced HL7 message failures 90% with a replayable interface engine."
+        ]
+      },
+      {
+        "company": "MedLink Systems",
+        "title": "Integration Developer",
+        "startMonth": "2016-08",
+        "endMonth": "2020-05",
+        "summary": "Implemented laboratory and radiology interfaces for private clinics.",
+        "achievements": [
+          "Connected forty clinics to a national laboratory network.",
+          "Automated conformance testing of HL7 v2 feeds."
+        ]
+      }
+    ]
+  },
+  {
+    "key": "oliver-smith",
+    "firstName": "Oliver",
+    "lastName": "Smith",
+    "title": "Solutions Architect",
+    "location": "Manchester",
+    "summary": "Solutions architect guiding enterprises through cloud migrations onto Azure. Draws the diagrams, then stays to make them true.",
+    "experiences": [
+      {
+        "company": "Pennine Consulting",
+        "title": "Principal Architect",
+        "startMonth": "2020-10",
+        "endMonth": null,
+        "summary": "Architect Azure landing zones and migration programmes for insurance and utility clients.",
+        "achievements": [
+          "Led the migration of a 400-server insurance estate to Azure with no missed renewals.",
+          "Standardised a landing-zone blueprint adopted by six enterprise clients."
+        ]
+      },
+      {
+        "company": "Northern Grid IT",
+        "title": "Infrastructure Architect",
+        "startMonth": "2013-04",
+        "endMonth": "2020-09",
+        "summary": "Designed on-premises data centre and virtualisation platforms.",
+        "achievements": [
+          "Consolidated three data centres into one virtualised platform.",
+          "Cut disaster-recovery failover time from days to hours."
+        ]
+      }
+    ]
+  },
+  {
+    "key": "priya-sharma",
+    "firstName": "Priya",
+    "lastName": "Sharma",
+    "title": "Junior Frontend Developer",
+    "location": "Pune",
+    "summary": "Early-career frontend developer working in Vue.js. Career-switcher from accounting who now builds the finance dashboards she once had to use.",
+    "experiences": [
+      {
+        "company": "Deccan Software",
+        "title": "Junior Frontend Developer",
+        "startMonth": "2023-01",
+        "endMonth": null,
+        "summary": "Build internal finance dashboards in Vue.js.",
+        "achievements": [
+          "Shipped a budgeting dashboard now used by 200 analysts.",
+          "Fixed forty accessibility and layout bugs in her first year."
+        ]
+      },
+      {
+        "company": "Ledger & Co",
+        "title": "Accountant",
+        "startMonth": "2018-07",
+        "endMonth": "2022-08",
+        "summary": "Prepared management accounts before retraining as a developer.",
+        "achievements": [
+          "Automated monthly reporting with spreadsheet macros.",
+          "Completed a full-stack bootcamp while working full time."
+        ]
+      }
+    ]
+  },
+  {
+    "key": "quentin-dubois",
+    "firstName": "Quentin",
+    "lastName": "Dubois",
+    "title": "Computer Vision Engineer",
+    "location": "Paris",
+    "summary": "Computer vision engineer for autonomous inspection drones. Builds perception models with OpenCV and deploys them to power-constrained edge hardware.",
+    "experiences": [
+      {
+        "company": "Ciel Robotics",
+        "title": "Senior Computer Vision Engineer",
+        "startMonth": "2021-03",
+        "endMonth": null,
+        "summary": "Perception stack for drones inspecting power lines and wind turbines.",
+        "achievements": [
+          "Shipped a defect-detection model running at 30 frames per second on an embedded GPU.",
+          "Cut false-positive detections 60% with a hard-negative mining pipeline."
+        ]
+      },
+      {
+        "company": "Lumière Labs",
+        "title": "Research Engineer",
+        "startMonth": "2017-10",
+        "endMonth": "2021-02",
+        "summary": "Applied research on image processing.",
+        "achievements": [
+          "Built OpenCV-based camera calibration tooling used by three product lines.",
+          "Published two papers on low-light image enhancement."
+        ]
+      }
+    ]
+  },
+  {
+    "key": "rosa-martinez",
+    "firstName": "Rosa",
+    "lastName": "Martínez",
+    "title": "Engineering Manager",
+    "location": "Mexico City",
+    "summary": "Engineering manager who grows teams and ships platforms. Believes in small batches, blameless postmortems, and managers who still read the code.",
+    "experiences": [
+      {
+        "company": "Volcán Software",
+        "title": "Engineering Manager",
+        "startMonth": "2020-04",
+        "endMonth": null,
+        "summary": "Lead three platform teams of eighteen engineers at a marketplace company.",
+        "achievements": [
+          "Grew the platform group from 6 to 18 engineers with a structured hiring loop.",
+          "Cut lead time for changes from two weeks to a day by reorganising around stream-aligned teams."
+        ]
+      },
+      {
+        "company": "Azteca Digital",
+        "title": "Tech Lead",
+        "startMonth": "2015-11",
+        "endMonth": "2020-03",
+        "summary": "Led a product team building online checkout flows.",
+        "achievements": [
+          "Mentored four engineers to senior roles.",
+          "Introduced trunk-based development and feature flags."
+        ]
+      }
+    ]
+  },
+  {
+    "key": "samuel-adeyemi",
+    "firstName": "Samuel",
+    "lastName": "Adeyemi",
+    "title": "Blockchain Engineer",
+    "location": "Nairobi",
+    "summary": "Smart contract engineer writing Solidity for decentralised finance protocols. Paranoid in the good way: audits, fuzzing, and formal thinking about money that cannot be un-sent.",
+    "experiences": [
+      {
+        "company": "Baobab Protocol",
+        "title": "Senior Blockchain Engineer",
+        "startMonth": "2021-08",
+        "endMonth": null,
+        "summary": "Core contracts for a decentralised lending protocol.",
+        "achievements": [
+          "Authored the Solidity contracts securing 80 million dollars of value, with two clean external audits.",
+          "Built an on-chain liquidation engine with sub-block reaction time."
+        ]
+      },
+      {
+        "company": "Savanna Chain Labs",
+        "title": "Blockchain Developer",
+        "startMonth": "2018-06",
+        "endMonth": "2021-07",
+        "summary": "Consulting on token contracts and wallets.",
+        "achievements": [
+          "Delivered token and NFT contracts for a dozen clients.",
+          "Created a fuzzing harness that caught an integer overflow before deployment."
+        ]
+      }
+    ]
+  },
+  {
+    "key": "tomasz-nowak",
+    "firstName": "Tomasz",
+    "lastName": "Nowak",
+    "title": "Legacy Systems Engineer",
+    "location": "Kraków",
+    "summary": "Mainframe modernisation specialist. Reads COBOL written before he was born and moves it safely onto the JVM without stopping the nightly batch.",
+    "experiences": [
+      {
+        "company": "Wawel Financial Systems",
+        "title": "Senior Software Engineer",
+        "startMonth": "2019-07",
+        "endMonth": null,
+        "summary": "Modernise core account processing for a retail bank.",
+        "achievements": [
+          "Migrated 1.2 million lines of COBOL batch processing to Java with dual-run verification.",
+          "Cut the nightly batch window from six hours to ninety minutes."
+        ]
+      },
+      {
+        "company": "Silesia Data Services",
+        "title": "Mainframe Developer",
+        "startMonth": "2012-03",
+        "endMonth": "2019-06",
+        "summary": "Maintained z/OS COBOL applications for insurers.",
+        "achievements": [
+          "Kept a 30-year-old policy administration system compliant through four regulatory changes.",
+          "Built job-control automation reducing manual operations 70%."
+        ]
+      }
+    ]
+  },
+  {
+    "key": "uma-venkatesh",
+    "firstName": "Uma",
+    "lastName": "Venkatesh",
+    "title": "Technical Writer",
+    "location": "Chennai",
+    "summary": "Technical writer for developer platforms. Turns sprawling APIs into documentation developers actually read, with runnable examples and honest error guides.",
+    "experiences": [
+      {
+        "company": "Coromandel Cloud",
+        "title": "Senior Technical Writer",
+        "startMonth": "2020-12",
+        "endMonth": null,
+        "summary": "Own the API reference and tutorials for a developer platform.",
+        "achievements": [
+          "Rewrote the API reference from an OpenAPI source of truth, cutting support tickets 30%.",
+          "Launched a docs-as-code pipeline with review gates shared with engineering."
+        ]
+      },
+      {
+        "company": "Marina Software",
+        "title": "Technical Writer",
+        "startMonth": "2016-04",
+        "endMonth": "2020-11",
+        "summary": "Documented enterprise integration products.",
+        "achievements": [
+          "Produced migration guides used by 500 customer teams.",
+          "Built a terminology style guide adopted across product lines."
+        ]
+      }
+    ]
+  },
+  {
+    "key": "viktor-eriksen",
+    "firstName": "Viktor",
+    "lastName": "Eriksen",
+    "title": "Audio Software Engineer",
+    "location": "Copenhagen",
+    "summary": "Audio software engineer writing real-time C++ for music production tools. At home in DSP land: filters, FFTs, and buffers that must never glitch.",
+    "experiences": [
+      {
+        "company": "Øresund Audio",
+        "title": "Senior Audio Developer",
+        "startMonth": "2020-03",
+        "endMonth": null,
+        "summary": "Develop VST and AU plug-ins for professional music producers.",
+        "achievements": [
+          "Shipped a convolution reverb VST plug-in praised for its near-zero latency.",
+          "Vectorised the DSP core with SIMD, halving CPU usage per track."
+        ]
+      },
+      {
+        "company": "Nordlyd",
+        "title": "Software Engineer",
+        "startMonth": "2015-09",
+        "endMonth": "2020-02",
+        "summary": "Embedded audio for digital mixing consoles.",
+        "achievements": [
+          "Wrote the low-latency audio engine of a 64-channel digital mixer.",
+          "Cut round-trip latency below three milliseconds with lock-free buffering."
+        ]
+      }
+    ]
+  },
+  {
+    "key": "wendy-chen",
+    "firstName": "Wendy",
+    "lastName": "Chen",
+    "title": "Data Scientist",
+    "location": "Singapore",
+    "summary": "Data scientist for growth and retention. Designs A/B tests properly, models churn honestly, and will tell you when the uplift is noise.",
+    "experiences": [
+      {
+        "company": "Merlion Commerce",
+        "title": "Senior Data Scientist",
+        "startMonth": "2021-05",
+        "endMonth": null,
+        "summary": "Growth analytics for a subscription commerce platform.",
+        "achievements": [
+          "Built a churn model whose targeted retention offers saved 4% of at-risk revenue.",
+          "Ran the A/B testing programme, standardising power analysis and stopping rules."
+        ]
+      },
+      {
+        "company": "Harbour Analytics",
+        "title": "Data Analyst",
+        "startMonth": "2017-01",
+        "endMonth": "2021-04",
+        "summary": "Marketing analytics consulting.",
+        "achievements": [
+          "Built attribution models across five advertising platforms.",
+          "Automated weekly client reporting, saving twenty analyst-hours."
+        ]
+      }
+    ]
+  },
+  {
+    "key": "yusuf-demir",
+    "firstName": "Yusuf",
+    "lastName": "Demir",
+    "title": "Network Engineer",
+    "location": "Istanbul",
+    "summary": "Network engineer for data-centre and wide-area networks. BGP whisperer: peering policy, traffic engineering, and the debugging of routes that flap at midnight.",
+    "experiences": [
+      {
+        "company": "Bosphorus Telecom",
+        "title": "Senior Network Engineer",
+        "startMonth": "2019-10",
+        "endMonth": null,
+        "summary": "Operate the backbone network of a regional internet service provider.",
+        "achievements": [
+          "Redesigned BGP peering policy, cutting transit costs 25%.",
+          "Automated router configuration with version-controlled templates across 200 devices."
+        ]
+      },
+      {
+        "company": "Anatolia Datacenters",
+        "title": "Network Engineer",
+        "startMonth": "2014-08",
+        "endMonth": "2019-09",
+        "summary": "Data-centre networking for colocation clients.",
+        "achievements": [
+          "Built a leaf-spine fabric for a new 500-rack facility.",
+          "Cut packet loss incidents 90% with proactive optical monitoring."
+        ]
+      }
+    ]
+  }
+]
