@@ -1,47 +1,62 @@
-# Semantic Roster Search (RAG)
+# Semantic Roster Search & JD Shortlist (RAG)
 
 Retrieval-augmented "find people by meaning" over employee CV narratives.
 
 The structured MCP tools match on rows — skill tags, categories, availability. They can't answer
 *"who has shipped real-time trading systems?"* or *"anyone with fintech + team-lead experience?"*,
 because that meaning lives in free-text **experience summaries and achievements**, not tags. This
-feature embeds those narratives, stores the vectors in pgvector, and exposes an MCP tool
-(`roster_semantic_search`) that the Roster Q&A agent uses to retrieve relevant employees and answer
-with cited evidence.
+surface embeds those narratives, stores the vectors in pgvector, and exposes them two ways:
 
-> Implemented across P1T-32 … P1T-39. Design/decision record: [`manuals/rag-semantic-roster-search-plan.md`](rag-semantic-roster-search-plan.md).
+- **`roster_semantic_search`** — single-question retrieval; the Roster Q&A agent uses it to answer
+  capability questions with cited evidence.
+- **`roster_shortlist_search`** + **`ShortlistAgent`** — JD-driven candidate shortlisting: paste a
+  job description, get coverage-ranked candidates with per-requirement evidence and a "Run full
+  Match" drill-in.
+
+Supporting machinery: a **retrieval eval harness** (frozen golden set, measured baseline, live
+regression gate) and a **500-employee demo roster** (generator + seeder tooling).
+
+> Core search: P1T-32…39 (design record: [`rag-semantic-roster-search-plan.md`](rag-semantic-roster-search-plan.md)).
+> Shortlist + evals + demo data: P1T-40…56 (decision records on the wayfinder map P1T-40; measured
+> baseline + verdicts: [`retrieval-eval-baseline.md`](retrieval-eval-baseline.md)).
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────┐   POST /agents/roster-qa    ┌──────────────────────────────┐
-│  web (SPA)  │ ──────────────────────────► │ Agents svc (:5200)           │
-└─────────────┘                             │  RosterQaAgent                │
-                                            │  loads all mcp:read tools,    │
-                                            │  incl. roster_semantic_search │
-                                            └──────────────┬───────────────┘
-                                                           │ MCP over HTTP (bearer, mcp:read)
-                                                           ▼
-                                            ┌──────────────────────────────┐
-                                            │ Mcp svc (:5100)               │
-                                            │  RosterSearchTools            │
-                                            │    → ISemanticSearchService   │
-                                            │  ReconcileWorker (hosted)     │
-                                            └──────────────┬───────────────┘
-                                                           │
-                    ┌──────────────────────────────────────┼──────────────────────────────┐
-                    ▼                                       ▼                              ▼
-        ┌────────────────────────┐        ┌──────────────────────────┐     ┌────────────────────────┐
-        │ Application             │        │ Infrastructure            │     │ GitHub Models           │
-        │  ChunkProjection        │        │  EmployeeSearchChunk       │     │  text-embedding-3-small │
-        │  Reconciler (pure diff) │        │  (pgvector table)          │     │  (OpenAI-compatible)    │
-        │  ISemanticSearchService │        │  GitHubModelsEmbedder      │     └────────────────────────┘
-        │  IEmbedder (contract)   │        │  SearchIndexReconciler     │
-        └────────────────────────┘        │  SemanticSearchService     │
-                                           └──────────────────────────┘
+┌─────────────┐  POST /agents/roster-qa      ┌──────────────────────────────┐
+│  web (SPA)  │  POST /agents/shortlist      │ Agents svc (:5200)           │
+│  Shortlist  │ ───────────────────────────► │  RosterQaAgent (all read     │
+│  tab + Q&A  │                              │   tools incl. semantic srch) │
+└─────────────┘                              │  ShortlistAgent (narrowed to │
+                                             │   roster_shortlist_search)   │
+                                             └──────────────┬───────────────┘
+                                                            │ MCP over HTTP (bearer, mcp:read)
+                                                            ▼
+                                             ┌──────────────────────────────┐
+                                             │ Mcp svc (:5100)               │
+                                             │  RosterSearchTools            │
+                                             │  RosterShortlistTools         │
+                                             │    → ISemanticSearchService   │
+                                             │    → IShortlistSearchService  │
+                                             │  ReconcileWorker (hosted)     │
+                                             └──────────────┬───────────────┘
+                                                            │
+                    ┌───────────────────────────────────────┼──────────────────────────────┐
+                    ▼                                        ▼                              ▼
+        ┌────────────────────────┐        ┌───────────────────────────┐     ┌────────────────────────┐
+        │ Application             │        │ Infrastructure             │     │ GitHub Models           │
+        │  ChunkProjection        │        │  EmployeeSearchChunk        │     │  text-embedding-3-small │
+        │  Reconciler (pure diff) │        │  (pgvector table)           │     │  (OpenAI-compatible)    │
+        │  ISemanticSearchService │        │  GitHubModelsEmbedder       │     └────────────────────────┘
+        │  IShortlistSearchService│        │  SearchIndexReconciler      │
+        │  ShortlistRanker (pure) │        │  SemanticSearchService      │
+        │  IEmbedder (contract)   │        │  DemoRosterSeeder           │
+        └────────────────────────┘        └───────────────────────────┘
                                                 Postgres + pgvector
+
+  tools/: GenerateDemoRoster · SeedDemoRoster · RetrievalEval(+Core, eval fixtures + sweep CLI)
 ```
 
 **Boundary rule.** All employee-data access goes through MCP tools, never the DB — semantic search
@@ -151,6 +166,99 @@ stay narrowed to `cv_get`.
 
 ---
 
+## JD shortlist — `roster_shortlist_search` + `ShortlistAgent`
+
+JD-driven candidate retrieval on the same substrate. A job description is too long and multi-faceted
+to embed as one query (it averages into mush), so the flow splits it:
+
+1. **`ShortlistAgent`** (name `shortlist`, tools narrowed to `roster_shortlist_search`) runs one
+   two-turn session: turn 1 — the model distills the JD into 3–8 short requirement phrases and calls
+   the tool once (user-set filters pass through verbatim); turn 2 — the model returns only minimal
+   `[{"employeeId","rationale"}]` JSON.
+2. **`roster_shortlist_search(requirements[], filters?, topK?)`** (MCP, `mcp:read`) batch-embeds all
+   requirements in **one** embedding call, runs one cosine query per requirement over the pre-filtered
+   chunk set, and merges **in code** (`ShortlistRanker`, pure): a candidate matches a requirement iff
+   their best chunk similarity ≥ `MinSimilarity`; ranking is **coverage-first** (requirements-matched
+   count, then mean best similarity). Per-requirement evidence (matched/missed + best snippet) rides
+   along. Defaults: top 10, cap 20.
+3. **`POST /agents/shortlist { jobDescription, availableOn?, skillIds?, location?, minYears?, topK? }`**
+   composes the response **endpoint-side**: ids/names/scores/coverage/evidence come from the captured
+   tool result (a per-run `DelegatingAIFunction` records it), the model contributes only rationales.
+   Unknown ids are ignored; an unparseable rationale turn degrades to templated rationales
+   ("Matched N/M requirements: …") — still 200. Upstream faults (model, tool soft error, tool never
+   called) → 502.
+
+**Response shape:**
+
+```json
+{
+  "requirements": ["built real-time payments systems", "led a team"],
+  "candidates": [{
+    "employeeId": "…", "name": "Ada Lovelace", "title": "Payments Lead",
+    "score": 0.82,
+    "coverage": { "matched": 4, "total": 5 },
+    "requirements": [{ "text": "…", "matched": true, "snippet": "…" }],
+    "rationale": "…"
+  }]
+}
+```
+
+**Why the LLM never touches the numbers:** ranking math is deterministic tool code; the corruption
+guard is tested (model returns wrong ids → response ids stay the tool's). Hard filters come from the
+**UI**, never extracted from the JD — a hallucinated hard filter silently excludes good candidates.
+
+**Widget**: the Shortlist tab takes the JD + optional filters (date, catalog-bound skill picker,
+location, min years, topK), renders the requirement chips ("how the JD was read"), ranked candidate
+cards (employee link, score, coverage badge, rationale, expandable evidence), and a **Run full
+Match** action that jumps to the Match tab pre-filled with that employee + the same JD. Cap-reached
+(429) and errors render like the other tabs; the Usage tab picks up the `shortlist` agent
+automatically.
+
+**Cost**: one shortlist ≈ 2 model turns (~3–6k tokens) against the caller's cap. Default caps were
+raised to 25k / 150k / 500k (daily/weekly/monthly) — the old 1000/7000/30000 were demo placeholders.
+
+---
+
+## Retrieval evals
+
+Retrieval quality is **measured, not vibed** (`tools/RetrievalEval.Core` + `tools/RetrievalEval`):
+
+- **Frozen corpus** (24 hand-authored employees; keyword terms exclusive per employee) + **golden
+  set** (39 labelled queries: keyword / paraphrase / cross-facet / negative). Fixtures live with the
+  eval core; labels are versioned truth — never mix demo data in.
+- **Metrics**: recall@5, MRR, negative-query false-positive rate (the trio the threshold trades
+  between), plus keyword-subset recall@5 (feeds the hybrid question).
+- **Live regression gate**: `dotnet test --filter "Category=live"` with `GITHUB_TOKEN` — real
+  embeddings against Testcontainers pgvector, asserts no regression vs the committed floor.
+- **Sweep CLI**: embeds once, re-ranks per threshold (a full sweep costs one run's embedding budget):
+  `GITHUB_TOKEN=<pat> dotnet run --project tools/RetrievalEval -- --sweep 0.15:0.50:0.05 --refine`.
+
+**Measured baseline + standing verdicts** (see [`retrieval-eval-baseline.md`](retrieval-eval-baseline.md)):
+at 0.30 — recall@5 **1.0**, MRR **0.985**, negative-FP **0.0**, keyword recall **1.0**. Verdicts:
+**`MinSimilarity` stays 0.30** (mid-plateau 0.285–0.350); **hybrid keyword+vector search not
+adopted** (keyword gap 0.0 pts vs the >10-pt adoption rule) — the eval gate re-raises it if the gap
+ever opens. Caveat: the small frozen corpus saturates recall by design; the gate guards regressions,
+it doesn't claim perfection at scale.
+
+---
+
+## Demo data
+
+500 synthetic employees across 10 industry clusters with rich career narratives
+(`api/Infrastructure/Persistence/SeedData/demo-roster.json`, committed; all emails
+`@demo.example.com`):
+
+- **Generate/regenerate**: `tools/GenerateDemoRoster` — deterministic assembly from hand-authored
+  career templates (seeded PRNG), optional LLM enrichment pass (`GITHUB_TOKEN`). The committed file
+  is the deterministic output (seed 48).
+- **Seed**: `dotnet run --project tools/SeedDemoRoster -- [--count N] [--wipe]` — idempotent by
+  email; `--wipe` deletes exactly the `@demo.example.com` employees (cascades children + chunks).
+  Or set `Seed:DemoRoster=true` (+ `Seed:DemoRosterCount`) for seed-on-boot demo environments.
+- After seeding, the reconcile worker embeds the new chunks on its own (real embeddings; 500
+  employees ≈ 75–150k embedding tokens once — infra cost, not user caps).
+
+---
+
 ## Operations
 
 - **Postgres image**: `pgvector/pgvector:pg17` (stock `postgres:17` plus the `vector` extension).
@@ -168,7 +276,21 @@ Mcp service `appsettings.json`:
 "GitHubModels":  { "Endpoint": "…", "EmbeddingModel": "text-embedding-3-small", "ApiKey": "" },
 "SearchIndex":   { "Enabled": true, "IntervalSeconds": 30, "EmbedBatchSize": 32 },
 "SemanticSearch":{ "MinSimilarity": 0.30, "DefaultTopK": 5, "MaxTopK": 20,
-                   "MaxSnippetsPerEmployee": 3, "SnippetMaxChars": 500 }
+                   "MaxSnippetsPerEmployee": 3, "SnippetMaxChars": 500,
+                   "ShortlistDefaultTopK": 10, "ShortlistMaxTopK": 20 }
+```
+
+Agents service `appsettings.json` (shortlist + caps):
+
+```jsonc
+"McpAuth": { "shortlist": { "ClientId": "agent-shortlist", "Scope": "mcp:read", … } },
+"Usage":   { "DefaultDailyTokens": 25000, "DefaultWeeklyTokens": 150000, "DefaultMonthlyTokens": 500000 }
+```
+
+Web service `appsettings.json` (demo seeding, off by default):
+
+```jsonc
+"Seed": { "DemoRoster": false, "DemoRosterCount": null }
 ```
 
 The embedding PAT is read from the `GITHUB_TOKEN` env var (preferred) or `GitHubModels:ApiKey`.
@@ -187,23 +309,43 @@ The worker is disabled in the in-memory MCP tests via `SearchIndex:Enabled=false
   `SearchIndexReconciler` (backfill, no-op second pass, edit re-embeds only the changed chunk,
   orphan delete, employee cascade) and `SemanticSearchService` (topical ranking + threshold
   exclusion, off-topic empty, location + skill pre-filters, embed-failure soft error).
-- **MCP transport** (`Mcp.Tests`, in-memory host, stubbed service): tool exposed under `mcp:read`,
-  ranked employees + snippets returned, query/filters/topK bound through correctly.
+- **MCP transport** (`Mcp.Tests`, in-memory host, stubbed service): both search tools exposed under
+  `mcp:read`, ranked results returned, params (incl. `requirements[]`) bound through correctly.
+- **Shortlist** (`Application.Tests` + `Mcp.Tests` + `Agents.Tests`): pure `ShortlistRanker` ranking
+  (4-of-5 beats 1-of-5-at-0.9), pgvector coverage-first end-to-end, one-batched-embed-call assertion,
+  composer corruption guard (model can't change ids), degrade-to-templated-rationale, endpoint
+  contract/429/502, live smoke.
 - **Agent** (`Agents.Tests`, fake chat client + fake tools): capability question routes to
   `roster_semantic_search` and cites the snippet; a soft error falls back to `employee_list`.
+- **Evals** (`Mcp.Tests` + `tools/RetrievalEval.Core`): pure metric math, fixture-integrity checks,
+  Testcontainers plumbing test with a deterministic embedder, live-gated regression test with real
+  embeddings.
+- **Frontend** (`web`, vitest + testing-library — the project's first FE harness): 10 Shortlist-tab
+  component tests (payload shaping, gating, rendering, evidence, drill-in, 429, empty state).
+  `cd web && npm test`.
 
 Docker-in-CI is required for the Testcontainers suites.
 
 ---
 
-## Follow-ons & risks
+## Resolved decisions & remaining risks
 
-- **JD-shortlist mode on `MatchAgent`** (deferred, separate issue): embed a job description, retrieve
-  top candidates, score each. Changes Match's contract (id+JD → JD-only), endpoint, and UI tab.
-- **Threshold tuning**: `MinSimilarity = 0.30` is a starting value for `text-embedding-3-small`
-  cosine. Validate against real roster data and adjust the config key.
-- **Embedding availability**: confirm the GitHub Models PAT actually serves an embedding deployment;
-  if not, point `GitHubModels:Endpoint`/`EmbeddingModel` at OpenAI-direct/Azure (chat is unaffected).
+Resolved (with measurements — details in [`retrieval-eval-baseline.md`](retrieval-eval-baseline.md)):
+
+- **JD-shortlist**: shipped (tool + agent + endpoint + widget tab), see the shortlist section above.
+- **Threshold**: measured; `MinSimilarity` stays 0.30 (mid-plateau 0.285–0.350 on the golden set).
+- **Hybrid keyword+vector search**: **not adopted** — keyword-subset recall showed zero gap. The
+  pre-decided design (tsvector + GIN, `websearch_to_tsquery`, RRF k=60, transparent in
+  `SemanticSearchService`) stays on record in the P1T-46 resolution; every future sweep's
+  keyword-recall column re-raises the question automatically.
+
+Remaining:
+
 - **Secret hygiene**: never commit a real PAT — use `GITHUB_TOKEN`. (A PAT was found committed in
   `api/Agents/appsettings.json` during this work; rotate it.)
-- **Scale**: revisit an HNSW index if the roster grows into the tens of thousands of chunks.
+- **Scale**: revisit an HNSW index if the roster grows into the tens of thousands of chunks; rerun
+  the sweep if the corpus or embedding model changes (recall saturates on the small frozen corpus).
+- **Shortlist-specific evals** (requirement-extraction fidelity, coverage-merge ranking against
+  labelled JDs): post-build follow-on, out of the original map's scope.
+- **CV-tailoring retrieval / multi-turn memory**: parked fog from the planning map (P1T-40), not
+  started.

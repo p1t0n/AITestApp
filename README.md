@@ -2,33 +2,60 @@
 
 A .NET 10 + React (Vite) service to manage available employees — skills, qualifications,
 work experience, and time-based availability — and render their CVs. An MCP server exposes
-every operation on every entity to external AI agents over the same Application layer.
+every operation on every entity to external AI agents over the same Application layer, and a
+suite of built-in AI agents (Roster Q&A, CV Tailoring, Match, **JD Shortlist**) consumes it —
+including **semantic search over career narratives** (pgvector RAG).
 See [SPEC.md](SPEC.md).
+
+## Features
+
+- **Employee management** — CRUD for employees + languages, availability (capacity step-function),
+  skills (catalog-backed), qualifications, experiences, achievements; assembled CV view.
+- **MCP server** — 38 tools over the same Application layer, OAuth 2.1 (Keycloak) per-tool scopes.
+- **Semantic roster search (RAG)** — employee narratives embedded into pgvector by a self-healing
+  reconcile worker; `roster_semantic_search` answers "who has done X" by meaning, with evidence.
+- **JD Shortlist** — paste a job description, get coverage-ranked candidates with per-requirement
+  evidence and one-click drill-in to a full Match assessment.
+- **AI agent widget** — dockable in-app assistant with Roster Q&A / Tailor CV / Match / Shortlist /
+  Usage tabs; per-user token caps enforced server-side.
+- **Auth** — passkey (WebAuthn) sign-in for the app; OAuth 2.1 service accounts for agents.
+- **Retrieval evals** — frozen golden set + live regression gate + threshold-sweep CLI; retrieval
+  quality is measured, not guessed (see `manuals/retrieval-eval-baseline.md`).
+- **Demo data** — committed 500-employee synthetic roster + seeder CLI for realistic demos.
 
 ## Stack
 
 - **Backend:** ASP.NET Core Web API (.NET 10), layered Domain / Application / Infrastructure / Web
 - **MCP server:** ModelContextProtocol (Streamable HTTP), thin adapters over the Application layer, OAuth 2.1 (Keycloak) with per-tool scopes
-- **Frontend:** React + Vite + TypeScript, MUI, TanStack Query
+- **AI agents:** Microsoft Agent Framework over provider-agnostic `IChatClient` (GitHub Models by default); embeddings via `text-embedding-3-small`
+- **Vector search:** PostgreSQL + pgvector (cosine), EF Core mapping via Pgvector.EntityFrameworkCore
+- **Frontend:** React + Vite + TypeScript, MUI, TanStack Query (+ vitest component tests)
 - **Database:** PostgreSQL via EF Core
 - **Validation:** FluentValidation (enforced in the Application layer, so REST and MCP validate identically)
-- **Tests:** xUnit (Application unit tests + MCP integration tests)
+- **Tests:** xUnit (unit + Testcontainers integration incl. pgvector) + vitest (frontend)
 
 ## Layout
 
 ```
 api/
   Domain/          entities + enums
-  Application/     services, DTOs, validators, CV assembly   ← reused by both Web and MCP
-  Infrastructure/  EF Core DbContext, migrations, seed
-  Web/             controllers, Swagger, DI
-  Mcp/             MCP server: tools, bearer auth, error mapping
-web/               React SPA
+  Application/     services, DTOs, validators, CV assembly, search contracts  ← reused by Web + MCP
+  Infrastructure/  EF Core DbContext, migrations, seeders, embeddings, pgvector search
+  Web/             controllers, Swagger, passkey auth, DI
+  Mcp/             MCP server: tools (incl. semantic + shortlist search), bearer auth, reconcile worker
+  Agents/          AI agents service: Roster Q&A, CV Tailoring, Match, Shortlist + usage caps
+web/               React SPA (incl. the agent widget)
+tools/
+  GenerateDemoRoster/  demo dataset generator (one-off, LLM-assisted)
+  SeedDemoRoster/      demo roster seeder CLI (--count / --wipe)
+  RetrievalEval/       retrieval eval + threshold-sweep CLI (+ RetrievalEval.Core)
 keycloak/          realm-export.json (OAuth realm: clients, scopes, audience mapper)
+manuals/           tech docs: semantic search + shortlist, eval baseline, decision records
 tests/
   Application.Tests/  Application unit tests
-  Mcp.Tests/          MCP integration tests (in-process client + Keycloak e2e)
-docker-compose.yml Postgres + Keycloak
+  Agents.Tests/       agent + endpoint tests (fake chat client / tool source)
+  Mcp.Tests/          MCP integration tests (in-process client, Testcontainers pgvector, Keycloak e2e)
+docker-compose.yml Postgres (pgvector image) + Keycloak
 SPEC.md            full design + decisions
 ```
 
@@ -92,22 +119,46 @@ cd api/Agents
 dotnet run
 ```
 
-Binds `http://localhost:5200`. Ask the **Roster Q&A** agent a question:
+Binds `http://localhost:5200`. Four agents, one endpoint each (all also available as tabs in the
+in-app widget):
+
+- `POST /agents/roster-qa {question}` — Q&A over the roster; uses `roster_semantic_search` for
+  capability questions and cites evidence snippets.
+- `POST /agents/cv-tailoring {employeeId, jobDescription}` — tailoring guidance for one CV.
+- `POST /agents/match {employeeId, jobDescription}` — gap analysis + scored fit assessment.
+- `POST /agents/shortlist {jobDescription, availableOn?, skillIds?, location?, minYears?, topK?}` —
+  JD → coverage-ranked candidates with per-requirement evidence (structured JSON).
+- `GET /agents/usage` — the caller's token usage vs their daily/weekly/monthly caps.
+
+Example:
 
 ```bash
 curl -s http://localhost:5200/agents/roster-qa \
   -H 'Content-Type: application/json' \
-  -d '{"question":"Who knows React and is available this summer?"}'
+  -d '{"question":"Who has built real-time payments systems?"}'
 ```
 
-The agent calls the MCP read tools, then answers in natural language, citing employees by
-name + id. Requires the MCP server (step 4) + Keycloak (step 1) running. Model/auth/MCP-URL
-are configurable in `api/Agents/appsettings.json`; the chat backend is provider-agnostic
-(`IChatClient`) and swaps to Azure OpenAI / OpenAI / Anthropic / Ollama in one line.
+Requires the MCP server (step 4) + Keycloak (step 1) running. Model/auth/MCP-URL are configurable
+in `api/Agents/appsettings.json`; the chat backend is provider-agnostic (`IChatClient`) and swaps
+to Azure OpenAI / OpenAI / Anthropic / Ollama in one line. Every agent call is metered against
+per-user token caps (defaults 25k/150k/500k daily/weekly/monthly).
+
+### 6. Seed the demo roster (optional)
+
+500 synthetic employees across 10 industries, with narratives rich enough to make semantic search
+worth demoing:
+
+```bash
+dotnet run --project tools/SeedDemoRoster            # seed all 500 (idempotent)
+dotnet run --project tools/SeedDemoRoster -- --wipe  # remove exactly the demo rows
+```
+
+With the MCP service running, the reconcile worker embeds the new employees automatically.
+See `manuals/semantic-roster-search.md` for the full RAG documentation.
 
 ## MCP tools
 
-36 tools, 1:1 thin adapters over the Application layer, annotated read-only / write /
+38 tools, 1:1 thin adapters over the Application layer, annotated read-only / write /
 destructive so clients can gate dangerous calls:
 
 - **Employees:** `employee_list`, `employee_get`, `employee_create`, `employee_update`, `employee_delete`
@@ -115,6 +166,8 @@ destructive so clients can gate dangerous calls:
   `achievement_*`, `experience_skill_*`
 - **Skill catalog:** `category_list/tree/create/update/delete`, `skill_list/create/update/delete`
 - **CV:** `cv_get` (assembled data, not a PDF)
+- **Semantic search (RAG):** `roster_semantic_search` (query by meaning + hard filters, evidence
+  snippets), `roster_shortlist_search` (multi-requirement coverage-ranked candidate retrieval)
 
 Each tool requires a scope: read-only tools need `mcp:read`, create/update need `mcp:write`,
 deletes need `mcp:admin`. The server hides tools the token isn't scoped for and forbids the call.
@@ -124,8 +177,12 @@ so an agent can self-correct.
 ## Tests
 
 ```bash
-dotnet test
+dotnet test          # backend: unit + Testcontainers integration (needs Docker)
+cd web && npm test   # frontend: vitest component tests
 ```
+
+Live tests (real embeddings / models) are opt-in: `dotnet test --filter "Category=live"` with
+`GITHUB_TOKEN` set. The retrieval regression gate lives there too.
 
 ## Database migrations
 
@@ -149,4 +206,5 @@ dotnet ef migrations add <Name> \
 - Server-side PDF rendering (CV is React-rendered; print to PDF for now)
 - Web integration tests (WebApplicationFactory + Testcontainers) and Playwright e2e
 - SPA edit forms for languages / qualifications / experiences (API already supports them)
-- Authentication for the Web API (the MCP server is already OAuth-protected)
+- Shortlist-specific retrieval evals (requirement-extraction fidelity, coverage-merge ranking)
+- CV-tailoring retrieval (reuse strong phrasings across CVs) and multi-turn agent memory
