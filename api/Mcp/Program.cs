@@ -78,7 +78,8 @@ builder.Services
     .WithTools<ExperienceSkillTools>(toolSerializerOptions)
     .WithTools<CatalogTools>(toolSerializerOptions)
     .WithTools<CvTools>(toolSerializerOptions)
-    .WithTools<RosterSearchTools>(toolSerializerOptions);
+    .WithTools<RosterSearchTools>(toolSerializerOptions)
+    .WithTools<RosterShortlistTools>(toolSerializerOptions);
 
 var app = builder.Build();
 
