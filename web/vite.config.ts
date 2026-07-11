@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
@@ -18,5 +19,10 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+  },
+  // Component tests (vitest + testing-library) run in jsdom; setup registers jest-dom matchers.
+  test: {
+    environment: "jsdom",
+    setupFiles: ["./src/test/setup.ts"],
   },
 });
