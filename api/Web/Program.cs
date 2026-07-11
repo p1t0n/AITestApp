@@ -50,6 +50,18 @@ if (app.Environment.IsDevelopment())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.MigrateAsync();
     await DbInitializer.SeedAsync(db);
+
+    // Optional demo roster seed (P1T-51): off by default. Flip Seed:DemoRoster to load the
+    // committed 500-employee dataset; Seed:DemoRosterCount limits it to the first N employees.
+    // Idempotent — employees whose email already exists are skipped.
+    if (app.Configuration.GetValue("Seed:DemoRoster", false))
+    {
+        var demoCount = app.Configuration.GetValue<int?>("Seed:DemoRosterCount");
+        var demoResult = await DemoRosterSeeder.SeedAsync(db, DemoRosterSeeder.LoadCommittedDataset(), demoCount);
+        app.Logger.LogInformation(
+            "Demo roster seed: {Seeded} employees seeded, {Skipped} already present.",
+            demoResult.Seeded, demoResult.Skipped);
+    }
 }
 
 app.UseCors(SpaCors);
