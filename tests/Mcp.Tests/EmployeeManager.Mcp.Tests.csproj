@@ -28,12 +28,12 @@
 
   <ItemGroup>
     <None Include="..\..\keycloak\realm-export.json" Link="realm-export.json" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="Eval\Fixtures\*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\api\Mcp\EmployeeManager.Mcp.csproj" />
     <ProjectReference Include="..\..\api\Application\EmployeeManager.Application.csproj" />
+    <ProjectReference Include="..\..\tools\RetrievalEval.Core\RetrievalEval.Core.csproj" />
   </ItemGroup>
 
 </Project>

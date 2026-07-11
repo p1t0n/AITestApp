@@ -28,4 +28,11 @@
   <Folder Name="/tests/Mcp.Tests/">
     <Project Path="tests/Mcp.Tests/EmployeeManager.Mcp.Tests.csproj" />
   </Folder>
+  <Folder Name="/tools/" />
+  <Folder Name="/tools/RetrievalEval/">
+    <Project Path="tools/RetrievalEval/RetrievalEval.csproj" />
+  </Folder>
+  <Folder Name="/tools/RetrievalEval.Core/">
+    <Project Path="tools/RetrievalEval.Core/RetrievalEval.Core.csproj" />
+  </Folder>
 </Solution>

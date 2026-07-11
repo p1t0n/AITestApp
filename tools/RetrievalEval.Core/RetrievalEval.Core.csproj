@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>EmployeeManager.RetrievalEval</RootNamespace>
+    <AssemblyName>EmployeeManager.RetrievalEval.Core</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Frozen eval fixtures: copied to output (transitively for consumers) so both the tests and
+         the CLI load the exact same committed files. -->
+    <None Include="Fixtures\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\api\Infrastructure\EmployeeManager.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

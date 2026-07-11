@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace EmployeeManager.Mcp.Tests.Eval;
+namespace EmployeeManager.RetrievalEval;
 
 /// <summary>
 /// One employee of the frozen eval corpus. This is measurement truth, distinct from any demo data:
@@ -65,7 +65,7 @@ public static class EvalFixtures
 
     private static IReadOnlyList<T> Load<T>(string fileName)
     {
-        var path = Path.Combine(AppContext.BaseDirectory, "Eval", "Fixtures", fileName);
+        var path = Path.Combine(AppContext.BaseDirectory, "Fixtures", fileName);
         using var stream = File.OpenRead(path);
         return JsonSerializer.Deserialize<List<T>>(stream, Options)
                ?? throw new InvalidOperationException($"Fixture '{fileName}' deserialized to null.");

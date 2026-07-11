@@ -9,6 +9,8 @@ using Microsoft.Extensions.Logging;
 using Testcontainers.PostgreSql;
 using Xunit.Abstractions;
 
+using EmployeeManager.RetrievalEval;
+
 namespace EmployeeManager.Mcp.Tests.Eval;
 
 /// <summary>

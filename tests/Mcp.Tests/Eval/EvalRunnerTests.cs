@@ -1,5 +1,6 @@
 using EmployeeManager.Application.Abstractions;
 using EmployeeManager.Infrastructure.Persistence;
+using EmployeeManager.RetrievalEval;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
@@ -59,6 +60,42 @@ public sealed class EvalRunnerTests : IAsyncLifetime
         result.Traces[3].ReturnedKeys.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task Capture_retries_transient_embedding_failures_between_queries()
+    {
+        var corpus = new[] { Person("fiona-fintech", "Fiona", "Built fintech trading systems.") };
+        var goldenSet = new[]
+        {
+            new GoldenQuery("fintech", GoldenQueryCategory.Keyword, ["fiona-fintech"]),
+            new GoldenQuery("gaming", GoldenQueryCategory.Negative, []),
+        };
+
+        // Fails every second call: indexing (call 1) succeeds, each query's first attempt dies the
+        // way a rate-limited provider does, and the retry succeeds.
+        var flaky = new FlakyEmbedder(new KeywordEmbedder());
+
+        var cached = await EvalRunner.CaptureAsync(
+            NewDb, flaky, corpus, goldenSet, floorSimilarity: 0.15,
+            retry: new QueryRetryPolicy(MaxAttempts: 2, Delay: _ => TimeSpan.Zero));
+
+        cached.Should().HaveCount(2);
+        cached[0].Hits.Select(h => h.Key).Should().Equal("fiona-fintech");
+        cached[1].Hits.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Capture_fails_after_the_retry_budget_is_spent()
+    {
+        var corpus = new[] { Person("fiona-fintech", "Fiona", "Built fintech trading systems.") };
+        var goldenSet = new[] { new GoldenQuery("fintech", GoldenQueryCategory.Keyword, ["fiona-fintech"]) };
+
+        var act = () => EvalRunner.CaptureAsync(
+            NewDb, new FlakyEmbedder(new KeywordEmbedder()), corpus, goldenSet, floorSimilarity: 0.15,
+            retry: new QueryRetryPolicy(MaxAttempts: 1, Delay: _ => TimeSpan.Zero));
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*fintech*");
+    }
+
     private AppDbContext NewDb()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
@@ -78,6 +115,20 @@ public sealed class EvalRunnerTests : IAsyncLifetime
         [
             new EvalExperience("Acme", "Engineer", "2020-01", null, narrative, []),
         ]);
+
+    /// <summary>Throws on every second call — the shape of a rate-limited provider: the indexing
+    /// call goes through, then each query's first attempt dies and its retry succeeds.</summary>
+    private sealed class FlakyEmbedder(IEmbedder inner) : IEmbedder
+    {
+        private int _calls;
+
+        public string Model => inner.Model;
+
+        public Task<EmbeddingBatch> EmbedAsync(IReadOnlyList<string> inputs, CancellationToken ct = default)
+            => ++_calls % 2 == 0
+                ? throw new HttpRequestException("429 simulated rate limit")
+                : inner.EmbedAsync(inputs, ct);
+    }
 
     /// <summary>Topical fake embedder (same trick as SemanticSearchServiceTests): keywords map to
     /// basis dimensions, plus a tiny baseline so no vector is all-zero.</summary>
