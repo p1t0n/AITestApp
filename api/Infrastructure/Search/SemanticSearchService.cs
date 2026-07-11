@@ -15,7 +15,7 @@ namespace EmployeeManager.Infrastructure.Search;
 /// SQL pre-filter (so the top-K are all valid candidates), ranks chunks by cosine similarity, and
 /// aggregates chunk hits to employees (best similarity + evidence snippets).
 /// </summary>
-public sealed class SemanticSearchService : ISemanticSearchService
+public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSearchService
 {
     private readonly AppDbContext _db;
     private readonly IEmbedder _embedder;
@@ -64,21 +64,7 @@ public sealed class SemanticSearchService : ISemanticSearchService
             return SemanticSearchResult.Empty; // filters excluded everyone
         }
 
-        var maxDistance = 1.0 - _options.MinSimilarity;
-        var fetch = Math.Max(limit * 10, 50);
-
-        var candidates = _db.EmployeeSearchChunks.Where(c => c.Embedding != null);
-        if (eligibleIds is not null)
-        {
-            candidates = candidates.Where(c => eligibleIds.Contains(c.EmployeeId));
-        }
-
-        var ranked = await candidates
-            .Select(c => new { c.EmployeeId, c.Content, Distance = c.Embedding!.CosineDistance(queryVector) })
-            .Where(x => x.Distance <= maxDistance)
-            .OrderBy(x => x.Distance)
-            .Take(fetch)
-            .ToListAsync(ct);
+        var ranked = await RankChunksAsync(queryVector, eligibleIds, Fetch(limit), ct);
 
         if (ranked.Count == 0)
         {
@@ -122,6 +108,127 @@ public sealed class SemanticSearchService : ISemanticSearchService
 
         return new SemanticSearchResult(hits);
     }
+
+    /// <summary>
+    /// Multi-requirement shortlist search: embed all requirements in one batch, run one cosine query
+    /// per requirement over the pre-filtered chunk set, then merge coverage-first via
+    /// <see cref="ShortlistRanker"/> (requirements matched before similarity).
+    /// </summary>
+    public async Task<ShortlistSearchResult> SearchAsync(
+        IReadOnlyList<string> requirements, SemanticSearchFilters? filters = null, int? topK = null,
+        CancellationToken ct = default)
+    {
+        var cleaned = (requirements ?? []).Where(r => !string.IsNullOrWhiteSpace(r))
+            .Select(r => r.Trim())
+            .ToList();
+        if (cleaned.Count == 0)
+        {
+            return ShortlistSearchResult.Empty;
+        }
+
+        var limit = Math.Clamp(topK ?? _options.ShortlistDefaultTopK, 1, _options.ShortlistMaxTopK);
+
+        // One batched embed call for all requirements. Retrieval failing must not fault the caller —
+        // return a soft error so the agent can fall back to structured tools.
+        List<Vector> requirementVectors;
+        try
+        {
+            var embedded = await _embedder.EmbedAsync(cleaned, ct);
+            requirementVectors = embedded.Vectors.Select(v => new Vector(v)).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Shortlist search could not embed the requirements; returning a soft error.");
+            return ShortlistSearchResult.Failed("The semantic search backend is unavailable.");
+        }
+
+        var eligibleIds = await ResolveEligibleEmployeesAsync(filters, ct);
+        if (eligibleIds is { Count: 0 })
+        {
+            return ShortlistSearchResult.Empty; // filters excluded everyone
+        }
+
+        // One cosine query per requirement; keep each employee's best chunk as that requirement's match.
+        var matchesPerRequirement = new List<IReadOnlyDictionary<Guid, ShortlistMatch>>(cleaned.Count);
+        foreach (var requirementVector in requirementVectors)
+        {
+            var ranked = await RankChunksAsync(requirementVector, eligibleIds, Fetch(limit), ct);
+
+            matchesPerRequirement.Add(ranked
+                .GroupBy(x => x.EmployeeId)
+                .ToDictionary(
+                    g => g.Key,
+                    g =>
+                    {
+                        var best = g.MinBy(x => x.Distance)!;
+                        return new ShortlistMatch(1.0 - best.Distance, Truncate(best.Content));
+                    }));
+        }
+
+        var merged = ShortlistRanker.Rank(cleaned, matchesPerRequirement, limit);
+        if (merged.Count == 0)
+        {
+            return ShortlistSearchResult.Empty;
+        }
+
+        var ids = merged.Select(x => x.EmployeeId).ToList();
+        var employees = await _db.Employees
+            .Where(e => ids.Contains(e.Id))
+            .Select(e => new { e.Id, e.FirstName, e.LastName, e.Title })
+            .ToDictionaryAsync(e => e.Id, ct);
+
+        var candidatesRanked = merged
+            .Where(x => employees.ContainsKey(x.EmployeeId))
+            .Select(x =>
+            {
+                var e = employees[x.EmployeeId];
+                return new ShortlistCandidate(
+                    x.EmployeeId,
+                    $"{e.FirstName} {e.LastName}".Trim(),
+                    e.Title,
+                    x.Score,
+                    x.MatchedCount,
+                    cleaned.Count,
+                    x.Evidence);
+            })
+            .ToList();
+
+        return new ShortlistSearchResult(candidatesRanked);
+    }
+
+    /// <summary>Chunks ranked by cosine distance to one query vector, capped and thresholded.</summary>
+    private sealed record ChunkHit(Guid EmployeeId, string Content, double Distance);
+
+    /// <summary>
+    /// Ranks the (optionally pre-filtered) chunk set against one query vector: closest first,
+    /// anything below <see cref="SemanticSearchOptions.MinSimilarity"/> dropped, at most
+    /// <paramref name="fetch"/> rows.
+    /// </summary>
+    private async Task<List<ChunkHit>> RankChunksAsync(
+        Vector queryVector, HashSet<Guid>? eligibleIds, int fetch, CancellationToken ct)
+    {
+        var maxDistance = 1.0 - _options.MinSimilarity;
+
+        var candidates = _db.EmployeeSearchChunks.Where(c => c.Embedding != null);
+        if (eligibleIds is not null)
+        {
+            candidates = candidates.Where(c => eligibleIds.Contains(c.EmployeeId));
+        }
+
+        // Project to an anonymous type inside the query (EF can't translate record constructors).
+        var rows = await candidates
+            .Select(c => new { c.EmployeeId, c.Content, Distance = c.Embedding!.CosineDistance(queryVector) })
+            .Where(x => x.Distance <= maxDistance)
+            .OrderBy(x => x.Distance)
+            .Take(fetch)
+            .ToListAsync(ct);
+
+        return rows.Select(x => new ChunkHit(x.EmployeeId, x.Content, x.Distance)).ToList();
+    }
+
+    /// <summary>Over-fetch chunk rows relative to the requested employee count, since several
+    /// chunks can belong to the same employee.</summary>
+    private static int Fetch(int limit) => Math.Max(limit * 10, 50);
 
     /// <summary>
     /// Ids of employees passing the hard filters, or null when no filter is set (no restriction).

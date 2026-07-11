@@ -24,6 +24,7 @@ public static class SearchIndexingServiceCollectionExtensions
         // Scoped: share the request/scope AppDbContext; the worker opens a scope per pass.
         services.AddScoped<ISearchIndexReconciler, SearchIndexReconciler>();
         services.AddScoped<ISemanticSearchService, SemanticSearchService>();
+        services.AddScoped<IShortlistSearchService, SemanticSearchService>();
 
         return services;
     }

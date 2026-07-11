@@ -15,6 +15,12 @@ public sealed class SemanticSearchOptions
     /// <summary>Hard cap on employees returned, whatever the caller asks for.</summary>
     public int MaxTopK { get; set; } = 20;
 
+    /// <summary>Default number of shortlist candidates returned when the caller doesn't specify.</summary>
+    public int ShortlistDefaultTopK { get; set; } = 10;
+
+    /// <summary>Hard cap on shortlist candidates returned, whatever the caller asks for.</summary>
+    public int ShortlistMaxTopK { get; set; } = 20;
+
     /// <summary>Max snippets returned per employee (the closest-matching chunks).</summary>
     public int MaxSnippetsPerEmployee { get; set; } = 3;
 
