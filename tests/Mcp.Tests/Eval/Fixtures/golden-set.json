@@ -1,0 +1,132 @@
+[
+  { "query": "AUTOSAR", "category": "keyword", "expected": ["bjorn-lindqvist"] },
+  { "query": "Kubernetes", "category": "keyword", "expected": ["erik-johansson"] },
+  { "query": "HL7 FHIR integration", "category": "keyword", "expected": ["nadia-hussain"] },
+  { "query": "COBOL", "category": "keyword", "expected": ["tomasz-nowak"] },
+  { "query": "Solidity smart contracts", "category": "keyword", "expected": ["samuel-adeyemi"] },
+  { "query": "Terraform", "category": "keyword", "expected": ["kwame-asante"] },
+  { "query": "OWASP", "category": "keyword", "expected": ["igor-petrov"] },
+  { "query": "dbt data models", "category": "keyword", "expected": ["carla-mendes"] },
+  { "query": "SAP ABAP", "category": "keyword", "expected": ["miguel-torres"] },
+  { "query": "PostgreSQL replication", "category": "keyword", "expected": ["lena-kovacs"] },
+  { "query": "BGP peering", "category": "keyword", "expected": ["yusuf-demir"] },
+
+  {
+    "query": "someone to stabilise our always-crashing servers and handle overnight emergencies",
+    "category": "paraphrase",
+    "expected": ["erik-johansson"]
+  },
+  {
+    "query": "engineer for moving funds between accounts without losing a cent",
+    "category": "paraphrase",
+    "expected": ["amara-okafor"]
+  },
+  {
+    "query": "writes the software that runs inside vehicles",
+    "category": "paraphrase",
+    "expected": ["bjorn-lindqvist"]
+  },
+  {
+    "query": "makes web interfaces usable for people with visual impairments",
+    "category": "paraphrase",
+    "expected": ["george-papadopoulos"]
+  },
+  {
+    "query": "teaches machines to suggest items shoppers might want to buy",
+    "category": "paraphrase",
+    "expected": ["deepa-krishnan"]
+  },
+  {
+    "query": "rescues ancient financial software and drags it into the modern era",
+    "category": "paraphrase",
+    "expected": ["tomasz-nowak"]
+  },
+  {
+    "query": "breaks into systems legally to expose their weaknesses",
+    "category": "paraphrase",
+    "expected": ["igor-petrov"]
+  },
+  {
+    "query": "makes computer programs that process sound with no perceptible delay",
+    "category": "paraphrase",
+    "expected": ["viktor-eriksen"]
+  },
+  {
+    "query": "experienced people leader to take over a group of developers",
+    "category": "paraphrase",
+    "expected": ["rosa-martinez"]
+  },
+  {
+    "query": "gives flying robots the ability to spot faults from pictures",
+    "category": "paraphrase",
+    "expected": ["quentin-dubois"]
+  },
+  {
+    "query": "explains complicated programming interfaces in plain language",
+    "category": "paraphrase",
+    "expected": ["uma-venkatesh"]
+  },
+  {
+    "query": "makes slow data storage lightning fast under crushing demand",
+    "category": "paraphrase",
+    "expected": ["lena-kovacs"]
+  },
+
+  {
+    "query": "mobile developer with banking domain experience",
+    "category": "cross-facet",
+    "expected": ["fatima-alrashid"]
+  },
+  {
+    "query": "machine learning applied to online retail",
+    "category": "cross-facet",
+    "expected": ["deepa-krishnan"]
+  },
+  {
+    "query": "infrastructure automation with a focus on cutting cloud costs",
+    "category": "cross-facet",
+    "expected": ["kwame-asante"]
+  },
+  {
+    "query": "test automation for web applications",
+    "category": "cross-facet",
+    "expected": ["julia-weber"]
+  },
+  {
+    "query": "real-time C++ for music production tools",
+    "category": "cross-facet",
+    "expected": ["viktor-eriksen"]
+  },
+  {
+    "query": "accessibility work on design systems",
+    "category": "cross-facet",
+    "expected": ["george-papadopoulos"]
+  },
+  {
+    "query": "statistical experimentation for customer retention",
+    "category": "cross-facet",
+    "expected": ["wendy-chen"]
+  },
+  {
+    "query": "engineers with banking industry experience",
+    "category": "cross-facet",
+    "expected": ["amara-okafor", "fatima-alrashid", "tomasz-nowak"]
+  },
+  {
+    "query": "junior developer with a background in finance",
+    "category": "cross-facet",
+    "expected": ["priya-sharma"]
+  },
+  {
+    "query": "cloud migration for large enterprises",
+    "category": "cross-facet",
+    "expected": ["oliver-smith"]
+  },
+
+  { "query": "veterinarian who treats farm animals", "category": "negative", "expected": [] },
+  { "query": "criminal defence lawyer for court trials", "category": "negative", "expected": [] },
+  { "query": "kindergarten teacher for early childhood education", "category": "negative", "expected": [] },
+  { "query": "professional footballer playing in a top league", "category": "negative", "expected": [] },
+  { "query": "pastry chef who bakes wedding cakes", "category": "negative", "expected": [] },
+  { "query": "crop farmer growing wheat and barley", "category": "negative", "expected": [] }
+]
