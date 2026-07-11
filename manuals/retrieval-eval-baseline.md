@@ -59,7 +59,30 @@ by `RetrievalEvalLiveTests` (`dotnet test --filter "Category=live"` with `GITHUB
   gains anything); above 0.350 recall decays steadily.
 - Keyword-subset recall@5 stays 1.0 across the whole plateau — on this corpus pure semantic
   retrieval already handles acronym/product-name queries, an input to the hybrid-search decision
-  (P1T-45).
+  (P1T-46 / P1T-54).
+
+## Tuning verdict (P1T-53): keep `MinSimilarity = 0.30`
+
+Applying the locked tuning protocol (P1T-45) to the sweep above: the FP ≤ 10% band is the
+0.285–0.350 plateau, where recall@5, MRR, and keyword recall are metric-identical. The rule's
+formal winner (0.285, earliest tie) is indistinguishable from 0.30 on every metric while sitting
+at the edge of the precision cliff (0.280 already leaks negatives at 16.7%). **Decision: the
+production default stays 0.30** — mid-plateau, maximum margin to both failure modes. No config
+change; the regression floor in `EvalBaselines.cs` reflects the plateau numbers (recall@5 1.0).
+
+Caveat recorded: the 24-employee frozen corpus saturates recall by design. The verdict means
+"0.30 is not measurably improvable on the golden set", not "retrieval is perfect at scale"; the
+live regression gate guards the floor, and the sweep is one command to rerun (below) if the
+corpus or embedding model changes.
+
+## Hybrid search verdict (P1T-54): not adopted
+
+Applying the locked adoption rule (P1T-46) at the tuned threshold (0.30): keyword-heavy subset
+recall@5 = 1.0000 vs overall recall@5 = 1.0000 — **gap 0.0 points** (rule threshold: > 10), and
+no keyword query returned empty while its target existed. **Decision: hybrid keyword+vector
+search (tsvector + RRF) is not implemented.** The pre-decided design remains on record in the
+P1T-46 resolution should a future corpus/model change open the gap — the standing eval gate and
+the keyword-recall column of every future sweep re-raise the question automatically.
 
 ## Reproducing
 
