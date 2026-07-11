@@ -1,7 +1,7 @@
 using System.Globalization;
 using EmployeeManager.Domain.Entities;
 
-namespace EmployeeManager.Mcp.Tests.Eval;
+namespace EmployeeManager.RetrievalEval;
 
 /// <summary>
 /// Maps the frozen eval corpus onto real domain entities so the eval exercises the exact production

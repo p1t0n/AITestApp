@@ -1,4 +1,4 @@
-namespace EmployeeManager.Mcp.Tests.Eval;
+namespace EmployeeManager.RetrievalEval;
 
 /// <summary>
 /// The outcome of running one golden query: what the search returned (employee keys, best first)

@@ -1,5 +1,7 @@
 using FluentAssertions;
 
+using EmployeeManager.RetrievalEval;
+
 namespace EmployeeManager.Mcp.Tests.Eval;
 
 /// <summary>
