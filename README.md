@@ -11,11 +11,15 @@ See [SPEC.md](SPEC.md).
 
 - **Employee management** — CRUD for employees + languages, availability (capacity step-function),
   skills (catalog-backed), qualifications, experiences, achievements; assembled CV view.
-- **MCP server** — 38 tools over the same Application layer, OAuth 2.1 (Keycloak) per-tool scopes.
+- **MCP server** — 39 tools over the same Application layer, OAuth 2.1 (Keycloak) per-tool scopes.
 - **Semantic roster search (RAG)** — employee narratives embedded into pgvector by a self-healing
   reconcile worker; `roster_semantic_search` answers "who has done X" by meaning, with evidence.
 - **JD Shortlist** — paste a job description, get coverage-ranked candidates with per-requirement
   evidence and one-click drill-in to a full Match assessment.
+- **CV bullet rewriting** — Tailor CV also returns vetted before/after rewrites of the CV's
+  achievement bullets, phrased after anonymized cross-CV style exemplars (`style_exemplar_search`)
+  and screened by a fabrication guard; one-click **Apply** persists a rewrite through the user's
+  own session (the agent never writes).
 - **AI agent widget** — dockable in-app assistant with Roster Q&A / Tailor CV / Match / Shortlist /
   Usage tabs; per-user token caps enforced server-side.
 - **Auth** — passkey (WebAuthn) sign-in for the app; OAuth 2.1 service accounts for agents.
@@ -42,7 +46,7 @@ api/
   Application/     services, DTOs, validators, CV assembly, search contracts  ← reused by Web + MCP
   Infrastructure/  EF Core DbContext, migrations, seeders, embeddings, pgvector search
   Web/             controllers, Swagger, passkey auth, DI
-  Mcp/             MCP server: tools (incl. semantic + shortlist search), bearer auth, reconcile worker
+  Mcp/             MCP server: tools (incl. semantic, shortlist + style-exemplar search), bearer auth, reconcile worker
   Agents/          AI agents service: Roster Q&A, CV Tailoring, Match, Shortlist + usage caps
 web/               React SPA (incl. the agent widget)
 tools/
@@ -124,7 +128,8 @@ in-app widget):
 
 - `POST /agents/roster-qa {question}` — Q&A over the roster; uses `roster_semantic_search` for
   capability questions and cites evidence snippets.
-- `POST /agents/cv-tailoring {employeeId, jobDescription}` — tailoring guidance for one CV.
+- `POST /agents/cv-tailoring {employeeId, jobDescription}` — tailoring guidance for one CV, plus
+  vetted before/after achievement-bullet rewrites (`{answer, rewrites[]}`).
 - `POST /agents/match {employeeId, jobDescription}` — gap analysis + scored fit assessment.
 - `POST /agents/shortlist {jobDescription, availableOn?, skillIds?, location?, minYears?, topK?}` —
   JD → coverage-ranked candidates with per-requirement evidence (structured JSON).
@@ -158,7 +163,7 @@ See `manuals/semantic-roster-search.md` for the full RAG documentation.
 
 ## MCP tools
 
-38 tools, 1:1 thin adapters over the Application layer, annotated read-only / write /
+39 tools, 1:1 thin adapters over the Application layer, annotated read-only / write /
 destructive so clients can gate dangerous calls:
 
 - **Employees:** `employee_list`, `employee_get`, `employee_create`, `employee_update`, `employee_delete`
@@ -167,7 +172,8 @@ destructive so clients can gate dangerous calls:
 - **Skill catalog:** `category_list/tree/create/update/delete`, `skill_list/create/update/delete`
 - **CV:** `cv_get` (assembled data, not a PDF)
 - **Semantic search (RAG):** `roster_semantic_search` (query by meaning + hard filters, evidence
-  snippets), `roster_shortlist_search` (multi-requirement coverage-ranked candidate retrieval)
+  snippets), `roster_shortlist_search` (multi-requirement coverage-ranked candidate retrieval),
+  `style_exemplar_search` (anonymized cross-CV strong-phrasing exemplars for bullet rewriting)
 
 Each tool requires a scope: read-only tools need `mcp:read`, create/update need `mcp:write`,
 deletes need `mcp:admin`. The server hides tools the token isn't scoped for and forbids the call.
@@ -207,4 +213,4 @@ dotnet ef migrations add <Name> \
 - Web integration tests (WebApplicationFactory + Testcontainers) and Playwright e2e
 - SPA edit forms for languages / qualifications / experiences (API already supports them)
 - Shortlist-specific retrieval evals (requirement-extraction fidelity, coverage-merge ranking)
-- CV-tailoring retrieval (reuse strong phrasings across CVs) and multi-turn agent memory
+- Multi-turn agent memory
