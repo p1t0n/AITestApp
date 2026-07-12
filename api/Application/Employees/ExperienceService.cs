@@ -97,10 +97,14 @@ public class ExperienceService : IExperienceService
 
     private static void ReplaceChildren(Experience x, SaveExperienceDto d)
     {
+        // Ids stay unset: on the update path the children reach the change tracker via navigation
+        // fixup, and EF marks a discovered entity with a pre-set key as Modified — an UPDATE
+        // against a row that doesn't exist (DbUpdateConcurrencyException). An unset key tracks as
+        // Added, and EF client-generates the Guid on both the create and update paths.
         foreach (var a in d.Achievements.OrderBy(a => a.Order))
-            x.Achievements.Add(new Achievement { Id = Guid.NewGuid(), Order = a.Order, Text = a.Text.Trim() });
+            x.Achievements.Add(new Achievement { Order = a.Order, Text = a.Text.Trim() });
         foreach (var sid in d.SkillIds.Distinct())
-            x.Skills.Add(new ExperienceSkill { Id = Guid.NewGuid(), SkillId = sid });
+            x.Skills.Add(new ExperienceSkill { SkillId = sid });
     }
 
     private async Task<ExperienceDto> ProjectAsync(Guid id, CancellationToken ct)
