@@ -86,6 +86,25 @@ public class ShortlistAgentTests
     }
 
     [Fact]
+    public async Task Captures_the_tool_result_when_it_arrives_as_a_TextContent_block()
+    {
+        // The real MCP tool (McpClientTool via the Agent Framework) hands the function result back
+        // as a Microsoft.Extensions.AI.TextContent whose Text holds the payload JSON — it serializes
+        // to {"$type":"text","text":"{…}"}, not a bare payload or an MCP content-array envelope.
+        var tool = AIFunctionFactory.Create(
+            (string[] requirements) => new TextContent(ToolPayload),
+            "roster_shortlist_search");
+        var agent = new ShortlistAgent(
+            ScriptedChat(), new FakeToolSource(tool), NullLoggerFactory.Instance);
+
+        var outcome = await agent.ShortlistAsync(new ShortlistAgentRequest("Platform engineer role."));
+
+        outcome.Tool.Should().NotBeNull("a TextContent-shaped tool result must still be captured");
+        outcome.Tool!.Results.Should().HaveCount(1);
+        outcome.Tool.Results[0].EmployeeId.Should().Be(AdaId);
+    }
+
+    [Fact]
     public async Task Forwards_the_job_description_and_serialized_filters_to_the_model()
     {
         var chat = ScriptedChat();

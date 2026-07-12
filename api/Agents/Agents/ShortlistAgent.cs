@@ -305,6 +305,15 @@ internal sealed class CapturingShortlistFunction(AIFunction inner, ShortlistTool
             return fromStructured;
         }
 
+        // A single AIContent text block (how the Agent Framework hands back an MCP tool result:
+        // a TextContent serializing to {"$type":"text","text":"{…payload…}"}).
+        if (obj["text"] is JsonValue single
+            && single.TryGetValue<string>(out var singleText)
+            && FromNode(JsonValue.Create(singleText), depth + 1) is { } fromSingle)
+        {
+            return fromSingle;
+        }
+
         if (obj["content"] is JsonArray content)
         {
             foreach (var block in content)
