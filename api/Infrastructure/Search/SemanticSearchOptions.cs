@@ -26,4 +26,16 @@ public sealed class SemanticSearchOptions
 
     /// <summary>Snippet text is truncated to this many characters to keep tool payloads small.</summary>
     public int SnippetMaxChars { get; set; } = 500;
+
+    /// <summary>Default number of style exemplars returned per requested bullet.</summary>
+    public int ExemplarsPerBullet { get; set; } = 2;
+
+    /// <summary>Hard cap on exemplars per bullet, whatever the caller asks for.</summary>
+    public int ExemplarsPerBulletMax { get; set; } = 5;
+
+    /// <summary>Bullets shorter than this carry no imitable style; excluded from exemplars.</summary>
+    public int ExemplarMinChars { get; set; } = 40;
+
+    /// <summary>Bullets longer than this are paragraphs, not bullets; excluded from exemplars.</summary>
+    public int ExemplarMaxChars { get; set; } = 300;
 }
