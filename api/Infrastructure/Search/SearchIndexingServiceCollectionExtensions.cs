@@ -25,6 +25,7 @@ public static class SearchIndexingServiceCollectionExtensions
         services.AddScoped<ISearchIndexReconciler, SearchIndexReconciler>();
         services.AddScoped<ISemanticSearchService, SemanticSearchService>();
         services.AddScoped<IShortlistSearchService, SemanticSearchService>();
+        services.AddScoped<IExemplarSearchService, ExemplarSearchService>();
 
         return services;
     }
