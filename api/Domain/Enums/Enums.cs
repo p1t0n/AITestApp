@@ -31,10 +31,12 @@ public enum UserStatus
 
 /// <summary>
 /// What a <see cref="Entities.EmployeeSearchChunk"/> was rendered from: one work
-/// <see cref="Entities.Experience"/>, or an employee's professional <c>Summary</c>.
+/// <see cref="Entities.Experience"/>, an employee's professional <c>Summary</c>, or a single
+/// <see cref="Entities.Achievement"/> bullet.
 /// </summary>
 public enum SearchChunkSource
 {
     Experience = 1,
-    Summary = 2
+    Summary = 2,
+    Achievement = 3
 }

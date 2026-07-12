@@ -35,13 +35,15 @@ public sealed class SearchIndexReconcilerTests : IAsyncLifetime
 
         var report = await Reconciler(db).RunOnceAsync();
 
-        // 1 summary chunk + 2 experience chunks, all embedded on the first (backfill) pass.
-        report.Inserted.Should().Be(3);
-        report.Embedded.Should().Be(3);
+        // 1 summary + 2 experience + 2 achievement-bullet chunks, all embedded on the first
+        // (backfill) pass.
+        report.Inserted.Should().Be(5);
+        report.Embedded.Should().Be(5);
         report.EmbeddingTokens.Should().BeGreaterThan(0);
 
         var chunks = await db.EmployeeSearchChunks.Where(c => c.EmployeeId == employee.Id).ToListAsync();
-        chunks.Should().HaveCount(3);
+        chunks.Should().HaveCount(5);
+        chunks.Count(c => c.SourceType == SearchChunkSource.Achievement).Should().Be(2);
         chunks.Should().OnlyContain(c => c.Embedding != null && c.EmbeddedAt != null);
         chunks.Should().OnlyContain(c => c.Model == "fake-embedder");
     }
@@ -93,8 +95,58 @@ public sealed class SearchIndexReconcilerTests : IAsyncLifetime
 
         var report = await Reconciler(db).RunOnceAsync();
 
-        report.Deleted.Should().Be(1);
+        // The experience chunk and its cascaded achievement's bullet chunk both go.
+        report.Deleted.Should().Be(2);
         (await db.EmployeeSearchChunks.CountAsync(c => c.SourceId == toRemove.Id)).Should().Be(0);
+        var orphanedAchievementIds = toRemove.Achievements.Select(a => a.Id).ToList();
+        (await db.EmployeeSearchChunks.CountAsync(c => orphanedAchievementIds.Contains(c.SourceId))).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Editing_a_bullet_re_embeds_its_chunk_and_the_parent_experience_chunk()
+    {
+        await using var db = NewDb();
+        await db.Database.MigrateAsync();
+        var employee = SeedEmployee(db, summary: "Bio.", experiences: 2);
+        await Reconciler(db).RunOnceAsync();
+
+        var parent = employee.Experiences.First();
+        var edited = parent.Achievements.Single();
+        edited.Text = "Shipped something entirely different.";
+        await db.SaveChangesAsync();
+
+        var report = await Reconciler(db).RunOnceAsync();
+
+        // The bullet's own chunk changes, and so does the parent experience chunk that rolls the
+        // bullet into its narrative. Nothing else moves.
+        report.Inserted.Should().Be(0);
+        report.Deleted.Should().Be(0);
+        report.Updated.Should().Be(2);
+        report.Embedded.Should().Be(2);
+
+        var bulletChunk = await db.EmployeeSearchChunks.SingleAsync(c => c.SourceId == edited.Id);
+        bulletChunk.Content.Should().Be("Shipped something entirely different.");
+        bulletChunk.Embedding.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task Deleting_an_achievement_removes_its_chunk_and_updates_the_experience_chunk()
+    {
+        await using var db = NewDb();
+        await db.Database.MigrateAsync();
+        var employee = SeedEmployee(db, summary: "Bio.", experiences: 1);
+        await Reconciler(db).RunOnceAsync();
+
+        var doomed = employee.Experiences.Single().Achievements.Single();
+        db.Achievements.Remove(doomed);
+        await db.SaveChangesAsync();
+
+        var report = await Reconciler(db).RunOnceAsync();
+
+        // The bullet chunk is orphaned; the parent experience chunk re-renders without the bullet.
+        report.Deleted.Should().Be(1);
+        report.Updated.Should().Be(1);
+        (await db.EmployeeSearchChunks.CountAsync(c => c.SourceId == doomed.Id)).Should().Be(0);
     }
 
     [Fact]

@@ -9,7 +9,9 @@ namespace EmployeeManager.Application.Search;
 /// <summary>
 /// Renders an employee's free-text career narrative into the set of chunks that semantic roster
 /// search embeds: one chunk per work <see cref="Experience"/> (role + company + dates header, then
-/// its summary and achievements), plus one chunk for the employee's professional summary.
+/// its summary and achievements), one chunk for the employee's professional summary, plus one
+/// fine-grained chunk per non-blank <see cref="Achievement"/> bullet (for exemplar-style retrieval;
+/// the experience chunk keeps the bullets rolled in as the employee-level narrative unit).
 ///
 /// <para>Pure and deterministic: the same employee always renders the same text and the same
 /// SHA-256 <c>ContentHash</c>, which is what lets the reconciler detect real changes.</para>
@@ -32,6 +34,16 @@ public static class ChunkProjection
         foreach (var experience in employee.Experiences)
         {
             chunks.Add(Make(employee.Id, SearchChunkSource.Experience, experience.Id, RenderExperience(experience)));
+
+            // One fine-grained chunk per achievement bullet (the experience chunk above keeps the
+            // bullets rolled in as well — it stays the narrative unit for employee-level search).
+            foreach (var achievement in experience.Achievements.OrderBy(a => a.Order))
+            {
+                if (!string.IsNullOrWhiteSpace(achievement.Text))
+                {
+                    chunks.Add(Make(employee.Id, SearchChunkSource.Achievement, achievement.Id, achievement.Text.Trim()));
+                }
+            }
         }
 
         return chunks;

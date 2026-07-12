@@ -1,6 +1,7 @@
 using EmployeeManager.Application.Abstractions;
 using EmployeeManager.Application.Search;
 using EmployeeManager.Domain.Entities;
+using EmployeeManager.Domain.Enums;
 using EmployeeManager.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -209,7 +210,12 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
     {
         var maxDistance = 1.0 - _options.MinSimilarity;
 
-        var candidates = _db.EmployeeSearchChunks.Where(c => c.Embedding != null);
+        // Achievement bullet chunks are excluded from the employee-level retrieval pool: they are
+        // the fine-grained unit for exemplar retrieval, and the live eval showed they raise the
+        // negative-false-positive rate when they compete here (their narrative already reaches
+        // these paths rolled into the parent experience chunk).
+        var candidates = _db.EmployeeSearchChunks
+            .Where(c => c.Embedding != null && c.SourceType != SearchChunkSource.Achievement);
         if (eligibleIds is not null)
         {
             candidates = candidates.Where(c => eligibleIds.Contains(c.EmployeeId));

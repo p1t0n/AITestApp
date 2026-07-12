@@ -66,13 +66,113 @@ public class ChunkProjectionTests
         ];
         var employee = new Employee { Id = Guid.NewGuid(), Experiences = [exp] };
 
-        var content = ChunkProjection.Project(employee).Single().Content;
+        var content = ChunkProjection.Project(employee)
+            .Single(c => c.SourceType == SearchChunkSource.Experience).Content;
 
         content.Should().StartWith("Payments Lead @ BankCo (2019-03–present)");
         content.Should().Contain("Owned the ledger.");
         // Ordered by Order ascending, not insertion order.
         content.IndexOf("Led the payments rewrite.", StringComparison.Ordinal)
             .Should().BeLessThan(content.IndexOf("Cut latency in half.", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Emits_one_achievement_chunk_per_bullet_keyed_by_achievement_id()
+    {
+        var exp = Experience("BankCo", "Payments Lead");
+        var first = new Achievement { Id = Guid.NewGuid(), Order = 1, Text = "  Led the payments rewrite.  " };
+        var second = new Achievement { Id = Guid.NewGuid(), Order = 2, Text = "Cut latency in half." };
+        exp.Achievements = [first, second];
+        var employee = new Employee { Id = Guid.NewGuid(), Experiences = [exp] };
+
+        var bullets = ChunkProjection.Project(employee)
+            .Where(c => c.SourceType == SearchChunkSource.Achievement)
+            .ToList();
+
+        bullets.Should().HaveCount(2);
+        bullets.Should().OnlyContain(c => c.EmployeeId == employee.Id);
+        bullets.Single(c => c.SourceId == first.Id).Content.Should().Be("Led the payments rewrite.");
+        bullets.Single(c => c.SourceId == second.Id).Content.Should().Be("Cut latency in half.");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Skips_achievement_chunks_for_blank_bullets(string text)
+    {
+        var exp = Experience("BankCo", "Payments Lead");
+        exp.Achievements =
+        [
+            new Achievement { Id = Guid.NewGuid(), Order = 1, Text = text },
+            new Achievement { Id = Guid.NewGuid(), Order = 2, Text = "Real bullet." },
+        ];
+        var employee = new Employee { Id = Guid.NewGuid(), Experiences = [exp] };
+
+        ChunkProjection.Project(employee)
+            .Where(c => c.SourceType == SearchChunkSource.Achievement)
+            .Should().ContainSingle().Which.Content.Should().Be("Real bullet.");
+    }
+
+    [Fact]
+    public void Editing_a_bullet_changes_only_that_achievement_chunks_hash()
+    {
+        var expId = Guid.NewGuid();
+        var employeeId = Guid.NewGuid();
+        var editedId = Guid.NewGuid();
+        var untouchedId = Guid.NewGuid();
+
+        var before = ProjectBullets(employeeId, expId, (editedId, "Original wording.", 1), (untouchedId, "Stays put.", 2));
+        var after = ProjectBullets(employeeId, expId, (editedId, "New wording.", 1), (untouchedId, "Stays put.", 2));
+
+        after.Single(c => c.SourceId == editedId).ContentHash
+            .Should().NotBe(before.Single(c => c.SourceId == editedId).ContentHash);
+        after.Single(c => c.SourceId == untouchedId).ContentHash
+            .Should().Be(before.Single(c => c.SourceId == untouchedId).ContentHash);
+    }
+
+    [Fact]
+    public void Deleting_a_bullet_removes_its_desired_chunk()
+    {
+        var expId = Guid.NewGuid();
+        var employeeId = Guid.NewGuid();
+        var deletedId = Guid.NewGuid();
+        var keptId = Guid.NewGuid();
+
+        var after = ProjectBullets(employeeId, expId, (keptId, "Kept.", 1));
+
+        var before = ProjectBullets(employeeId, expId, (deletedId, "Doomed.", 1), (keptId, "Kept.", 2));
+        before.Should().Contain(c => c.SourceId == deletedId);
+        after.Should().ContainSingle().Which.SourceId.Should().Be(keptId);
+    }
+
+    [Fact]
+    public void Achievement_chunks_leave_the_experience_chunk_content_untouched()
+    {
+        var exp = Experience("BankCo", "Payments Lead", summary: "Owned the ledger.");
+        exp.StartDate = new DateOnly(2019, 3, 1);
+        exp.Achievements = [new Achievement { Id = Guid.NewGuid(), Order = 1, Text = "Led the payments rewrite." }];
+        var employee = new Employee { Id = Guid.NewGuid(), Experiences = [exp] };
+
+        var experienceChunk = ChunkProjection.Project(employee)
+            .Single(c => c.SourceType == SearchChunkSource.Experience);
+
+        // The exact pre-P1T-63 rendering: bullets stay rolled into the experience narrative.
+        experienceChunk.Content.Should().Be(
+            "Payments Lead @ BankCo (2019-03–present)\nOwned the ledger.\n- Led the payments rewrite.");
+    }
+
+    private static List<DesiredChunk> ProjectBullets(
+        Guid employeeId, Guid expId, params (Guid Id, string Text, int Order)[] achievements)
+    {
+        var exp = Experience("Co", "Role");
+        exp.Id = expId;
+        exp.Achievements = achievements
+            .Select(a => new Achievement { Id = a.Id, Text = a.Text, Order = a.Order })
+            .ToList();
+        var employee = new Employee { Id = employeeId, Experiences = [exp] };
+        return ChunkProjection.Project(employee)
+            .Where(c => c.SourceType == SearchChunkSource.Achievement)
+            .ToList();
     }
 
     [Fact]
