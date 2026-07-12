@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import AgentWidget from "./AgentWidget";
 import type { AgentDock } from "./useAgentDock";
-import type { CvTailoringResponse } from "../api";
+import type { ApplyRewriteInput, CvTailoringResponse } from "../api";
 
 // ---- api module mock ----
 // Only the hooks are mocked; apiErrorMessage stays real so error shapes go through the same
@@ -15,15 +15,42 @@ const tailoringState = {
   isPending: false,
 };
 
+// Stateful per-card fake for useApplyRewrite: each card mounts its own hook instance, so the fake
+// keeps real per-instance state (pending/success/error) and records every mutate() input. Tests
+// steer outcomes through applyImpl (resolve = success, reject = error, never-settle = pending).
+const applyCalls: ApplyRewriteInput[] = [];
+let applyImpl: (input: ApplyRewriteInput) => Promise<unknown> = () => Promise.resolve({});
+
 const EMPLOYEE_ID = "11111111-2222-3333-4444-555555555555";
 const EXPERIENCE_A = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
 const EXPERIENCE_B = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
 
 vi.mock("../api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../api")>();
+  const { useState } = await import("react");
   return {
     ...actual,
     useCvTailoring: () => tailoringState,
+    useApplyRewrite: () => {
+      const [state, setState] = useState<{
+        status: "idle" | "pending" | "success" | "error";
+        error: unknown;
+      }>({ status: "idle", error: null });
+      return {
+        isPending: state.status === "pending",
+        isSuccess: state.status === "success",
+        isError: state.status === "error",
+        error: state.error,
+        mutate: (input: ApplyRewriteInput) => {
+          applyCalls.push(input);
+          setState({ status: "pending", error: null });
+          applyImpl(input).then(
+            () => setState({ status: "success", error: null }),
+            (error: unknown) => setState({ status: "error", error }),
+          );
+        },
+      };
+    },
     useEmployees: () => ({
       data: [
         {
@@ -109,6 +136,8 @@ async function runTailoring(response: CvTailoringResponse) {
 beforeEach(() => {
   tailoringState.mutateAsync = vi.fn();
   tailoringState.isPending = false;
+  applyCalls.length = 0;
+  applyImpl = () => Promise.resolve({});
 });
 
 describe("Tailor CV tab — rewritten bullets", () => {
@@ -187,5 +216,84 @@ describe("Tailor CV tab — rewritten bullets", () => {
     ]) {
       expect(getComputedStyle(el).overflowWrap).toBe("anywhere");
     }
+  });
+});
+
+describe("Tailor CV tab — apply flow", () => {
+  const CARD_1 = RESPONSE.rewrites[0]; // experience A, bullet 1
+  const CARD_2 = RESPONSE.rewrites[1]; // experience A, bullet 2
+  const CARD_3 = RESPONSE.rewrites[2]; // experience B
+
+  function card(achievementId: string) {
+    return screen.getByTestId(`rewrite-card-${achievementId}`);
+  }
+
+  it("applies with the selected employee, the rewrite's ids, and text = rewritten", async () => {
+    const user = await runTailoring(RESPONSE);
+
+    await user.click(within(card(CARD_2.achievementId)).getByRole("button", { name: "Apply" }));
+
+    expect(applyCalls).toEqual([
+      {
+        employeeId: EMPLOYEE_ID,
+        experienceId: EXPERIENCE_A,
+        achievementId: CARD_2.achievementId,
+        original: CARD_2.original,
+        rewritten: CARD_2.rewritten,
+      },
+    ]);
+  });
+
+  it("disables the button while the apply is in flight", async () => {
+    applyImpl = () => new Promise(() => {}); // never settles
+    const user = await runTailoring(RESPONSE);
+
+    await user.click(within(card(CARD_1.achievementId)).getByRole("button", { name: "Apply" }));
+
+    expect(
+      within(card(CARD_1.achievementId)).getByRole("button", { name: /applying/i }),
+    ).toBeDisabled();
+  });
+
+  it("flips to an Applied indicator on success and removes the button", async () => {
+    const user = await runTailoring(RESPONSE);
+
+    await user.click(within(card(CARD_1.achievementId)).getByRole("button", { name: "Apply" }));
+
+    expect(await within(card(CARD_1.achievementId)).findByText("Applied")).toBeInTheDocument();
+    expect(
+      within(card(CARD_1.achievementId)).queryByRole("button", { name: /apply/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the error and re-enables the button on failure", async () => {
+    applyImpl = () => Promise.reject(new Error("The bullet no longer exists."));
+    const user = await runTailoring(RESPONSE);
+
+    await user.click(within(card(CARD_1.achievementId)).getByRole("button", { name: "Apply" }));
+
+    expect(
+      await within(card(CARD_1.achievementId)).findByText("The bullet no longer exists."),
+    ).toBeInTheDocument();
+    expect(
+      within(card(CARD_1.achievementId)).getByRole("button", { name: "Apply" }),
+    ).toBeEnabled();
+    expect(within(card(CARD_1.achievementId)).queryByText("Applied")).not.toBeInTheDocument();
+  });
+
+  it("keeps sibling cards untouched when one rewrite is applied", async () => {
+    const user = await runTailoring(RESPONSE);
+
+    await user.click(within(card(CARD_1.achievementId)).getByRole("button", { name: "Apply" }));
+    await within(card(CARD_1.achievementId)).findByText("Applied");
+
+    // The sibling in the same experience and the card in the other experience still offer Apply.
+    for (const sibling of [CARD_2, CARD_3]) {
+      expect(
+        within(card(sibling.achievementId)).getByRole("button", { name: "Apply" }),
+      ).toBeEnabled();
+      expect(within(card(sibling.achievementId)).queryByText("Applied")).not.toBeInTheDocument();
+    }
+    expect(applyCalls).toHaveLength(1);
   });
 });

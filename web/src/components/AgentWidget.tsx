@@ -35,6 +35,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
   apiErrorMessage,
+  useApplyRewrite,
   useCvTailoring,
   useEmployees,
   useMatch,
@@ -229,6 +230,8 @@ interface FormResult {
   /** Vetted per-achievement rewrites (CV Tailoring only; empty on the degrade path and for Match). */
   rewrites: TailoringRewrite[];
   latencyMs: number;
+  /** The employee the run was submitted for — Apply targets this even if the picker changes later. */
+  employeeId: string;
 }
 
 // ---- Rewritten bullets (CV Tailoring hybrid contract) ----
@@ -246,9 +249,77 @@ function groupRewrites(rewrites: TailoringRewrite[]) {
   return groups;
 }
 
-/** Per-bullet before → after cards, grouped by experience. Rendering only for now: each card's
- * header row already hosts the copy action and is where a per-card "Apply" will land next. */
-function RewrittenBullets({ rewrites }: { rewrites: TailoringRewrite[] }) {
+/** One before → after card with its own Apply mutation, so pending/applied/error state is strictly
+ * per card. Apply writes through the Web API with the user's session (never the agent, P1T-62). */
+function RewriteCard({ employeeId, rewrite }: { employeeId: string; rewrite: TailoringRewrite }) {
+  const apply = useApplyRewrite();
+  const r = rewrite;
+  return (
+    <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }} data-testid={`rewrite-card-${r.achievementId}`}>
+      <Typography variant="caption" color="text.secondary">
+        Before
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: "anywhere", mb: 1 }}>
+        {r.original}
+      </Typography>
+      <Stack direction="row" alignItems="center" justifyContent="space-between">
+        <Typography variant="caption" color="text.secondary">
+          After
+        </Typography>
+        <Stack direction="row" alignItems="center" spacing={0.5}>
+          {apply.isSuccess ? (
+            <Stack direction="row" alignItems="center" spacing={0.5}>
+              <CheckCircleOutlineIcon fontSize="small" color="success" />
+              <Typography variant="caption" color="success.main" fontWeight={600}>
+                Applied
+              </Typography>
+            </Stack>
+          ) : (
+            <Button
+              size="small"
+              disabled={apply.isPending}
+              startIcon={
+                apply.isPending ? <CircularProgress size={14} color="inherit" /> : undefined
+              }
+              onClick={() => apply.mutate({ employeeId, ...r })}
+            >
+              {apply.isPending ? "Applying…" : "Apply"}
+            </Button>
+          )}
+          <Tooltip title="Copy rewritten bullet">
+            <IconButton
+              size="small"
+              aria-label="Copy rewritten bullet"
+              onClick={() => void navigator.clipboard.writeText(r.rewritten)}
+            >
+              <ContentCopyIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Stack>
+      </Stack>
+      <Typography variant="body2" fontWeight={600} sx={{ overflowWrap: "anywhere" }}>
+        {r.rewritten}
+      </Typography>
+      {apply.isError && (
+        <Paper
+          elevation={0}
+          sx={{ mt: 1, p: 1, bgcolor: "error.light", color: "error.contrastText", borderRadius: 1 }}
+        >
+          <Typography variant="body2">{apiErrorMessage(apply.error)}</Typography>
+        </Paper>
+      )}
+    </Paper>
+  );
+}
+
+/** Per-bullet before → after cards, grouped by experience. */
+function RewrittenBullets({
+  employeeId,
+  rewrites,
+}: {
+  employeeId: string;
+  rewrites: TailoringRewrite[];
+}) {
   const groups = useMemo(() => groupRewrites(rewrites), [rewrites]);
   return (
     <Box>
@@ -262,35 +333,7 @@ function RewrittenBullets({ rewrites }: { rewrites: TailoringRewrite[] }) {
               Experience {i + 1}
             </Typography>
             {g.items.map((r) => (
-              <Paper key={r.achievementId} variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
-                <Typography variant="caption" color="text.secondary">
-                  Before
-                </Typography>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ overflowWrap: "anywhere", mb: 1 }}
-                >
-                  {r.original}
-                </Typography>
-                <Stack direction="row" alignItems="center" justifyContent="space-between">
-                  <Typography variant="caption" color="text.secondary">
-                    After
-                  </Typography>
-                  <Tooltip title="Copy rewritten bullet">
-                    <IconButton
-                      size="small"
-                      aria-label="Copy rewritten bullet"
-                      onClick={() => void navigator.clipboard.writeText(r.rewritten)}
-                    >
-                      <ContentCopyIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                </Stack>
-                <Typography variant="body2" fontWeight={600} sx={{ overflowWrap: "anywhere" }}>
-                  {r.rewritten}
-                </Typography>
-              </Paper>
+              <RewriteCard key={r.achievementId} employeeId={employeeId} rewrite={r} />
             ))}
           </Stack>
         ))}
@@ -341,7 +384,7 @@ function AgentJobForm({
         mode === "cv-tailoring"
           ? await tailoring.mutateAsync(req)
           : { ...(await match.mutateAsync(req)), rewrites: [] };
-      setResult({ ...res, latencyMs: performance.now() - startedAt });
+      setResult({ ...res, latencyMs: performance.now() - startedAt, employeeId: req.employeeId });
     } catch (err) {
       setError(apiErrorMessage(err));
     }
@@ -431,7 +474,9 @@ function AgentJobForm({
           </Paper>
         )}
 
-        {result && result.rewrites.length > 0 && <RewrittenBullets rewrites={result.rewrites} />}
+        {result && result.rewrites.length > 0 && (
+          <RewrittenBullets employeeId={result.employeeId} rewrites={result.rewrites} />
+        )}
       </Stack>
     </Box>
   );
