@@ -123,13 +123,17 @@ app.MapPost("/agents/roster-qa", async (
     }
 }).RequireAuthorization();
 
-// POST /agents/cv-tailoring  { "employeeId": "guid", "jobDescription": "..." }  ->  { "answer": "..." }
+// POST /agents/cv-tailoring  { "employeeId": "guid", "jobDescription": "..." }
+// -> { "answer": "<markdown as before>", "rewrites": [{ experienceId, achievementId, original, rewritten }] }
+// The answer is unchanged for existing consumers; rewrite ids/originals are composed from the
+// captured cv_get result — never model text — and each rewrite passes the fabrication guard.
 app.MapPost("/agents/cv-tailoring", async (
     CvTailoringRequest request,
     CvTailoringAgent agent,
     ClaimsPrincipal user,
     IUsageMeter meter,
     IUsageService usage,
+    ILoggerFactory loggerFactory,
     CancellationToken ct) =>
 {
     if (request.EmployeeId == Guid.Empty)
@@ -158,7 +162,7 @@ app.MapPost("/agents/cv-tailoring", async (
         {
             await meter.RecordAsync(uid, agent.Name, outcome.Reply, ct);
         }
-        return Results.Ok(new CvTailoringResponse(outcome.Reply.Text));
+        return Results.Ok(TailoringComposer.Compose(outcome, loggerFactory.CreateLogger(nameof(TailoringComposer))));
     }
     catch (HttpRequestException ex)
     {
@@ -284,7 +288,6 @@ app.Run();
 internal sealed record RosterQaRequest(string Question);
 internal sealed record RosterQaResponse(string Answer);
 internal sealed record CvTailoringRequest(Guid EmployeeId, string JobDescription);
-internal sealed record CvTailoringResponse(string Answer);
 internal sealed record MatchRequest(Guid EmployeeId, string JobDescription);
 internal sealed record MatchResponse(string Answer);
 internal sealed record ShortlistRequest(

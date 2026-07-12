@@ -37,5 +37,17 @@ public class CvTailoringLiveSmokeTests
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("answer").GetString().Should().NotBeNullOrWhiteSpace();
+
+        // The hybrid contract: rewrites ride along (possibly empty — e.g. an unknown employee or
+        // a degraded rewrite turn), and every entry the guard let through is fully populated.
+        var rewrites = body.GetProperty("rewrites");
+        rewrites.ValueKind.Should().Be(JsonValueKind.Array);
+        foreach (var rewrite in rewrites.EnumerateArray())
+        {
+            rewrite.GetProperty("experienceId").GetGuid().Should().NotBeEmpty();
+            rewrite.GetProperty("achievementId").GetGuid().Should().NotBeEmpty();
+            rewrite.GetProperty("original").GetString().Should().NotBeNullOrWhiteSpace();
+            rewrite.GetProperty("rewritten").GetString().Should().NotBeNullOrWhiteSpace();
+        }
     }
 }
