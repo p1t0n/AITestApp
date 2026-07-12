@@ -136,12 +136,13 @@ export interface Cv {
   skillGroups: { category: string; skills: EmployeeSkill[] }[];
   languages: SpokenLanguage[];
   experiences: {
+    id: string;
     company: string;
     title: string;
     location: string | null;
     period: string;
     summary: string | null;
-    achievements: string[];
+    achievements: { id: string; text: string }[];
     skills: string[];
   }[];
   education: Qualification[];

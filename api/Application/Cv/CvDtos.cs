@@ -23,10 +23,15 @@ public record CvAvailabilityDto(int CurrentCapacityPercent, IReadOnlyList<Availa
 public record CvSkillGroupDto(string Category, IReadOnlyList<EmployeeSkillDto> Skills);
 
 public record CvExperienceDto(
+    Guid Id,
     string Company,
     string Title,
     string? Location,
     string Period,
     string? Summary,
-    IReadOnlyList<string> Achievements,
+    IReadOnlyList<CvAchievementDto> Achievements,
     IReadOnlyList<string> Skills);
+
+/// <summary>One achievement bullet with its stable id — the key downstream tools
+/// (e.g. <c>style_exemplar_search</c>) and the tailoring rewrite flow join on.</summary>
+public record CvAchievementDto(Guid Id, string Text);

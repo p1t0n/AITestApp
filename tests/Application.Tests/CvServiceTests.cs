@@ -70,6 +70,22 @@ public class CvServiceTests
     }
 
     [Fact]
+    public void Carries_experience_and_achievement_ids_for_downstream_tools()
+    {
+        // style_exemplar_search is keyed by achievement id, and the tailoring agent joins
+        // rewrites back onto experiences — the CV projection must expose both ids.
+        var employee = SampleEmployee();
+
+        var cv = CvService.Build(employee);
+
+        var experience = cv.Experiences.Should().ContainSingle().Subject;
+        experience.Id.Should().Be(employee.Experiences[0].Id);
+        var achievement = experience.Achievements.Should().ContainSingle().Subject;
+        achievement.Id.Should().Be(employee.Experiences[0].Achievements[0].Id);
+        achievement.Text.Should().Be("Cut latency 40%.");
+    }
+
+    [Fact]
     public void Builds_full_name_and_carries_availability()
     {
         var cv = CvService.Build(SampleEmployee());
