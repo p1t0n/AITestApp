@@ -226,8 +226,9 @@ export function useRosterQa() {
 }
 
 // ---- CV Tailoring & Match agents ----
-// Both take the same input and return { answer } (markdown prose). CV Tailoring rewrites a CV for
-// a job description; Match assesses fit (gap analysis + rubric). They hit their own endpoints.
+// Both take the same input. Match returns { answer } (markdown prose). CV Tailoring returns the
+// hybrid contract: the same markdown answer plus vetted per-achievement rewrites keyed to CV rows
+// (empty when the model's structured output could not be validated — the degrade path).
 
 export interface AgentJobRequest {
   employeeId: string;
@@ -238,11 +239,23 @@ export interface AgentAnswer {
   answer: string;
 }
 
+export interface TailoringRewrite {
+  experienceId: string;
+  achievementId: string;
+  original: string;
+  rewritten: string;
+}
+
+export interface CvTailoringResponse {
+  answer: string;
+  rewrites: TailoringRewrite[];
+}
+
 export function useCvTailoring() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (req: AgentJobRequest) =>
-      (await agentHttp.post<AgentAnswer>("/cv-tailoring", req)).data,
+      (await agentHttp.post<CvTailoringResponse>("/cv-tailoring", req)).data,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["usage"] }),
   });
 }

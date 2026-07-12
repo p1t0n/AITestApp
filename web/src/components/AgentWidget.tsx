@@ -44,6 +44,7 @@ import {
   useUsage,
   type AgentJobRequest,
   type ShortlistCandidate,
+  type TailoringRewrite,
   type ShortlistRequest,
   type ShortlistResponse,
   type WindowUsage,
@@ -225,7 +226,77 @@ const PRESET_JDS: { label: string; text: string }[] = [
 
 interface FormResult {
   answer: string;
+  /** Vetted per-achievement rewrites (CV Tailoring only; empty on the degrade path and for Match). */
+  rewrites: TailoringRewrite[];
   latencyMs: number;
+}
+
+// ---- Rewritten bullets (CV Tailoring hybrid contract) ----
+
+/** Rewrites grouped by experienceId, preserving response order. The widget only fetches the
+ * employees list (name/title) — not the employee's CV — so a nice "title @ company" header would
+ * need a new fetch. We deliberately avoid that and use a neutral positional header instead. */
+function groupRewrites(rewrites: TailoringRewrite[]) {
+  const groups: { experienceId: string; items: TailoringRewrite[] }[] = [];
+  for (const r of rewrites) {
+    const group = groups.find((g) => g.experienceId === r.experienceId);
+    if (group) group.items.push(r);
+    else groups.push({ experienceId: r.experienceId, items: [r] });
+  }
+  return groups;
+}
+
+/** Per-bullet before → after cards, grouped by experience. Rendering only for now: each card's
+ * header row already hosts the copy action and is where a per-card "Apply" will land next. */
+function RewrittenBullets({ rewrites }: { rewrites: TailoringRewrite[] }) {
+  const groups = useMemo(() => groupRewrites(rewrites), [rewrites]);
+  return (
+    <Box>
+      <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+        Rewritten bullets
+      </Typography>
+      <Stack spacing={1.5}>
+        {groups.map((g, i) => (
+          <Stack key={g.experienceId} spacing={1} data-testid={`rewrite-group-${g.experienceId}`}>
+            <Typography variant="caption" color="text.secondary" fontWeight={600}>
+              Experience {i + 1}
+            </Typography>
+            {g.items.map((r) => (
+              <Paper key={r.achievementId} variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+                <Typography variant="caption" color="text.secondary">
+                  Before
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ overflowWrap: "anywhere", mb: 1 }}
+                >
+                  {r.original}
+                </Typography>
+                <Stack direction="row" alignItems="center" justifyContent="space-between">
+                  <Typography variant="caption" color="text.secondary">
+                    After
+                  </Typography>
+                  <Tooltip title="Copy rewritten bullet">
+                    <IconButton
+                      size="small"
+                      aria-label="Copy rewritten bullet"
+                      onClick={() => void navigator.clipboard.writeText(r.rewritten)}
+                    >
+                      <ContentCopyIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </Stack>
+                <Typography variant="body2" fontWeight={600} sx={{ overflowWrap: "anywhere" }}>
+                  {r.rewritten}
+                </Typography>
+              </Paper>
+            ))}
+          </Stack>
+        ))}
+      </Stack>
+    </Box>
+  );
 }
 
 function AgentJobForm({
@@ -265,8 +336,12 @@ function AgentJobForm({
     const startedAt = performance.now();
     const req: AgentJobRequest = { employeeId, jobDescription: jobDescription.trim() };
     try {
-      const { answer } = await run.mutateAsync(req);
-      setResult({ answer, latencyMs: performance.now() - startedAt });
+      // Tailoring returns the hybrid contract (answer + rewrites); Match is answer-only.
+      const res =
+        mode === "cv-tailoring"
+          ? await tailoring.mutateAsync(req)
+          : { ...(await match.mutateAsync(req)), rewrites: [] };
+      setResult({ ...res, latencyMs: performance.now() - startedAt });
     } catch (err) {
       setError(apiErrorMessage(err));
     }
@@ -355,6 +430,8 @@ function AgentJobForm({
             <AgentMarkdown text={result.answer} />
           </Paper>
         )}
+
+        {result && result.rewrites.length > 0 && <RewrittenBullets rewrites={result.rewrites} />}
       </Stack>
     </Box>
   );
