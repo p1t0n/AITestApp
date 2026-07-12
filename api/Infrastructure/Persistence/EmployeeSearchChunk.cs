@@ -5,8 +5,8 @@ namespace EmployeeManager.Infrastructure.Persistence;
 
 /// <summary>
 /// A derived read-model row for semantic roster search (RAG): one embeddable chunk of an
-/// employee's free-text career narrative — either a single work Experience or the employee's
-/// professional Summary. This is not domain state: it is rebuilt from the aggregates by the
+/// employee's free-text career narrative — a single work Experience, the employee's professional
+/// Summary, or one Achievement bullet. This is not domain state: it is rebuilt from the aggregates by the
 /// reconciliation worker, so it can be truncated and regenerated at any time. It lives in
 /// Infrastructure (not Domain) because it carries a Postgres-specific <see cref="Vector"/> type and
 /// is purely a persistence/retrieval concern.
@@ -25,7 +25,7 @@ public class EmployeeSearchChunk
     public SearchChunkSource SourceType { get; set; }
 
     /// <summary>
-    /// Id of the source row: the Experience id, or the Employee id for a
+    /// Id of the source row: the Experience id, the Achievement id, or the Employee id for a
     /// <see cref="SearchChunkSource.Summary"/> chunk. Unique together with <see cref="SourceType"/>.
     /// </summary>
     public Guid SourceId { get; set; }

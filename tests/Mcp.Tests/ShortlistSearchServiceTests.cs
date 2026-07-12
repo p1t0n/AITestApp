@@ -36,6 +36,7 @@ public sealed class ShortlistSearchServiceTests : IAsyncLifetime
         await new SearchIndexReconciler(db, new CountingKeywordEmbedder(),
             Options.Create(new SearchIndexOptions()), NullLogger<SearchIndexReconciler>.Instance)
             .RunOnceAsync();
+        await SeedLarrysBulletChunkAsync(db);
     }
 
     public async Task DisposeAsync() => await _postgres.DisposeAsync();
@@ -64,6 +65,17 @@ public sealed class ShortlistSearchServiceTests : IAsyncLifetime
             new SemanticSearchFilters(SkillIds: [_reactSkillId]));
 
         result.Results.Should().ContainSingle().Which.Name.Should().Be("Fiona Fintech");
+    }
+
+    [Fact]
+    public async Task Achievement_bullet_chunks_are_excluded_from_the_retrieval_pool()
+    {
+        // Larry's only "logistics" mention lives in an achievement bullet; the shortlist search
+        // must not match the requirement through it (bullet chunks are reserved for the exemplar
+        // retrieval path).
+        var result = await Service().SearchAsync(["logistics"]);
+
+        result.Results.Should().BeEmpty();
     }
 
     [Fact]
@@ -144,6 +156,32 @@ public sealed class ShortlistSearchServiceTests : IAsyncLifetime
         var gary = Employee("Gary", "Gaming", "Berlin", "Wrote gaming engines.");
 
         db.Employees.AddRange(bella, fiona, gary);
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Insert an embedded Achievement chunk row for Larry directly (after the reconciler pass, so
+    /// it survives). Seeding via the projection would also put the bullet's keyword into the parent
+    /// experience chunk, which would hide whether the bullet chunk itself is in the pool.
+    /// </summary>
+    private async Task SeedLarrysBulletChunkAsync(AppDbContext db)
+    {
+        var larry = Employee("Larry", "Logistics", "London");
+        db.Employees.Add(larry);
+
+        var embedded = await new CountingKeywordEmbedder().EmbedAsync(["Optimized logistics routing."]);
+        db.EmployeeSearchChunks.Add(new EmployeeSearchChunk
+        {
+            Id = Guid.NewGuid(),
+            EmployeeId = larry.Id,
+            SourceType = SearchChunkSource.Achievement,
+            SourceId = Guid.NewGuid(),
+            Content = "Optimized logistics routing.",
+            ContentHash = ChunkProjection.Hash("Optimized logistics routing."),
+            Embedding = new Pgvector.Vector(embedded.Vectors[0]),
+            Model = "keyword-embedder",
+            EmbeddedAt = DateTimeOffset.UtcNow,
+        });
         await db.SaveChangesAsync();
     }
 
