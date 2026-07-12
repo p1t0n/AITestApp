@@ -43,17 +43,18 @@ builder.Services.AddSingleton<IChatAgent>(sp => new RosterQaAgent(
     sp.ResolveAgentChatClient("roster-qa"),
     sp.GetRequiredKeyedService<IMcpToolSource>("roster-qa"),
     sp.GetRequiredService<ILoggerFactory>()));
-builder.Services.AddSingleton<IChatAgent>(sp => new CvTailoringAgent(
-    sp.ResolveAgentChatClient("cv-tailoring"),
-    sp.GetRequiredKeyedService<IMcpToolSource>("cv-tailoring"),
-    sp.GetRequiredService<ILoggerFactory>()));
 builder.Services.AddSingleton<IChatAgent>(sp => new MatchAgent(
     sp.ResolveAgentChatClient("match"),
     sp.GetRequiredKeyedService<IMcpToolSource>("match"),
     sp.GetRequiredService<ILoggerFactory>()));
 
-// The shortlist agent returns a structured outcome (captured tool result + rationale JSON) rather
-// than free text, so it is registered as its own type instead of through the IChatAgent seam.
+// The CV tailoring and shortlist agents return structured outcomes (captured tool results +
+// minimal model JSON) rather than free text, so they are registered as their own types instead
+// of through the IChatAgent seam.
+builder.Services.AddSingleton(sp => new CvTailoringAgent(
+    sp.ResolveAgentChatClient("cv-tailoring"),
+    sp.GetRequiredKeyedService<IMcpToolSource>("cv-tailoring"),
+    sp.GetRequiredService<ILoggerFactory>()));
 builder.Services.AddSingleton(sp => new ShortlistAgent(
     sp.ResolveAgentChatClient("shortlist"),
     sp.GetRequiredKeyedService<IMcpToolSource>("shortlist"),
@@ -122,13 +123,17 @@ app.MapPost("/agents/roster-qa", async (
     }
 }).RequireAuthorization();
 
-// POST /agents/cv-tailoring  { "employeeId": "guid", "jobDescription": "..." }  ->  { "answer": "..." }
+// POST /agents/cv-tailoring  { "employeeId": "guid", "jobDescription": "..." }
+// -> { "answer": "<markdown as before>", "rewrites": [{ experienceId, achievementId, original, rewritten }] }
+// The answer is unchanged for existing consumers; rewrite ids/originals are composed from the
+// captured cv_get result — never model text — and each rewrite passes the fabrication guard.
 app.MapPost("/agents/cv-tailoring", async (
     CvTailoringRequest request,
-    IEnumerable<IChatAgent> agents,
+    CvTailoringAgent agent,
     ClaimsPrincipal user,
     IUsageMeter meter,
     IUsageService usage,
+    ILoggerFactory loggerFactory,
     CancellationToken ct) =>
 {
     if (request.EmployeeId == Guid.Empty)
@@ -147,19 +152,17 @@ app.MapPost("/agents/cv-tailoring", async (
         return CapReached(exceeded);
     }
 
-    // Compose the two typed fields into the single-turn prompt the agent expects. Keeping the
-    // structured contract at the edge means the agent stays a generic IChatAgent.
+    // Compose the two typed fields into the prompt that opens the agent's 2-turn session.
     var prompt = $"Tailor the CV of employee {request.EmployeeId} to this job description:\n\n{request.JobDescription}";
 
-    var agent = agents.First(a => a.Name == "cv-tailoring");
     try
     {
-        var reply = await agent.AskAsync(prompt, ct);
+        var outcome = await agent.TailorAsync(prompt, ct);
         if (userId is { } uid)
         {
-            await meter.RecordAsync(uid, agent.Name, reply, ct);
+            await meter.RecordAsync(uid, agent.Name, outcome.Reply, ct);
         }
-        return Results.Ok(new CvTailoringResponse(reply.Text));
+        return Results.Ok(TailoringComposer.Compose(outcome, loggerFactory.CreateLogger(nameof(TailoringComposer))));
     }
     catch (HttpRequestException ex)
     {
@@ -285,7 +288,6 @@ app.Run();
 internal sealed record RosterQaRequest(string Question);
 internal sealed record RosterQaResponse(string Answer);
 internal sealed record CvTailoringRequest(Guid EmployeeId, string JobDescription);
-internal sealed record CvTailoringResponse(string Answer);
 internal sealed record MatchRequest(Guid EmployeeId, string JobDescription);
 internal sealed record MatchResponse(string Answer);
 internal sealed record ShortlistRequest(

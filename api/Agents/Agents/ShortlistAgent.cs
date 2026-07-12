@@ -1,6 +1,5 @@
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using EmployeeManager.Agents.Mcp;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
@@ -252,81 +251,9 @@ internal sealed class CapturingShortlistFunction(AIFunction inner, ShortlistTool
         };
     }
 
-    /// <summary>
-    /// Leniently digs the shortlist payload out of whatever shape the tool result arrives in:
-    /// a POCO/JsonElement of the payload itself, a JSON string of it, or an MCP CallToolResult
-    /// envelope whose text content blocks hold the payload JSON.
-    /// </summary>
+    /// <summary>Leniently digs the shortlist payload out of whatever shape the tool result
+    /// arrives in — see <see cref="ToolResultPayload"/> (shared with the tailoring agent).</summary>
     private static ShortlistToolPayload? ExtractPayload(object? result)
-    {
-        try
-        {
-            return FromNode(JsonSerializer.SerializeToNode(result, Json), depth: 0);
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-    }
-
-    private static ShortlistToolPayload? FromNode(JsonNode? node, int depth)
-    {
-        if (node is null || depth > 3)
-        {
-            return null;
-        }
-
-        // A JSON string: parse its content and recurse (tools often return serialized JSON text).
-        if (node is JsonValue value && value.TryGetValue<string>(out var text))
-        {
-            try
-            {
-                return FromNode(JsonNode.Parse(text), depth + 1);
-            }
-            catch (JsonException)
-            {
-                return null;
-            }
-        }
-
-        if (node is not JsonObject obj)
-        {
-            return null;
-        }
-
-        if (obj.ContainsKey("results") || obj.ContainsKey("Results"))
-        {
-            return obj.Deserialize<ShortlistToolPayload>(Json);
-        }
-
-        // MCP envelope: prefer structuredContent, else scan text content blocks.
-        if (obj["structuredContent"] is { } structured && FromNode(structured, depth + 1) is { } fromStructured)
-        {
-            return fromStructured;
-        }
-
-        // A single AIContent text block (how the Agent Framework hands back an MCP tool result:
-        // a TextContent serializing to {"$type":"text","text":"{…payload…}"}).
-        if (obj["text"] is JsonValue single
-            && single.TryGetValue<string>(out var singleText)
-            && FromNode(JsonValue.Create(singleText), depth + 1) is { } fromSingle)
-        {
-            return fromSingle;
-        }
-
-        if (obj["content"] is JsonArray content)
-        {
-            foreach (var block in content)
-            {
-                if (block?["text"] is JsonValue textValue
-                    && textValue.TryGetValue<string>(out var blockText)
-                    && FromNode(JsonValue.Create(blockText), depth + 1) is { } payload)
-                {
-                    return payload;
-                }
-            }
-        }
-
-        return null;
-    }
+        => ToolResultPayload.Extract<ShortlistToolPayload>(
+            result, obj => obj.ContainsKey("results") || obj.ContainsKey("Results"), Json);
 }

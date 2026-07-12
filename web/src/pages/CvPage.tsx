@@ -108,9 +108,9 @@ export default function CvPage() {
                 </Stack>
                 {x.summary && <Typography variant="body2">{x.summary}</Typography>}
                 <ul style={{ margin: "4px 0" }}>
-                  {x.achievements.map((a, j) => (
-                    <li key={j}>
-                      <Typography variant="body2">{a}</Typography>
+                  {x.achievements.map((a) => (
+                    <li key={a.id}>
+                      <Typography variant="body2">{a.text}</Typography>
                     </li>
                   ))}
                 </ul>

@@ -37,10 +37,10 @@ public class CvService : ICvService
         var experiences = e.Experiences
             .OrderByDescending(x => x.StartDate)
             .Select(x => new CvExperienceDto(
-                x.Company, x.Title, x.Location,
+                x.Id, x.Company, x.Title, x.Location,
                 FormatPeriod(x.StartDate, x.EndDate),
                 x.Summary,
-                x.Achievements.Select(a => a.Text).ToList(),
+                x.Achievements.Select(a => new CvAchievementDto(a.Id, a.Text)).ToList(),
                 x.Skills.Select(s => s.SkillName).ToList()))
             .ToList();
 
