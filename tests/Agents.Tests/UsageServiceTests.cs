@@ -45,11 +45,13 @@ public class UsageServiceTests
     }
 
     [Fact]
-    public void Default_caps_are_25k_daily_150k_weekly_500k_monthly()
+    public void Default_caps_are_50k_daily_150k_weekly_500k_monthly()
     {
+        // Raised from 25k for the staffing pipeline (P1T-75): one run spends shortlist + N match
+        // + narrative tokens, so the old daily default left too little headroom for real use.
         var defaults = new UsageOptions();
 
-        defaults.DefaultDailyTokens.Should().Be(25_000);
+        defaults.DefaultDailyTokens.Should().Be(50_000);
         defaults.DefaultWeeklyTokens.Should().Be(150_000);
         defaults.DefaultMonthlyTokens.Should().Be(500_000);
     }
@@ -66,7 +68,7 @@ public class UsageServiceTests
     {
         await using var db = NewDb();
         var user = Guid.NewGuid();
-        await AddUsage(db, user, "match", 25_000, Now); // default daily cap is 25000
+        await AddUsage(db, user, "match", 50_000, Now); // default daily cap is 50000
 
         var exceeded = await Service(db).FindExceededAsync(user);
 
