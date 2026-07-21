@@ -19,6 +19,10 @@ surface embeds those narratives, stores the vectors in pgvector, and exposes the
 Supporting machinery: a **retrieval eval harness** (frozen golden set, measured baseline, live
 regression gate) and a **500-employee demo roster** (generator + seeder tooling).
 
+The **staffing pipeline** (`POST /agents/staffing`) composes the shortlist and match steps
+described here into one streamed, recommendation-first report — see
+[`staffing-pipeline.md`](staffing-pipeline.md).
+
 > Core search: P1T-32…39 (design record: [`rag-semantic-roster-search-plan.md`](rag-semantic-roster-search-plan.md)).
 > Shortlist + evals + demo data: P1T-40…56 (decision records on the wayfinder map P1T-40; measured
 > baseline + verdicts: [`retrieval-eval-baseline.md`](retrieval-eval-baseline.md)).

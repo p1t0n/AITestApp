@@ -4,7 +4,8 @@ A .NET 10 + React (Vite) service to manage available employees — skills, quali
 work experience, and time-based availability — and render their CVs. An MCP server exposes
 every operation on every entity to external AI agents over the same Application layer, and a
 suite of built-in AI agents (Roster Q&A, CV Tailoring, Match, **JD Shortlist**) consumes it —
-including **semantic search over career narratives** (pgvector RAG).
+including **semantic search over career narratives** (pgvector RAG) and a **streaming staffing
+pipeline** that composes the agents into one recommendation-first report.
 See [SPEC.md](SPEC.md).
 
 ## Features
@@ -16,12 +17,16 @@ See [SPEC.md](SPEC.md).
   reconcile worker; `roster_semantic_search` answers "who has done X" by meaning, with evidence.
 - **JD Shortlist** — paste a job description, get coverage-ranked candidates with per-requirement
   evidence and one-click drill-in to a full Match assessment.
+- **Staffing pipeline** — one request runs shortlist → per-candidate Match fan-out → narrative
+  recommendation as a Microsoft Agent Framework workflow, streamed over SSE with live per-step
+  progress; the report is evidence-linked and recommendation-first, and partial failures degrade
+  instead of erroring (see `manuals/staffing-pipeline.md`).
 - **CV bullet rewriting** — Tailor CV also returns vetted before/after rewrites of the CV's
   achievement bullets, phrased after anonymized cross-CV style exemplars (`style_exemplar_search`)
   and screened by a fabrication guard; one-click **Apply** persists a rewrite through the user's
   own session (the agent never writes).
 - **AI agent widget** — dockable in-app assistant with Roster Q&A / Tailor CV / Match / Shortlist /
-  Usage tabs; per-user token caps enforced server-side.
+  Staffing / Usage tabs; per-user token caps enforced server-side.
 - **Auth** — passkey (WebAuthn) sign-in for the app; OAuth 2.1 service accounts for agents.
 - **Retrieval evals** — frozen golden set + live regression gate + threshold-sweep CLI; retrieval
   quality is measured, not guessed (see `manuals/retrieval-eval-baseline.md`).
@@ -47,14 +52,16 @@ api/
   Infrastructure/  EF Core DbContext, migrations, seeders, embeddings, pgvector search
   Web/             controllers, Swagger, passkey auth, DI
   Mcp/             MCP server: tools (incl. semantic, shortlist + style-exemplar search), bearer auth, reconcile worker
-  Agents/          AI agents service: Roster Q&A, CV Tailoring, Match, Shortlist + usage caps
+  Agents/          AI agents service: Roster Q&A, CV Tailoring, Match, Shortlist, the staffing
+                   workflow (MAF WorkflowBuilder + SSE) + usage caps
 web/               React SPA (incl. the agent widget)
 tools/
   GenerateDemoRoster/  demo dataset generator (one-off, LLM-assisted)
   SeedDemoRoster/      demo roster seeder CLI (--count / --wipe)
   RetrievalEval/       retrieval eval + threshold-sweep CLI (+ RetrievalEval.Core)
 keycloak/          realm-export.json (OAuth realm: clients, scopes, audience mapper)
-manuals/           tech docs: semantic search + shortlist, eval baseline, decision records
+manuals/           tech docs: semantic search + shortlist, staffing pipeline, MAF research,
+                   eval baseline, decision records
 tests/
   Application.Tests/  Application unit tests
   Agents.Tests/       agent + endpoint tests (fake chat client / tool source)
