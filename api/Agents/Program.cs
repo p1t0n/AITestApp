@@ -60,6 +60,13 @@ builder.Services.AddSingleton(sp => new ShortlistAgent(
     sp.GetRequiredKeyedService<IMcpToolSource>("shortlist"),
     sp.GetRequiredService<ILoggerFactory>()));
 
+// Run services: the endpoint cores (prompt/response composition around one agent run), shared
+// with the staffing pipeline. The endpoints keep validation, cap-checks, metering, and HTTP
+// fault mapping around them.
+builder.Services.AddSingleton<ShortlistRunService>();
+builder.Services.AddSingleton(sp => new MatchRunService(
+    sp.GetServices<IChatAgent>().First(a => a.Name == "match")));
+
 var app = builder.Build();
 
 app.UseAuthentication();
@@ -177,7 +184,7 @@ app.MapPost("/agents/cv-tailoring", async (
 // POST /agents/match  { "employeeId": "guid", "jobDescription": "..." }  ->  { "answer": "..." }
 app.MapPost("/agents/match", async (
     MatchRequest request,
-    IEnumerable<IChatAgent> agents,
+    MatchRunService runner,
     ClaimsPrincipal user,
     IUsageMeter meter,
     IUsageService usage,
@@ -199,17 +206,14 @@ app.MapPost("/agents/match", async (
         return CapReached(exceeded);
     }
 
-    var prompt = $"Assess employee {request.EmployeeId} against this job description:\n\n{request.JobDescription}";
-
-    var agent = agents.First(a => a.Name == "match");
     try
     {
-        var reply = await agent.AskAsync(prompt, ct);
+        var run = await runner.RunAsync(request.EmployeeId, request.JobDescription, ct);
         if (userId is { } uid)
         {
-            await meter.RecordAsync(uid, agent.Name, reply, ct);
+            await meter.RecordAsync(uid, run.AgentName, run.Reply, ct);
         }
-        return Results.Ok(new MatchResponse(reply.Text));
+        return Results.Ok(new MatchResponse(run.Answer));
     }
     catch (HttpRequestException ex)
     {
@@ -226,7 +230,7 @@ app.MapPost("/agents/match", async (
 // (ids, scores, coverage, evidence) are composed from the captured tool result — never model text.
 app.MapPost("/agents/shortlist", async (
     ShortlistRequest request,
-    ShortlistAgent agent,
+    ShortlistRunService runner,
     ClaimsPrincipal user,
     IUsageMeter meter,
     IUsageService usage,
@@ -245,7 +249,7 @@ app.MapPost("/agents/shortlist", async (
 
     try
     {
-        var outcome = await agent.ShortlistAsync(
+        var run = await runner.RunAsync(
             new ShortlistAgentRequest(
                 request.JobDescription,
                 request.AvailableOn,
@@ -258,20 +262,20 @@ app.MapPost("/agents/shortlist", async (
         // Meter first: tokens were spent even when the run degrades to a 502 below.
         if (userId is { } uid)
         {
-            await meter.RecordAsync(uid, agent.Name, outcome.Reply, ct);
+            await meter.RecordAsync(uid, run.AgentName, run.Reply, ct);
         }
 
-        // No captured tool result (the model skipped the tool) or a soft retrieval error from the
-        // tool (e.g. embedding backend down): upstream fault, same philosophy as the catch below.
-        if (outcome.Tool is null || outcome.Tool.Error is not null)
+        // The run service reports a degraded run (model skipped the tool, or a soft retrieval
+        // error) as data; mapping it to HTTP is this shell's job — same philosophy as the catch.
+        if (run.Response is null)
         {
             return Results.Problem(
                 title: "Upstream dependency failed (shortlist retrieval).",
-                detail: outcome.Tool?.Error ?? "The agent did not produce a roster_shortlist_search result.",
+                detail: run.FaultDetail,
                 statusCode: StatusCodes.Status502BadGateway);
         }
 
-        return Results.Ok(ShortlistComposer.Compose(outcome));
+        return Results.Ok(run.Response);
     }
     catch (HttpRequestException ex)
     {
