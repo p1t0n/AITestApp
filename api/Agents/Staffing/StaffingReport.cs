@@ -61,14 +61,30 @@ public sealed record StaffingReport(
     IReadOnlyList<string> Notes);
 
 /// <summary>One ordered progress event from a pipeline run. This is the streaming seam: the
-/// one-shot endpoint returns only the final report today, but the pipeline already emits these in
-/// order (via <see cref="IProgress{T}"/> and on the outcome) so the SSE slice can stream them
-/// without re-architecting.</summary>
+/// pipeline emits these in order (via <see cref="IProgress{T}"/> and on the outcome) and the SSE
+/// endpoint maps them to wire events (see <c>StaffingSse</c>). Events that mark a UI-visible step
+/// transition carry a <see cref="Status"/> (<c>started</c>/<c>completed</c>/<c>failed</c>); the
+/// rest are message-only diagnostics. Match-step events additionally carry the candidate's name
+/// and the k/N fan-out progress counters, where <see cref="CompletedCount"/> counts every finished
+/// match run — failed ones included — so progress always ends at N/N.</summary>
 public sealed record StaffingProgressEvent(
     int Sequence,
     string Stage,
     string Message,
-    Guid? EmployeeId = null);
+    Guid? EmployeeId = null,
+    string? Status = null,
+    string? CandidateName = null,
+    int? CompletedCount = null,
+    int? TotalCount = null,
+    string? Error = null);
+
+/// <summary>The pinned <see cref="StaffingProgressEvent.Status"/> values.</summary>
+public static class StaffingStepStatus
+{
+    public const string Started = "started";
+    public const string Completed = "completed";
+    public const string Failed = "failed";
+}
 
 /// <summary>
 /// What one pipeline run produced. Exactly one of <see cref="Report"/> and

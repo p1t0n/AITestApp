@@ -156,6 +156,51 @@ public class StaffingPipelineTests
             "prepare", "shortlist", "match", "aggregate", "narrative", "report");
     }
 
+    [Fact]
+    public async Task Emits_step_status_payloads_with_candidate_names_and_counters()
+    {
+        // maxConcurrentMatches: 1 serialises the fan-out so the per-candidate order is exact.
+        var shortlist = new FakeShortlistRunService(ShortlistOk(Candidate(1), Candidate(2)));
+        var pipeline = Pipeline(
+            shortlist, MatchAlwaysOk(), NarrativeChat(NarrativeJson(Id(1), Id(2))), maxConcurrentMatches: 1);
+
+        var outcome = await RunAsync(pipeline, matchTop: 2);
+
+        outcome.Events
+            .Where(e => e.Status is not null)
+            .Select(e => (e.Stage, e.Status, e.CandidateName, e.CompletedCount, e.TotalCount))
+            .Should().Equal(
+                ("shortlist", "started", null, null, null),
+                ("shortlist", "completed", null, null, null),
+                ("match", "started", "Person 1", null, 2),
+                ("match", "completed", "Person 1", 1, 2),
+                ("match", "started", "Person 2", null, 2),
+                ("match", "completed", "Person 2", 2, 2),
+                ("narrative", "started", null, null, null),
+                ("narrative", "completed", null, null, null));
+        outcome.Events.Where(e => e.CandidateName is not null)
+            .Should().OnlyContain(e => e.EmployeeId != null);
+    }
+
+    [Fact]
+    public async Task A_failed_match_emits_a_failed_status_event_carrying_the_error()
+    {
+        var match = new FakeMatchRunService((_, _) => throw new InvalidOperationException("cv_get exploded"));
+        var pipeline = Pipeline(
+            new FakeShortlistRunService(ShortlistOk(Candidate(1))),
+            match,
+            NarrativeChat(NarrativeJson(Id(1), Id(1))));
+
+        var outcome = await RunAsync(pipeline, matchTop: 1);
+
+        var failed = outcome.Events.Should()
+            .ContainSingle(e => e.Stage == "match" && e.Status == "failed").Subject;
+        failed.CandidateName.Should().Be("Person 1");
+        failed.Error.Should().Contain("cv_get exploded");
+        failed.CompletedCount.Should().Be(1, "a failed run still advances the k/N progress counter");
+        failed.TotalCount.Should().Be(1);
+    }
+
     // ----- matchTop handling ----------------------------------------------------------------
 
     [Theory]
