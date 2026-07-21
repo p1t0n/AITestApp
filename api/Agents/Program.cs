@@ -3,9 +3,11 @@ using EmployeeManager.Agents.Agents;
 using EmployeeManager.Agents.Auth;
 using EmployeeManager.Agents.Configuration;
 using EmployeeManager.Agents.Mcp;
+using EmployeeManager.Agents.Staffing;
 using EmployeeManager.Agents.Usage;
 using EmployeeManager.Infrastructure;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -66,6 +68,26 @@ builder.Services.AddSingleton(sp => new ShortlistAgent(
 builder.Services.AddSingleton<ShortlistRunService>();
 builder.Services.AddSingleton(sp => new MatchRunService(
     sp.GetServices<IChatAgent>().First(a => a.Name == "match")));
+builder.Services.AddSingleton<IShortlistRunService>(sp => sp.GetRequiredService<ShortlistRunService>());
+builder.Services.AddSingleton<IMatchRunService>(sp => sp.GetRequiredService<MatchRunService>());
+
+// The staffing pipeline (P1T-75): a MAF workflow over the run services plus a tool-less narrative
+// call on the default chat client. The match throttle is process-wide — it protects the model
+// endpoint's rate limit across all concurrent staffing requests — while the pipeline itself is
+// scoped because it meters/cap-checks through the request-scoped usage services.
+builder.Services.AddOptions<StaffingOptions>().Bind(builder.Configuration.GetSection(StaffingOptions.Section));
+builder.Services.AddSingleton(sp => new StaffingThrottle(
+    sp.GetRequiredService<IOptions<StaffingOptions>>().Value.MaxConcurrentMatches));
+builder.Services.AddSingleton(StaffingRetryPolicy.Default);
+builder.Services.AddScoped(sp => new StaffingPipeline(
+    sp.GetRequiredService<IShortlistRunService>(),
+    sp.GetRequiredService<IMatchRunService>(),
+    sp.ResolveAgentChatClient("staffing"),
+    sp.GetRequiredService<IUsageService>(),
+    sp.GetRequiredService<IUsageMeter>(),
+    sp.GetRequiredService<StaffingThrottle>(),
+    sp.GetRequiredService<StaffingRetryPolicy>(),
+    sp.GetRequiredService<ILogger<StaffingPipeline>>()));
 
 var app = builder.Build();
 
@@ -287,6 +309,65 @@ app.MapPost("/agents/shortlist", async (
     }
 }).RequireAuthorization();
 
+// POST /agents/staffing  { "jobDescription": "...", availableOn?, skillIds?, location?, minYears?, matchTop? }
+// -> the pinned staffing report (see StaffingReport): shortlist + per-candidate match + narrative,
+// one-shot JSON this slice (the pipeline already emits ordered progress events for the SSE slice).
+// Partial results ship as 200 + degraded:true; only a failed shortlist maps to 502.
+app.MapPost("/agents/staffing", async (
+    StaffingRequest request,
+    StaffingPipeline pipeline,
+    ClaimsPrincipal user,
+    IUsageService usage,
+    CancellationToken ct) =>
+{
+    if (string.IsNullOrWhiteSpace(request.JobDescription))
+    {
+        return Results.BadRequest(new { error = "jobDescription is required." });
+    }
+
+    var userId = user.GetUserId();
+    if (userId is { } pre && await usage.FindExceededAsync(pre, ct) is { } exceeded)
+    {
+        return CapReached(exceeded);
+    }
+
+    try
+    {
+        // Metering and the mid-run cap re-checks live inside the pipeline (each step records
+        // under its own agent name); this shell only maps outcomes to HTTP.
+        var outcome = await pipeline.RunAsync(
+            new StaffingPipelineRequest(
+                request.JobDescription,
+                request.AvailableOn,
+                request.SkillIds,
+                request.Location,
+                request.MinYears,
+                request.MatchTop),
+            userId,
+            progress: null,
+            ct);
+
+        if (outcome.ShortlistFault is { } fault)
+        {
+            return Results.Problem(
+                title: "Upstream dependency failed (staffing shortlist step).",
+                detail: fault,
+                statusCode: StatusCodes.Status502BadGateway);
+        }
+
+        return Results.Ok(outcome.Report);
+    }
+    catch (HttpRequestException ex)
+    {
+        // Defense in depth: the pipeline maps upstream faults itself, but anything that still
+        // escapes is the same upstream-fault philosophy as the other agent endpoints.
+        return Results.Problem(
+            title: "Upstream dependency failed (MCP server, auth, or model).",
+            detail: ex.Message,
+            statusCode: StatusCodes.Status502BadGateway);
+    }
+}).RequireAuthorization();
+
 app.Run();
 
 internal sealed record RosterQaRequest(string Question);
@@ -301,6 +382,13 @@ internal sealed record ShortlistRequest(
     string? Location = null,
     decimal? MinYears = null,
     int? TopK = null);
+internal sealed record StaffingRequest(
+    string JobDescription,
+    DateOnly? AvailableOn = null,
+    Guid[]? SkillIds = null,
+    string? Location = null,
+    decimal? MinYears = null,
+    int? MatchTop = null);
 
 // Exposed so the integration/smoke tests (WebApplicationFactory) can reference the entry point.
 public partial class Program { }
