@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import {
   Autocomplete,
@@ -11,6 +11,7 @@ import {
   IconButton,
   LinearProgress,
   Link,
+  MenuItem,
   Paper,
   Stack,
   Tab,
@@ -30,11 +31,14 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import HighlightOffIcon from "@mui/icons-material/HighlightOff";
+import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import type { AgentDock } from "./useAgentDock";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
   apiErrorMessage,
+  runStaffing,
   useApplyRewrite,
   useCvTailoring,
   useEmployees,
@@ -45,13 +49,17 @@ import {
   useUsage,
   type AgentJobRequest,
   type ShortlistCandidate,
+  type StaffingReport,
+  type StaffingReportCandidate,
+  type StaffingRequest,
+  type StaffingStepEvent,
   type TailoringRewrite,
   type ShortlistRequest,
   type ShortlistResponse,
   type WindowUsage,
 } from "../api";
 
-type Mode = "roster" | "cv-tailoring" | "match" | "shortlist" | "usage";
+type Mode = "roster" | "cv-tailoring" | "match" | "shortlist" | "staffing" | "usage";
 
 // Matches a GUID anywhere in the text. The agents cite employees by name + id, so we turn those
 // ids into links to the employee detail page.
@@ -758,6 +766,595 @@ function ShortlistPanel({
   );
 }
 
+// ---- Staffing mode ----
+// One JD in, a streamed pipeline out (SSE): a live stepper follows the shortlist → match →
+// narrative stages, then the terminal report renders recommendation-first with ranked candidate
+// cards that drill into the Match and Tailor CV tabs.
+
+type StaffingStageView = "pending" | "active" | "done" | "failed";
+
+interface StaffingProgress {
+  shortlist: StaffingStageView;
+  match: StaffingStageView;
+  matchCompleted: number;
+  matchTotal: number | null;
+  /** One entry per finished match run, in completion order; failed ones get an inline warning. */
+  matchTicks: { name: string; failed: boolean }[];
+  narrative: StaffingStageView;
+  narrativeError: string | null;
+}
+
+const STAFFING_IDLE: StaffingProgress = {
+  shortlist: "pending",
+  match: "pending",
+  matchCompleted: 0,
+  matchTotal: null,
+  matchTicks: [],
+  narrative: "pending",
+  narrativeError: null,
+};
+
+/** Folds one step/stepFailed event into the stepper. Events arrive in run order, so a later
+ * stage's first event also settles the stages before it (e.g. a match event marks shortlist done).
+ * A failed match run warns inline but never fails the stage — completedCount counts it, and the
+ * run continues under the degrade policy. Cap-skipped stages emit no events and stay pending. */
+function reduceStaffingStep(p: StaffingProgress, evt: StaffingStepEvent): StaffingProgress {
+  const next: StaffingProgress = { ...p };
+  switch (evt.stage) {
+    case "shortlist":
+      next.shortlist =
+        evt.status === "started" ? "active" : evt.status === "completed" ? "done" : "failed";
+      break;
+    case "match": {
+      if (next.shortlist !== "failed") next.shortlist = "done";
+      if (evt.totalCount != null) next.matchTotal = evt.totalCount;
+      if (evt.status !== "started") {
+        if (evt.completedCount != null) next.matchCompleted = evt.completedCount;
+        if (evt.candidate) {
+          next.matchTicks = [
+            ...p.matchTicks,
+            { name: evt.candidate.name, failed: evt.status === "failed" },
+          ];
+        }
+      }
+      next.match =
+        next.matchTotal != null && next.matchCompleted >= next.matchTotal ? "done" : "active";
+      break;
+    }
+    case "narrative":
+      if (next.match === "active") next.match = "done";
+      if (evt.status === "started") next.narrative = "active";
+      else if (evt.status === "completed") next.narrative = "done";
+      else {
+        next.narrative = "failed";
+        next.narrativeError = evt.error ?? null;
+      }
+      break;
+  }
+  return next;
+}
+
+/** The terminal report settles every stage: anything still pending/active is done; a stage that
+ * warned (narrative failed) keeps its warning. */
+function settleStaffingProgress(p: StaffingProgress): StaffingProgress {
+  return {
+    ...p,
+    shortlist: p.shortlist === "failed" ? "failed" : "done",
+    match: p.match === "failed" ? "failed" : "done",
+    narrative: p.narrative === "failed" ? "failed" : "done",
+  };
+}
+
+function StaffingStepRow({
+  id,
+  label,
+  state,
+  error,
+  children,
+}: {
+  id: string;
+  label: string;
+  state: StaffingStageView;
+  error?: string | null;
+  children?: React.ReactNode;
+}) {
+  return (
+    <Box data-testid={`staffing-step-${id}`}>
+      <Stack direction="row" spacing={1} alignItems="center">
+        {state === "done" ? (
+          <CheckCircleOutlineIcon fontSize="small" color="success" />
+        ) : state === "active" ? (
+          <CircularProgress size={16} />
+        ) : state === "failed" ? (
+          <WarningAmberIcon fontSize="small" color="warning" />
+        ) : (
+          <RadioButtonUncheckedIcon fontSize="small" color="disabled" />
+        )}
+        <Typography
+          variant="body2"
+          color={state === "pending" ? "text.secondary" : "text.primary"}
+          fontWeight={state === "active" ? 600 : 400}
+        >
+          {label}
+        </Typography>
+      </Stack>
+      {error && (
+        <Typography variant="caption" color="warning.main" sx={{ pl: 3.5, display: "block" }}>
+          {error}
+        </Typography>
+      )}
+      {children}
+    </Box>
+  );
+}
+
+function StaffingStepper({ progress, done }: { progress: StaffingProgress; done: boolean }) {
+  const matchLabel =
+    progress.matchTotal != null
+      ? `Matching (${progress.matchCompleted}/${progress.matchTotal})`
+      : "Matching";
+  return (
+    <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }} data-testid="staffing-stepper">
+      <Stack spacing={0.75}>
+        <StaffingStepRow id="shortlist" label="Shortlisting" state={progress.shortlist} />
+        <StaffingStepRow id="match" label={matchLabel} state={progress.match}>
+          {progress.matchTicks.length > 0 && (
+            <Stack spacing={0.25} sx={{ pl: 3.5, mt: 0.25 }}>
+              {progress.matchTicks.map((t, i) => (
+                <Stack
+                  key={i}
+                  direction="row"
+                  spacing={0.5}
+                  alignItems="center"
+                  data-testid="staffing-match-tick"
+                >
+                  {t.failed && <WarningAmberIcon fontSize="small" color="warning" />}
+                  <Typography variant="caption" color="text.secondary">
+                    {t.name}
+                  </Typography>
+                </Stack>
+              ))}
+            </Stack>
+          )}
+        </StaffingStepRow>
+        <StaffingStepRow
+          id="narrative"
+          label="Composing recommendation"
+          state={progress.narrative}
+          error={progress.narrativeError}
+        />
+        <StaffingStepRow id="done" label="Done" state={done ? "done" : "pending"} />
+      </Stack>
+    </Paper>
+  );
+}
+
+function StaffingCandidateCard({
+  candidate,
+  onOpenInMatch,
+  onTailorCv,
+}: {
+  candidate: StaffingReportCandidate;
+  onOpenInMatch: (employeeId: string) => void;
+  onTailorCv: (employeeId: string) => void;
+}) {
+  const [showMatch, setShowMatch] = useState(false);
+  const [showEvidence, setShowEvidence] = useState(false);
+  const c = candidate;
+  const hasMatchDetails = c.match.status === "completed" && !!c.match.answer;
+  return (
+    <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }} data-testid={`staffing-candidate-${c.employeeId}`}>
+      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+        <Box sx={{ minWidth: 0 }}>
+          <Link
+            component={RouterLink}
+            to={`/employees/${c.employeeId}`}
+            variant="body2"
+            fontWeight={600}
+          >
+            {c.name}
+          </Link>
+          <Typography variant="body2" color="text.secondary">
+            {c.title}
+          </Typography>
+        </Box>
+        <Stack direction="row" spacing={0.5} flexShrink={0} flexWrap="wrap" useFlexGap justifyContent="flex-end">
+          <Tooltip title="Similarity score">
+            <Chip size="small" variant="outlined" label={c.shortlist.score.toFixed(2)} />
+          </Tooltip>
+          <Tooltip title="Requirements matched">
+            <Chip
+              size="small"
+              color={c.shortlist.coverage.matched === c.shortlist.coverage.total ? "success" : "default"}
+              label={`${c.shortlist.coverage.matched}/${c.shortlist.coverage.total}`}
+            />
+          </Tooltip>
+          {c.match.status === "completed" && c.match.band && c.match.score != null && (
+            <Tooltip title="Match verdict">
+              <Chip
+                size="small"
+                color="primary"
+                label={`${c.match.band} · ${c.match.score}`}
+                data-testid="staffing-band-chip"
+              />
+            </Tooltip>
+          )}
+          {c.match.status === "failed" && (
+            <Tooltip title={c.match.error ?? "The match run failed."}>
+              <Chip size="small" color="error" label="Match failed" />
+            </Tooltip>
+          )}
+          {c.match.status === "skipped" && (
+            <Chip size="small" variant="outlined" label="Match skipped" sx={{ color: "text.secondary" }} />
+          )}
+        </Stack>
+      </Stack>
+
+      <Typography variant="body2" sx={{ mt: 1 }}>
+        {c.rationale}
+      </Typography>
+
+      <Stack direction="row" flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }} columnGap={0.5}>
+        <Button
+          size="small"
+          onClick={() => setShowEvidence((v) => !v)}
+          endIcon={showEvidence ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+        >
+          Evidence
+        </Button>
+        {hasMatchDetails && (
+          <Button
+            size="small"
+            onClick={() => setShowMatch((v) => !v)}
+            endIcon={showMatch ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+          >
+            Match details
+          </Button>
+        )}
+        <Box sx={{ flex: 1 }} />
+        <Button size="small" onClick={() => onOpenInMatch(c.employeeId)}>
+          Open in Match
+        </Button>
+        <Button size="small" onClick={() => onTailorCv(c.employeeId)}>
+          Tailor CV
+        </Button>
+      </Stack>
+
+      <Collapse in={showEvidence} unmountOnExit>
+        <Stack spacing={0.75} sx={{ mt: 1 }} data-testid={`staffing-evidence-${c.employeeId}`}>
+          {c.shortlist.requirements.map((r, i) => (
+            <Stack key={i} direction="row" spacing={1} alignItems="flex-start">
+              {r.matched ? (
+                <CheckCircleOutlineIcon fontSize="small" color="success" />
+              ) : (
+                <HighlightOffIcon fontSize="small" color="disabled" />
+              )}
+              <Box>
+                <Typography variant="body2">{r.text}</Typography>
+                {r.snippet && (
+                  <Typography variant="caption" color="text.secondary">
+                    {r.snippet}
+                  </Typography>
+                )}
+              </Box>
+            </Stack>
+          ))}
+        </Stack>
+      </Collapse>
+
+      {hasMatchDetails && (
+        <Collapse in={showMatch} unmountOnExit>
+          <Box sx={{ mt: 1, pt: 1, borderTop: 1, borderColor: "divider" }}>
+            <AgentMarkdown text={c.match.answer!} />
+          </Box>
+        </Collapse>
+      )}
+    </Paper>
+  );
+}
+
+function StaffingRecommendation({ report }: { report: StaffingReport }) {
+  const rec = report.recommendation;
+  const name = rec
+    ? (report.candidates.find((c) => c.employeeId === rec.employeeId)?.name ?? rec.employeeId)
+    : null;
+  return (
+    <Paper
+      variant="outlined"
+      sx={{ p: 1.5, borderRadius: 2, borderColor: rec ? "primary.main" : "divider" }}
+      data-testid="staffing-recommendation"
+    >
+      <Typography variant="caption" color="text.secondary">
+        Recommendation
+      </Typography>
+      {rec ? (
+        <>
+          <Box>
+            <Link
+              component={RouterLink}
+              to={`/employees/${rec.employeeId}`}
+              variant="subtitle2"
+              fontWeight={700}
+            >
+              {name}
+            </Link>
+          </Box>
+          <Typography variant="body2" sx={{ mt: 0.5 }}>
+            {rec.narrative}
+          </Typography>
+        </>
+      ) : (
+        <Typography variant="body2" color="text.secondary">
+          No recommendation for this run — see the ranked candidates below.
+        </Typography>
+      )}
+    </Paper>
+  );
+}
+
+function StaffingPanel({
+  onOpenInMatch,
+  onTailorCv,
+}: {
+  onOpenInMatch: (employeeId: string, jobDescription: string) => void;
+  onTailorCv: (employeeId: string, jobDescription: string) => void;
+}) {
+  const skills = useSkills();
+
+  const [jobDescription, setJobDescription] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [availableOn, setAvailableOn] = useState("");
+  const [skillIds, setSkillIds] = useState<string[]>([]);
+  const [location, setLocation] = useState("");
+  const [minYears, setMinYears] = useState("");
+  const [matchTop, setMatchTop] = useState("3");
+
+  const [phase, setPhase] = useState<"idle" | "running" | "done" | "failed">("idle");
+  const [progress, setProgress] = useState<StaffingProgress>(STAFFING_IDLE);
+  const [report, setReport] = useState<StaffingReport | null>(null);
+  const [error, setError] = useState<{ title: string; detail?: string } | null>(null);
+  // The JD the current results were produced from — drill-ins prefill this, not the live field.
+  const [submittedJd, setSubmittedJd] = useState("");
+
+  // The in-flight stream; aborted on resubmit and on unmount (tab switch / widget close).
+  const abortRef = useRef<AbortController | null>(null);
+  useEffect(() => () => abortRef.current?.abort(), []);
+
+  const skillOptions = useMemo(
+    () => (skills.data ?? []).map((s) => ({ id: s.id, label: s.name })),
+    [skills.data],
+  );
+  const selectedSkills = skillOptions.filter((o) => skillIds.includes(o.id));
+
+  const canSubmit = jobDescription.trim().length > 0 && phase !== "running";
+
+  async function submit() {
+    if (!canSubmit) return;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    const jd = jobDescription.trim();
+    setError(null);
+    setReport(null);
+    setProgress(STAFFING_IDLE);
+    setPhase("running");
+    setSubmittedJd(jd);
+
+    // Only the filters the user actually set are sent; matchTop always is (the selector always
+    // shows a concrete value). The server owns all other defaults.
+    const req: StaffingRequest = { jobDescription: jd, matchTop: Number(matchTop) };
+    if (availableOn) req.availableOn = availableOn;
+    if (skillIds.length > 0) req.skillIds = skillIds;
+    if (location.trim()) req.location = location.trim();
+    if (minYears !== "") req.minYears = Number(minYears);
+
+    let terminal = false;
+    try {
+      await runStaffing(
+        req,
+        {
+          onStep: (evt) => setProgress((p) => reduceStaffingStep(p, evt)),
+          onReport: (r) => {
+            terminal = true;
+            setProgress(settleStaffingProgress);
+            setReport(r);
+            setPhase("done");
+          },
+          onError: (e) => {
+            terminal = true;
+            setError(e);
+            setPhase("failed");
+          },
+        },
+        controller.signal,
+      );
+      if (!terminal && !controller.signal.aborted) {
+        // The server closed the stream without a terminal event — treat it as a dropped run.
+        setError({ title: "The stream ended before a report arrived. Try again." });
+        setPhase("failed");
+      }
+    } catch (err) {
+      // A deliberate abort (unmount/resubmit) is not an error; anything else is a dropped stream
+      // or a pre-stream HTTP failure (the SSE helper's message covers 429 cap bodies).
+      if (!controller.signal.aborted) {
+        setError({ title: apiErrorMessage(err) });
+        setPhase("failed");
+      }
+    }
+  }
+
+  return (
+    <Box sx={{ flex: 1, overflowY: "auto", p: 1.5 }}>
+      <Stack spacing={1.5}>
+        <Box>
+          <Typography variant="caption" color="text.secondary">
+            Job description
+          </Typography>
+          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mb: 0.5 }}>
+            {PRESET_JDS.map((p) => (
+              <Chip
+                key={p.label}
+                label={p.label}
+                size="small"
+                variant="outlined"
+                onClick={() => setJobDescription(p.text)}
+              />
+            ))}
+          </Stack>
+          <TextField
+            fullWidth
+            size="small"
+            multiline
+            minRows={3}
+            maxRows={8}
+            placeholder="Paste a job description, or pick a preset above…"
+            value={jobDescription}
+            onChange={(e) => setJobDescription(e.target.value)}
+          />
+        </Box>
+
+        <Box>
+          <Button
+            size="small"
+            startIcon={<FilterListIcon />}
+            endIcon={showFilters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            onClick={() => setShowFilters((v) => !v)}
+          >
+            Filters (optional)
+          </Button>
+          <Collapse in={showFilters} unmountOnExit>
+            <Stack spacing={1.5} sx={{ mt: 1 }}>
+              <TextField
+                size="small"
+                type="date"
+                label="Available on"
+                InputLabelProps={{ shrink: true }}
+                value={availableOn}
+                onChange={(e) => setAvailableOn(e.target.value)}
+              />
+              <Autocomplete
+                multiple
+                size="small"
+                options={skillOptions}
+                value={selectedSkills}
+                onChange={(_, v) => setSkillIds(v.map((o) => o.id))}
+                loading={skills.isLoading}
+                isOptionEqualToValue={(o, v) => o.id === v.id}
+                renderInput={(params) => (
+                  <TextField {...params} label="Skills" placeholder="Any skill" />
+                )}
+              />
+              <TextField
+                size="small"
+                label="Location"
+                placeholder="Any location"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+              />
+              <TextField
+                size="small"
+                type="number"
+                label="Min years"
+                inputProps={{ min: 0 }}
+                value={minYears}
+                onChange={(e) => setMinYears(e.target.value)}
+              />
+            </Stack>
+          </Collapse>
+        </Box>
+
+        <TextField
+          select
+          size="small"
+          label="Candidates to match"
+          value={matchTop}
+          onChange={(e) => setMatchTop(e.target.value)}
+          sx={{ width: 180 }}
+        >
+          {["1", "2", "3", "4", "5"].map((n) => (
+            <MenuItem key={n} value={n}>
+              {n}
+            </MenuItem>
+          ))}
+        </TextField>
+
+        <Button
+          variant="contained"
+          disabled={!canSubmit}
+          startIcon={
+            phase === "running" ? <CircularProgress size={16} color="inherit" /> : <SmartToyIcon />
+          }
+          onClick={() => void submit()}
+        >
+          {phase === "running" ? "Running…" : "Run staffing"}
+        </Button>
+
+        {phase !== "idle" && <StaffingStepper progress={progress} done={phase === "done"} />}
+
+        {error && (
+          <Paper
+            elevation={0}
+            sx={{ p: 1.5, bgcolor: "error.light", color: "error.contrastText", borderRadius: 2 }}
+          >
+            <Typography variant="body2">{error.title}</Typography>
+            {error.detail && <Typography variant="body2">{error.detail}</Typography>}
+          </Paper>
+        )}
+
+        {report && (
+          <>
+            {report.degraded && (
+              <Paper
+                elevation={0}
+                sx={{ p: 1.5, bgcolor: "warning.light", color: "warning.contrastText", borderRadius: 2 }}
+                data-testid="staffing-degraded"
+              >
+                <Typography variant="body2" fontWeight={600}>
+                  Partial results
+                </Typography>
+                {report.notes.map((n, i) => (
+                  <Typography key={i} variant="body2">
+                    {n}
+                  </Typography>
+                ))}
+              </Paper>
+            )}
+
+            <StaffingRecommendation report={report} />
+
+            <Box>
+              <Typography variant="caption" color="text.secondary">
+                How the JD was read
+              </Typography>
+              <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
+                {report.requirements.map((r) => (
+                  <Chip key={r} label={r} size="small" />
+                ))}
+              </Stack>
+            </Box>
+
+            {report.candidates.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                No candidates matched this job description. Try loosening the filters.
+              </Typography>
+            ) : (
+              report.candidates.map((c) => (
+                <StaffingCandidateCard
+                  key={c.employeeId}
+                  candidate={c}
+                  onOpenInMatch={(employeeId) => onOpenInMatch(employeeId, submittedJd)}
+                  onTailorCv={(employeeId) => onTailorCv(employeeId, submittedJd)}
+                />
+              ))
+            )}
+          </>
+        )}
+      </Stack>
+    </Box>
+  );
+}
+
 // ---- Widget shell ----
 
 /** "in 5h" / "in 3d" until the window resets. */
@@ -842,18 +1439,23 @@ const TABS: { mode: Mode; label: string }[] = [
   { mode: "cv-tailoring", label: "Tailor CV" },
   { mode: "match", label: "Match" },
   { mode: "shortlist", label: "Shortlist" },
+  { mode: "staffing", label: "Staffing" },
   { mode: "usage", label: "Usage" },
 ];
 
 export default function AgentWidget({ dock, isNarrow }: { dock: AgentDock; isNarrow: boolean }) {
   const [mode, setMode] = useState<Mode>("roster");
 
-  // "Run full Match" on a shortlist card jumps to the Match tab with the employee + JD pre-filled.
-  // Cleared on any manual tab click so a stale prefill never resurfaces later.
-  const [matchPrefill, setMatchPrefill] = useState<AgentJobRequest | null>(null);
-  function runFullMatch(employeeId: string, jobDescription: string) {
-    setMatchPrefill({ employeeId, jobDescription });
-    setMode("match");
+  // Cross-tab drill-ins ("Run full Match" on a shortlist card, "Open in Match" / "Tailor CV" on a
+  // staffing card) jump to the target tab with the employee + JD pre-filled. Cleared on any manual
+  // tab click so a stale prefill never resurfaces later.
+  const [prefill, setPrefill] = useState<{
+    mode: "cv-tailoring" | "match";
+    request: AgentJobRequest;
+  } | null>(null);
+  function openPrefilled(target: "cv-tailoring" | "match", employeeId: string, jobDescription: string) {
+    setPrefill({ mode: target, request: { employeeId, jobDescription } });
+    setMode(target);
   }
 
   // Drag the left edge of the docked sidebar to resize. Width is viewport-minus-cursor, clamped by
@@ -960,7 +1562,7 @@ export default function AgentWidget({ dock, isNarrow }: { dock: AgentDock; isNar
           <Tabs
             value={mode}
             onChange={(_, v: Mode) => {
-              setMatchPrefill(null);
+              setPrefill(null);
               setMode(v);
             }}
             variant="fullWidth"
@@ -971,19 +1573,28 @@ export default function AgentWidget({ dock, isNarrow }: { dock: AgentDock; isNar
             ))}
           </Tabs>
 
-          {/* Remount per mode so each keeps its own independent state. The Match form also
-              remounts per prefill so a new "Run full Match" always lands its values. */}
+          {/* Remount per mode so each keeps its own independent state. The job forms also
+              remount per prefill so a new drill-in always lands its values. */}
           {mode === "roster" ? (
             <RosterChat key="roster" />
           ) : mode === "usage" ? (
             <UsagePanel key="usage" />
           ) : mode === "shortlist" ? (
-            <ShortlistPanel key="shortlist" onRunMatch={runFullMatch} />
+            <ShortlistPanel
+              key="shortlist"
+              onRunMatch={(employeeId, jd) => openPrefilled("match", employeeId, jd)}
+            />
+          ) : mode === "staffing" ? (
+            <StaffingPanel
+              key="staffing"
+              onOpenInMatch={(employeeId, jd) => openPrefilled("match", employeeId, jd)}
+              onTailorCv={(employeeId, jd) => openPrefilled("cv-tailoring", employeeId, jd)}
+            />
           ) : (
             <AgentJobForm
-              key={mode === "match" && matchPrefill ? `match-${matchPrefill.employeeId}` : mode}
+              key={prefill?.mode === mode ? `${mode}-${prefill.request.employeeId}` : mode}
               mode={mode}
-              initial={mode === "match" ? (matchPrefill ?? undefined) : undefined}
+              initial={prefill?.mode === mode ? prefill.request : undefined}
             />
           )}
         </Paper>
