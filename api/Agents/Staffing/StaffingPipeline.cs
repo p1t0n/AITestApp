@@ -108,6 +108,7 @@ public sealed class StaffingPipeline
         private readonly List<StaffingProgressEvent> _events = [];
         private readonly Lock _gate = new();
         private int _sequence;
+        private int _matchesFinished;
 
         public async Task<StaffingRunOutcome> RunAsync(StaffingPipelineRequest request, CancellationToken ct)
         {
@@ -155,12 +156,27 @@ public sealed class StaffingPipeline
             return builder.Build(true);
         }
 
-        private void Emit(string stage, string message, Guid? employeeId = null)
+        /// <summary>Records one ordered progress event. Step-transition events carry a
+        /// <paramref name="status"/> for the SSE stepper; <paramref name="countsMatchRun"/> events
+        /// advance the k/N fan-out counter (under the same gate as the sequence, so the counters
+        /// are monotonic in event order even while match runs race).</summary>
+        private void Emit(
+            string stage,
+            string message,
+            Guid? employeeId = null,
+            string? status = null,
+            string? candidateName = null,
+            int? totalCount = null,
+            string? error = null,
+            bool countsMatchRun = false)
         {
             StaffingProgressEvent evt;
             lock (_gate)
             {
-                evt = new StaffingProgressEvent(++_sequence, stage, message, employeeId);
+                var completedCount = countsMatchRun ? ++_matchesFinished : (int?)null;
+                evt = new StaffingProgressEvent(
+                    ++_sequence, stage, message, employeeId, status, candidateName,
+                    completedCount, totalCount, error);
                 _events.Add(evt);
             }
 
@@ -198,7 +214,8 @@ public sealed class StaffingPipeline
         private async ValueTask<ShortlistStage> ShortlistAsync(
             PreparedStage prepared, IWorkflowContext context, CancellationToken ct)
         {
-            Emit("shortlist", "Shortlisting candidates against the job description.");
+            Emit("shortlist", "Shortlisting candidates against the job description.",
+                status: StaffingStepStatus.Started);
             try
             {
                 var run = await pipeline._shortlist.RunAsync(prepared.Shortlist, ct);
@@ -208,11 +225,14 @@ public sealed class StaffingPipeline
 
                 if (run.Response is null)
                 {
-                    Emit("shortlist", "Shortlist step failed (upstream retrieval fault).");
-                    return new ShortlistStage(prepared, run, run.FaultDetail ?? "The shortlist step produced no result.");
+                    var fault = run.FaultDetail ?? "The shortlist step produced no result.";
+                    Emit("shortlist", "Shortlist step failed (upstream retrieval fault).",
+                        status: StaffingStepStatus.Failed, error: fault);
+                    return new ShortlistStage(prepared, run, fault);
                 }
 
-                Emit("shortlist", $"Shortlisted {run.Response.Candidates.Count} candidate(s).");
+                Emit("shortlist", $"Shortlisted {run.Response.Candidates.Count} candidate(s).",
+                    status: StaffingStepStatus.Completed);
                 return new ShortlistStage(prepared, run, Fault: null);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -221,7 +241,8 @@ public sealed class StaffingPipeline
                 // a shortlist there is nothing to report, so this is the pipeline's one error
                 // outcome — surfaced as data for the endpoint to map, never thrown.
                 pipeline._logger.LogError(ex, "Staffing shortlist step failed.");
-                Emit("shortlist", "Shortlist step failed (upstream dependency).");
+                Emit("shortlist", "Shortlist step failed (upstream dependency).",
+                    status: StaffingStepStatus.Failed, error: ex.Message);
                 return new ShortlistStage(prepared, Run: null, ex.Message);
             }
         }
@@ -257,7 +278,8 @@ public sealed class StaffingPipeline
 
             Emit("match", $"Assessing the top {candidates.Count} candidate(s) in parallel.");
             var jobDescription = stage.Prepared.Request.JobDescription;
-            var results = await Task.WhenAll(candidates.Select(c => RunOneMatchAsync(c, jobDescription, ct)));
+            var results = await Task.WhenAll(
+                candidates.Select(c => RunOneMatchAsync(c, jobDescription, candidates.Count, ct)));
 
             // Meter sequentially after the fan-out: the meter (an EF-backed scoped service) is not
             // safe for concurrent use.
@@ -281,21 +303,29 @@ public sealed class StaffingPipeline
         /// 429-aware retries inside it, and any terminal fault mapped to a failed status — a failed
         /// candidate never fails the report.</summary>
         private async Task<(CandidateMatch Match, AgentReply? Reply)> RunOneMatchAsync(
-            ShortlistCandidateItem candidate, string jobDescription, CancellationToken ct)
+            ShortlistCandidateItem candidate, string jobDescription, int totalCount, CancellationToken ct)
         {
             await pipeline._throttle.WaitAsync(ct);
             try
             {
+                // "Started" only once a throttle slot is held: the event marks real work, not a
+                // queued task, so the SSE stepper's per-candidate ticks reflect actual progress.
+                Emit("match", $"Match started for {candidate.Name}.", candidate.EmployeeId,
+                    status: StaffingStepStatus.Started, candidateName: candidate.Name, totalCount: totalCount);
                 var run = await RunWithRateLimitRetryAsync(candidate.EmployeeId, jobDescription, ct);
                 var facts = MatchAnswerParser.Parse(run.Answer);
-                Emit("match", $"Match completed for {candidate.Name}.", candidate.EmployeeId);
+                Emit("match", $"Match completed for {candidate.Name}.", candidate.EmployeeId,
+                    status: StaffingStepStatus.Completed, candidateName: candidate.Name,
+                    totalCount: totalCount, countsMatchRun: true);
                 return (new CandidateMatch(candidate, new StaffingMatchDetail(
                     StaffingMatchStatus.Completed, facts.Score, facts.Band, run.Answer, Error: null)), run.Reply);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 pipeline._logger.LogError(ex, "Staffing match step failed for {EmployeeId}.", candidate.EmployeeId);
-                Emit("match", $"Match failed for {candidate.Name}.", candidate.EmployeeId);
+                Emit("match", $"Match failed for {candidate.Name}.", candidate.EmployeeId,
+                    status: StaffingStepStatus.Failed, candidateName: candidate.Name,
+                    totalCount: totalCount, error: ex.Message, countsMatchRun: true);
                 return (new CandidateMatch(candidate, new StaffingMatchDetail(
                     StaffingMatchStatus.Failed, null, null, null, ex.Message)), null);
             }
@@ -402,7 +432,8 @@ public sealed class StaffingPipeline
                     Degraded: true);
             }
 
-            Emit("narrative", "Generating rationales and a recommendation.");
+            Emit("narrative", "Generating rationales and a recommendation.",
+                status: StaffingStepStatus.Started);
             try
             {
                 // Tool-less completion on the default chat client: the narrative needs no agent
@@ -422,7 +453,8 @@ public sealed class StaffingPipeline
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 pipeline._logger.LogError(ex, "Staffing narrative step failed.");
-                Emit("narrative", "Narrative step failed; falling back to templated rationales.");
+                Emit("narrative", "Narrative step failed; falling back to templated rationales.",
+                    status: StaffingStepStatus.Failed, error: ex.Message);
                 return new NarrativeStage(match, empty, null,
                     ["The narrative step failed; rationales are templated from shortlist and match evidence."],
                     Degraded: true);
@@ -437,7 +469,8 @@ public sealed class StaffingPipeline
             var parsed = NarrativePayload.TryParse(modelText);
             if (parsed is null)
             {
-                Emit("narrative", "Narrative output was unparseable; falling back to templated rationales.");
+                Emit("narrative", "Narrative output was unparseable; falling back to templated rationales.",
+                    status: StaffingStepStatus.Failed, error: "The narrative output was unparseable.");
                 return new NarrativeStage(match, new Dictionary<Guid, string>(), null,
                     ["The narrative output was unparseable; rationales are templated from shortlist and match evidence."],
                     Degraded: true);
@@ -462,11 +495,15 @@ public sealed class StaffingPipeline
                 && knownIds.Contains(recId)
                 && !string.IsNullOrWhiteSpace(parsed.Recommendation.Narrative))
             {
+                Emit("narrative", "Narrative completed.", status: StaffingStepStatus.Completed);
                 return new NarrativeStage(match, rationales,
                     new StaffingRecommendation(recId, parsed.Recommendation.Narrative.Trim()), [], Degraded: false);
             }
 
-            Emit("narrative", "Narrative recommendation was missing or named an unknown candidate; dropped.");
+            // The step still completed — it produced rationales; the dropped recommendation is a
+            // report-level degrade (note + degraded:true), not a step failure.
+            Emit("narrative", "Narrative recommendation was missing or named an unknown candidate; dropped.",
+                status: StaffingStepStatus.Completed);
             return new NarrativeStage(match, rationales, null,
                 ["The narrative recommendation was missing or named an unknown candidate; no recommendation is included."],
                 Degraded: true);

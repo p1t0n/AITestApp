@@ -8,6 +8,10 @@ public sealed class StaffingOptions
     /// <summary>How many match runs may be in flight at once, across all concurrent staffing
     /// requests (a single shared throttle protects the model endpoint's rate limit).</summary>
     public int MaxConcurrentMatches { get; set; } = 2;
+
+    /// <summary>How often the SSE response emits a keep-alive comment while no event is ready,
+    /// so proxies and idle-timeout middleboxes keep the stream open.</summary>
+    public double SseKeepAliveSeconds { get; set; } = 15;
 }
 
 /// <summary>The shared match throttle: one process-wide <see cref="SemaphoreSlim"/> sized by
