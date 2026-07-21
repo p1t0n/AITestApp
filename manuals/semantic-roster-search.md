@@ -232,6 +232,7 @@ automatically.
 
 **Cost**: one shortlist ≈ 2 model turns (~3–6k tokens) against the caller's cap. Default caps were
 raised to 25k / 150k / 500k (daily/weekly/monthly) — the old 1000/7000/30000 were demo placeholders.
+(The daily default was later raised again to 50k for the staffing pipeline, P1T-75.)
 
 ---
 
@@ -433,7 +434,7 @@ Agents service `appsettings.json` (shortlist + tailoring + caps):
 ```jsonc
 "McpAuth": { "shortlist":    { "ClientId": "agent-shortlist",     "Scope": "mcp:read", … },
              "cv-tailoring": { "ClientId": "agent-cv-tailoring",  "Scope": "mcp:read", … } },
-"Usage":   { "DefaultDailyTokens": 25000, "DefaultWeeklyTokens": 150000, "DefaultMonthlyTokens": 500000 }
+"Usage":   { "DefaultDailyTokens": 50000, "DefaultWeeklyTokens": 150000, "DefaultMonthlyTokens": 500000 }
 ```
 
 Web service `appsettings.json` (demo seeding, off by default):

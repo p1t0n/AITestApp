@@ -14,6 +14,14 @@ public sealed record ShortlistRunOutcome(
     ShortlistResponse? Response,
     string? FaultDetail);
 
+/// <summary>The shortlist step seam: lets the staffing pipeline consume the run service while its
+/// tests substitute a fake (the real service needs a live agent stack).</summary>
+public interface IShortlistRunService
+{
+    /// <summary>Runs the agent for one typed request and composes the outcome.</summary>
+    Task<ShortlistRunOutcome> RunAsync(ShortlistAgentRequest request, CancellationToken ct = default);
+}
+
 /// <summary>
 /// The core of a shortlist run, extracted from the POST /agents/shortlist endpoint: run the
 /// <see cref="ShortlistAgent"/>, then compose the full response via <see cref="ShortlistComposer"/>
@@ -26,7 +34,7 @@ public sealed record ShortlistRunOutcome(
 /// still has to be metered first) and lets <see cref="HttpRequestException"/> from the model/MCP
 /// stack propagate; the shell turns both into a 502.
 /// </summary>
-public sealed class ShortlistRunService
+public sealed class ShortlistRunService : IShortlistRunService
 {
     private readonly ShortlistAgent _agent;
 

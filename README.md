@@ -146,7 +146,7 @@ curl -s http://localhost:5200/agents/roster-qa \
 Requires the MCP server (step 4) + Keycloak (step 1) running. Model/auth/MCP-URL are configurable
 in `api/Agents/appsettings.json`; the chat backend is provider-agnostic (`IChatClient`) and swaps
 to Azure OpenAI / OpenAI / Anthropic / Ollama in one line. Every agent call is metered against
-per-user token caps (defaults 25k/150k/500k daily/weekly/monthly).
+per-user token caps (defaults 50k/150k/500k daily/weekly/monthly).
 
 ### 6. Seed the demo roster (optional)
 

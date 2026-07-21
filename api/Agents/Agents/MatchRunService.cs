@@ -4,6 +4,14 @@ namespace EmployeeManager.Agents.Agents;
 /// the caller meters under <see cref="AgentName"/>.</summary>
 public sealed record MatchRunOutcome(string AgentName, string Answer, AgentReply Reply);
 
+/// <summary>The match step seam: lets the staffing pipeline consume the run service while its
+/// tests substitute a fake (the real service needs a live agent stack).</summary>
+public interface IMatchRunService
+{
+    /// <summary>Runs the agent for one employee/job-description pair.</summary>
+    Task<MatchRunOutcome> RunAsync(Guid employeeId, string jobDescription, CancellationToken ct = default);
+}
+
 /// <summary>
 /// The core of a match run, extracted from the POST /agents/match endpoint: build the prompt from
 /// the typed fields (the template lives here, as the single source of truth) and run the match
@@ -14,7 +22,7 @@ public sealed record MatchRunOutcome(string AgentName, string Answer, AgentReply
 /// <see cref="HttpRequestException"/> from the model/MCP stack propagate; the shell turns it into
 /// a 502.
 /// </summary>
-public sealed class MatchRunService
+public sealed class MatchRunService : IMatchRunService
 {
     private readonly IChatAgent _agent;
 
