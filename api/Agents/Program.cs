@@ -310,15 +310,21 @@ app.MapPost("/agents/shortlist", async (
 }).RequireAuthorization();
 
 // POST /agents/staffing  { "jobDescription": "...", availableOn?, skillIds?, location?, minYears?, matchTop? }
-// -> the pinned staffing report (see StaffingReport): shortlist + per-candidate match + narrative,
-// one-shot JSON this slice (the pipeline already emits ordered progress events for the SSE slice).
-// Partial results ship as 200 + degraded:true; only a failed shortlist maps to 502.
+// -> text/event-stream (SSE only — demo with `curl -N`). The pre-checks (auth, blank JD, cap)
+// answer as plain HTTP before the stream opens; after that the run streams as the pinned SSE
+// contract (see StaffingSse): step/stepFailed per stage transition, then exactly one terminal
+// event — report (partial results ship degraded:true) or error (failed shortlist / unexpected
+// fault). Metering and the mid-run cap re-checks live inside the pipeline; client disconnect
+// cancels the in-flight run through the request-aborted token.
 app.MapPost("/agents/staffing", async (
     StaffingRequest request,
     StaffingPipeline pipeline,
     ClaimsPrincipal user,
     IUsageService usage,
-    CancellationToken ct) =>
+    IOptions<Microsoft.AspNetCore.Http.Json.JsonOptions> json,
+    IOptions<StaffingOptions> staffing,
+    ILoggerFactory loggerFactory,
+    HttpContext http) =>
 {
     if (string.IsNullOrWhiteSpace(request.JobDescription))
     {
@@ -326,46 +332,27 @@ app.MapPost("/agents/staffing", async (
     }
 
     var userId = user.GetUserId();
-    if (userId is { } pre && await usage.FindExceededAsync(pre, ct) is { } exceeded)
+    if (userId is { } pre && await usage.FindExceededAsync(pre, http.RequestAborted) is { } exceeded)
     {
         return CapReached(exceeded);
     }
 
-    try
-    {
-        // Metering and the mid-run cap re-checks live inside the pipeline (each step records
-        // under its own agent name); this shell only maps outcomes to HTTP.
-        var outcome = await pipeline.RunAsync(
-            new StaffingPipelineRequest(
-                request.JobDescription,
-                request.AvailableOn,
-                request.SkillIds,
-                request.Location,
-                request.MinYears,
-                request.MatchTop),
-            userId,
-            progress: null,
-            ct);
-
-        if (outcome.ShortlistFault is { } fault)
-        {
-            return Results.Problem(
-                title: "Upstream dependency failed (staffing shortlist step).",
-                detail: fault,
-                statusCode: StatusCodes.Status502BadGateway);
-        }
-
-        return Results.Ok(outcome.Report);
-    }
-    catch (HttpRequestException ex)
-    {
-        // Defense in depth: the pipeline maps upstream faults itself, but anything that still
-        // escapes is the same upstream-fault philosophy as the other agent endpoints.
-        return Results.Problem(
-            title: "Upstream dependency failed (MCP server, auth, or model).",
-            detail: ex.Message,
-            statusCode: StatusCodes.Status502BadGateway);
-    }
+    await StaffingSse.StreamAsync(
+        http.Response,
+        pipeline,
+        new StaffingPipelineRequest(
+            request.JobDescription,
+            request.AvailableOn,
+            request.SkillIds,
+            request.Location,
+            request.MinYears,
+            request.MatchTop),
+        userId,
+        json.Value.SerializerOptions,
+        TimeSpan.FromSeconds(staffing.Value.SseKeepAliveSeconds),
+        loggerFactory.CreateLogger(nameof(StaffingSse)),
+        http.RequestAborted);
+    return Results.Empty;
 }).RequireAuthorization();
 
 app.Run();

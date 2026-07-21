@@ -123,8 +123,8 @@ cd api/Agents
 dotnet run
 ```
 
-Binds `http://localhost:5200`. Four agents, one endpoint each (all also available as tabs in the
-in-app widget):
+Binds `http://localhost:5200`. Four agents plus a staffing pipeline that composes them (all also
+available as tabs in the in-app widget):
 
 - `POST /agents/roster-qa {question}` — Q&A over the roster; uses `roster_semantic_search` for
   capability questions and cites evidence snippets.
@@ -133,6 +133,9 @@ in-app widget):
 - `POST /agents/match {employeeId, jobDescription}` — gap analysis + scored fit assessment.
 - `POST /agents/shortlist {jobDescription, availableOn?, skillIds?, location?, minYears?, topK?}` —
   JD → coverage-ranked candidates with per-requirement evidence (structured JSON).
+- `POST /agents/staffing {jobDescription, availableOn?, skillIds?, location?, minYears?, matchTop?}` —
+  the whole pipeline (shortlist → per-candidate match → narrative recommendation) streamed as
+  Server-Sent Events: `step`/`stepFailed` progress per stage, then one terminal `report` or `error`.
 - `GET /agents/usage` — the caller's token usage vs their daily/weekly/monthly caps.
 
 Example:
@@ -141,6 +144,14 @@ Example:
 curl -s http://localhost:5200/agents/roster-qa \
   -H 'Content-Type: application/json' \
   -d '{"question":"Who has built real-time payments systems?"}'
+```
+
+The staffing endpoint streams, so disable curl's buffering with `-N`:
+
+```bash
+curl -N http://localhost:5200/agents/staffing \
+  -H 'Content-Type: application/json' \
+  -d '{"jobDescription":"Senior backend engineer: event streaming, cloud infrastructure.","matchTop":2}'
 ```
 
 Requires the MCP server (step 4) + Keycloak (step 1) running. Model/auth/MCP-URL are configurable

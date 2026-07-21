@@ -4,12 +4,19 @@ using EmployeeManager.Agents.Usage;
 namespace EmployeeManager.Agents.Tests.Fakes;
 
 /// <summary>An <see cref="IShortlistRunService"/> stand-in: replays a scripted outcome (or throws)
-/// and records the requests it received, so pipeline tests can pin the clamped topK.</summary>
-internal sealed class FakeShortlistRunService(Func<ShortlistAgentRequest, Task<ShortlistRunOutcome>> run)
+/// and records the requests it received, so pipeline tests can pin the clamped topK. The
+/// token-aware overload lets streaming tests observe the pipeline's cancellation token.</summary>
+internal sealed class FakeShortlistRunService(
+    Func<ShortlistAgentRequest, CancellationToken, Task<ShortlistRunOutcome>> run)
     : IShortlistRunService
 {
     public FakeShortlistRunService(ShortlistRunOutcome outcome)
-        : this(_ => Task.FromResult(outcome))
+        : this((_, _) => Task.FromResult(outcome))
+    {
+    }
+
+    public FakeShortlistRunService(Func<ShortlistAgentRequest, Task<ShortlistRunOutcome>> run)
+        : this((request, _) => run(request))
     {
     }
 
@@ -18,7 +25,7 @@ internal sealed class FakeShortlistRunService(Func<ShortlistAgentRequest, Task<S
     public Task<ShortlistRunOutcome> RunAsync(ShortlistAgentRequest request, CancellationToken ct = default)
     {
         Requests.Add(request);
-        return run(request);
+        return run(request, ct);
     }
 }
 
