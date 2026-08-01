@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Box, IconButton, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Box, Button, IconButton, Paper, Stack, TextField, Typography } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
 import { apiErrorMessage, useRosterQa } from "../../api";
 import { AgentMarkdown } from "./AgentMarkdown";
@@ -39,13 +39,22 @@ function Bubble({ message }: { message: Message }) {
 export function RosterChat() {
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
+  // The server-side conversation id. Sent with every follow-up; a response carrying a DIFFERENT
+  // id means the thread expired and the server started fresh — we surface that inline.
+  const [threadId, setThreadId] = useState<string | undefined>(undefined);
   const ask = useRosterQa();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   function scrollToEnd() {
     requestAnimationFrame(() => {
-      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+      // Optional call: jsdom (vitest) has no scrollTo.
+      scrollRef.current?.scrollTo?.({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
     });
+  }
+
+  function newConversation() {
+    setMessages([]);
+    setThreadId(undefined);
   }
 
   async function send() {
@@ -55,8 +64,15 @@ export function RosterChat() {
     setMessages((m) => [...m, { role: "user", text: question }]);
     scrollToEnd();
     try {
-      const { answer } = await ask.mutateAsync(question);
-      setMessages((m) => [...m, { role: "assistant", text: answer }]);
+      const sent = threadId;
+      const { answer, threadId: returned } = await ask.mutateAsync({ question, threadId: sent });
+      setThreadId(returned);
+      setMessages((m) => [
+        ...(sent && returned !== sent
+          ? [...m, { role: "error" as const, text: "That conversation expired — starting a new one." }]
+          : m),
+        { role: "assistant", text: answer },
+      ]);
     } catch (err) {
       setMessages((m) => [...m, { role: "error", text: apiErrorMessage(err) }]);
     }
@@ -69,7 +85,7 @@ export function RosterChat() {
         <Stack spacing={1}>
           {messages.length === 0 && (
             <Typography variant="body2" color="text.secondary" sx={{ p: 1 }}>
-              e.g. "Who knows React and is available this summer?"
+              e.g. "Who knows React and is available this summer?" Follow-ups keep the context.
             </Typography>
           )}
           {messages.map((m, i) => (
@@ -78,6 +94,14 @@ export function RosterChat() {
           {ask.isPending && <Bubble message={{ role: "assistant", text: "Thinking…" }} />}
         </Stack>
       </Box>
+
+      {messages.length > 0 && (
+        <Box sx={{ px: 1.5, pb: 0.5 }}>
+          <Button size="small" onClick={newConversation} disabled={ask.isPending}>
+            New conversation
+          </Button>
+        </Box>
+      )}
 
       <Box sx={{ p: 1, borderTop: 1, borderColor: "divider" }}>
         <Stack direction="row" spacing={1} alignItems="flex-end">

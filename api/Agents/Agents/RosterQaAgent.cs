@@ -54,11 +54,19 @@ public sealed class RosterQaAgent : IChatAgent
 
     public string Name => "roster-qa";
 
-    public async Task<AgentReply> AskAsync(string question, CancellationToken ct = default)
+    public Task<AgentReply> AskAsync(string question, CancellationToken ct = default)
+        => AskAsync(question, [], ct);
+
+    /// <summary>Answers one question with prior turns replayed ahead of it (threaded sessions,
+    /// P1T-93). The session itself stays ephemeral — the bounded history IS the memory, so the
+    /// prompt size is controlled by the thread store, not by session growth.</summary>
+    public async Task<AgentReply> AskAsync(
+        string question, IReadOnlyList<ChatMessage> history, CancellationToken ct = default)
     {
         var agent = await GetAgentAsync(ct);
         var session = await agent.CreateSessionAsync(ct);
-        var response = await agent.RunAsync(question, session, null, ct);
+        var messages = history.Append(new ChatMessage(ChatRole.User, question)).ToList();
+        var response = await agent.RunAsync(messages, session, null, ct);
         var usage = response.Usage;
         return new AgentReply(
             response.Text,

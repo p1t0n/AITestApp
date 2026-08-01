@@ -181,8 +181,9 @@ The Agents service exposes REST endpoints; a SPA chat/action UI is deferred.
 
 **Built now — Roster Q&A** (`mcp:read`):
 - A `ChatClientAgent` over the MCP read tools, conversational.
-- **In-memory threaded sessions** — a MAF `AgentThread` per `sessionId`; the REST contract
-  takes/returns a `threadId` so follow-ups keep context (lost on restart — fine for POC).
+- **In-memory threaded sessions** — a per-user thread store replays the last 10 turns of
+  question/answer text (bounded, no summarizer); the REST contract takes/returns a `threadId`
+  so follow-ups keep context. 30-min sliding TTL, 20 threads/user, lost on restart — fine for POC.
 - Returns a natural-language answer + `threadId`; employees are cited by name **and id** so the
   SPA can deep-link later. Read-only scope ⇒ structurally cannot mutate data.
 
