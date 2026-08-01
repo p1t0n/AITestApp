@@ -478,6 +478,51 @@ export async function runStaffing(
   );
 }
 
+// ---- Resume ingestion (P1T-96) ----
+
+export interface IngestionCreated {
+  languages: number;
+  skills: number;
+  qualifications: number;
+  experiences: number;
+}
+
+/** The composed ingestion result: deterministic fields from captured tool results; proposals are
+ * catalog-unmatched skill names awaiting a human decision. */
+export interface IngestionResponse {
+  employeeId: string;
+  created: IngestionCreated;
+  proposals: string[];
+  notes: string[];
+  duplicateWarning: string | null;
+  degraded: boolean;
+}
+
+export function useResumeIngestion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (resumeText: string) =>
+      (await agentHttp.post<IngestionResponse>("/resume-ingestion", { resumeText })).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["usage"] });
+      qc.invalidateQueries({ queryKey: ["employees"] });
+    },
+  });
+}
+
+/** The human publication gate: flips a Draft to Active (requires a valid email server-side). */
+export function usePromoteEmployee() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) =>
+      (await http.post<EmployeeDetail>(`/employees/${id}/promote`)).data,
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: ["employees"] });
+      qc.invalidateQueries({ queryKey: ["employees", id] });
+    },
+  });
+}
+
 // ---- Employees ----
 
 export function useEmployees() {

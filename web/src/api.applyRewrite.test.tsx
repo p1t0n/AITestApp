@@ -29,6 +29,7 @@ function employeeDetail(): EmployeeDetail {
     summary: null,
     photoUrl: null,
     currentCapacityPercent: 100,
+  status: "Active",
     spokenLanguages: [],
     availabilityEntries: [],
     skills: [],

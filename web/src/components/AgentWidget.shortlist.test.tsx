@@ -39,6 +39,7 @@ vi.mock("../api", async (importOriginal) => {
           location: null,
           email: "ada@example.com",
           currentCapacityPercent: 100,
+  status: "Active",
         },
       ],
       isLoading: false,

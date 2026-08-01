@@ -10,9 +10,10 @@ import { RosterChat } from "./agent/RosterQaTab";
 import { AgentJobForm } from "./agent/AgentJobTab";
 import { ShortlistPanel } from "./agent/ShortlistTab";
 import { StaffingPanel } from "./agent/StaffingTab";
+import { IngestionPanel } from "./agent/IngestionTab";
 import { UsagePanel } from "./agent/UsageTab";
 
-type Mode = "roster" | "cv-tailoring" | "match" | "shortlist" | "staffing" | "usage";
+type Mode = "roster" | "cv-tailoring" | "match" | "shortlist" | "staffing" | "ingestion" | "usage";
 
 const TABS: { mode: Mode; label: string }[] = [
   { mode: "roster", label: "Roster Q&A" },
@@ -20,6 +21,7 @@ const TABS: { mode: Mode; label: string }[] = [
   { mode: "match", label: "Match" },
   { mode: "shortlist", label: "Shortlist" },
   { mode: "staffing", label: "Staffing" },
+  { mode: "ingestion", label: "Ingest" },
   { mode: "usage", label: "Usage" },
 ];
 
@@ -159,6 +161,8 @@ export default function AgentWidget({ dock, isNarrow }: { dock: AgentDock; isNar
             <RosterChat key="roster" />
           ) : mode === "usage" ? (
             <UsagePanel key="usage" />
+          ) : mode === "ingestion" ? (
+            <IngestionPanel key="ingestion" />
           ) : mode === "shortlist" ? (
             <ShortlistPanel
               key="shortlist"
