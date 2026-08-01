@@ -7,7 +7,7 @@ namespace CvManager.Application.Abstractions;
 /// </summary>
 public interface IEmbedder
 {
-    /// <summary>The embedding model id in use, e.g. "text-embedding-3-small". Stamped onto chunks.</summary>
+    /// <summary>The embedding model id in use, e.g. "gemini-embedding-001". Stamped onto chunks.</summary>
     string Model { get; }
 
     /// <summary>Embed a batch of inputs, preserving order. Empty input returns an empty batch.</summary>

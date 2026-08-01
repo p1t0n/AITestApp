@@ -10,7 +10,7 @@ namespace CvManager.Agents.Tests;
 /// Agents HTTP endpoint. Excluded from the default test run (mirrors the Mcp Keycloak e2e
 /// convention). Run on demand with: <c>dotnet test --filter "Category=live"</c>.
 ///
-/// Preconditions (see README "Run it"): a GitHub Models PAT in the <c>GITHUB_TOKEN</c> env var,
+/// Preconditions (see README "Run it"): a Gemini API key in the <c>GEMINI_API_KEY</c> env var,
 /// and a running MCP server + Keycloak with the seed data, reachable at the configured URLs.
 /// </summary>
 [Trait("Category", "live")]
@@ -23,8 +23,8 @@ public class ShortlistLiveSmokeTests
         // with a real PAT and the MCP server + Keycloak up. So it stays green in a plain
         // "run all tests" from the IDE.
         Skip.If(
-            string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GITHUB_TOKEN")),
-            "Live smoke test needs a GitHub Models PAT in GITHUB_TOKEN (and a running MCP server + Keycloak).");
+            string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GEMINI_API_KEY")),
+            "Live smoke test needs a Gemini API key in GEMINI_API_KEY (and a running MCP server + Keycloak).");
 
         using var factory = new WebApplicationFactory<Program>();
         using var client = factory.CreateClient();

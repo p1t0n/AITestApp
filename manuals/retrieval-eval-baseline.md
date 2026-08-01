@@ -6,7 +6,7 @@ Measured retrieval quality of the semantic roster search against the frozen eval
 pipeline (`SearchIndexReconciler` → pgvector → `SemanticSearchService`).
 
 The committed regression floor lives in `tests/Mcp.Tests/Eval/EvalBaselines.cs` and is asserted
-by `RetrievalEvalLiveTests` (`dotnet test --filter "Category=live"` with `GITHUB_TOKEN` set).
+by `RetrievalEvalLiveTests` (`dotnet test --filter "Category=live"` with `GEMINI_API_KEY` set).
 
 ## Baseline at the production threshold (0.30)
 
@@ -86,18 +86,41 @@ the keyword-recall column of every future sweep re-raise the question automatica
 
 ## Reproducing
 
-Needs Docker and a GitHub Models PAT. Never commit the token.
+Needs Docker and a Gemini API key. Never commit the key.
 
 ```bash
-GITHUB_TOKEN=<pat> dotnet run --project tools/RetrievalEval -- \
+GEMINI_API_KEY=<key> dotnet run --project tools/RetrievalEval -- \
   --sweep 0.15:0.50:0.05 --refine --date <yyyy-MM-dd> --output sweep.md
 ```
 
 Single-threshold baseline check:
 
 ```bash
-GITHUB_TOKEN=<pat> dotnet run --project tools/RetrievalEval -- --threshold 0.30
+GEMINI_API_KEY=<key> dotnet run --project tools/RetrievalEval -- --threshold 0.30
 ```
 
 The corpus and queries are embedded once (at the sweep floor); each threshold is a pure in-memory
 re-rank of the cached similarities, so a full sweep costs the same embedding budget as a single run.
+
+## Re-baseline under Gemini embeddings (2026-08-01, P1T-88)
+
+GitHub Models retired 2026-07-30; embeddings moved to `gemini-embedding-001` (1536 dims via the
+OpenAI-compatible endpoint). The 0.30 floor tuned above is **invalid for Gemini** — its similarity
+scores cluster higher, so at 0.30 every negative query leaked (negative-FP 1.0).
+
+Full re-sweep (`GEMINI_API_KEY=<key> dotnet run --project tools/RetrievalEval -- --sweep 0.30:0.80:0.05 --refine`),
+same frozen 24-employee corpus and 39-query golden set:
+
+| Threshold | Recall@5 | MRR | Negative FP rate | Keyword recall@5 |
+|-----------|----------|-----|------------------|------------------|
+| 0.500 | 1.0000 | 1.0000 | 0.8333 | 1.0000 |
+| 0.525 | 1.0000 | 1.0000 | 0.1667 | 1.0000 |
+| 0.540 | 1.0000 | 1.0000 | 0.0000 | 1.0000 |
+| 0.575 | 1.0000 | 1.0000 | 0.0000 | 1.0000 |
+| 0.600 | 0.9899 | 1.0000 | 0.0000 | 1.0000 |
+| 0.650 | 0.7071 | 0.7273 | 0.0000 | 0.6364 |
+
+**Verdict: `MinSimilarity` = 0.55** — mid-plateau of the perfect window 0.540–0.575, same
+mid-plateau rule as the original 0.30 pick. Baseline at 0.55: recall@5 **1.0000**, MRR **1.0000**,
+negative-FP **0.0000**. Floors updated in `tests/Mcp.Tests/Eval/EvalBaselines.cs`; the live gate
+runs with `GEMINI_API_KEY` now.

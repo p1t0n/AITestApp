@@ -2,23 +2,27 @@ namespace CvManager.Infrastructure.Embeddings;
 
 /// <summary>
 /// Embedding backend wiring for semantic roster search. Reuses the same OpenAI-compatible
-/// <c>GitHubModels</c> config block as the chat client (endpoint + PAT), adding the embedding
-/// model id. The token is read from <see cref="ApiKey"/> or the <c>GITHUB_TOKEN</c> env var;
+/// <c>Gemini</c> config block as the chat client (endpoint + key), adding the embedding
+/// model id. The token is read from <see cref="ApiKey"/> or the <c>GEMINI_API_KEY</c> env var;
 /// never commit a real token.
 ///
-/// <para>If GitHub Models does not serve an embedding deployment on the PAT, point
+/// <para>If the Gemini compat layer misbehaves for embeddings, point
 /// <see cref="Endpoint"/> at OpenAI-direct/Azure — the chat client is unaffected.</para>
 /// </summary>
 public sealed class EmbeddingOptions
 {
-    public const string Section = "GitHubModels";
+    public const string Section = "Gemini";
 
     /// <summary>OpenAI-compatible inference endpoint.</summary>
-    public string Endpoint { get; set; } = "https://models.github.ai/inference";
+    public string Endpoint { get; set; } = "https://generativelanguage.googleapis.com/v1beta/openai";
 
-    /// <summary>Embedding model id (1536-dim). Matches the vector(1536) column.</summary>
-    public string EmbeddingModel { get; set; } = "text-embedding-3-small";
+    /// <summary>Embedding model id.</summary>
+    public string EmbeddingModel { get; set; } = "gemini-embedding-001";
 
-    /// <summary>API key / PAT. Prefer the GITHUB_TOKEN env var over config in real use.</summary>
+    /// <summary>Requested output dimensionality. gemini-embedding-001 defaults to 3072; the
+    /// EmployeeSearchChunk column is vector(1536), so the request must pin 1536.</summary>
+    public int Dimensions { get; set; } = 1536;
+
+    /// <summary>API key. Prefer the GEMINI_API_KEY env var over config in real use.</summary>
     public string ApiKey { get; set; } = "";
 }

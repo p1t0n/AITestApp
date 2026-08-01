@@ -14,9 +14,9 @@ docker compose up -d --force-recreate keycloak
 
 dotnet build CvManager.slnx          # build ONCE, then run with --no-build
                                            # (three parallel `dotnet run` builds clash on obj/)
-GITHUB_TOKEN=<pat> ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5069 dotnet run --project api/Web --no-launch-profile --no-build &
-GITHUB_TOKEN=<pat> ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5100 dotnet run --project api/Mcp --no-launch-profile --no-build &
-GITHUB_TOKEN=<pat> ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5200 dotnet run --project api/Agents --no-launch-profile --no-build &
+GEMINI_API_KEY=<key> ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5069 dotnet run --project api/Web --no-launch-profile --no-build &
+GEMINI_API_KEY=<key> ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5100 dotnet run --project api/Mcp --no-launch-profile --no-build &
+GEMINI_API_KEY=<key> ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5200 dotnet run --project api/Agents --no-launch-profile --no-build &
 cd web && npm run dev &                    # :5173, proxies /api → 5069 and /agents → 5200
 ```
 
@@ -76,4 +76,4 @@ Then `curl -H "Authorization: Bearer $JWT" http://localhost:5200/agents/shortlis
 - Keycloak has no persistent volume, but the container itself persists — realm changes need
   `--force-recreate keycloak` (symptom: agent token requests return 401).
 - The local `api/Agents/appsettings.json` may carry a dev PAT (or see `git stash list`); prefer
-  `GITHUB_TOKEN` env. Never commit it.
+  `GEMINI_API_KEY` env. Never commit it.

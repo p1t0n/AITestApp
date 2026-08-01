@@ -2,27 +2,27 @@ namespace CvManager.Agents.Configuration;
 
 /// <summary>
 /// Chat model wiring. The code is provider-agnostic (<c>IChatClient</c>); this binds the
-/// default backend — GitHub Models, an OpenAI-compatible endpoint that is free with a PAT.
-/// The token is read from <see cref="ApiKey"/> (config) or the <c>GITHUB_TOKEN</c> environment
+/// default backend — the Gemini free tier via its OpenAI-compatible endpoint.
+/// The token is read from <see cref="ApiKey"/> (config) or the <c>GEMINI_API_KEY</c> environment
 /// variable; never commit a real token.
 /// </summary>
-public sealed class GitHubModelsOptions
+public sealed class GeminiOptions
 {
-    public const string Section = "GitHubModels";
+    public const string Section = "Gemini";
 
     /// <summary>OpenAI-compatible inference endpoint.</summary>
-    public string Endpoint { get; set; } = "https://models.github.ai/inference";
+    public string Endpoint { get; set; } = "https://generativelanguage.googleapis.com/v1beta/openai";
 
-    /// <summary>Default model id (GitHub Models namespaces them, e.g. <c>openai/gpt-4o-mini</c>).
+    /// <summary>Default model id (e.g. <c>gemini-flash-lite-latest</c>).
     /// Used by any agent without a per-agent override in <see cref="Agents"/>.</summary>
-    public string Model { get; set; } = "openai/gpt-4o-mini";
+    public string Model { get; set; } = "gemini-flash-lite-latest";
 
-    /// <summary>GitHub PAT. Prefer the GITHUB_TOKEN env var over config in real use.</summary>
+    /// <summary>Gemini API key. Prefer the GEMINI_API_KEY env var over config in real use.</summary>
     public string ApiKey { get; set; } = "";
 
     /// <summary>Optional per-agent model overrides, keyed by agent name (e.g. <c>cv-tailoring</c>).
     /// An agent listed here gets its own chat client on the named model; everyone else uses
-    /// <see cref="Model"/>. Bound from <c>GitHubModels:Agents:&lt;agent&gt;</c>.</summary>
+    /// <see cref="Model"/>. Bound from <c>Gemini:Agents:&lt;agent&gt;</c>.</summary>
     public Dictionary<string, string> Agents { get; set; } = new();
 }
 

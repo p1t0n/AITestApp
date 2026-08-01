@@ -14,7 +14,7 @@ public class CliArgsTests
     {
         var args = CliArgs.Parse([]);
 
-        args.Thresholds.Should().Equal(0.30);
+        args.Thresholds.Should().Equal(0.55);
         args.IsSweep.Should().BeFalse();
         args.Refine.Should().BeFalse();
         args.OutputPath.Should().BeNull();

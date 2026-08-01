@@ -11,7 +11,7 @@ namespace CvManager.Mcp.Tests.Eval;
 public class MarkdownReportTests
 {
     private static readonly ReportMetadata Metadata = new(
-        ModelId: "text-embedding-3-small",
+        ModelId: "gemini-embedding-001",
         CorpusSize: 24,
         QueryCount: 39,
         Date: "2026-07-11");
@@ -39,7 +39,7 @@ public class MarkdownReportTests
     {
         var report = MarkdownReport.Render(Metadata, Results, selectedThreshold: null);
 
-        report.Should().Contain("text-embedding-3-small");
+        report.Should().Contain("gemini-embedding-001");
         report.Should().Contain("24");
         report.Should().Contain("39");
         report.Should().Contain("2026-07-11");

@@ -39,7 +39,7 @@ public class EmployeeSearchChunk
     /// <summary>1536-dim embedding of <see cref="Content"/>; null until embedded.</summary>
     public Vector? Embedding { get; set; }
 
-    /// <summary>Embedding model id used, e.g. "text-embedding-3-small". Empty until embedded.</summary>
+    /// <summary>Embedding model id used, e.g. "gemini-embedding-001". Empty until embedded.</summary>
     public string Model { get; set; } = string.Empty;
 
     /// <summary>When <see cref="Embedding"/> was written; null until embedded.</summary>

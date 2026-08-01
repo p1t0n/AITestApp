@@ -18,7 +18,7 @@ namespace CvManager.Mcp.Tests.Eval;
 /// the REAL GitHub Models pipeline (real embeddings are the point — fakes measure plumbing, not
 /// meaning), runs the golden set, and asserts recall@5 has not regressed below the committed
 /// baseline. Excluded from the default run; needs Docker and a PAT:
-/// <c>dotnet test --filter "Category=live"</c> with <c>GITHUB_TOKEN</c> set.
+/// <c>dotnet test --filter "Category=live"</c> with <c>GEMINI_API_KEY</c> set.
 /// </summary>
 [Trait("Category", "live")]
 public class RetrievalEvalLiveTests
@@ -31,8 +31,8 @@ public class RetrievalEvalLiveTests
     public async Task Recall_at_5_does_not_regress_below_the_committed_baseline()
     {
         Skip.If(
-            string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GITHUB_TOKEN")),
-            "Live retrieval eval needs a GitHub Models PAT in GITHUB_TOKEN.");
+            string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GEMINI_API_KEY")),
+            "Live retrieval eval needs a Gemini API key in GEMINI_API_KEY.");
 
         await using var postgres = new PostgreSqlBuilder()
             .WithImage("pgvector/pgvector:pg17")
@@ -61,20 +61,20 @@ public class RetrievalEvalLiveTests
                 "retrieval quality must not regress below the committed baseline");
     }
 
-    /// <summary>The same real embedding registration production uses (AddGitHubModelsEmbeddings).</summary>
+    /// <summary>The same real embedding registration production uses (AddGeminiEmbeddings).</summary>
     private static ServiceProvider BuildRealEmbeddingProvider()
     {
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["GitHubModels:Endpoint"] = "https://models.github.ai/inference",
-                ["GitHubModels:EmbeddingModel"] = "text-embedding-3-small",
+                ["Gemini:Endpoint"] = "https://generativelanguage.googleapis.com/v1beta/openai",
+                ["Gemini:EmbeddingModel"] = "gemini-embedding-001",
             })
             .Build();
 
         return new ServiceCollection()
             .AddLogging()
-            .AddGitHubModelsEmbeddings(config)
+            .AddGeminiEmbeddings(config)
             .BuildServiceProvider();
     }
 

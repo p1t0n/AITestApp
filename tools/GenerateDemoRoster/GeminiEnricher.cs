@@ -6,13 +6,13 @@ using CvManager.Infrastructure.Persistence.SeedData;
 namespace CvManager.Tools.DemoRoster;
 
 /// <summary>
-/// Optional online pass: rewrites the fragment-assembled narratives via the GitHub Models
+/// Optional online pass: rewrites the fragment-assembled narratives via the Gemini
 /// chat-completions endpoint in small batches, so summaries and achievements read like
 /// individually written CVs rather than filled templates. Strictly best-effort — any batch
 /// that fails, rate-limits, or returns text violating the dataset invariants keeps its
 /// offline fragment prose.
 /// </summary>
-public sealed class GitHubModelsEnricher(string apiKey, string endpoint = "https://models.github.ai/inference", string model = "openai/gpt-4o-mini")
+public sealed class GeminiEnricher(string apiKey, string endpoint = "https://generativelanguage.googleapis.com/v1beta/openai", string model = "gemini-flash-lite-latest")
 {
     private const int BatchSize = 4;
 

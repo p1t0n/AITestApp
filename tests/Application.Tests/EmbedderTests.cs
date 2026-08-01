@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 namespace CvManager.Application.Tests;
 
 /// <summary>
-/// Unit tests for <see cref="GitHubModelsEmbedder"/> using a deterministic fake generator — no
+/// Unit tests for <see cref="GeminiEmbedder"/> using a deterministic fake generator — no
 /// network. Verifies the batch shape, the reported token count, and that spend is logged (embedding
 /// cost is tracked for visibility, deliberately not charged to per-user caps).
 /// </summary>
@@ -16,40 +16,41 @@ public class EmbedderTests
     [Fact]
     public async Task Embeds_batch_preserving_order_and_reports_tokens()
     {
-        var logger = new CapturingLogger<GitHubModelsEmbedder>();
-        var embedder = new GitHubModelsEmbedder(
-            new FakeEmbeddingGenerator(dimensions: 1536, inputTokens: 42),
-            "text-embedding-3-small",
-            logger);
+        var logger = new CapturingLogger<GeminiEmbedder>();
+        var generator = new FakeEmbeddingGenerator(dimensions: 1536, inputTokens: 42);
+        var embedder = new GeminiEmbedder(generator, "gemini-embedding-001", 1536, logger);
 
         var batch = await embedder.EmbedAsync(["alpha", "beta"]);
 
         batch.Vectors.Should().HaveCount(2);
         batch.Vectors[0].Should().HaveCount(1536);
         batch.InputTokens.Should().Be(42);
-        embedder.Model.Should().Be("text-embedding-3-small");
+        embedder.Model.Should().Be("gemini-embedding-001");
+        // gemini-embedding-001 defaults to 3072 dims; the vector(1536) column depends on this option.
+        generator.LastOptions!.Dimensions.Should().Be(1536);
     }
 
     [Fact]
     public async Task Logs_token_count_and_model()
     {
-        var logger = new CapturingLogger<GitHubModelsEmbedder>();
-        var embedder = new GitHubModelsEmbedder(
+        var logger = new CapturingLogger<GeminiEmbedder>();
+        var embedder = new GeminiEmbedder(
             new FakeEmbeddingGenerator(inputTokens: 7),
-            "text-embedding-3-small",
+            "gemini-embedding-001",
+            1536,
             logger);
 
         await embedder.EmbedAsync(["only"]);
 
         logger.Messages.Should().ContainSingle(m =>
-            m.Contains("7") && m.Contains("text-embedding-3-small"));
+            m.Contains("7") && m.Contains("gemini-embedding-001"));
     }
 
     [Fact]
     public async Task Empty_input_returns_empty_batch_without_calling_provider()
     {
         var generator = new FakeEmbeddingGenerator();
-        var embedder = new GitHubModelsEmbedder(generator, "m", new CapturingLogger<GitHubModelsEmbedder>());
+        var embedder = new GeminiEmbedder(generator, "m", 1536, new CapturingLogger<GeminiEmbedder>());
 
         var batch = await embedder.EmbedAsync([]);
 
@@ -72,12 +73,15 @@ public class EmbedderTests
 
         public int CallCount { get; private set; }
 
+        public EmbeddingGenerationOptions? LastOptions { get; private set; }
+
         public Task<GeneratedEmbeddings<Embedding<float>>> GenerateAsync(
             IEnumerable<string> values,
             EmbeddingGenerationOptions? options = null,
             CancellationToken cancellationToken = default)
         {
             CallCount++;
+            LastOptions = options;
             var items = values.Select(v => new Embedding<float>(Seed(v, _dimensions)));
             var generated = new GeneratedEmbeddings<Embedding<float>>(items)
             {

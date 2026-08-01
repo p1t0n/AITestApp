@@ -15,7 +15,7 @@ namespace CvManager.Infrastructure.Embeddings;
 /// </summary>
 public static class EmbeddingServiceCollectionExtensions
 {
-    public static IServiceCollection AddGitHubModelsEmbeddings(
+    public static IServiceCollection AddGeminiEmbeddings(
         this IServiceCollection services, IConfiguration config)
     {
         var cfg = config.GetSection(EmbeddingOptions.Section).Get<EmbeddingOptions>()
@@ -24,7 +24,7 @@ public static class EmbeddingServiceCollectionExtensions
         // One OpenAI-compatible embedding client (endpoint + credential), same shape as the chat client.
         services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>>(_ =>
         {
-            var apiKey = Environment.GetEnvironmentVariable("GITHUB_TOKEN") is { Length: > 0 } envToken
+            var apiKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY") is { Length: > 0 } envToken
                 ? envToken
                 : cfg.ApiKey;
             var client = new OpenAIClient(
@@ -33,10 +33,11 @@ public static class EmbeddingServiceCollectionExtensions
             return client.GetEmbeddingClient(cfg.EmbeddingModel).AsIEmbeddingGenerator();
         });
 
-        services.AddSingleton<IEmbedder>(sp => new GitHubModelsEmbedder(
+        services.AddSingleton<IEmbedder>(sp => new GeminiEmbedder(
             sp.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>(),
             cfg.EmbeddingModel,
-            sp.GetRequiredService<ILogger<GitHubModelsEmbedder>>()));
+            cfg.Dimensions,
+            sp.GetRequiredService<ILogger<GeminiEmbedder>>()));
 
         return services;
     }

@@ -1,0 +1,16 @@
+<!-- PROTOTYPE (P1T-81) — throwaway resume-extraction quality gate. Delete after verdict. -->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>CvManager.Tools.IngestionGate</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../api/Application/CvManager.Application.csproj" />
+  </ItemGroup>
+
+</Project>
