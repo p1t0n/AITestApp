@@ -145,6 +145,7 @@ public sealed class CvTailoringAgent
             loggerFactory: _loggerFactory);
 
         var session = await agent.CreateSessionAsync(ct);
+        using var metering = Usage.MeteringScope.Begin();
 
         // Turn 1: the tailoring markdown — this is the answer, byte-identical in behavior to the
         // pre-rewrite agent. A failure here is an upstream fault and propagates to the endpoint.
@@ -165,11 +166,14 @@ public sealed class CvTailoringAgent
             _logger.LogWarning(ex, "CV tailoring rewrite turn failed; returning the answer without rewrites.");
         }
 
+        var (modelId, latencyMs) = metering.Snapshot();
         var reply = new AgentReply(
             first.Text,
             (first.Usage?.InputTokenCount ?? 0) + (secondUsage?.InputTokenCount ?? 0),
             (first.Usage?.OutputTokenCount ?? 0) + (secondUsage?.OutputTokenCount ?? 0),
-            (first.Usage?.TotalTokenCount ?? 0) + (secondUsage?.TotalTokenCount ?? 0));
+            (first.Usage?.TotalTokenCount ?? 0) + (secondUsage?.TotalTokenCount ?? 0),
+            modelId,
+            latencyMs);
 
         return new TailoringAgentOutcome(
             reply, rewritesText, capture.SelectedAchievementIds ?? [], capture.Exemplars, capture.Cv);

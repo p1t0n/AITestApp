@@ -41,12 +41,13 @@ public static class GeminiServiceCollectionExtensions
         });
 
         // Every client is wrapped with OpenTelemetryChatClient (gen_ai spans + token/duration
-        // metrics, P1T-94). The decorator no-ops unless the host subscribes its source, and
-        // sensitive content capture stays off by default.
+        // metrics, P1T-94) plus the MeteringChatClient (real model id + latency into the ambient
+        // per-run scope, P1T-95). Both no-op when nothing listens; sensitive capture stays off.
         static IChatClient Instrument(IServiceProvider sp, IChatClient inner) =>
-            inner.AsBuilder()
-                .UseOpenTelemetry(sp.GetService<ILoggerFactory>())
-                .Build();
+            new Usage.MeteringChatClient(
+                inner.AsBuilder()
+                    .UseOpenTelemetry(sp.GetService<ILoggerFactory>())
+                    .Build());
 
         // Default chat client: the model everyone uses unless overridden.
         services.AddSingleton<IChatClient>(sp => Instrument(

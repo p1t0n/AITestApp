@@ -14,5 +14,13 @@ public interface IChatAgent
     Task<AgentReply> AskAsync(string question, CancellationToken ct = default);
 }
 
-/// <summary>An agent's answer plus the token usage the model reported for the call.</summary>
-public sealed record AgentReply(string Text, long InputTokens, long OutputTokens, long TotalTokens);
+/// <summary>An agent's answer plus the token usage the model reported for the call.
+/// <see cref="ModelId"/> and <see cref="LatencyMs"/> arrive from the metering seam (P1T-95):
+/// the real response model id and the summed model wall-clock time across the run's calls.</summary>
+public sealed record AgentReply(
+    string Text,
+    long InputTokens,
+    long OutputTokens,
+    long TotalTokens,
+    string? ModelId = null,
+    long LatencyMs = 0);

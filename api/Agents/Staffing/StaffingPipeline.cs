@@ -189,11 +189,11 @@ public sealed class StaffingPipeline
         private Task<WindowUsage?> FindExceededAsync(CancellationToken ct) =>
             userId is { } uid ? pipeline._usage.FindExceededAsync(uid, ct) : Task.FromResult<WindowUsage?>(null);
 
-        private async Task MeterAsync(string agentName, AgentReply reply, CancellationToken ct)
+        private async Task MeterAsync(string agentName, AgentReply reply, string step, CancellationToken ct)
         {
             if (userId is { } uid)
             {
-                await pipeline._meter.RecordAsync(uid, agentName, reply, ct);
+                await pipeline._meter.RecordAsync(uid, agentName, reply, step, ct);
             }
         }
 
@@ -224,7 +224,7 @@ public sealed class StaffingPipeline
                 var run = await pipeline._shortlist.RunAsync(prepared.Shortlist, ct);
 
                 // Meter first: tokens were spent even when the run degrades to a fault below.
-                await MeterAsync(run.AgentName, run.Reply, ct);
+                await MeterAsync(run.AgentName, run.Reply, "shortlist", ct);
 
                 if (run.Response is null)
                 {
@@ -290,7 +290,7 @@ public sealed class StaffingPipeline
             {
                 if (reply is not null)
                 {
-                    await MeterAsync("match", reply, ct);
+                    await MeterAsync("match", reply, "match", ct);
                 }
             }
 
@@ -441,6 +441,7 @@ public sealed class StaffingPipeline
             {
                 // Tool-less completion on the default chat client: the narrative needs no agent
                 // identity or MCP access — all its facts arrive pre-assembled in the prompt.
+                var narrativeClock = System.Diagnostics.Stopwatch.StartNew();
                 var response = await pipeline._chat.GetResponseAsync(
                     [new ChatMessage(ChatRole.System, NarrativeInstructions), new ChatMessage(ChatRole.User, stage.Evidence)],
                     options: null,
@@ -449,7 +450,9 @@ public sealed class StaffingPipeline
                     response.Text,
                     response.Usage?.InputTokenCount ?? 0,
                     response.Usage?.OutputTokenCount ?? 0,
-                    response.Usage?.TotalTokenCount ?? 0), ct);
+                    response.Usage?.TotalTokenCount ?? 0,
+                    response.ModelId,
+                    narrativeClock.ElapsedMilliseconds), "narrative", ct);
 
                 return ComposeNarrative(match, response.Text);
             }

@@ -181,7 +181,7 @@ app.MapPost("/agents/roster-qa", async (
         var reply = await agent.AskAsync(request.Question, thread.History, ct);
         if (userId is { } uid)
         {
-            await meter.RecordAsync(uid, agent.Name, reply, ct);
+            await meter.RecordAsync(uid, agent.Name, reply, ct: ct);
         }
 
         threads.Append(userId, thread.ThreadId, request.Question, reply.Text);
@@ -234,7 +234,7 @@ app.MapPost("/agents/cv-tailoring", async (
         var outcome = await agent.TailorAsync(prompt, ct);
         if (userId is { } uid)
         {
-            await meter.RecordAsync(uid, agent.Name, outcome.Reply, ct);
+            await meter.RecordAsync(uid, agent.Name, outcome.Reply, ct: ct);
         }
         return Results.Ok(TailoringComposer.Compose(outcome, loggerFactory.CreateLogger(nameof(TailoringComposer))));
     }
@@ -278,7 +278,7 @@ app.MapPost("/agents/match", async (
         var run = await runner.RunAsync(request.EmployeeId, request.JobDescription, ct);
         if (userId is { } uid)
         {
-            await meter.RecordAsync(uid, run.AgentName, run.Reply, ct);
+            await meter.RecordAsync(uid, run.AgentName, run.Reply, ct: ct);
         }
         return Results.Ok(new MatchResponse(run.Answer));
     }
@@ -329,7 +329,7 @@ app.MapPost("/agents/shortlist", async (
         // Meter first: tokens were spent even when the run degrades to a 502 below.
         if (userId is { } uid)
         {
-            await meter.RecordAsync(uid, run.AgentName, run.Reply, ct);
+            await meter.RecordAsync(uid, run.AgentName, run.Reply, ct: ct);
         }
 
         // The run service reports a degraded run (model skipped the tool, or a soft retrieval
@@ -384,7 +384,7 @@ app.MapPost("/agents/resume-ingestion", async (
         // Meter first: tokens were spent even when the run aborted below.
         if (userId is { } uid)
         {
-            await meter.RecordAsync(uid, run.AgentName, run.Reply, ct);
+            await meter.RecordAsync(uid, run.AgentName, run.Reply, ct: ct);
         }
 
         // Core abort (no draft exists): the resume did not yield a valid employee even after the

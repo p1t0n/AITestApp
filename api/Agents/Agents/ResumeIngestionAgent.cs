@@ -122,13 +122,17 @@ public sealed class ResumeIngestionAgent
             loggerFactory: _loggerFactory);
 
         var session = await agent.CreateSessionAsync(ct);
+        using var metering = Usage.MeteringScope.Begin();
         var response = await agent.RunAsync("Resume text:\n\n" + resumeText, session, null, ct);
         var usage = response.Usage;
+        var (modelId, latencyMs) = metering.Snapshot();
         var reply = new AgentReply(
             response.Text,
             usage?.InputTokenCount ?? 0,
             usage?.OutputTokenCount ?? 0,
-            usage?.TotalTokenCount ?? 0);
+            usage?.TotalTokenCount ?? 0,
+            modelId,
+            latencyMs);
 
         return new ResumeIngestionOutcome(
             reply, capture.EmployeeId, capture.DuplicateWarning, capture.Calls, response.Text);

@@ -66,13 +66,17 @@ public sealed class RosterQaAgent : IChatAgent
         var agent = await GetAgentAsync(ct);
         var session = await agent.CreateSessionAsync(ct);
         var messages = history.Append(new ChatMessage(ChatRole.User, question)).ToList();
+        using var metering = Usage.MeteringScope.Begin();
         var response = await agent.RunAsync(messages, session, null, ct);
         var usage = response.Usage;
+        var (modelId, latencyMs) = metering.Snapshot();
         return new AgentReply(
             response.Text,
             usage?.InputTokenCount ?? 0,
             usage?.OutputTokenCount ?? 0,
-            usage?.TotalTokenCount ?? 0);
+            usage?.TotalTokenCount ?? 0,
+            modelId,
+            latencyMs);
     }
 
     private async Task<AIAgent> GetAgentAsync(CancellationToken ct)

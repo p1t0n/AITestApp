@@ -123,13 +123,17 @@ public sealed class ShortlistAgent
             loggerFactory: _loggerFactory);
 
         var session = await agent.CreateSessionAsync(ct);
+        using var metering = Usage.MeteringScope.Begin();
         var response = await agent.RunAsync(BuildPrompt(request), session, null, ct);
         var usage = response.Usage;
+        var (modelId, latencyMs) = metering.Snapshot();
         var reply = new AgentReply(
             response.Text,
             usage?.InputTokenCount ?? 0,
             usage?.OutputTokenCount ?? 0,
-            usage?.TotalTokenCount ?? 0);
+            usage?.TotalTokenCount ?? 0,
+            modelId,
+            latencyMs);
 
         return new ShortlistAgentOutcome(reply, capture.Requirements ?? [], capture.Payload);
     }
