@@ -8,6 +8,19 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Production refuses to boot on placeholder secrets (P1T-87): an empty or dev-marked JWT signing
+// key must never sign real sessions. Dev values live in appsettings.Development.json.
+if (builder.Environment.IsProduction())
+{
+    var signingKey = builder.Configuration["Auth:Jwt:SigningKey"];
+    if (string.IsNullOrWhiteSpace(signingKey) || signingKey.StartsWith("dev-only-insecure"))
+    {
+        throw new InvalidOperationException(
+            "Auth:Jwt:SigningKey is empty or the dev placeholder. Provide a real key via " +
+            "environment (Auth__Jwt__SigningKey) or a secrets store before running in Production.");
+    }
+}
+
 const string SpaCors = "spa";
 
 builder.Services.AddControllers()
