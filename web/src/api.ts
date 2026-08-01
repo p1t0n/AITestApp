@@ -212,17 +212,22 @@ export function useUsage() {
 
 export interface RosterQaResponse {
   answer: string;
+  /** The conversation to continue. A returned id differing from the one sent means the server
+   * started a fresh thread (expired/unknown) — the prior context is gone. */
+  threadId: string;
 }
 
-/**
- * Ask the Roster Q&A agent a single question. The endpoint is stateless today (issue #15);
- * a threadId will be threaded through here once threaded sessions land (issue #16).
- */
+export interface RosterQaInput {
+  question: string;
+  threadId?: string;
+}
+
+/** Ask the Roster Q&A agent. Pass the last response's threadId to continue the conversation. */
 export function useRosterQa() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (question: string) =>
-      (await agentHttp.post<RosterQaResponse>("/roster-qa", { question })).data,
+    mutationFn: async (input: RosterQaInput) =>
+      (await agentHttp.post<RosterQaResponse>("/roster-qa", input)).data,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["usage"] }),
   });
 }

@@ -231,4 +231,3 @@ dotnet ef migrations add <Name> \
 - Web integration tests (WebApplicationFactory + Testcontainers) and Playwright e2e
 - SPA edit forms for languages / qualifications / experiences (API already supports them)
 - Shortlist-specific retrieval evals (requirement-extraction fidelity, coverage-merge ranking)
-- Multi-turn agent memory

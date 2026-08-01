@@ -25,6 +25,7 @@ builder.Services.AddScoped<IUsageMeter, UsageMeter>();
 builder.Services.AddScoped<IUsageService, UsageService>();
 
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<RosterQaThreadStore>();
 builder.Services.AddHttpClient();
 
 // Chat model: provider-agnostic IChatClient over Gemini (OpenAI-compatible, free tier with an API
@@ -120,10 +121,14 @@ app.MapGet("/agents/usage", async (ClaimsPrincipal user, IUsageService usage, Ca
     return Results.Ok(await usage.GetSnapshotAsync(userId, ct));
 }).RequireAuthorization();
 
-// POST /agents/roster-qa  { "question": "..." }  ->  { "answer": "..." }
+// POST /agents/roster-qa  { "question": "...", "threadId"?: "..." }  ->  { "answer": "...", "threadId": "..." }
+// Threaded sessions (P1T-93): an omitted/unknown/expired threadId transparently starts a fresh
+// thread — the client detects context loss by the returned id changing. History is bounded by
+// the store (last 10 turns) and its tokens are metered like any other prompt tokens.
 app.MapPost("/agents/roster-qa", async (
     RosterQaRequest request,
     IEnumerable<IChatAgent> agents,
+    RosterQaThreadStore threads,
     ClaimsPrincipal user,
     IUsageMeter meter,
     IUsageService usage,
@@ -140,15 +145,18 @@ app.MapPost("/agents/roster-qa", async (
         return CapReached(exceeded);
     }
 
-    var agent = agents.First(a => a.Name == "roster-qa");
+    var agent = (RosterQaAgent)agents.First(a => a.Name == "roster-qa");
     try
     {
-        var reply = await agent.AskAsync(request.Question, ct);
+        var thread = threads.Resolve(userId, request.ThreadId);
+        var reply = await agent.AskAsync(request.Question, thread.History, ct);
         if (userId is { } uid)
         {
             await meter.RecordAsync(uid, agent.Name, reply, ct);
         }
-        return Results.Ok(new RosterQaResponse(reply.Text));
+
+        threads.Append(userId, thread.ThreadId, request.Question, reply.Text);
+        return Results.Ok(new RosterQaResponse(reply.Text, thread.ThreadId));
     }
     catch (HttpRequestException ex)
     {
@@ -419,9 +427,9 @@ app.MapPost("/agents/staffing", async (
 
 app.Run();
 
-internal sealed record RosterQaRequest(string Question);
+internal sealed record RosterQaRequest(string Question, string? ThreadId = null);
 internal sealed record ResumeIngestionRequest(string ResumeText);
-internal sealed record RosterQaResponse(string Answer);
+internal sealed record RosterQaResponse(string Answer, string ThreadId);
 internal sealed record CvTailoringRequest(Guid EmployeeId, string JobDescription);
 internal sealed record MatchRequest(Guid EmployeeId, string JobDescription);
 internal sealed record MatchResponse(string Answer);
