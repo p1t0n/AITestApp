@@ -8,7 +8,7 @@ description: Build, launch, and drive this app (Postgres+Keycloak, Web, MCP, Age
 ## Launch the stack
 
 ```bash
-docker compose up -d                       # pgvector Postgres (:5432) + Keycloak (:8080)
+docker compose up -d                       # pgvector Postgres (:5432) + Keycloak (:8080) + Aspire dashboard (:18888)
 # If keycloak/realm-export.json changed since the container was created, the realm is STALE:
 docker compose up -d --force-recreate keycloak
 
@@ -22,6 +22,13 @@ cd web && npm run dev &                    # :5173, proxies /api → 5069 and /a
 
 `ASPNETCORE_ENVIRONMENT=Development` is required — migrations + base seed only run in Development.
 Health probes: Web `GET /swagger/index.html` = 200; Mcp `/` = 401; Agents `/` = 404 (both mean "alive").
+
+## Traces & metrics
+
+Open http://localhost:18888 (Aspire dashboard, anonymous). Every agent request renders as one
+trace across `cvmanager-agents` and `cvmanager-mcp` (workflow executors, chat spans, MCP RPCs,
+SQL); the Metrics page has `gen_ai.client.token.usage` by model. In-memory — restarting the
+container clears history. The services run fine when it is down.
 
 ## Demo data + embeddings
 

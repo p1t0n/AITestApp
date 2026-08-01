@@ -37,6 +37,7 @@ See [SPEC.md](SPEC.md).
 - **Backend:** ASP.NET Core Web API (.NET 10), layered Domain / Application / Infrastructure / Web
 - **MCP server:** ModelContextProtocol (Streamable HTTP), thin adapters over the Application layer, OAuth 2.1 (Keycloak) with per-tool scopes
 - **AI agents:** Microsoft Agent Framework over provider-agnostic `IChatClient` (Gemini free tier by default); embeddings via `gemini-embedding-001` (1536 dims)
+- **Observability:** OpenTelemetry tracing + metrics from both services (MAF workflow/executor spans, gen_ai chat spans, MCP RPCs, SQL) into the Aspire dashboard at `http://localhost:18888` (docker-compose)
 - **Vector search:** PostgreSQL + pgvector (cosine), EF Core mapping via Pgvector.EntityFrameworkCore
 - **Frontend:** React + Vite + TypeScript, MUI, TanStack Query (+ vitest component tests)
 - **Database:** PostgreSQL via EF Core

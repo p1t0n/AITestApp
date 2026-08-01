@@ -40,15 +40,23 @@ public static class GeminiServiceCollectionExtensions
             return new OpenAIClient(new ApiKeyCredential(apiKey), options);
         });
 
+        // Every client is wrapped with OpenTelemetryChatClient (gen_ai spans + token/duration
+        // metrics, P1T-94). The decorator no-ops unless the host subscribes its source, and
+        // sensitive content capture stays off by default.
+        static IChatClient Instrument(IServiceProvider sp, IChatClient inner) =>
+            inner.AsBuilder()
+                .UseOpenTelemetry(sp.GetService<ILoggerFactory>())
+                .Build();
+
         // Default chat client: the model everyone uses unless overridden.
-        services.AddSingleton<IChatClient>(sp =>
-            sp.GetRequiredService<OpenAIClient>().GetChatClient(cfg.Model).AsIChatClient());
+        services.AddSingleton<IChatClient>(sp => Instrument(
+            sp, sp.GetRequiredService<OpenAIClient>().GetChatClient(cfg.Model).AsIChatClient()));
 
         // One keyed client per agent that overrides the model.
         foreach (var (agentKey, model) in cfg.Agents)
         {
-            services.AddKeyedSingleton<IChatClient>(agentKey, (sp, _) =>
-                sp.GetRequiredService<OpenAIClient>().GetChatClient(model).AsIChatClient());
+            services.AddKeyedSingleton<IChatClient>(agentKey, (sp, _) => Instrument(
+                sp, sp.GetRequiredService<OpenAIClient>().GetChatClient(model).AsIChatClient()));
         }
 
         return services;

@@ -147,6 +147,9 @@ public sealed class StaffingPipeline
                 "report", ReportAsync, outputTypes: [typeof(ReportResult)]);
 
             var builder = new WorkflowBuilder(prepare);
+            // Per-executor spans (workflow_invoke, executor.process; P1T-94). No-ops without a
+            // subscribed OTel host; sensitive payload capture stays off by default.
+            builder.WithOpenTelemetry();
             builder.AddEdge(prepare, shortlistStep);
             builder.AddEdge(shortlistStep, matchStep);
             builder.AddEdge(matchStep, aggregate);
