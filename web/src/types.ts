@@ -4,6 +4,8 @@ export type SkillLevel = "Beginner" | "Intermediate" | "Advanced" | "Expert";
 export type LanguageLevel = "Basic" | "Conversational" | "Professional" | "Fluent" | "Native";
 export type QualificationType = "Degree" | "Certification";
 
+export type EmployeeStatus = "Draft" | "Active";
+
 export interface EmployeeSummary {
   id: string;
   firstName: string;
@@ -12,6 +14,7 @@ export interface EmployeeSummary {
   location: string | null;
   email: string;
   currentCapacityPercent: number;
+  status: EmployeeStatus;
 }
 
 export interface SpokenLanguage {
@@ -84,6 +87,7 @@ export interface EmployeeDetail {
   summary: string | null;
   photoUrl: string | null;
   currentCapacityPercent: number;
+  status: EmployeeStatus;
   spokenLanguages: SpokenLanguage[];
   availabilityEntries: AvailabilityEntry[];
   skills: EmployeeSkill[];
