@@ -150,6 +150,21 @@
         "mcp-audience",
         "mcp:read"
       ]
+    },
+    {
+      "clientId": "agent-resume-ingestion",
+      "name": "Resume Ingestion agent (confidential, mcp:read + mcp:write — stages drafts only)",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "agent-resume-ingestion-secret",
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": [
+        "mcp-audience",
+        "mcp:read",
+        "mcp:write"
+      ]
     }
   ]
 }

@@ -51,7 +51,10 @@ public class AppDbContext : DbContext, IAppDbContext
             e.Property(x => x.LastName).HasMaxLength(100).IsRequired();
             e.Property(x => x.Title).HasMaxLength(200);
             e.Property(x => x.Email).HasMaxLength(256).IsRequired();
-            e.HasIndex(x => x.Email).IsUnique();
+            // Uniqueness binds only published employees with a real address: drafts may share an
+            // email (re-ingested resume) or carry none at all — the promote gate resolves clashes.
+            e.HasIndex(x => x.Email).IsUnique()
+                .HasFilter("\"Status\" = 'Active' AND \"Email\" <> ''");
             e.Property(x => x.Phone).HasMaxLength(50);
             e.Property(x => x.Location).HasMaxLength(200);
 

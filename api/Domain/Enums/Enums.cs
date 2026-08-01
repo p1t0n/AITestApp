@@ -1,5 +1,13 @@
 namespace CvManager.Domain.Enums;
 
+/// <summary>Draft employees are agent-staged (resume ingestion) and invisible to the roster,
+/// search index, and staffing until a human promotes them. Humans hold publication authority.</summary>
+public enum EmployeeStatus
+{
+    Draft = 1,
+    Active = 2
+}
+
 public enum SkillLevel
 {
     Beginner = 1,

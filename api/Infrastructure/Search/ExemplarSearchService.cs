@@ -118,7 +118,7 @@ public sealed class ExemplarSearchService : IExemplarSearchService
         // their employers' names. The scrub runs before any text leaves this service.
         var sourceEmployeeIds = picks.SelectMany(p => p.Hits).Select(h => h.EmployeeId).Distinct().ToList();
         var sources = await _db.Employees
-            .Where(e => sourceEmployeeIds.Contains(e.Id))
+            .Where(e => sourceEmployeeIds.Contains(e.Id) && e.Status == EmployeeStatus.Active)
             .Select(e => new
             {
                 e.Id,

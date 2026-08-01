@@ -89,7 +89,7 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
 
         var ids = byEmployee.Select(x => x.EmployeeId).ToList();
         var employees = await _db.Employees
-            .Where(e => ids.Contains(e.Id))
+            .Where(e => ids.Contains(e.Id) && e.Status == EmployeeStatus.Active)
             .Select(e => new { e.Id, e.FirstName, e.LastName, e.Title })
             .ToDictionaryAsync(e => e.Id, ct);
 
@@ -174,7 +174,7 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
 
         var ids = merged.Select(x => x.EmployeeId).ToList();
         var employees = await _db.Employees
-            .Where(e => ids.Contains(e.Id))
+            .Where(e => ids.Contains(e.Id) && e.Status == EmployeeStatus.Active)
             .Select(e => new { e.Id, e.FirstName, e.LastName, e.Title })
             .ToDictionaryAsync(e => e.Id, ct);
 
@@ -258,7 +258,7 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
             return null;
         }
 
-        IQueryable<Employee> q = _db.Employees;
+        IQueryable<Employee> q = _db.Employees.Where(e => e.Status == EmployeeStatus.Active);
 
         if (!string.IsNullOrWhiteSpace(filters.Location))
         {
