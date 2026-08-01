@@ -1,6 +1,6 @@
-// PROTOTYPE (P1T-81) — throwaway. Eight synthetic resumes with hand-written ground truth.
+// Eight synthetic resumes with hand-written ground truth — graduated from the P1T-81 gate
 // Names follow the demo-roster fantasy convention so no real person is described.
-namespace CvManager.Tools.IngestionGate;
+namespace CvManager.Agents.Tests.Eval;
 
 public sealed record TruthSkill(string Name, bool InCatalog);
 
