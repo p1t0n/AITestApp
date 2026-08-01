@@ -1,8 +1,8 @@
-using EmployeeManager.Application.Cv;
-using EmployeeManager.Application.Employees;
+using CvManager.Application.Cv;
+using CvManager.Application.Employees;
 using Microsoft.AspNetCore.Mvc;
 
-namespace EmployeeManager.Web.Controllers;
+namespace CvManager.Web.Controllers;
 
 [ApiController]
 [Route("api/employees")]

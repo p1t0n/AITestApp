@@ -5,12 +5,12 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <RootNamespace>EmployeeManager.Tools.SeedDemoRoster</RootNamespace>
+    <RootNamespace>CvManager.Tools.SeedDemoRoster</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- For AppDbContext + DemoRosterSeeder (which carries the embedded dataset); no runtime project references this tool. -->
-    <ProjectReference Include="..\..\api\Infrastructure\EmployeeManager.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\api\Infrastructure\CvManager.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

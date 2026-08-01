@@ -1,9 +1,9 @@
-using EmployeeManager.Infrastructure.Persistence.SeedData;
-using EmployeeManager.Tools.DemoRoster;
+using CvManager.Infrastructure.Persistence.SeedData;
+using CvManager.Tools.DemoRoster;
 using FluentAssertions;
 using Xunit;
 
-namespace EmployeeManager.Application.Tests;
+namespace CvManager.Application.Tests;
 
 /// <summary>
 /// Deterministic-assembly tests for the demo roster generator (tools/GenerateDemoRoster).

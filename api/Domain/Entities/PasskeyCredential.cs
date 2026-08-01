@@ -1,4 +1,4 @@
-namespace EmployeeManager.Domain.Entities;
+namespace CvManager.Domain.Entities;
 
 /// <summary>
 /// A WebAuthn/FIDO2 credential enrolled by a <see cref="User"/>. Field shapes follow what a

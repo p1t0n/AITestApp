@@ -1,6 +1,6 @@
 using FluentValidation;
 
-namespace EmployeeManager.Application.Employees;
+namespace CvManager.Application.Employees;
 
 public class SaveEmployeeValidator : AbstractValidator<SaveEmployeeDto>
 {

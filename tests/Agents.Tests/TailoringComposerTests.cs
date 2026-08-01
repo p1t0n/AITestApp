@@ -1,9 +1,9 @@
-using EmployeeManager.Agents.Agents;
+using CvManager.Agents.Agents;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace EmployeeManager.Agents.Tests;
+namespace CvManager.Agents.Tests;
 
 /// <summary>
 /// Tests for the endpoint-side composition of the hybrid tailoring response: the answer is turn

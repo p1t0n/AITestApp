@@ -1,8 +1,8 @@
-using EmployeeManager.Application.Search;
+using CvManager.Application.Search;
 using FluentAssertions;
 using Xunit;
 
-namespace EmployeeManager.Application.Tests;
+namespace CvManager.Application.Tests;
 
 /// <summary>
 /// The quality gate for exemplar bullets: only quantified achievements (a number, a percent, or an

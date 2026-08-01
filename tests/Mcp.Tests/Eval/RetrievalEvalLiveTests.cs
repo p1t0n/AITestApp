@@ -1,6 +1,6 @@
-using EmployeeManager.Application.Abstractions;
-using EmployeeManager.Infrastructure.Embeddings;
-using EmployeeManager.Infrastructure.Persistence;
+using CvManager.Application.Abstractions;
+using CvManager.Infrastructure.Embeddings;
+using CvManager.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -9,9 +9,9 @@ using Microsoft.Extensions.Logging;
 using Testcontainers.PostgreSql;
 using Xunit.Abstractions;
 
-using EmployeeManager.RetrievalEval;
+using CvManager.RetrievalEval;
 
-namespace EmployeeManager.Mcp.Tests.Eval;
+namespace CvManager.Mcp.Tests.Eval;
 
 /// <summary>
 /// The retrieval-quality regression gate: seeds the frozen corpus into real pgvector, embeds it via

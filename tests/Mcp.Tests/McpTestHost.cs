@@ -2,8 +2,8 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
-using EmployeeManager.Domain.Entities;
-using EmployeeManager.Infrastructure.Persistence;
+using CvManager.Domain.Entities;
+using CvManager.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -15,7 +15,7 @@ using Microsoft.IdentityModel.Tokens;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 
-namespace EmployeeManager.Mcp.Tests;
+namespace CvManager.Mcp.Tests;
 
 /// <summary>
 /// Shared in-memory MCP host for integration tests. Swaps the database to EF InMemory and

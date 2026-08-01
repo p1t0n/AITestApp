@@ -1,10 +1,10 @@
-using EmployeeManager.Application.Search;
+using CvManager.Application.Search;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Xunit;
 
-namespace EmployeeManager.Mcp.Tests;
+namespace CvManager.Mcp.Tests;
 
 /// <summary>
 /// Tests the roster_semantic_search MCP tool wiring — exposure, scope, and param binding —

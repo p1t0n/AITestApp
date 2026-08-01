@@ -1,6 +1,6 @@
-using EmployeeManager.Agents.Agents;
+using CvManager.Agents.Agents;
 
-namespace EmployeeManager.Agents.Staffing;
+namespace CvManager.Agents.Staffing;
 
 /// <summary>The typed staffing request: the job description plus the optional shortlist filters,
 /// and how many top candidates to fan the match step out over (default 3, clamped to 1..5).</summary>

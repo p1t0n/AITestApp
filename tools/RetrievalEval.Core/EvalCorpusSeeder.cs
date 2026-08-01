@@ -1,7 +1,7 @@
 using System.Globalization;
-using EmployeeManager.Domain.Entities;
+using CvManager.Domain.Entities;
 
-namespace EmployeeManager.RetrievalEval;
+namespace CvManager.RetrievalEval;
 
 /// <summary>
 /// Maps the frozen eval corpus onto real domain entities so the eval exercises the exact production

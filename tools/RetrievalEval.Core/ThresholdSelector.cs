@@ -1,4 +1,4 @@
-namespace EmployeeManager.RetrievalEval;
+namespace CvManager.RetrievalEval;
 
 /// <summary>
 /// The P1T-45 threshold selection rule. Precision comes first as a hard constraint — a threshold

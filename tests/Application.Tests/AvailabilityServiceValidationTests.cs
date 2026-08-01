@@ -1,11 +1,11 @@
-using EmployeeManager.Application.Availability;
-using EmployeeManager.Infrastructure.Persistence;
+using CvManager.Application.Availability;
+using CvManager.Infrastructure.Persistence;
 using FluentAssertions;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
-namespace EmployeeManager.Application.Tests;
+namespace CvManager.Application.Tests;
 
 public class AvailabilityServiceValidationTests
 {

@@ -1,4 +1,4 @@
-namespace EmployeeManager.Tools.DemoRoster;
+namespace CvManager.Tools.DemoRoster;
 
 /// <summary>
 /// SplitMix64-based PRNG. Used instead of <see cref="Random"/> so the committed dataset is

@@ -1,7 +1,7 @@
-using EmployeeManager.Infrastructure.Search;
+using CvManager.Infrastructure.Search;
 using Microsoft.Extensions.Options;
 
-namespace EmployeeManager.Mcp.Search;
+namespace CvManager.Mcp.Search;
 
 /// <summary>
 /// Background scheduler for semantic roster search: runs one <see cref="ISearchIndexReconciler"/>

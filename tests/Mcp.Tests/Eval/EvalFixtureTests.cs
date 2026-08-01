@@ -1,8 +1,8 @@
 using FluentAssertions;
 
-using EmployeeManager.RetrievalEval;
+using CvManager.RetrievalEval;
 
-namespace EmployeeManager.Mcp.Tests.Eval;
+namespace CvManager.Mcp.Tests.Eval;
 
 /// <summary>
 /// Structural validation of the committed eval fixtures (no Docker, no embeddings). Guards the

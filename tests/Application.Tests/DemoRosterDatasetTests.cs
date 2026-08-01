@@ -1,8 +1,8 @@
-using EmployeeManager.Infrastructure.Persistence.SeedData;
+using CvManager.Infrastructure.Persistence.SeedData;
 using FluentAssertions;
 using Xunit;
 
-namespace EmployeeManager.Application.Tests;
+namespace CvManager.Application.Tests;
 
 /// <summary>
 /// Validates the committed demo-roster.json asset itself (P1T-48), independently of how it
@@ -17,7 +17,7 @@ public class DemoRosterDatasetTests
     {
         // Walk up from the test output directory to the repo root.
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "EmployeeManager.slnx")))
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "CvManager.slnx")))
             dir = dir.Parent;
         dir.Should().NotBeNull("the test must run from within the repository");
 

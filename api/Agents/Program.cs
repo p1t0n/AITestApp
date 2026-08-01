@@ -1,11 +1,11 @@
 using System.Security.Claims;
-using EmployeeManager.Agents.Agents;
-using EmployeeManager.Agents.Auth;
-using EmployeeManager.Agents.Configuration;
-using EmployeeManager.Agents.Mcp;
-using EmployeeManager.Agents.Staffing;
-using EmployeeManager.Agents.Usage;
-using EmployeeManager.Infrastructure;
+using CvManager.Agents.Agents;
+using CvManager.Agents.Auth;
+using CvManager.Agents.Configuration;
+using CvManager.Agents.Mcp;
+using CvManager.Agents.Staffing;
+using CvManager.Agents.Usage;
+using CvManager.Infrastructure;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 

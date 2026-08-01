@@ -1,9 +1,9 @@
-using EmployeeManager.Application.Search;
+using CvManager.Application.Search;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
-namespace EmployeeManager.Infrastructure.Search;
+namespace CvManager.Infrastructure.Search;
 
 /// <summary>
 /// Registers semantic roster search: the reconciler (indexing) and the query service, plus their

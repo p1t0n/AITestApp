@@ -1,8 +1,8 @@
 using System.Globalization;
-using EmployeeManager.Application.Abstractions;
-using EmployeeManager.Infrastructure.Embeddings;
-using EmployeeManager.Infrastructure.Persistence;
-using EmployeeManager.RetrievalEval;
+using CvManager.Application.Abstractions;
+using CvManager.Infrastructure.Embeddings;
+using CvManager.Infrastructure.Persistence;
+using CvManager.RetrievalEval;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

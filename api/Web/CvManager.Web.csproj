@@ -18,8 +18,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Application\EmployeeManager.Application.csproj" />
-    <ProjectReference Include="..\Infrastructure\EmployeeManager.Infrastructure.csproj" />
+    <ProjectReference Include="..\Application\CvManager.Application.csproj" />
+    <ProjectReference Include="..\Infrastructure\CvManager.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

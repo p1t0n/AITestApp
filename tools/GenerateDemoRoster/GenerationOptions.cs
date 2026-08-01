@@ -1,4 +1,4 @@
-namespace EmployeeManager.Tools.DemoRoster;
+namespace CvManager.Tools.DemoRoster;
 
 public sealed record GenerationOptions
 {

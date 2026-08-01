@@ -1,8 +1,8 @@
-using EmployeeManager.Application.Search;
+using CvManager.Application.Search;
 using FluentAssertions;
 using Xunit;
 
-namespace EmployeeManager.Application.Tests;
+namespace CvManager.Application.Tests;
 
 /// <summary>
 /// The exemplar anonymization scrub: source-employee names and their companies must never leave

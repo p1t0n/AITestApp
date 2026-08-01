@@ -1,7 +1,7 @@
-using EmployeeManager.Agents.Mcp;
+using CvManager.Agents.Mcp;
 using Microsoft.Extensions.AI;
 
-namespace EmployeeManager.Agents.Tests.Fakes;
+namespace CvManager.Agents.Tests.Fakes;
 
 /// <summary>An <see cref="IMcpToolSource"/> that returns a fixed set of tools — stands in for the
 /// live MCP connection so the agent can be unit-tested in isolation.</summary>

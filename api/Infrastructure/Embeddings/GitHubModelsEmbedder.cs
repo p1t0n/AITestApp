@@ -1,8 +1,8 @@
-using EmployeeManager.Application.Abstractions;
+using CvManager.Application.Abstractions;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 
-namespace EmployeeManager.Infrastructure.Embeddings;
+namespace CvManager.Infrastructure.Embeddings;
 
 /// <summary>
 /// <see cref="IEmbedder"/> over an OpenAI-compatible <see cref="IEmbeddingGenerator{TInput,TEmbedding}"/>.

@@ -1,4 +1,4 @@
-namespace EmployeeManager.Agents.Agents;
+namespace CvManager.Agents.Agents;
 
 /// <summary>What one match run produced: the answer text, plus the reply carrying the token usage
 /// the caller meters under <see cref="AgentName"/>.</summary>

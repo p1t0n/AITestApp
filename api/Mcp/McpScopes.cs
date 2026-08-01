@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 
-namespace EmployeeManager.Mcp;
+namespace CvManager.Mcp;
 
 /// <summary>
 /// OAuth scope names for the MCP tools and the predicate that checks them against a token.

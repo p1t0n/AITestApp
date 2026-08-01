@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace EmployeeManager.Agents.Tests.Fakes;
+namespace CvManager.Agents.Tests.Fakes;
 
 /// <summary>An <see cref="ILogger"/> that collects formatted log entries so tests can assert
 /// that a code path logged (e.g. a dropped rewrite's warning) without a logging framework.</summary>

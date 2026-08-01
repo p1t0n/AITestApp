@@ -1,7 +1,7 @@
-using EmployeeManager.RetrievalEval;
+using CvManager.RetrievalEval;
 using FluentAssertions;
 
-namespace EmployeeManager.Mcp.Tests.Eval;
+namespace CvManager.Mcp.Tests.Eval;
 
 /// <summary>
 /// Unit tests for the sweep-range grammar (<c>start:end:step</c>) and the refine-window generator.

@@ -1,6 +1,6 @@
 using System.Net.Http.Headers;
 
-namespace EmployeeManager.Agents.Auth;
+namespace CvManager.Agents.Auth;
 
 /// <summary>
 /// Injects a fresh bearer token onto every outgoing MCP request. Sits on the HttpClient that

@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace EmployeeManager.Agents.Agents;
+namespace CvManager.Agents.Agents;
 
 /// <summary>
 /// Pure, endpoint-side vetting of one model rewrite (P1T-65). Two rules, both conservative —

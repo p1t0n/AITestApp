@@ -1,8 +1,8 @@
-using EmployeeManager.Domain.Entities;
-using EmployeeManager.Domain.Enums;
+using CvManager.Domain.Entities;
+using CvManager.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
-namespace EmployeeManager.Infrastructure.Persistence;
+namespace CvManager.Infrastructure.Persistence;
 
 /// <summary>
 /// Idempotent dev seeder: a skill-category tree + catalog skills, plus a few fully-populated

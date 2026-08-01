@@ -1,10 +1,10 @@
-using EmployeeManager.Agents.Auth;
-using EmployeeManager.Agents.Configuration;
+using CvManager.Agents.Auth;
+using CvManager.Agents.Configuration;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 using ModelContextProtocol.Client;
 
-namespace EmployeeManager.Agents.Mcp;
+namespace CvManager.Agents.Mcp;
 
 /// <summary>
 /// Connects to the MCP server over Streamable HTTP (with a bearer token injected per request)

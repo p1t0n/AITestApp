@@ -1,9 +1,9 @@
-using EmployeeManager.Domain.Enums;
-using EmployeeManager.Infrastructure.Persistence.SeedData;
+using CvManager.Domain.Enums;
+using CvManager.Infrastructure.Persistence.SeedData;
 using FluentAssertions;
 using Xunit;
 
-namespace EmployeeManager.Application.Tests;
+namespace CvManager.Application.Tests;
 
 public class DemoRosterLoaderTests
 {

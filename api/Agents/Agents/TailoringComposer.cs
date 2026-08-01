@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace EmployeeManager.Agents.Agents;
+namespace CvManager.Agents.Agents;
 
 /// <summary>One vetted rewrite in the pinned response contract. Ids and the original bullet text
 /// come from CV data (the captured cv_get result); only <see cref="Rewritten"/> is model text.</summary>

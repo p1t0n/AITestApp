@@ -1,10 +1,10 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using EmployeeManager.Agents.Mcp;
+using CvManager.Agents.Mcp;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 
-namespace EmployeeManager.Agents.Agents;
+namespace CvManager.Agents.Agents;
 
 /// <summary>One anonymized strong-phrasing exemplar as captured from the exemplar tool.</summary>
 public sealed record TailoringExemplar(string Text, double Similarity);

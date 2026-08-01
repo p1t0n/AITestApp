@@ -1,9 +1,9 @@
 using System.ComponentModel;
-using EmployeeManager.Application.Employees;
+using CvManager.Application.Employees;
 using Microsoft.AspNetCore.Authorization;
 using ModelContextProtocol.Server;
 
-namespace EmployeeManager.Mcp.Tools;
+namespace CvManager.Mcp.Tools;
 
 [McpServerToolType]
 public class ExperienceSkillTools

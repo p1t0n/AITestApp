@@ -1,11 +1,11 @@
 using System.Text;
 using System.Text.Json;
-using EmployeeManager.Agents.Agents;
-using EmployeeManager.Agents.Usage;
+using CvManager.Agents.Agents;
+using CvManager.Agents.Usage;
 using Microsoft.Agents.AI.Workflows;
 using Microsoft.Extensions.AI;
 
-namespace EmployeeManager.Agents.Staffing;
+namespace CvManager.Agents.Staffing;
 
 /// <summary>
 /// The staffing pipeline: Prepare → Shortlist → Match×N → Aggregate → Narrative → Report, built as

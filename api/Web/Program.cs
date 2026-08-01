@@ -1,9 +1,9 @@
 using System.Text.Json.Serialization;
-using EmployeeManager.Application;
-using EmployeeManager.Infrastructure;
-using EmployeeManager.Infrastructure.Persistence;
-using EmployeeManager.Web.Auth;
-using EmployeeManager.Web.Infrastructure;
+using CvManager.Application;
+using CvManager.Infrastructure;
+using CvManager.Infrastructure.Persistence;
+using CvManager.Web.Auth;
+using CvManager.Web.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);

@@ -1,10 +1,10 @@
-using EmployeeManager.Application.Abstractions;
-using EmployeeManager.Infrastructure.Embeddings;
+using CvManager.Application.Abstractions;
+using CvManager.Infrastructure.Embeddings;
 using FluentAssertions;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 
-namespace EmployeeManager.Application.Tests;
+namespace CvManager.Application.Tests;
 
 /// <summary>
 /// Unit tests for <see cref="GitHubModelsEmbedder"/> using a deterministic fake generator — no

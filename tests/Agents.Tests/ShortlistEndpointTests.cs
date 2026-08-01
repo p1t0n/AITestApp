@@ -1,14 +1,14 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using EmployeeManager.Agents.Tests.Fakes;
-using EmployeeManager.Agents.Usage;
+using CvManager.Agents.Tests.Fakes;
+using CvManager.Agents.Usage;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace EmployeeManager.Agents.Tests;
+namespace CvManager.Agents.Tests;
 
 /// <summary>
 /// Endpoint tests for POST /agents/shortlist. They run against the real host but swap the chat
@@ -44,7 +44,7 @@ public class ShortlistEndpointTests
             b.ConfigureServices(s =>
             {
                 s.AddSingleton(chat);
-                s.AddKeyedSingleton<EmployeeManager.Agents.Mcp.IMcpToolSource>(
+                s.AddKeyedSingleton<CvManager.Agents.Mcp.IMcpToolSource>(
                     "shortlist", (_, _) => tool is null ? new FakeToolSource() : new FakeToolSource(tool));
                 extra?.Invoke(s);
             }));

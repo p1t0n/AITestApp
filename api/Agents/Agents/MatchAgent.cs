@@ -1,8 +1,8 @@
-using EmployeeManager.Agents.Mcp;
+using CvManager.Agents.Mcp;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 
-namespace EmployeeManager.Agents.Agents;
+namespace CvManager.Agents.Agents;
 
 /// <summary>
 /// Read-only agent that assesses how well one employee fits a target job description. A Microsoft

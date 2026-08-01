@@ -1,4 +1,4 @@
-namespace EmployeeManager.Tools.DemoRoster;
+namespace CvManager.Tools.DemoRoster;
 
 /// <summary>One industry's prose fragments: template strings with {slot} placeholders.</summary>
 /// <param name="Standard">Everyday CV voice.</param>

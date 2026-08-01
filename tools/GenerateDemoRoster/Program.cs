@@ -1,6 +1,6 @@
-using EmployeeManager.Infrastructure.Persistence.SeedData;
+using CvManager.Infrastructure.Persistence.SeedData;
 
-namespace EmployeeManager.Tools.DemoRoster;
+namespace CvManager.Tools.DemoRoster;
 
 /// <summary>
 /// One-off repo tool (P1T-48): generates api/Infrastructure/Persistence/SeedData/demo-roster.json.
@@ -54,8 +54,8 @@ public static class Program
     private static string FindRepoRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "EmployeeManager.slnx")))
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "CvManager.slnx")))
             dir = dir.Parent;
-        return dir?.FullName ?? throw new InvalidOperationException("Could not locate the repository root (EmployeeManager.slnx).");
+        return dir?.FullName ?? throw new InvalidOperationException("Could not locate the repository root (CvManager.slnx).");
     }
 }

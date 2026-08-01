@@ -1,4 +1,4 @@
-namespace EmployeeManager.Domain.Entities;
+namespace CvManager.Domain.Entities;
 
 /// <summary>
 /// Aggregate root. An available employee whose data feeds CV rendering and (later) AI matching.

@@ -1,12 +1,12 @@
-using EmployeeManager.Domain.Entities;
-using EmployeeManager.Domain.Enums;
-using EmployeeManager.Infrastructure.Persistence;
-using EmployeeManager.Infrastructure.Persistence.SeedData;
+using CvManager.Domain.Entities;
+using CvManager.Domain.Enums;
+using CvManager.Infrastructure.Persistence;
+using CvManager.Infrastructure.Persistence.SeedData;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
 
-namespace EmployeeManager.Mcp.Tests;
+namespace CvManager.Mcp.Tests;
 
 /// <summary>
 /// Integration test for <see cref="DemoRosterSeeder"/> (P1T-51) against a real pgvector Postgres

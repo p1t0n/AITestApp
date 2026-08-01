@@ -1,9 +1,9 @@
-using EmployeeManager.Application.Availability;
-using EmployeeManager.Domain.Entities;
+using CvManager.Application.Availability;
+using CvManager.Domain.Entities;
 using FluentAssertions;
 using Xunit;
 
-namespace EmployeeManager.Application.Tests;
+namespace CvManager.Application.Tests;
 
 public class CapacityCalculatorTests
 {

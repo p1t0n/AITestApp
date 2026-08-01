@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace EmployeeManager.Infrastructure.Persistence.Migrations
+namespace CvManager.Infrastructure.Persistence.Migrations
 {
     /// <inheritdoc />
     public partial class AddAgentUsage : Migration

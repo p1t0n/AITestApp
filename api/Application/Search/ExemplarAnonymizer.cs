@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace EmployeeManager.Application.Search;
+namespace CvManager.Application.Search;
 
 /// <summary>
 /// Scrubs identifying detail out of an exemplar bullet before it leaves the service: every

@@ -18,7 +18,7 @@ simplest thing both can validate without shared cookie/session infrastructure.
 
 | Concern | Where |
 |---|---|
-| **Issuing** tokens | Web host only (`EmployeeManager.Web.Auth.JwtTokenIssuer`). Login happens here; it owns the DB. |
+| **Issuing** tokens | Web host only (`CvManager.Web.Auth.JwtTokenIssuer`). Login happens here; it owns the DB. |
 | **Validating** tokens | Both Web and Agents, via JWT bearer with identical parameters. |
 | Claims | `sub` = user id, `email`, `jti`. `sub` lets the Agents service attribute token usage per user (caps epic). |
 
@@ -30,8 +30,8 @@ and `Agents/appsettings.json`. The dev key is insecure and committed only for lo
 
 The Agents service does **not** reference the Web project (it stays decoupled, reaching data only
 through MCP). So the JWT *validation* parameters are duplicated in
-`EmployeeManager.Agents.Auth.SessionAuthExtensions` — they must stay in sync with
-`EmployeeManager.Web.Auth.AuthServiceCollectionExtensions`. The issuer is **not** duplicated; only
+`CvManager.Agents.Auth.SessionAuthExtensions` — they must stay in sync with
+`CvManager.Web.Auth.AuthServiceCollectionExtensions`. The issuer is **not** duplicated; only
 Web mints tokens.
 
 This session JWT is distinct from the **Keycloak / OAuth** tokens the MCP server validates — those

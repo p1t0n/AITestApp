@@ -1,4 +1,4 @@
-namespace EmployeeManager.Application.Search;
+namespace CvManager.Application.Search;
 
 /// <summary>
 /// Pure diff between the chunks an employee <em>should</em> have (from <see cref="ChunkProjection"/>)

@@ -1,4 +1,4 @@
-namespace EmployeeManager.Tools.DemoRoster;
+namespace CvManager.Tools.DemoRoster;
 
 /// <summary>
 /// Everything a narrative writer needs to know about one experience slot. The generator owns

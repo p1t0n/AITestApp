@@ -1,4 +1,4 @@
-namespace EmployeeManager.Tools.DemoRoster;
+namespace CvManager.Tools.DemoRoster;
 
 /// <summary>
 /// Structural fragment data for one industry cluster: where its people work, what they are

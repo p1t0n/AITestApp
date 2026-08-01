@@ -1,4 +1,4 @@
-namespace EmployeeManager.Domain.Enums;
+namespace CvManager.Domain.Enums;
 
 public enum SkillLevel
 {

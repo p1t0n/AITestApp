@@ -1,6 +1,6 @@
-using EmployeeManager.Domain.Enums;
+using CvManager.Domain.Enums;
 
-namespace EmployeeManager.Application.Employees;
+namespace CvManager.Application.Employees;
 
 // ---- Read DTOs ----
 

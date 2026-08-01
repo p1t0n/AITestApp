@@ -4,7 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using OpenAI;
 
-namespace EmployeeManager.Agents.Configuration;
+namespace CvManager.Agents.Configuration;
 
 /// <summary>
 /// Registers the GitHub Models chat clients: one shared default <see cref="IChatClient"/> on the

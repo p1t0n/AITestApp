@@ -1,7 +1,7 @@
-using EmployeeManager.Application.Skills;
+using CvManager.Application.Skills;
 using Microsoft.AspNetCore.Mvc;
 
-namespace EmployeeManager.Web.Controllers;
+namespace CvManager.Web.Controllers;
 
 [ApiController]
 [Route("api/catalog")]

@@ -1,16 +1,16 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using EmployeeManager.Agents.Agents;
-using EmployeeManager.Agents.Staffing;
-using EmployeeManager.Agents.Tests.Fakes;
-using EmployeeManager.Agents.Usage;
+using CvManager.Agents.Agents;
+using CvManager.Agents.Staffing;
+using CvManager.Agents.Tests.Fakes;
+using CvManager.Agents.Usage;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace EmployeeManager.Agents.Tests;
+namespace CvManager.Agents.Tests;
 
 /// <summary>
 /// Endpoint tests for POST /agents/staffing (SSE slice, P1T-76). They run against the real host

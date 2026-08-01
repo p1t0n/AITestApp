@@ -1,6 +1,6 @@
-using EmployeeManager.Domain.Enums;
+using CvManager.Domain.Enums;
 
-namespace EmployeeManager.Infrastructure.Persistence.SeedData;
+namespace CvManager.Infrastructure.Persistence.SeedData;
 
 /// <summary>
 /// Shape of the committed <c>demo-roster.json</c> asset (P1T-48): a self-contained synthetic

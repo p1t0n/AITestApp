@@ -1,8 +1,8 @@
-using EmployeeManager.Agents.Agents;
-using EmployeeManager.Application.Abstractions;
-using EmployeeManager.Domain.Entities;
+using CvManager.Agents.Agents;
+using CvManager.Application.Abstractions;
+using CvManager.Domain.Entities;
 
-namespace EmployeeManager.Agents.Usage;
+namespace CvManager.Agents.Usage;
 
 public interface IUsageMeter
 {

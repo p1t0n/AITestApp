@@ -1,8 +1,8 @@
-using EmployeeManager.Tools.DemoRoster;
+using CvManager.Tools.DemoRoster;
 using FluentAssertions;
 using Xunit;
 
-namespace EmployeeManager.Application.Tests;
+namespace CvManager.Application.Tests;
 
 /// <summary>
 /// Variety guards for the offline narrative fragments: a 500-employee roster written purely
@@ -10,7 +10,7 @@ namespace EmployeeManager.Application.Tests;
 /// </summary>
 public class FragmentNarrativeSourceTests
 {
-    private static readonly Lazy<EmployeeManager.Infrastructure.Persistence.SeedData.DemoRosterDataset> FullRoster =
+    private static readonly Lazy<CvManager.Infrastructure.Persistence.SeedData.DemoRosterDataset> FullRoster =
         new(() => DemoRosterGenerator.Generate(new GenerationOptions(), new FragmentNarrativeSource()));
 
     [Fact]

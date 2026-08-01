@@ -1,9 +1,9 @@
-using EmployeeManager.Application.Abstractions;
-using EmployeeManager.Application.Common;
-using EmployeeManager.Domain.Entities;
+using CvManager.Application.Abstractions;
+using CvManager.Application.Common;
+using CvManager.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace EmployeeManager.Application.Employees;
+namespace CvManager.Application.Employees;
 
 public interface IExperienceSkillService
 {
