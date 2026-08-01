@@ -14,6 +14,36 @@ using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Production refuses to boot on placeholder secrets (P1T-87). Dev values live in
+// appsettings.Development.json and pair with the committed dev Keycloak realm.
+if (builder.Environment.IsProduction())
+{
+    var signingKey = builder.Configuration["Auth:Jwt:SigningKey"];
+    if (string.IsNullOrWhiteSpace(signingKey) || signingKey.StartsWith("dev-only-insecure"))
+    {
+        throw new InvalidOperationException(
+            "Auth:Jwt:SigningKey is empty or the dev placeholder. Provide a real key via " +
+            "environment (Auth__Jwt__SigningKey) before running in Production.");
+    }
+
+    if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GEMINI_API_KEY"))
+        && string.IsNullOrWhiteSpace(builder.Configuration["Gemini:ApiKey"]))
+    {
+        throw new InvalidOperationException(
+            "No Gemini API key. Set GEMINI_API_KEY before running in Production.");
+    }
+
+    foreach (var agent in builder.Configuration.GetSection("McpAuth").GetChildren())
+    {
+        if (string.IsNullOrWhiteSpace(agent["ClientSecret"]))
+        {
+            throw new InvalidOperationException(
+                $"McpAuth:{agent.Key}:ClientSecret is empty. Provide the agent's Keycloak client " +
+                "secret via environment before running in Production.");
+        }
+    }
+}
+
 // Tracing spine (P1T-94, see manuals/maf-otel-telemetry.md): every layer already emits spans as
 // opt-in decorators; this host subscription + OTLP export is what turns them on. Exporter target
 // is the Aspire dashboard from docker-compose (OTLP gRPC on localhost:4317 by default, override

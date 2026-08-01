@@ -123,7 +123,11 @@ The MCP server binds `http://localhost:5100` (its launch profile).
 
 AI agents built on the **Microsoft Agent Framework** that *consume* the MCP server (they hold
 a `mcp:read` token from the `agent-roster-qa` Keycloak service-account client, so the MCP server
-shows them read tools only). Needs a free **Gemini** API key (https://aistudio.google.com/apikey):
+shows them read tools only). Needs a free **Gemini** API key (https://aistudio.google.com/apikey). All other dev secrets
+(the session JWT signing key, the dev Keycloak agent client secrets) ship in
+`appsettings.Development.json` and pair with the committed dev realm — Production refuses to boot
+on any placeholder and takes real values from the environment (`Auth__Jwt__SigningKey`,
+`McpAuth__<agent>__ClientSecret`, `GEMINI_API_KEY`).
 
 ```bash
 export GEMINI_API_KEY=<your-gemini-api-key>
