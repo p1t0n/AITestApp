@@ -529,6 +529,7 @@ public class StaffingPipelineTests
 
         meter.Records.Should().HaveCount(4);
         meter.Records.Select(r => r.AgentName).Should().Equal("shortlist", "match", "match", "staffing");
+        meter.Records.Select(r => r.Step).Should().Equal("shortlist", "match", "match", "narrative");
         meter.Records.Should().OnlyContain(r => r.UserId == UserId);
         meter.Records[^1].Reply.TotalTokens.Should().Be(45);
     }

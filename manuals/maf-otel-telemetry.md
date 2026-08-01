@@ -163,6 +163,24 @@ model id over config (also unblocks correct labeling through the Gemini migratio
 surface latency in the Usage tab. Independent of Item 1 but strictly better after it (trace ids
 become clickable evidence).
 
+## Pulling the tiering dataset (Item 2 shipped, P1T-95)
+
+`AgentUsage` now carries `Model` (the response's real id), `LatencyMs` (summed model wall-clock
+per call), `TraceId` (clickable in the Aspire dashboard), and `Step` (staffing sub-steps:
+shortlist / match / narrative; null for direct calls). The (step, model) × (tokens, latency)
+dataset:
+
+```sql
+SELECT COALESCE("Step", "AgentName") AS step, "Model",
+       count(*) AS calls,
+       sum("TotalTokens") AS tokens,
+       percentile_cont(0.5) WITHIN GROUP (ORDER BY "LatencyMs") AS p50_ms,
+       percentile_cont(0.95) WITHIN GROUP (ORDER BY "LatencyMs") AS p95_ms
+FROM "AgentUsages"
+WHERE "Timestamp" > now() - interval '30 days'
+GROUP BY 1, 2 ORDER BY tokens DESC;
+```
+
 ## Feeds model tiering
 
 The tiering decision (which agents/steps drop to a cheaper model) needs exactly three numbers per

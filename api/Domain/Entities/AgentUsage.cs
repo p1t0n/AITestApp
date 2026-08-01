@@ -21,5 +21,16 @@ public class AgentUsage
     public long OutputTokens { get; set; }
     public long TotalTokens { get; set; }
 
+    /// <summary>Summed model wall-clock time for the call, ms (null on legacy rows).</summary>
+    public long? LatencyMs { get; set; }
+
+    /// <summary>W3C trace id of the request that spent the tokens — clickable evidence in the
+    /// Aspire dashboard (null on legacy rows or when tracing is off).</summary>
+    public string? TraceId { get; set; }
+
+    /// <summary>Pipeline sub-step attribution (staffing: shortlist/match/narrative); null for
+    /// direct agent calls.</summary>
+    public string? Step { get; set; }
+
     public DateTimeOffset Timestamp { get; set; }
 }

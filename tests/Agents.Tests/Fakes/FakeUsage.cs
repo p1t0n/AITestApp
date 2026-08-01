@@ -18,11 +18,11 @@ internal sealed class FakeUsageService(WindowUsage? exceeded = null) : IUsageSer
 /// assert the usage row's agent name without a database.</summary>
 internal sealed class RecordingUsageMeter : IUsageMeter
 {
-    public List<(Guid UserId, string AgentName, AgentReply Reply)> Records { get; } = [];
+    public List<(Guid UserId, string AgentName, AgentReply Reply, string? Step)> Records { get; } = [];
 
-    public Task RecordAsync(Guid userId, string agentName, AgentReply reply, CancellationToken ct = default)
+    public Task RecordAsync(Guid userId, string agentName, AgentReply reply, string? step = null, CancellationToken ct = default)
     {
-        Records.Add((userId, agentName, reply));
+        Records.Add((userId, agentName, reply, step));
         return Task.CompletedTask;
     }
 }

@@ -44,6 +44,44 @@ public class UsageMeterTests
     }
 
     [Fact]
+    public async Task RecordAsync_prefers_the_replys_real_model_id_over_config_and_stores_enrichment()
+    {
+        await using var db = NewDb();
+        var meter = new UsageMeter(
+            db,
+            Config(("Gemini:Model", "configured-model")),
+            TimeProvider.System,
+            NullLogger<UsageMeter>.Instance);
+        using var activity = new System.Diagnostics.Activity("test-request");
+        activity.Start();
+
+        await meter.RecordAsync(
+            Guid.NewGuid(), "staffing",
+            new AgentReply("answer", 10, 5, 15, ModelId: "gemini-2.5-flash-lite", LatencyMs: 1234),
+            step: "match");
+
+        var row = await db.AgentUsages.SingleAsync();
+        row.Model.Should().Be("gemini-2.5-flash-lite", "the response's real id beats the config label");
+        row.LatencyMs.Should().Be(1234);
+        row.Step.Should().Be("match");
+        row.TraceId.Should().Be(activity.TraceId.ToString());
+    }
+
+    [Fact]
+    public async Task RecordAsync_leaves_enrichment_null_when_nothing_was_captured()
+    {
+        await using var db = NewDb();
+        var meter = new UsageMeter(
+            db, Config(("Gemini:Model", "m")), TimeProvider.System, NullLogger<UsageMeter>.Instance);
+
+        await meter.RecordAsync(Guid.NewGuid(), "roster-qa", new AgentReply("a", 1, 1, 2));
+
+        var row = await db.AgentUsages.SingleAsync();
+        row.LatencyMs.Should().BeNull();
+        row.Step.Should().BeNull();
+    }
+
+    [Fact]
     public async Task RecordAsync_prefers_the_per_agent_model_override()
     {
         await using var db = NewDb();

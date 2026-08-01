@@ -6,8 +6,9 @@ namespace CvManager.Agents.Usage;
 
 public interface IUsageMeter
 {
-    /// <summary>Persists one usage row for a completed agent call.</summary>
-    Task RecordAsync(Guid userId, string agentName, AgentReply reply, CancellationToken ct = default);
+    /// <summary>Persists one usage row for a completed agent call. <paramref name="step"/> tags
+    /// pipeline sub-steps (staffing: shortlist / match / narrative); direct calls leave it null.</summary>
+    Task RecordAsync(Guid userId, string agentName, AgentReply reply, string? step = null, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -20,11 +21,15 @@ public sealed class UsageMeter(
     TimeProvider clock,
     ILogger<UsageMeter> logger) : IUsageMeter
 {
-    public async Task RecordAsync(Guid userId, string agentName, AgentReply reply, CancellationToken ct = default)
+    public async Task RecordAsync(Guid userId, string agentName, AgentReply reply, string? step = null, CancellationToken ct = default)
     {
         try
         {
-            var model = config[$"Gemini:Agents:{agentName}"]
+            // Prefer the model id the response actually reported (captured at the chat seam,
+            // P1T-95); the config lookup is only the fallback for replies that never reached a
+            // model (and mislabels whenever config and reality drift).
+            var model = reply.ModelId
+                ?? config[$"Gemini:Agents:{agentName}"]
                 ?? config["Gemini:Model"]
                 ?? string.Empty;
 
@@ -37,6 +42,9 @@ public sealed class UsageMeter(
                 InputTokens = reply.InputTokens,
                 OutputTokens = reply.OutputTokens,
                 TotalTokens = reply.TotalTokens,
+                LatencyMs = reply.LatencyMs > 0 ? reply.LatencyMs : null,
+                TraceId = System.Diagnostics.Activity.Current?.TraceId.ToString(),
+                Step = step,
                 Timestamp = clock.GetUtcNow(),
             });
             await db.SaveChangesAsync(ct);
