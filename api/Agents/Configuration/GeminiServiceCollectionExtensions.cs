@@ -28,7 +28,14 @@ public static class GeminiServiceCollectionExtensions
             var apiKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY") is { Length: > 0 } envToken
                 ? envToken
                 : cfg.ApiKey;
-            var options = new OpenAIClientOptions { Endpoint = new Uri(cfg.Endpoint) };
+            var options = new OpenAIClientOptions
+            {
+                Endpoint = new Uri(cfg.Endpoint),
+                // Response-side shim: retry malformed function calls, normalize nonstandard
+                // finish_reason values the OpenAI SDK cannot parse.
+                Transport = new HttpClientPipelineTransport(
+                    new HttpClient(new GeminiCompatHandler(new HttpClientHandler()))),
+            };
             options.AddPolicy(new GeminiThoughtSignaturePolicy(), PipelinePosition.PerCall);
             return new OpenAIClient(new ApiKeyCredential(apiKey), options);
         });

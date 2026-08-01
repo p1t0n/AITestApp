@@ -13,7 +13,7 @@ public class EmployeeTools
      Authorize(Policy = McpScopes.Read)]
     public static async Task<IReadOnlyList<EmployeeSummaryDto>> List(
         IEmployeeService employees, CancellationToken ct)
-        => await employees.ListAsync(ct);
+        => await employees.ListAsync(includeDrafts: false, ct);
 
     [McpServerTool(Name = "employee_get", ReadOnly = true, Destructive = false),
      Description("Get one employee, including all children (languages, availability, skills, qualifications, experiences), by id."),
@@ -32,6 +32,15 @@ public class EmployeeTools
         SaveEmployeeDto dto,
         CancellationToken ct)
         => McpToolExecutor.RunAsync(() => employees.CreateAsync(dto, ct));
+
+    [McpServerTool(Name = "employee_create_draft", ReadOnly = false, Destructive = false),
+     Description("Create a DRAFT employee from root fields (resume ingestion). Drafts are hidden from the roster, search, and staffing until a human promotes them; email may be empty if the source text has none. Returns the draft plus a duplicateWarning when a same-name employee already exists."),
+     Authorize(Policy = McpScopes.Write)]
+    public static Task<object> CreateDraft(
+        IEmployeeService employees,
+        SaveEmployeeDto dto,
+        CancellationToken ct)
+        => McpToolExecutor.RunAsync(() => employees.CreateDraftAsync(dto, ct));
 
     [McpServerTool(Name = "employee_update", ReadOnly = false, Destructive = false),
      Description("Update an employee's root fields by id."),

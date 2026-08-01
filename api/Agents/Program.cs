@@ -38,6 +38,7 @@ builder.Services.AddAgentMcpIdentity(builder.Configuration, "roster-qa");
 builder.Services.AddAgentMcpIdentity(builder.Configuration, "cv-tailoring");
 builder.Services.AddAgentMcpIdentity(builder.Configuration, "match");
 builder.Services.AddAgentMcpIdentity(builder.Configuration, "shortlist");
+builder.Services.AddAgentMcpIdentity(builder.Configuration, "resume-ingestion");
 
 // Agents. Add future agents (Resume Ingestion, Staffing/Match) here. Each resolves its own keyed
 // IMcpToolSource (own MCP identity) and its model-appropriate chat client (default or override).
@@ -61,6 +62,13 @@ builder.Services.AddSingleton(sp => new ShortlistAgent(
     sp.ResolveAgentChatClient("shortlist"),
     sp.GetRequiredKeyedService<IMcpToolSource>("shortlist"),
     sp.GetRequiredService<ILoggerFactory>()));
+
+// The first mcp:write agent (P1T-92): stages resumes as draft employees; humans promote.
+builder.Services.AddSingleton(sp => new ResumeIngestionAgent(
+    sp.ResolveAgentChatClient("resume-ingestion"),
+    sp.GetRequiredKeyedService<IMcpToolSource>("resume-ingestion"),
+    sp.GetRequiredService<ILoggerFactory>()));
+builder.Services.AddSingleton<ResumeIngestionRunService>();
 
 // Run services: the endpoint cores (prompt/response composition around one agent run), shared
 // with the staffing pipeline. The endpoints keep validation, cap-checks, metering, and HTTP
@@ -309,6 +317,60 @@ app.MapPost("/agents/shortlist", async (
     }
 }).RequireAuthorization();
 
+// POST /agents/resume-ingestion  { "resumeText": "..." }
+// -> IngestionResponse: the staged draft's id + created counts + proposals + degradation notes.
+// Deterministic fields come from captured MCP tool results (never model prose). Failure ladder:
+// no draft created -> 422 with the abort reason; child failures degrade into notes on a 200.
+app.MapPost("/agents/resume-ingestion", async (
+    ResumeIngestionRequest request,
+    ResumeIngestionRunService runner,
+    ClaimsPrincipal user,
+    IUsageMeter meter,
+    IUsageService usage,
+    CancellationToken ct) =>
+{
+    if (string.IsNullOrWhiteSpace(request.ResumeText))
+    {
+        return Results.BadRequest(new { error = "resumeText is required." });
+    }
+
+    var userId = user.GetUserId();
+    if (userId is { } pre && await usage.FindExceededAsync(pre, ct) is { } exceeded)
+    {
+        return CapReached(exceeded);
+    }
+
+    try
+    {
+        var run = await runner.RunAsync(request.ResumeText, ct);
+
+        // Meter first: tokens were spent even when the run aborted below.
+        if (userId is { } uid)
+        {
+            await meter.RecordAsync(uid, run.AgentName, run.Reply, ct);
+        }
+
+        // Core abort (no draft exists): the resume did not yield a valid employee even after the
+        // self-correction retries — the caller's input is the problem, not an upstream fault.
+        if (run.Response is null)
+        {
+            return Results.Problem(
+                title: "The resume could not be staged as a draft employee.",
+                detail: run.AbortDetail,
+                statusCode: StatusCodes.Status422UnprocessableEntity);
+        }
+
+        return Results.Ok(run.Response);
+    }
+    catch (HttpRequestException ex)
+    {
+        return Results.Problem(
+            title: "Upstream dependency failed (MCP server, auth, or model).",
+            detail: ex.Message,
+            statusCode: StatusCodes.Status502BadGateway);
+    }
+}).RequireAuthorization();
+
 // POST /agents/staffing  { "jobDescription": "...", availableOn?, skillIds?, location?, minYears?, matchTop? }
 // -> text/event-stream (SSE only — demo with `curl -N`). The pre-checks (auth, blank JD, cap)
 // answer as plain HTTP before the stream opens; after that the run streams as the pinned SSE
@@ -358,6 +420,7 @@ app.MapPost("/agents/staffing", async (
 app.Run();
 
 internal sealed record RosterQaRequest(string Question);
+internal sealed record ResumeIngestionRequest(string ResumeText);
 internal sealed record RosterQaResponse(string Answer);
 internal sealed record CvTailoringRequest(Guid EmployeeId, string JobDescription);
 internal sealed record MatchRequest(Guid EmployeeId, string JobDescription);

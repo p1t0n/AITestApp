@@ -19,6 +19,7 @@ public class CvServiceTests
         Summary: "Backend engineer.",
         PhotoUrl: null,
         CurrentCapacityPercent: 50,
+        Status: EmployeeStatus.Active,
         SpokenLanguages: new[] { new SpokenLanguageDto(Guid.NewGuid(), "English", LanguageLevel.Fluent) },
         AvailabilityEntries: new[] { new AvailabilityEntryDto(Guid.NewGuid(), new DateOnly(2027, 4, 1), 50) },
         Skills: new[]

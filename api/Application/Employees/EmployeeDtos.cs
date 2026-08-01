@@ -11,7 +11,8 @@ public record EmployeeSummaryDto(
     string Title,
     string? Location,
     string Email,
-    int CurrentCapacityPercent);
+    int CurrentCapacityPercent,
+    EmployeeStatus Status);
 
 public record EmployeeDetailDto(
     Guid Id,
@@ -24,6 +25,7 @@ public record EmployeeDetailDto(
     string? Summary,
     string? PhotoUrl,
     int CurrentCapacityPercent,
+    EmployeeStatus Status,
     IReadOnlyList<SpokenLanguageDto> SpokenLanguages,
     IReadOnlyList<AvailabilityEntryDto> AvailabilityEntries,
     IReadOnlyList<EmployeeSkillDto> Skills,

@@ -1,3 +1,5 @@
+using CvManager.Domain.Enums;
+
 namespace CvManager.Domain.Entities;
 
 /// <summary>
@@ -6,6 +8,10 @@ namespace CvManager.Domain.Entities;
 public class Employee
 {
     public Guid Id { get; set; }
+
+    /// <summary>Draft = agent-staged (resume ingestion), hidden from roster/search/staffing until
+    /// a human promotes it. Active = the normal, visible state.</summary>
+    public EmployeeStatus Status { get; set; } = EmployeeStatus.Active;
 
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;

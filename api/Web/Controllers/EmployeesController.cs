@@ -18,7 +18,8 @@ public class EmployeesController : ControllerBase
     }
 
     [HttpGet]
-    public Task<IReadOnlyList<EmployeeSummaryDto>> List(CancellationToken ct) => _employees.ListAsync(ct);
+    public Task<IReadOnlyList<EmployeeSummaryDto>> List(
+        [FromQuery] bool includeDrafts, CancellationToken ct) => _employees.ListAsync(includeDrafts, ct);
 
     [HttpGet("{id:guid}")]
     public Task<EmployeeDetailDto> Get(Guid id, CancellationToken ct) => _employees.GetAsync(id, ct);
@@ -29,6 +30,11 @@ public class EmployeesController : ControllerBase
         var created = await _employees.CreateAsync(dto, ct);
         return CreatedAtAction(nameof(Get), new { id = created.Id }, created);
     }
+
+    /// <summary>The human publication gate for agent-staged drafts (P1T-92): flips Draft → Active.
+    /// Deliberately a Web API action (user session), never an MCP tool — humans hold write authority.</summary>
+    [HttpPost("{id:guid}/promote")]
+    public Task<EmployeeDetailDto> Promote(Guid id, CancellationToken ct) => _employees.PromoteAsync(id, ct);
 
     [HttpPut("{id:guid}")]
     public Task<EmployeeDetailDto> Update(Guid id, SaveEmployeeDto dto, CancellationToken ct) =>

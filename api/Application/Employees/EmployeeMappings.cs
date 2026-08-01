@@ -7,11 +7,11 @@ internal static class EmployeeMappings
 {
     public static EmployeeSummaryDto ToSummary(this Employee e, DateOnly onDate) => new(
         e.Id, e.FirstName, e.LastName, e.Title, e.Location, e.Email,
-        CapacityCalculator.CapacityOn(e.AvailabilityEntries, onDate));
+        CapacityCalculator.CapacityOn(e.AvailabilityEntries, onDate), e.Status);
 
     public static EmployeeDetailDto ToDetail(this Employee e, DateOnly onDate) => new(
         e.Id, e.FirstName, e.LastName, e.Title, e.Email, e.Phone, e.Location, e.Summary, e.PhotoUrl,
-        CapacityCalculator.CapacityOn(e.AvailabilityEntries, onDate),
+        CapacityCalculator.CapacityOn(e.AvailabilityEntries, onDate), e.Status,
         e.SpokenLanguages.Select(l => new SpokenLanguageDto(l.Id, l.Language, l.Level)).ToList(),
         e.AvailabilityEntries.OrderBy(a => a.EffectiveFrom)
             .Select(a => new AvailabilityEntryDto(a.Id, a.EffectiveFrom, a.CapacityPercent)).ToList(),

@@ -1,16 +1,27 @@
 using CvManager.Application.Abstractions;
 using CvManager.Application.Common;
 using CvManager.Domain.Entities;
+using CvManager.Domain.Enums;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 
 namespace CvManager.Application.Employees;
 
+/// <summary>An agent-staged draft: the created employee plus a cheap duplicate warning when an
+/// existing employee already carries the same (normalized) full name.</summary>
+public record IngestionDraftDto(EmployeeDetailDto Employee, string? DuplicateWarning);
+
 public interface IEmployeeService
 {
-    Task<IReadOnlyList<EmployeeSummaryDto>> ListAsync(CancellationToken ct = default);
+    /// <summary>Active employees only by default; drafts opt in (review surfaces).</summary>
+    Task<IReadOnlyList<EmployeeSummaryDto>> ListAsync(bool includeDrafts = false, CancellationToken ct = default);
     Task<EmployeeDetailDto> GetAsync(Guid id, CancellationToken ct = default);
     Task<EmployeeDetailDto> CreateAsync(SaveEmployeeDto dto, CancellationToken ct = default);
+    /// <summary>Creates a Draft employee (resume ingestion): invisible to roster/search/staffing
+    /// until promoted. Returns a duplicate warning when an Active same-name employee exists.</summary>
+    Task<IngestionDraftDto> CreateDraftAsync(SaveEmployeeDto dto, CancellationToken ct = default);
+    /// <summary>Flips a Draft to Active — the human publication gate. Requires a valid email.</summary>
+    Task<EmployeeDetailDto> PromoteAsync(Guid id, CancellationToken ct = default);
     Task<EmployeeDetailDto> UpdateAsync(Guid id, SaveEmployeeDto dto, CancellationToken ct = default);
     Task DeleteAsync(Guid id, CancellationToken ct = default);
 }
@@ -27,10 +38,11 @@ public class EmployeeService : IEmployeeService
 
     private static DateOnly Today => DateOnly.FromDateTime(DateTime.UtcNow);
 
-    public async Task<IReadOnlyList<EmployeeSummaryDto>> ListAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<EmployeeSummaryDto>> ListAsync(bool includeDrafts = false, CancellationToken ct = default)
     {
         var employees = await _db.Employees
             .AsNoTracking()
+            .Where(e => includeDrafts || e.Status == EmployeeStatus.Active)
             .Include(e => e.AvailabilityEntries)
             .OrderBy(e => e.LastName).ThenBy(e => e.FirstName)
             .ToListAsync(ct);
@@ -53,6 +65,65 @@ public class EmployeeService : IEmployeeService
         _db.Employees.Add(e);
         await _db.SaveChangesAsync(ct);
         return await GetAsync(e.Id, ct);
+    }
+
+    public async Task<IngestionDraftDto> CreateDraftAsync(SaveEmployeeDto dto, CancellationToken ct = default)
+    {
+        await _validator.ValidateAndThrowAsync(dto, ct);
+        var e = new Employee { Id = Guid.NewGuid(), Status = EmployeeStatus.Draft };
+        Apply(e, dto);
+        _db.Employees.Add(e);
+        await _db.SaveChangesAsync(ct);
+
+        // Cheap duplicate signal, decided at create time from data (never model text): a
+        // case-insensitive full-name match against anyone else on the roster.
+        var first = dto.FirstName.Trim().ToLower();
+        var last = dto.LastName.Trim().ToLower();
+        var duplicate = await _db.Employees
+            .AsNoTracking()
+            .Where(x => x.Id != e.Id
+                        && x.FirstName.ToLower() == first
+                        && x.LastName.ToLower() == last)
+            .Select(x => new { x.Title, x.Status })
+            .FirstOrDefaultAsync(ct);
+
+        var warning = duplicate is null
+            ? null
+            : $"An employee named {dto.FirstName.Trim()} {dto.LastName.Trim()} already exists ({duplicate.Title}, {duplicate.Status}). Review before promoting.";
+
+        return new IngestionDraftDto(await GetAsync(e.Id, ct), warning);
+    }
+
+    public async Task<EmployeeDetailDto> PromoteAsync(Guid id, CancellationToken ct = default)
+    {
+        var e = await _db.Employees.FirstOrDefaultAsync(x => x.Id == id, ct)
+            ?? throw new NotFoundException(nameof(Employee), id);
+
+        if (e.Status == EmployeeStatus.Active)
+        {
+            return await GetAsync(id, ct); // idempotent: promoting an Active employee is a no-op
+        }
+
+        // The publication gate demands the one field drafts may honestly lack.
+        if (string.IsNullOrWhiteSpace(e.Email) || !new SaveEmployeeValidator().Validate(
+                new SaveEmployeeDto(e.FirstName, e.LastName, e.Title, e.Email, e.Phone, e.Location, e.Summary, e.PhotoUrl)).IsValid)
+        {
+            throw new ValidationException("A valid email is required to promote a draft employee.");
+        }
+
+        e.Status = EmployeeStatus.Active;
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("IX_Employees_Email") == true)
+        {
+            // The partial unique index only binds Active rows, so the clash surfaces exactly here.
+            throw new ConflictException(
+                $"An active employee already uses the email '{e.Email}'. Resolve the duplicate before promoting.");
+        }
+
+        return await GetAsync(id, ct);
     }
 
     public async Task<EmployeeDetailDto> UpdateAsync(Guid id, SaveEmployeeDto dto, CancellationToken ct = default)

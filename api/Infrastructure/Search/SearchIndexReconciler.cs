@@ -1,5 +1,6 @@
 using CvManager.Application.Abstractions;
 using CvManager.Application.Search;
+using CvManager.Domain.Enums;
 using CvManager.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -67,8 +68,11 @@ public sealed class SearchIndexReconciler : ISearchIndexReconciler
 
     private async Task<(int Inserted, int Updated, int Deleted)> SyncChunksAsync(CancellationToken ct)
     {
+        // Drafts stay out of the index until a human promotes them; the diff below then deletes
+        // any chunks belonging to employees that left the Active set (self-healing both ways).
         var employees = await _db.Employees
             .AsNoTracking()
+            .Where(e => e.Status == EmployeeStatus.Active)
             .Include(e => e.Experiences)
             .ThenInclude(x => x.Achievements)
             .ToListAsync(ct);
