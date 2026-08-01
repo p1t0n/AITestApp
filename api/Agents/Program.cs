@@ -1,4 +1,7 @@
 using System.Security.Claims;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using CvManager.Agents.Agents;
 using CvManager.Agents.Auth;
 using CvManager.Agents.Configuration;
@@ -10,6 +13,32 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Tracing spine (P1T-94, see manuals/maf-otel-telemetry.md): every layer already emits spans as
+// opt-in decorators; this host subscription + OTLP export is what turns them on. Exporter target
+// is the Aspire dashboard from docker-compose (OTLP gRPC on localhost:4317 by default, override
+// via OTEL_EXPORTER_OTLP_ENDPOINT). The exporter buffers and drops when the dashboard is down —
+// the app runs unchanged without it. Sensitive content capture stays OFF (no prompts in spans).
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(r => r.AddService("cvmanager-agents"))
+    .WithTracing(t => t
+        .AddAspNetCoreInstrumentation()
+        .AddSource(
+            "Experimental.Microsoft.Extensions.AI",   // chat + execute_tool spans
+            "Experimental.Microsoft.Agents.AI",       // invoke_agent spans
+            "Microsoft.Agents.AI.Workflows",          // workflow_invoke / executor.process
+            "Experimental.ModelContextProtocol",      // MCP client RPCs (context propagates via _meta)
+            "System.Net.Http",
+            "Npgsql")
+        .AddOtlpExporter())
+    .WithMetrics(m => m
+        .AddAspNetCoreInstrumentation()
+        .AddMeter(
+            "Experimental.Microsoft.Extensions.AI",   // gen_ai.client.token.usage / operation.duration
+            "Experimental.ModelContextProtocol",
+            "System.Net.Http",
+            "Npgsql")
+        .AddOtlpExporter());
 
 builder.Services.AddOptions<McpServerOptions>()
     .Bind(builder.Configuration.GetSection(McpServerOptions.Section));

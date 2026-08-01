@@ -1,6 +1,9 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using CvManager.Application;
 using CvManager.Infrastructure;
 using CvManager.Infrastructure.Embeddings;
@@ -13,6 +16,29 @@ using ModelContextProtocol.AspNetCore.Authentication;
 using ModelContextProtocol.Authentication;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Tracing spine (P1T-94): the MCP SDK instruments itself and propagates trace context via
+// JSON-RPC _meta, Npgsql tracing is native — this subscription + OTLP export turns both on.
+// Target is the Aspire dashboard from docker-compose (OTLP gRPC localhost:4317 by default);
+// the app runs unchanged when the dashboard is down.
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(r => r.AddService("cvmanager-mcp"))
+    .WithTracing(t => t
+        .AddAspNetCoreInstrumentation()
+        .AddSource(
+            "Experimental.ModelContextProtocol",
+            "Experimental.Microsoft.Extensions.AI",   // embedding generator calls
+            "System.Net.Http",
+            "Npgsql")
+        .AddOtlpExporter())
+    .WithMetrics(m => m
+        .AddAspNetCoreInstrumentation()
+        .AddMeter(
+            "Experimental.ModelContextProtocol",
+            "Experimental.Microsoft.Extensions.AI",
+            "System.Net.Http",
+            "Npgsql")
+        .AddOtlpExporter());
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
