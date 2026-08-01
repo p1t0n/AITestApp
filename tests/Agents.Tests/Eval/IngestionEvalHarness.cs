@@ -175,7 +175,9 @@ public static class IngestionEvalScorer
         else if (Norm(draft?.Email) == Norm(truth.Email)) fields++;
         else notes.Add($"email '{draft?.Email}'");
 
-        var truthSkills = truth.Skills.Select(s => Norm(s.Name)).ToHashSet();
+        // Recall is judged against catalog-AVAILABLE truth skills only: a skill the catalog
+        // doesn't carry cannot be written — the correct behavior is proposing it, not adding it.
+        var truthSkills = truth.Skills.Where(s => s.InCatalog).Select(s => Norm(s.Name)).ToHashSet();
         var writtenSkills = log.SkillIds
             .Where(catalog.ContainsKey)
             .Select(id => Norm(catalog[id]))
