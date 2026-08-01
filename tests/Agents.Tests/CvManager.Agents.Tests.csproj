@@ -25,6 +25,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\api\Agents\CvManager.Agents.csproj" />
+    <!-- Eval-only: the ingestion eval's fake MCP tools validate with the REAL Application
+         validators so the self-correction loop sees production error shapes. -->
+    <ProjectReference Include="..\..\api\Application\CvManager.Application.csproj" />
   </ItemGroup>
 
 </Project>
