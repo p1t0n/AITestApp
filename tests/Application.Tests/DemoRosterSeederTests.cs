@@ -1,12 +1,12 @@
-using EmployeeManager.Domain.Entities;
-using EmployeeManager.Domain.Enums;
-using EmployeeManager.Infrastructure.Persistence;
-using EmployeeManager.Infrastructure.Persistence.SeedData;
+using CvManager.Domain.Entities;
+using CvManager.Domain.Enums;
+using CvManager.Infrastructure.Persistence;
+using CvManager.Infrastructure.Persistence.SeedData;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
-namespace EmployeeManager.Application.Tests;
+namespace CvManager.Application.Tests;
 
 /// <summary>
 /// Unit tests for <see cref="DemoRosterSeeder"/> (P1T-51) against the in-memory provider, using a

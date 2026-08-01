@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace EmployeeManager.Agents.Tests;
+namespace CvManager.Agents.Tests;
 
 internal static class AuthTestExtensions
 {
@@ -19,8 +19,8 @@ internal static class AuthTestExtensions
         var config = factory.Services.GetRequiredService<IConfiguration>();
         var key = config["Auth:Jwt:SigningKey"]
             ?? throw new InvalidOperationException("Auth:Jwt:SigningKey missing from test host config.");
-        var issuer = config["Auth:Jwt:Issuer"] ?? "employeemanager";
-        var audience = config["Auth:Jwt:Audience"] ?? "employeemanager-app";
+        var issuer = config["Auth:Jwt:Issuer"] ?? "cvmanager";
+        var audience = config["Auth:Jwt:Audience"] ?? "cvmanager-app";
 
         var client = factory.CreateClient();
         client.DefaultRequestHeaders.Authorization =

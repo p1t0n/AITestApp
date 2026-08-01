@@ -1,9 +1,9 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-using EmployeeManager.Infrastructure.Persistence.SeedData;
+using CvManager.Infrastructure.Persistence.SeedData;
 
-namespace EmployeeManager.Tools.DemoRoster;
+namespace CvManager.Tools.DemoRoster;
 
 /// <summary>
 /// Optional online pass: rewrites the fragment-assembled narratives via the GitHub Models

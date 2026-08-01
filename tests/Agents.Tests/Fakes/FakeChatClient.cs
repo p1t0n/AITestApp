@@ -1,6 +1,6 @@
 using Microsoft.Extensions.AI;
 
-namespace EmployeeManager.Agents.Tests.Fakes;
+namespace CvManager.Agents.Tests.Fakes;
 
 /// <summary>
 /// A deterministic <see cref="IChatClient"/> that replays scripted responses. Lets the tests

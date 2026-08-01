@@ -1,7 +1,7 @@
 using System.Text.Json;
 using ModelContextProtocol.Protocol;
 
-namespace EmployeeManager.Mcp;
+namespace CvManager.Mcp;
 
 /// <summary>
 /// Runs a tool body and translates the Application layer's domain exceptions into a

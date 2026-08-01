@@ -1,4 +1,4 @@
-namespace EmployeeManager.Web.Auth;
+namespace CvManager.Web.Auth;
 
 /// <summary>
 /// Short-lived storage for a WebAuthn ceremony's pending options (which carry the server-issued

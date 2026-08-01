@@ -3,24 +3,24 @@ services:
     # pgvector/pgvector ships the stock postgres:17 image plus the `vector` extension,
     # which the semantic roster search (RAG) feature enables via migration.
     image: pgvector/pgvector:pg17
-    container_name: employeemanager-db
+    container_name: cvmanager-db
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: employeemanager
+      POSTGRES_DB: cvmanager
     ports:
       - "5432:5432"
     volumes:
-      - employeemanager-pgdata:/var/lib/postgresql/data
+      - cvmanager-pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d employeemanager"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cvmanager"]
       interval: 5s
       timeout: 5s
       retries: 5
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.0
-    container_name: employeemanager-keycloak
+    container_name: cvmanager-keycloak
     command: ["start-dev", "--import-realm"]
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
@@ -31,4 +31,4 @@ services:
       - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
 
 volumes:
-  employeemanager-pgdata:
+  cvmanager-pgdata:

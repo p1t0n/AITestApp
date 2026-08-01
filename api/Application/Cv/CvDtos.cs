@@ -1,6 +1,6 @@
-using EmployeeManager.Application.Employees;
+using CvManager.Application.Employees;
 
-namespace EmployeeManager.Application.Cv;
+namespace CvManager.Application.Cv;
 
 /// <summary>CV-shaped projection of an employee: a full dump in a fixed, render-ready order.</summary>
 public record CvDto(

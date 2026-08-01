@@ -1,4 +1,4 @@
-namespace EmployeeManager.Agents.Agents;
+namespace CvManager.Agents.Agents;
 
 /// <summary>
 /// A conversational agent over the CV Manager. This is the extension seam: future agents

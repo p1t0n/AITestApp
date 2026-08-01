@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\Application\EmployeeManager.Application.csproj" />
-    <ProjectReference Include="..\Domain\EmployeeManager.Domain.csproj" />
+    <ProjectReference Include="..\Application\CvManager.Application.csproj" />
+    <ProjectReference Include="..\Domain\CvManager.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

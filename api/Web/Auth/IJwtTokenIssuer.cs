@@ -1,6 +1,6 @@
-using EmployeeManager.Domain.Entities;
+using CvManager.Domain.Entities;
 
-namespace EmployeeManager.Web.Auth;
+namespace CvManager.Web.Auth;
 
 /// <summary>Issues session JWTs after a successful passkey ceremony.</summary>
 public interface IJwtTokenIssuer

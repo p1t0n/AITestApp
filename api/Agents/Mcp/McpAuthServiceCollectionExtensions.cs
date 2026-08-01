@@ -1,10 +1,10 @@
-using EmployeeManager.Agents.Auth;
-using EmployeeManager.Agents.Configuration;
+using CvManager.Agents.Auth;
+using CvManager.Agents.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
-namespace EmployeeManager.Agents.Mcp;
+namespace CvManager.Agents.Mcp;
 
 /// <summary>
 /// Registers a per-agent MCP identity: its own client-credentials token provider and MCP tool

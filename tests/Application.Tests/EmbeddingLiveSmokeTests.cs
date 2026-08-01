@@ -1,11 +1,11 @@
-using EmployeeManager.Application.Abstractions;
-using EmployeeManager.Infrastructure.Embeddings;
+using CvManager.Application.Abstractions;
+using CvManager.Infrastructure.Embeddings;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace EmployeeManager.Application.Tests;
+namespace CvManager.Application.Tests;
 
 /// <summary>
 /// Live smoke test: embeds a string against the real configured endpoint (GitHub Models by

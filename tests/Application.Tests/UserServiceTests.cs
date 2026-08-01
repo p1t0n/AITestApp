@@ -1,14 +1,14 @@
-using EmployeeManager.Application.Common;
-using EmployeeManager.Application.Users;
-using EmployeeManager.Domain.Entities;
-using EmployeeManager.Domain.Enums;
-using EmployeeManager.Infrastructure.Persistence;
+using CvManager.Application.Common;
+using CvManager.Application.Users;
+using CvManager.Domain.Entities;
+using CvManager.Domain.Enums;
+using CvManager.Infrastructure.Persistence;
 using FluentAssertions;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
-namespace EmployeeManager.Application.Tests;
+namespace CvManager.Application.Tests;
 
 public class UserServiceTests
 {

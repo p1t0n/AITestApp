@@ -1,9 +1,9 @@
 using System.ComponentModel;
-using EmployeeManager.Application.Search;
+using CvManager.Application.Search;
 using Microsoft.AspNetCore.Authorization;
 using ModelContextProtocol.Server;
 
-namespace EmployeeManager.Mcp.Tools;
+namespace CvManager.Mcp.Tools;
 
 [McpServerToolType]
 public class RosterShortlistTools

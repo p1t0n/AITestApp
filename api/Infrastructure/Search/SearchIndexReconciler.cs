@@ -1,12 +1,12 @@
-using EmployeeManager.Application.Abstractions;
-using EmployeeManager.Application.Search;
-using EmployeeManager.Infrastructure.Persistence;
+using CvManager.Application.Abstractions;
+using CvManager.Application.Search;
+using CvManager.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Pgvector;
 
-namespace EmployeeManager.Infrastructure.Search;
+namespace CvManager.Infrastructure.Search;
 
 /// <summary>One reconciliation pass: sync the chunk table to the roster, then embed what's stale.</summary>
 public interface ISearchIndexReconciler

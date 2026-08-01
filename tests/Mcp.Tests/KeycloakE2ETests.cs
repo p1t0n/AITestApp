@@ -5,7 +5,7 @@ using DotNet.Testcontainers.Containers;
 using FluentAssertions;
 using Xunit;
 
-namespace EmployeeManager.Mcp.Tests;
+namespace CvManager.Mcp.Tests;
 
 /// <summary>
 /// End-to-end: a real Keycloak (imported realm) issues a token; the MCP server validates it

@@ -1,10 +1,10 @@
-using EmployeeManager.Agents.Agents;
-using EmployeeManager.Agents.Tests.Fakes;
+using CvManager.Agents.Agents;
+using CvManager.Agents.Tests.Fakes;
 using FluentAssertions;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace EmployeeManager.Agents.Tests;
+namespace CvManager.Agents.Tests;
 
 /// <summary>
 /// Seam-level tests for <see cref="ShortlistRunService"/>: the extracted core of

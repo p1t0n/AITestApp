@@ -1,7 +1,7 @@
-using EmployeeManager.RetrievalEval;
+using CvManager.RetrievalEval;
 using FluentAssertions;
 
-namespace EmployeeManager.Mcp.Tests.Eval;
+namespace CvManager.Mcp.Tests.Eval;
 
 /// <summary>
 /// Proves the sweep's core efficiency trick is sound: results captured once at the sweep floor and

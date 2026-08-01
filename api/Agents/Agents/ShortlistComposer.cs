@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace EmployeeManager.Agents.Agents;
+namespace CvManager.Agents.Agents;
 
 /// <summary>Coverage summary for one candidate: requirements matched out of the total.</summary>
 public sealed record ShortlistCoverage(int Matched, int Total);

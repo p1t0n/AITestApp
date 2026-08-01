@@ -5,8 +5,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <RootNamespace>EmployeeManager.RetrievalEval.Cli</RootNamespace>
-    <AssemblyName>EmployeeManager.RetrievalEval</AssemblyName>
+    <RootNamespace>CvManager.RetrievalEval.Cli</RootNamespace>
+    <AssemblyName>CvManager.RetrievalEval</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>

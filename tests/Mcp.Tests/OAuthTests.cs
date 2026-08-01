@@ -1,7 +1,7 @@
 using FluentAssertions;
 using Xunit;
 
-namespace EmployeeManager.Mcp.Tests;
+namespace CvManager.Mcp.Tests;
 
 public class OAuthTests
 {

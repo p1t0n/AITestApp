@@ -212,8 +212,8 @@ Live tests (real embeddings / models) are opt-in: `dotnet test --filter "Categor
 
 ```bash
 dotnet ef migrations add <Name> \
-  --project api/Infrastructure/EmployeeManager.Infrastructure.csproj \
-  --startup-project api/Web/EmployeeManager.Web.csproj \
+  --project api/Infrastructure/CvManager.Infrastructure.csproj \
+  --startup-project api/Web/CvManager.Web.csproj \
   --output-dir Persistence/Migrations
 ```
 

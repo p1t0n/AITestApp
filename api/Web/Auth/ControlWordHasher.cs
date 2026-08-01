@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 
-namespace EmployeeManager.Web.Auth;
+namespace CvManager.Web.Auth;
 
 /// <summary>
 /// PBKDF2 (SHA-256) control-word hasher. Stores "iterations.salt.hash" (Base64 parts). No external

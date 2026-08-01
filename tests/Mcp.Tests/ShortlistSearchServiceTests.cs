@@ -1,16 +1,16 @@
-using EmployeeManager.Application.Abstractions;
-using EmployeeManager.Application.Search;
-using EmployeeManager.Domain.Entities;
-using EmployeeManager.Domain.Enums;
-using EmployeeManager.Infrastructure.Persistence;
-using EmployeeManager.Infrastructure.Search;
+using CvManager.Application.Abstractions;
+using CvManager.Application.Search;
+using CvManager.Domain.Entities;
+using CvManager.Domain.Enums;
+using CvManager.Infrastructure.Persistence;
+using CvManager.Infrastructure.Search;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Testcontainers.PostgreSql;
 
-namespace EmployeeManager.Mcp.Tests;
+namespace CvManager.Mcp.Tests;
 
 /// <summary>
 /// Integration tests for the shortlist (multi-requirement) search path against real pgvector.

@@ -1,9 +1,9 @@
-using EmployeeManager.Application.Search;
-using EmployeeManager.Domain.Entities;
-using EmployeeManager.Domain.Enums;
+using CvManager.Application.Search;
+using CvManager.Domain.Entities;
+using CvManager.Domain.Enums;
 using FluentAssertions;
 
-namespace EmployeeManager.Application.Tests;
+namespace CvManager.Application.Tests;
 
 public class ChunkProjectionTests
 {

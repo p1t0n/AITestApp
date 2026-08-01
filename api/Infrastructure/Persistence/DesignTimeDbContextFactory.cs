@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
-namespace EmployeeManager.Infrastructure.Persistence;
+namespace CvManager.Infrastructure.Persistence;
 
 /// <summary>
 /// Used by `dotnet ef` at design time so migrations can be generated without booting the Web host.
@@ -13,7 +13,7 @@ public class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<AppDbConte
     {
         var connectionString =
             Environment.GetEnvironmentVariable("ConnectionStrings__Default")
-            ?? "Host=localhost;Port=5432;Database=employeemanager;Username=postgres;Password=postgres";
+            ?? "Host=localhost;Port=5432;Database=cvmanager;Username=postgres;Password=postgres";
 
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(connectionString, npgsql => npgsql.UseVector())

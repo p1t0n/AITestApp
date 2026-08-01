@@ -1,10 +1,10 @@
 using System.Text;
 using System.Text.Json;
-using EmployeeManager.Agents.Mcp;
+using CvManager.Agents.Mcp;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 
-namespace EmployeeManager.Agents.Agents;
+namespace CvManager.Agents.Agents;
 
 /// <summary>The typed shortlist request: the job description plus the optional retrieval filters
 /// that are passed through verbatim to the <c>roster_shortlist_search</c> tool.</summary>

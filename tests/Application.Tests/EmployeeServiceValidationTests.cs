@@ -1,11 +1,11 @@
-using EmployeeManager.Application.Employees;
-using EmployeeManager.Infrastructure.Persistence;
+using CvManager.Application.Employees;
+using CvManager.Infrastructure.Persistence;
 using FluentAssertions;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
-namespace EmployeeManager.Application.Tests;
+namespace CvManager.Application.Tests;
 
 public class EmployeeServiceValidationTests
 {

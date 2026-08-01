@@ -1,4 +1,4 @@
-namespace EmployeeManager.Domain.Entities;
+namespace CvManager.Domain.Entities;
 
 /// <summary>
 /// A work-experience record. <see cref="EndDate"/> null means current role.

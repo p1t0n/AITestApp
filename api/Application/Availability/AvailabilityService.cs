@@ -1,11 +1,11 @@
-using EmployeeManager.Application.Abstractions;
-using EmployeeManager.Application.Common;
-using EmployeeManager.Application.Employees;
-using EmployeeManager.Domain.Entities;
+using CvManager.Application.Abstractions;
+using CvManager.Application.Common;
+using CvManager.Application.Employees;
+using CvManager.Domain.Entities;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 
-namespace EmployeeManager.Application.Availability;
+namespace CvManager.Application.Availability;
 
 public record SaveAvailabilityEntryDto(DateOnly EffectiveFrom, int CapacityPercent);
 

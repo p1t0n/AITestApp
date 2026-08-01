@@ -1,4 +1,4 @@
-namespace EmployeeManager.Agents.Configuration;
+namespace CvManager.Agents.Configuration;
 
 /// <summary>
 /// Chat model wiring. The code is provider-agnostic (<c>IChatClient</c>); this binds the

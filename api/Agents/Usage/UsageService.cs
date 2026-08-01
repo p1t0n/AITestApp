@@ -1,8 +1,8 @@
-using EmployeeManager.Application.Abstractions;
+using CvManager.Application.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
-namespace EmployeeManager.Agents.Usage;
+namespace CvManager.Agents.Usage;
 
 /// <summary>Usage for one cap window: how much spent, the cap, and when it resets (UTC).</summary>
 public sealed record WindowUsage(string Window, long Used, long Cap, DateTimeOffset ResetAt)

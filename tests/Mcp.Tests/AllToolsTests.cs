@@ -4,7 +4,7 @@ using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 using Xunit;
 
-namespace EmployeeManager.Mcp.Tests;
+namespace CvManager.Mcp.Tests;
 
 public class AllToolsTests
 {

@@ -1,7 +1,7 @@
-using EmployeeManager.RetrievalEval;
+using CvManager.RetrievalEval;
 using FluentAssertions;
 
-namespace EmployeeManager.Mcp.Tests.Eval;
+namespace CvManager.Mcp.Tests.Eval;
 
 /// <summary>
 /// Unit tests for the P1T-45 threshold selection rule: keep negative-FP-rate within the bound,

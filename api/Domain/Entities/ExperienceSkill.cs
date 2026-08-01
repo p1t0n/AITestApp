@@ -1,4 +1,4 @@
-namespace EmployeeManager.Domain.Entities;
+namespace CvManager.Domain.Entities;
 
 /// <summary>
 /// Links a catalog <see cref="Skill"/> to a specific <see cref="Experience"/>, forming an

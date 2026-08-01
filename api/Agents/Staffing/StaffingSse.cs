@@ -2,7 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Channels;
 
-namespace EmployeeManager.Agents.Staffing;
+namespace CvManager.Agents.Staffing;
 
 /// <summary>
 /// The pinned SSE contract for POST /agents/staffing (P1T-76). The endpoint's pre-checks

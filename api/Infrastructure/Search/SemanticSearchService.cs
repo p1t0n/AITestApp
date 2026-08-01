@@ -1,15 +1,15 @@
-using EmployeeManager.Application.Abstractions;
-using EmployeeManager.Application.Search;
-using EmployeeManager.Domain.Entities;
-using EmployeeManager.Domain.Enums;
-using EmployeeManager.Infrastructure.Persistence;
+using CvManager.Application.Abstractions;
+using CvManager.Application.Search;
+using CvManager.Domain.Entities;
+using CvManager.Domain.Enums;
+using CvManager.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Pgvector;
 using Pgvector.EntityFrameworkCore;
 
-namespace EmployeeManager.Infrastructure.Search;
+namespace CvManager.Infrastructure.Search;
 
 /// <summary>
 /// pgvector-backed semantic roster search. Embeds the query, applies the optional hard filters as a

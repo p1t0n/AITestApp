@@ -1,7 +1,7 @@
-using EmployeeManager.Domain.Entities;
+using CvManager.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace EmployeeManager.Application.Abstractions;
+namespace CvManager.Application.Abstractions;
 
 /// <summary>
 /// Persistence seam the Application layer depends on. Implemented by Infrastructure's

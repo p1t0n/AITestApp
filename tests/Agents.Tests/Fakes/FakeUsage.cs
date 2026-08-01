@@ -1,7 +1,7 @@
-using EmployeeManager.Agents.Agents;
-using EmployeeManager.Agents.Usage;
+using CvManager.Agents.Agents;
+using CvManager.Agents.Usage;
 
-namespace EmployeeManager.Agents.Tests.Fakes;
+namespace CvManager.Agents.Tests.Fakes;
 
 /// <summary>An <see cref="IUsageService"/> stand-in with a fixed cap verdict, so endpoint tests
 /// can exercise the 429 path without a database.</summary>

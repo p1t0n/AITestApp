@@ -1,12 +1,12 @@
-using EmployeeManager.Application.Common;
-using EmployeeManager.Application.Employees;
-using EmployeeManager.Domain.Entities;
-using EmployeeManager.Infrastructure.Persistence;
+using CvManager.Application.Common;
+using CvManager.Application.Employees;
+using CvManager.Domain.Entities;
+using CvManager.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
-namespace EmployeeManager.Application.Tests;
+namespace CvManager.Application.Tests;
 
 public class ExperienceSkillServiceTests
 {

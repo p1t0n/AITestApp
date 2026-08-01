@@ -1,4 +1,4 @@
-namespace EmployeeManager.Domain.Entities;
+namespace CvManager.Domain.Entities;
 
 /// <summary>
 /// One row per AI agent call: which user spent how many tokens on which agent/model and when.

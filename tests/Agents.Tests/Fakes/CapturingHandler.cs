@@ -1,6 +1,6 @@
 using System.Net;
 
-namespace EmployeeManager.Agents.Tests.Fakes;
+namespace CvManager.Agents.Tests.Fakes;
 
 /// <summary>Captures every outgoing token request and returns a canned Keycloak token JSON, so the
 /// client-credentials flow can be tested without a live Keycloak.</summary>

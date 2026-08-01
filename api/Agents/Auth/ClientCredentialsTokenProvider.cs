@@ -1,8 +1,8 @@
 using System.Net.Http.Json;
 using System.Text.Json;
-using EmployeeManager.Agents.Configuration;
+using CvManager.Agents.Configuration;
 
-namespace EmployeeManager.Agents.Auth;
+namespace CvManager.Agents.Auth;
 
 /// <summary>
 /// Obtains a scoped JWT from Keycloak via the OAuth 2.1 client-credentials grant and caches it

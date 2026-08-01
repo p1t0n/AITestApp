@@ -1,12 +1,12 @@
-using EmployeeManager.Agents.Auth;
-using EmployeeManager.Agents.Configuration;
-using EmployeeManager.Agents.Mcp;
-using EmployeeManager.Agents.Tests.Fakes;
+using CvManager.Agents.Auth;
+using CvManager.Agents.Configuration;
+using CvManager.Agents.Mcp;
+using CvManager.Agents.Tests.Fakes;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace EmployeeManager.Agents.Tests;
+namespace CvManager.Agents.Tests;
 
 /// <summary>
 /// Tests the keyed multi-identity wiring: each agent registers its own MCP identity from a named

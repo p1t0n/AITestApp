@@ -1,9 +1,9 @@
 using System.ComponentModel;
-using EmployeeManager.Application.Cv;
+using CvManager.Application.Cv;
 using Microsoft.AspNetCore.Authorization;
 using ModelContextProtocol.Server;
 
-namespace EmployeeManager.Mcp.Tools;
+namespace CvManager.Mcp.Tools;
 
 [McpServerToolType]
 public class CvTools

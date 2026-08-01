@@ -1,14 +1,14 @@
-using EmployeeManager.Application.Abstractions;
-using EmployeeManager.Application.Search;
-using EmployeeManager.Domain.Enums;
-using EmployeeManager.Infrastructure.Persistence;
+using CvManager.Application.Abstractions;
+using CvManager.Application.Search;
+using CvManager.Domain.Enums;
+using CvManager.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Pgvector;
 using Pgvector.EntityFrameworkCore;
 
-namespace EmployeeManager.Infrastructure.Search;
+namespace CvManager.Infrastructure.Search;
 
 /// <summary>
 /// pgvector-backed style exemplar retrieval. Resolves each requested achievement bullet's stored

@@ -1,4 +1,4 @@
-namespace EmployeeManager.Agents.Staffing;
+namespace CvManager.Agents.Staffing;
 
 /// <summary>Staffing pipeline knobs, bound from the "Staffing" configuration section.</summary>
 public sealed class StaffingOptions

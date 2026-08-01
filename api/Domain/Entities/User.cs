@@ -1,6 +1,6 @@
-using EmployeeManager.Domain.Enums;
+using CvManager.Domain.Enums;
 
-namespace EmployeeManager.Domain.Entities;
+namespace CvManager.Domain.Entities;
 
 /// <summary>
 /// An authenticated account. Auth is passwordless: the only login credential is a

@@ -20,12 +20,12 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore
-        run: dotnet restore EmployeeManager.slnx
+        run: dotnet restore CvManager.slnx
 
       - name: Build
-        run: dotnet build EmployeeManager.slnx --configuration Release --no-restore
+        run: dotnet build CvManager.slnx --configuration Release --no-restore
 
       - name: Test
         # Docker is preinstalled on ubuntu-latest runners; the MCP e2e suite
         # spins up Keycloak via Testcontainers.
-        run: dotnet test EmployeeManager.slnx --configuration Release --no-build --verbosity normal
+        run: dotnet test CvManager.slnx --configuration Release --no-build --verbosity normal

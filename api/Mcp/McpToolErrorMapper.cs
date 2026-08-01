@@ -1,7 +1,7 @@
-using EmployeeManager.Application.Common;
+using CvManager.Application.Common;
 using FluentValidation;
 
-namespace EmployeeManager.Mcp;
+namespace CvManager.Mcp;
 
 /// <summary>A field-level validation problem, surfaced to the calling agent.</summary>
 public record McpFieldError(string Field, string Message);

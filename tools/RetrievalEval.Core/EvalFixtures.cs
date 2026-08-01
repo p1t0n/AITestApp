@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace EmployeeManager.RetrievalEval;
+namespace CvManager.RetrievalEval;
 
 /// <summary>
 /// One employee of the frozen eval corpus. This is measurement truth, distinct from any demo data:

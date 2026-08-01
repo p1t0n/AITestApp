@@ -2,7 +2,7 @@ using System.Text.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 
-namespace EmployeeManager.Agents.Tests;
+namespace CvManager.Agents.Tests;
 
 /// <summary>
 /// Live end-to-end smoke test for the staffing pipeline: hits the real chat model + the real MCP

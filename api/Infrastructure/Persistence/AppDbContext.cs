@@ -1,8 +1,8 @@
-using EmployeeManager.Application.Abstractions;
-using EmployeeManager.Domain.Entities;
+using CvManager.Application.Abstractions;
+using CvManager.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace EmployeeManager.Infrastructure.Persistence;
+namespace CvManager.Infrastructure.Persistence;
 
 public class AppDbContext : DbContext, IAppDbContext
 {

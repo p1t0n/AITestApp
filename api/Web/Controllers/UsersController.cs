@@ -1,7 +1,7 @@
-using EmployeeManager.Application.Users;
+using CvManager.Application.Users;
 using Microsoft.AspNetCore.Mvc;
 
-namespace EmployeeManager.Web.Controllers;
+namespace CvManager.Web.Controllers;
 
 /// <summary>
 /// User management. Requires authentication (the app-wide fallback policy); roles are flat, so any

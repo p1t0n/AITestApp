@@ -2,7 +2,7 @@ using System.Text;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Options;
 
-namespace EmployeeManager.Web.Auth;
+namespace CvManager.Web.Auth;
 
 /// <summary>
 /// <see cref="IChallengeStore"/> over <see cref="IDistributedCache"/>. Entries expire after the

@@ -1,14 +1,14 @@
-using EmployeeManager.Agents.Usage;
-using EmployeeManager.Domain.Entities;
-using EmployeeManager.Domain.Enums;
-using EmployeeManager.Infrastructure.Persistence;
+using CvManager.Agents.Usage;
+using CvManager.Domain.Entities;
+using CvManager.Domain.Enums;
+using CvManager.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Xunit;
 
-namespace EmployeeManager.Agents.Tests;
+namespace CvManager.Agents.Tests;
 
 public class UsageServiceTests
 {

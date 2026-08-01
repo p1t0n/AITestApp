@@ -1,8 +1,8 @@
-using EmployeeManager.Application.Availability;
-using EmployeeManager.Application.Employees;
+using CvManager.Application.Availability;
+using CvManager.Application.Employees;
 using Microsoft.AspNetCore.Mvc;
 
-namespace EmployeeManager.Web.Controllers;
+namespace CvManager.Web.Controllers;
 
 [ApiController]
 public class LanguagesController : ControllerBase

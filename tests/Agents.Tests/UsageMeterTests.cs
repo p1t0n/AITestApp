@@ -1,13 +1,13 @@
-using EmployeeManager.Agents.Agents;
-using EmployeeManager.Agents.Usage;
-using EmployeeManager.Infrastructure.Persistence;
+using CvManager.Agents.Agents;
+using CvManager.Agents.Usage;
+using CvManager.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
-namespace EmployeeManager.Agents.Tests;
+namespace CvManager.Agents.Tests;
 
 public class UsageMeterTests
 {

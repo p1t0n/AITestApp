@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace EmployeeManager.Agents.Agents;
+namespace CvManager.Agents.Agents;
 
 /// <summary>
 /// Lenient extraction of a typed payload from whatever shape an MCP tool result arrives in:

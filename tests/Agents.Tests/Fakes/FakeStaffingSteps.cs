@@ -1,7 +1,7 @@
-using EmployeeManager.Agents.Agents;
-using EmployeeManager.Agents.Usage;
+using CvManager.Agents.Agents;
+using CvManager.Agents.Usage;
 
-namespace EmployeeManager.Agents.Tests.Fakes;
+namespace CvManager.Agents.Tests.Fakes;
 
 /// <summary>An <see cref="IShortlistRunService"/> stand-in: replays a scripted outcome (or throws)
 /// and records the requests it received, so pipeline tests can pin the clamped topK. The

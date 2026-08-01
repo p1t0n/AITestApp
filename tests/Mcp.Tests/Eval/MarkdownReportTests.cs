@@ -1,7 +1,7 @@
-using EmployeeManager.RetrievalEval;
+using CvManager.RetrievalEval;
 using FluentAssertions;
 
-namespace EmployeeManager.Mcp.Tests.Eval;
+namespace CvManager.Mcp.Tests.Eval;
 
 /// <summary>
 /// Unit tests for the sweep report renderer: one markdown table (threshold | recall@5 | MRR |

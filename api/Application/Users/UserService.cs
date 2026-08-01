@@ -1,11 +1,11 @@
-using EmployeeManager.Application.Abstractions;
-using EmployeeManager.Application.Common;
-using EmployeeManager.Domain.Entities;
+using CvManager.Application.Abstractions;
+using CvManager.Application.Common;
+using CvManager.Domain.Entities;
 using FluentValidation;
 using FluentValidation.Results;
 using Microsoft.EntityFrameworkCore;
 
-namespace EmployeeManager.Application.Users;
+namespace CvManager.Application.Users;
 
 /// <summary>
 /// User management. Roles are flat — any authenticated caller may manage any user — so there is no

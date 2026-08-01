@@ -1,4 +1,4 @@
-namespace EmployeeManager.Web.Auth;
+namespace CvManager.Web.Auth;
 
 /// <summary>
 /// Auth configuration. Bound from the "Auth" section. The JWT settings are the contract shared
@@ -21,8 +21,8 @@ public sealed class JwtOptions
 {
     /// <summary>HS256 signing key. Must be at least 32 bytes.</summary>
     public string SigningKey { get; set; } = string.Empty;
-    public string Issuer { get; set; } = "employeemanager";
-    public string Audience { get; set; } = "employeemanager-app";
+    public string Issuer { get; set; } = "cvmanager";
+    public string Audience { get; set; } = "cvmanager-app";
     public int AccessTokenMinutes { get; set; } = 60;
 }
 

@@ -1,9 +1,9 @@
-using EmployeeManager.Agents.Auth;
-using EmployeeManager.Agents.Configuration;
-using EmployeeManager.Agents.Tests.Fakes;
+using CvManager.Agents.Auth;
+using CvManager.Agents.Configuration;
+using CvManager.Agents.Tests.Fakes;
 using FluentAssertions;
 
-namespace EmployeeManager.Agents.Tests;
+namespace CvManager.Agents.Tests;
 
 /// <summary>
 /// Deterministic tests for the client-credentials token provider. A capturing HTTP handler stands

@@ -1,6 +1,6 @@
-using EmployeeManager.Domain.Entities;
+using CvManager.Domain.Entities;
 
-namespace EmployeeManager.Application.Availability;
+namespace CvManager.Application.Availability;
 
 /// <summary>
 /// Pure availability step-function logic. Capacity at a target date is the

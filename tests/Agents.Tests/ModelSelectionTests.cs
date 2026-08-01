@@ -1,10 +1,10 @@
-using EmployeeManager.Agents.Configuration;
+using CvManager.Agents.Configuration;
 using FluentAssertions;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace EmployeeManager.Agents.Tests;
+namespace CvManager.Agents.Tests;
 
 /// <summary>
 /// Tests per-agent model selection: a shared default chat client, plus a keyed override per agent
