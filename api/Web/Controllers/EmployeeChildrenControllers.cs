@@ -97,6 +97,20 @@ public class QualificationsController : ControllerBase
 }
 
 [ApiController]
+public class AchievementsController : ControllerBase
+{
+    private readonly IAchievementService _svc;
+    public AchievementsController(IAchievementService svc) => _svc = svc;
+
+    public record PatchAchievementTextDto(string Text);
+
+    /// <summary>Single-bullet rewrite (P1T-90): the tailoring Apply flow's seam. Text only —
+    /// id and order are untouched, so sibling bullets and concurrent applies stay safe.</summary>
+    [HttpPatch("api/achievements/{id:guid}")]
+    public Task<AchievementDto> PatchText(Guid id, PatchAchievementTextDto dto, CancellationToken ct) =>
+        _svc.PatchTextAsync(id, dto.Text, ct);
+}
+
 public class ExperiencesController : ControllerBase
 {
     private readonly IExperienceService _svc;

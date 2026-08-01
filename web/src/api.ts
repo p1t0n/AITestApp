@@ -5,13 +5,13 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import type {
+  Achievement,
   Category,
   CategoryNode,
   Cv,
   EmployeeDetail,
   EmployeeSkill,
   EmployeeSummary,
-  Experience,
   SaveEmployee,
   SkillDto,
 } from "./types";
@@ -274,40 +274,16 @@ export interface ApplyRewriteInput extends TailoringRewrite {
 
 /**
  * Apply a tailoring rewrite to the employee's profile. The agent never writes (P1T-62): this is a
- * plain Web-API edit with the user's own session, exactly like a manual edit. The Web API has no
- * per-achievement endpoint, so we go through the experience update: fetch the employee, swap the
- * one bullet's text, and PUT the experience back otherwise unchanged.
+ * plain Web-API edit with the user's own session, exactly like a manual edit. One PATCH per
+ * bullet (P1T-90) — ids and sibling bullets stay untouched, so concurrent applies can't clobber
+ * each other.
  */
 export function useApplyRewrite() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: ApplyRewriteInput) => {
-      const employee = (await http.get<EmployeeDetail>(`/employees/${input.employeeId}`)).data;
-      const exp = employee.experiences.find((x) => x.id === input.experienceId);
-      if (!exp) throw new Error("This experience no longer exists on the employee's profile.");
-      // Prefer the id; fall back to the original text (the experience PUT regenerates achievement
-      // ids, so applying a sibling rewrite first leaves this card's id stale), then to the
-      // rewritten text (already applied — the PUT below rewrites identical text, a no-op).
-      const target =
-        exp.achievements.find((a) => a.id === input.achievementId) ??
-        exp.achievements.find((a) => a.text === input.original) ??
-        exp.achievements.find((a) => a.text === input.rewritten);
-      if (!target) throw new Error("This bullet no longer exists on the employee's profile.");
-      const dto = {
-        company: exp.company,
-        title: exp.title,
-        location: exp.location,
-        startDate: exp.startDate,
-        endDate: exp.endDate,
-        summary: exp.summary,
-        achievements: exp.achievements.map((a) => ({
-          order: a.order,
-          text: a.id === target.id ? input.rewritten : a.text,
-        })),
-        skillIds: exp.skills.map((s) => s.skillId),
-      };
-      return (await http.put<Experience>(`/experiences/${input.experienceId}`, dto)).data;
-    },
+    mutationFn: async (input: ApplyRewriteInput) =>
+      (await http.patch<Achievement>(`/achievements/${input.achievementId}`, { text: input.rewritten }))
+        .data,
     // Prefix-matches both the detail query (["employees", id]) and the CV query
     // (["employees", id, "cv"]), so open detail/CV views refetch.
     onSuccess: (_data, input) =>

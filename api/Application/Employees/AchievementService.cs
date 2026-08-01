@@ -10,6 +10,10 @@ public interface IAchievementService
 {
     Task<AchievementDto> AddAsync(Guid experienceId, SaveAchievementDto dto, CancellationToken ct = default);
     Task<AchievementDto> UpdateAsync(Guid achievementId, SaveAchievementDto dto, CancellationToken ct = default);
+    /// <summary>Rewrites one bullet's text in place — id and order untouched. The single-bullet
+    /// seam the tailoring Apply flow needs (P1T-90): no read-modify-write of the whole experience,
+    /// no regenerated sibling ids, no lost-update race.</summary>
+    Task<AchievementDto> PatchTextAsync(Guid achievementId, string text, CancellationToken ct = default);
     Task DeleteAsync(Guid achievementId, CancellationToken ct = default);
 }
 
@@ -49,6 +53,19 @@ public class AchievementService : IAchievementService
 
         a.Order = dto.Order;
         a.Text = dto.Text.Trim();
+        await _db.SaveChangesAsync(ct);
+        return new AchievementDto(a.Id, a.Order, a.Text);
+    }
+
+    public async Task<AchievementDto> PatchTextAsync(Guid achievementId, string text, CancellationToken ct = default)
+    {
+        var a = await _db.Achievements.FirstOrDefaultAsync(x => x.Id == achievementId, ct)
+            ?? throw new NotFoundException(nameof(Achievement), achievementId);
+
+        // Same text rules as a full save, with the existing order standing in for the unchanged field.
+        await _validator.ValidateAndThrowAsync(new SaveAchievementDto(a.Order, text), ct);
+
+        a.Text = text.Trim();
         await _db.SaveChangesAsync(ct);
         return new AchievementDto(a.Id, a.Order, a.Text);
     }

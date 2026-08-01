@@ -121,4 +121,40 @@ public class AchievementServiceTests
 
         await act.Should().ThrowAsync<NotFoundException>();
     }
+
+    [Fact]
+    public async Task PatchText_rewrites_one_bullet_preserving_id_and_order()
+    {
+        await using var db = NewDb();
+        var exp = await SeedExperience(db);
+        var svc = NewService(db);
+        var added = await svc.AddAsync(exp.Id, new SaveAchievementDto(3, "Original bullet text."));
+
+        var patched = await svc.PatchTextAsync(added.Id, "Rewritten bullet text with numbers: 40%.");
+
+        patched.Id.Should().Be(added.Id);
+        patched.Order.Should().Be(3);
+        patched.Text.Should().Be("Rewritten bullet text with numbers: 40%.");
+    }
+
+    [Fact]
+    public async Task PatchText_validates_the_new_text()
+    {
+        await using var db = NewDb();
+        var exp = await SeedExperience(db);
+        var svc = NewService(db);
+        var added = await svc.AddAsync(exp.Id, new SaveAchievementDto(1, "Fine."));
+
+        var act = () => svc.PatchTextAsync(added.Id, "");
+
+        await act.Should().ThrowAsync<FluentValidation.ValidationException>();
+    }
+
+    [Fact]
+    public async Task PatchText_reports_not_found_for_an_unknown_bullet()
+    {
+        await using var db = NewDb();
+        var act = () => NewService(db).PatchTextAsync(Guid.NewGuid(), "text");
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
 }
