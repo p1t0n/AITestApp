@@ -58,10 +58,10 @@ described here into one streamed, recommendation-first report — see
                     ┌───────────────────────────────────────┼──────────────────────────────┐
                     ▼                                        ▼                              ▼
         ┌────────────────────────┐        ┌───────────────────────────┐     ┌────────────────────────┐
-        │ Application             │        │ Infrastructure             │     │ GitHub Models           │
-        │  ChunkProjection        │        │  EmployeeSearchChunk        │     │  text-embedding-3-small │
+        │ Application             │        │ Infrastructure             │     │ Gemini                  │
+        │  ChunkProjection        │        │  EmployeeSearchChunk        │     │  gemini-embedding-001   │
         │  Reconciler (pure diff) │        │  (pgvector table)           │     │  (OpenAI-compatible)    │
-        │  ISemanticSearchService │        │  GitHubModelsEmbedder       │     └────────────────────────┘
+        │  ISemanticSearchService │        │  GeminiEmbedder       │     └────────────────────────┘
         │  IShortlistSearchService│        │  SearchIndexReconciler      │
         │  IExemplarSearchService │        │  SemanticSearchService      │
         │  ShortlistRanker (pure) │        │  ExemplarSearchService      │
@@ -152,7 +152,7 @@ MCP tool (`mcp:read`, read-only) → `ISemanticSearchService.SearchAsync`:
    - `location` — case-insensitive match.
    - `minYears` — applied to the required skills, or to any skill if no `skillIds` given.
 3. Rank chunks by cosine similarity (`embedding <=> query`); drop anything below `MinSimilarity`
-   (0.30) so an off-topic query returns nothing rather than the least-bad rows. Achievement bullet
+   (0.55 for gemini-embedding-001) so an off-topic query returns nothing rather than the least-bad rows. Achievement bullet
    chunks are excluded from this pool (shared with the shortlist path — see bullet rewriting).
 4. Aggregate chunk hits → employees by **best** similarity, take top-K (default 5, max 20), attach
    up to 3 truncated evidence snippets each.
@@ -278,7 +278,7 @@ Unknown/empty ids are skipped silently. Then:
 1. **One batched embed call** for all resolved bullets.
 2. Per bullet, rank **other** employees' Achievement chunks by cosine similarity
    (`EmployeeId != owner` — a bullet never gets its own CV back), under the shared `MinSimilarity`
-   floor (0.30) and a SQL length-band pre-filter.
+   floor (0.55) and a SQL length-band pre-filter.
 3. **Quality gate** in memory (`ExemplarQualityFilter`): an exemplar must be *quantified* (contain a
    digit or `%` — the hallmark of strong CV phrasing) and sit inside the length band
    (`ExemplarMinChars` 40 – `ExemplarMaxChars` 300: shorter carries no style, longer is a paragraph).
@@ -378,14 +378,14 @@ Retrieval quality is **measured, not vibed** (`tools/RetrievalEval.Core` + `tool
   eval core; labels are versioned truth — never mix demo data in.
 - **Metrics**: recall@5, MRR, negative-query false-positive rate (the trio the threshold trades
   between), plus keyword-subset recall@5 (feeds the hybrid question).
-- **Live regression gate**: `dotnet test --filter "Category=live"` with `GITHUB_TOKEN` — real
+- **Live regression gate**: `dotnet test --filter "Category=live"` with `GEMINI_API_KEY` — real
   embeddings against Testcontainers pgvector, asserts no regression vs the committed floor.
 - **Sweep CLI**: embeds once, re-ranks per threshold (a full sweep costs one run's embedding budget):
-  `GITHUB_TOKEN=<pat> dotnet run --project tools/RetrievalEval -- --sweep 0.15:0.50:0.05 --refine`.
+  `GEMINI_API_KEY=<key> dotnet run --project tools/RetrievalEval -- --sweep 0.30:0.80:0.05 --refine`.
 
 **Measured baseline + standing verdicts** (see [`retrieval-eval-baseline.md`](retrieval-eval-baseline.md)):
-at 0.30 — recall@5 **1.0**, MRR **0.985**, negative-FP **0.0**, keyword recall **1.0**. Verdicts:
-**`MinSimilarity` stays 0.30** (mid-plateau 0.285–0.350); **hybrid keyword+vector search not
+at 0.30 (2026-07, retired OpenAI model) — recall@5 **1.0**, MRR **0.985**, negative-FP **0.0**, keyword recall **1.0**. Re-swept 2026-08-01 for `gemini-embedding-001`: plateau 0.540–0.575, all metrics perfect. Verdicts:
+**`MinSimilarity` = 0.55 for Gemini** (was 0.30 for the OpenAI model — Gemini similarities cluster higher); **hybrid keyword+vector search not
 adopted** (keyword gap 0.0 pts vs the >10-pt adoption rule) — the eval gate re-raises it if the gap
 ever opens. Caveat: the small frozen corpus saturates recall by design; the gate guards regressions,
 it doesn't claim perfection at scale.
@@ -399,7 +399,7 @@ it doesn't claim perfection at scale.
 `@demo.example.com`):
 
 - **Generate/regenerate**: `tools/GenerateDemoRoster` — deterministic assembly from hand-authored
-  career templates (seeded PRNG), optional LLM enrichment pass (`GITHUB_TOKEN`). The committed file
+  career templates (seeded PRNG), optional LLM enrichment pass (`GEMINI_API_KEY`). The committed file
   is the deterministic output (seed 48).
 - **Seed**: `dotnet run --project tools/SeedDemoRoster -- [--count N] [--wipe]` — idempotent by
   email; `--wipe` deletes exactly the `@demo.example.com` employees (cascades children + chunks).
@@ -423,9 +423,9 @@ it doesn't claim perfection at scale.
 Mcp service `appsettings.json`:
 
 ```jsonc
-"GitHubModels":  { "Endpoint": "…", "EmbeddingModel": "text-embedding-3-small", "ApiKey": "" },
+"Gemini":        { "Endpoint": "…", "EmbeddingModel": "gemini-embedding-001", "Dimensions": 1536, "ApiKey": "" },
 "SearchIndex":   { "Enabled": true, "IntervalSeconds": 30, "EmbedBatchSize": 32 },
-"SemanticSearch":{ "MinSimilarity": 0.30, "DefaultTopK": 5, "MaxTopK": 20,
+"SemanticSearch":{ "MinSimilarity": 0.55, "DefaultTopK": 5, "MaxTopK": 20,
                    "MaxSnippetsPerEmployee": 3, "SnippetMaxChars": 500,
                    "ShortlistDefaultTopK": 10, "ShortlistMaxTopK": 20,
                    // style exemplars (bullet rewriting):
@@ -447,7 +447,7 @@ Web service `appsettings.json` (demo seeding, off by default):
 "Seed": { "DemoRoster": false, "DemoRosterCount": null }
 ```
 
-The embedding PAT is read from the `GITHUB_TOKEN` env var (preferred) or `GitHubModels:ApiKey`.
+The embedding key is read from the `GEMINI_API_KEY` env var (preferred) or `Gemini:ApiKey`.
 The worker is disabled in the in-memory MCP tests via `SearchIndex:Enabled=false`.
 
 ---
@@ -456,9 +456,9 @@ The worker is disabled in the in-memory MCP tests via `SearchIndex:Enabled=false
 
 - **Pure/unit** (`Application.Tests`): `ChunkProjection` (rendering, blank-summary skip, ordered
   achievements, hash stability, reorder-changes-hash), `Reconciler.Diff`
-  (insert/no-op/update/delete/mixed), and `GitHubModelsEmbedder` (batch shape, token count, logging)
+  (insert/no-op/update/delete/mixed), and `GeminiEmbedder` (batch shape, token count, logging)
   with a deterministic fake generator. Plus a skippable live embedding smoke test
-  (`Category=live`, needs `GITHUB_TOKEN`).
+  (`Category=live`, needs `GEMINI_API_KEY`).
 - **Integration** (`Mcp.Tests`, Testcontainers `pgvector/pgvector:pg17`, fake embedder):
   `SearchIndexReconciler` (backfill, no-op second pass, edit re-embeds only the changed chunk,
   orphan delete, employee cascade) and `SemanticSearchService` (topical ranking + threshold
@@ -494,7 +494,7 @@ Docker-in-CI is required for the Testcontainers suites.
 Resolved (with measurements — details in [`retrieval-eval-baseline.md`](retrieval-eval-baseline.md)):
 
 - **JD-shortlist**: shipped (tool + agent + endpoint + widget tab), see the shortlist section above.
-- **Threshold**: measured; `MinSimilarity` stays 0.30 (mid-plateau 0.285–0.350 on the golden set).
+- **Threshold**: measured per embedding model; 0.55 for `gemini-embedding-001` (mid-plateau 0.540–0.575, re-swept 2026-08-01), was 0.30 for the retired OpenAI model.
 - **Hybrid keyword+vector search**: **not adopted** — keyword-subset recall showed zero gap. The
   pre-decided design (tsvector + GIN, `websearch_to_tsquery`, RRF k=60, transparent in
   `SemanticSearchService`) stays on record in the P1T-46 resolution; every future sweep's
@@ -507,7 +507,7 @@ Resolved (with measurements — details in [`retrieval-eval-baseline.md`](retrie
 
 Remaining:
 
-- **Secret hygiene**: never commit a real PAT — use `GITHUB_TOKEN`. (A PAT was found committed in
+- **Secret hygiene**: never commit a real PAT — use `GEMINI_API_KEY`. (A PAT was found committed in
   `api/Agents/appsettings.json` during this work; rotate it.)
 - **Scale**: revisit an HNSW index if the roster grows into the tens of thousands of chunks; rerun
   the sweep if the corpus or embedding model changes (recall saturates on the small frozen corpus).

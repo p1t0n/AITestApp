@@ -18,7 +18,7 @@ builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
 // Embedding backend for semantic roster search (reconciliation worker + search query).
-builder.Services.AddGitHubModelsEmbeddings(builder.Configuration);
+builder.Services.AddGeminiEmbeddings(builder.Configuration);
 builder.Services.AddSearchIndexing(builder.Configuration);
 builder.Services.AddHostedService<ReconcileWorker>();
 

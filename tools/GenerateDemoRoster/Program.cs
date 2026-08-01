@@ -5,7 +5,7 @@ namespace CvManager.Tools.DemoRoster;
 /// <summary>
 /// One-off repo tool (P1T-48): generates api/Infrastructure/Persistence/SeedData/demo-roster.json.
 /// Assembly is fully deterministic (seeded); narrative prose optionally gets an LLM polish pass
-/// via GitHub Models when GITHUB_TOKEN is set. See README.md next to this file.
+/// via Gemini when GEMINI_API_KEY is set. See README.md next to this file.
 /// </summary>
 public static class Program
 {
@@ -34,15 +34,15 @@ public static class Program
         var dataset = DemoRosterGenerator.Generate(options, new FragmentNarrativeSource());
         Console.WriteLine($"Assembled {dataset.Employees.Count} employees / {dataset.Skills.Count} catalog skills (seed {options.Seed}).");
 
-        var token = Environment.GetEnvironmentVariable("GITHUB_TOKEN");
+        var token = Environment.GetEnvironmentVariable("GEMINI_API_KEY");
         if (offline || string.IsNullOrWhiteSpace(token))
         {
-            Console.WriteLine("Offline mode: keeping fragment-assembled narratives (set GITHUB_TOKEN for the LLM polish pass).");
+            Console.WriteLine("Offline mode: keeping fragment-assembled narratives (set GEMINI_API_KEY for the LLM polish pass).");
         }
         else
         {
-            Console.WriteLine("Rewriting narratives via GitHub Models (best-effort, batched)...");
-            var enriched = await new GitHubModelsEnricher(token).EnrichAsync(dataset, Console.WriteLine);
+            Console.WriteLine("Rewriting narratives via Gemini (best-effort, batched)...");
+            var enriched = await new GeminiEnricher(token).EnrichAsync(dataset, Console.WriteLine);
             Console.WriteLine($"LLM-enriched {enriched}/{dataset.Employees.Count} employees; the rest keep fragment prose.");
         }
 

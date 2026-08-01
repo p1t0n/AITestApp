@@ -5,7 +5,7 @@ namespace CvManager.RetrievalEval;
 /// <summary>
 /// The sweep CLI's parsed arguments:
 /// <c>[--threshold X | --sweep start:end:step] [--refine] [--output path] [--date d]</c>.
-/// Defaults to a single run at the production threshold (0.30). The date is a plain string the
+/// Defaults to a single run at the production threshold (0.55). The date is a plain string the
 /// report echoes verbatim — "unspecified" unless the caller passes one.
 /// </summary>
 public sealed record CliArgs(
@@ -15,7 +15,7 @@ public sealed record CliArgs(
     string? OutputPath,
     string Date)
 {
-    public const double DefaultThreshold = 0.30;
+    public const double DefaultThreshold = 0.55;
 
     public static CliArgs Parse(IReadOnlyList<string> argv)
     {

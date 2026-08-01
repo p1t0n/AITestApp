@@ -10,11 +10,11 @@ using Testcontainers.PostgreSql;
 
 // Retrieval eval sweep CLI (P1T-52).
 //
-//   dotnet run -- [--threshold 0.30 | --sweep 0.15:0.50:0.05] [--refine] [--output path.md] [--date d]
+//   dotnet run -- [--threshold 0.55 | --sweep 0.30:0.80:0.05] [--refine] [--output path.md] [--date d]
 //
 // Spins up a disposable pgvector container, seeds the frozen eval corpus, indexes it with REAL
-// GitHub Models embeddings, runs the golden set ONCE at the sweep floor, then scores every
-// candidate threshold as a pure in-memory re-rank. Needs Docker and GITHUB_TOKEN.
+// Gemini embeddings, runs the golden set ONCE at the sweep floor, then scores every
+// candidate threshold as a pure in-memory re-rank. Needs Docker and GEMINI_API_KEY.
 
 const double RefineRadius = 0.025;
 const double RefineStep = 0.005;
@@ -28,15 +28,15 @@ catch (ArgumentException ex)
 {
     Console.Error.WriteLine(ex.Message);
     Console.Error.WriteLine(
-        "Usage: dotnet run -- [--threshold 0.30 | --sweep 0.15:0.50:0.05] [--refine] [--output path.md] [--date yyyy-MM-dd]");
+        "Usage: dotnet run -- [--threshold 0.55 | --sweep 0.30:0.80:0.05] [--refine] [--output path.md] [--date yyyy-MM-dd]");
     return 2;
 }
 
-if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GITHUB_TOKEN")))
+if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GEMINI_API_KEY")))
 {
     Console.Error.WriteLine(
-        "GITHUB_TOKEN is not set. The eval embeds with the real GitHub Models backend and cannot " +
-        "run without a PAT. Export one and retry: GITHUB_TOKEN=<pat> dotnet run -- ...");
+        "GEMINI_API_KEY is not set. The eval embeds with the real Gemini backend and cannot " +
+        "run without a key. Export one and retry: GEMINI_API_KEY=<pat> dotnet run -- ...");
     return 1;
 }
 
@@ -61,17 +61,17 @@ await using (var db = NewDb())
     await db.Database.MigrateAsync();
 }
 
-// The same real embedding registration production uses (AddGitHubModelsEmbeddings + GITHUB_TOKEN).
+// The same real embedding registration production uses (AddGeminiEmbeddings + GEMINI_API_KEY).
 var config = new ConfigurationBuilder()
     .AddInMemoryCollection(new Dictionary<string, string?>
     {
-        ["GitHubModels:Endpoint"] = "https://models.github.ai/inference",
-        ["GitHubModels:EmbeddingModel"] = "text-embedding-3-small",
+        ["Gemini:Endpoint"] = "https://generativelanguage.googleapis.com/v1beta/openai",
+        ["Gemini:EmbeddingModel"] = "gemini-embedding-001",
     })
     .Build();
 await using var provider = new ServiceCollection()
     .AddLogging()
-    .AddGitHubModelsEmbeddings(config)
+    .AddGeminiEmbeddings(config)
     .BuildServiceProvider();
 var embedder = provider.GetRequiredService<IEmbedder>();
 

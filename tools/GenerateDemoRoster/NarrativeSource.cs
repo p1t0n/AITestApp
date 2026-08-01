@@ -20,7 +20,7 @@ public sealed record ExperienceNarrative(string Summary, IReadOnlyList<string> A
 
 /// <summary>
 /// Seam between deterministic roster assembly and narrative text. Production sources: the
-/// offline fragment assembler and (optionally) the GitHub Models enricher; tests plug a stub.
+/// offline fragment assembler and (optionally) the Gemini enricher; tests plug a stub.
 /// </summary>
 public interface INarrativeSource
 {

@@ -14,7 +14,7 @@ public class AgentUsage
     /// <summary>Agent that served the call, e.g. "roster-qa".</summary>
     public string AgentName { get; set; } = string.Empty;
 
-    /// <summary>Model that produced the response, e.g. "openai/gpt-4o-mini".</summary>
+    /// <summary>Model that produced the response, e.g. "gemini-flash-lite-latest".</summary>
     public string Model { get; set; } = string.Empty;
 
     public long InputTokens { get; set; }

@@ -24,8 +24,8 @@ public sealed class UsageMeter(
     {
         try
         {
-            var model = config[$"GitHubModels:Agents:{agentName}"]
-                ?? config["GitHubModels:Model"]
+            var model = config[$"Gemini:Agents:{agentName}"]
+                ?? config["Gemini:Model"]
                 ?? string.Empty;
 
             db.AgentUsages.Add(new AgentUsage

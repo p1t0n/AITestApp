@@ -6,8 +6,11 @@ public sealed class SemanticSearchOptions
     public const string Section = "SemanticSearch";
 
     /// <summary>Minimum cosine similarity (0–1) for a chunk to count as a match. Below this it is
-    /// dropped, so an off-topic query returns nothing rather than the least-bad rows.</summary>
-    public double MinSimilarity { get; set; } = 0.30;
+    /// dropped, so an off-topic query returns nothing rather than the least-bad rows. Tuned per
+    /// embedding model: gemini-embedding-001 scores cluster higher than the retired OpenAI model
+    /// did, so the floor sits mid-plateau at 0.55 (sweep 2026-08-01, see
+    /// manuals/retrieval-eval-baseline.md).</summary>
+    public double MinSimilarity { get; set; } = 0.55;
 
     /// <summary>Default number of employees returned when the caller doesn't specify.</summary>
     public int DefaultTopK { get; set; } = 5;

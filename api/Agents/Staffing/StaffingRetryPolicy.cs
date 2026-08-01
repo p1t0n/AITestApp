@@ -13,7 +13,7 @@ namespace CvManager.Agents.Staffing;
 public sealed record StaffingRetryPolicy(int MaxAttempts, Func<int, TimeSpan> Delay)
 {
     /// <summary>Production default: three attempts, linear backoff (5s, then 10s) — enough to ride
-    /// out GitHub Models' short per-minute limits without stalling the report for long.</summary>
+    /// out Gemini's free-tier per-minute limits without stalling the report for long.</summary>
     public static StaffingRetryPolicy Default { get; } = new(
         MaxAttempts: 3,
         Delay: failures => TimeSpan.FromSeconds(5 * failures));

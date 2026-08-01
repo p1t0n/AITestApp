@@ -27,10 +27,10 @@ builder.Services.AddScoped<IUsageService, UsageService>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddHttpClient();
 
-// Chat model: provider-agnostic IChatClient over GitHub Models (OpenAI-compatible, free with a
+// Chat model: provider-agnostic IChatClient over Gemini (OpenAI-compatible, free tier with an API
 // PAT). One shared default client, plus a keyed client for any agent that overrides its model via
-// GitHubModels:Agents:<agent>. Swap the backend here in one place for Azure OpenAI / Anthropic / etc.
-builder.Services.AddGitHubModelsChatClient(builder.Configuration);
+// Gemini:Agents:<agent>. Swap the backend here in one place for Azure OpenAI / Anthropic / etc.
+builder.Services.AddGeminiChatClient(builder.Configuration);
 
 // MCP access: each agent gets its own keyed client-credentials identity + tool source, bound to
 // its McpAuth:<agent> config section. Register a new agent's identity here before its agent below.

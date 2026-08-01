@@ -36,7 +36,7 @@ See [SPEC.md](SPEC.md).
 
 - **Backend:** ASP.NET Core Web API (.NET 10), layered Domain / Application / Infrastructure / Web
 - **MCP server:** ModelContextProtocol (Streamable HTTP), thin adapters over the Application layer, OAuth 2.1 (Keycloak) with per-tool scopes
-- **AI agents:** Microsoft Agent Framework over provider-agnostic `IChatClient` (GitHub Models by default); embeddings via `text-embedding-3-small`
+- **AI agents:** Microsoft Agent Framework over provider-agnostic `IChatClient` (Gemini free tier by default); embeddings via `gemini-embedding-001` (1536 dims)
 - **Vector search:** PostgreSQL + pgvector (cosine), EF Core mapping via Pgvector.EntityFrameworkCore
 - **Frontend:** React + Vite + TypeScript, MUI, TanStack Query (+ vitest component tests)
 - **Database:** PostgreSQL via EF Core
@@ -122,10 +122,10 @@ The MCP server binds `http://localhost:5100` (its launch profile).
 
 AI agents built on the **Microsoft Agent Framework** that *consume* the MCP server (they hold
 a `mcp:read` token from the `agent-roster-qa` Keycloak service-account client, so the MCP server
-shows them read tools only). Needs a free **GitHub Models** PAT:
+shows them read tools only). Needs a free **Gemini** API key (https://aistudio.google.com/apikey):
 
 ```bash
-export GITHUB_TOKEN=<your-github-models-pat>
+export GEMINI_API_KEY=<your-gemini-api-key>
 cd api/Agents
 dotnet run
 ```
@@ -206,7 +206,7 @@ cd web && npm test   # frontend: vitest component tests
 ```
 
 Live tests (real embeddings / models) are opt-in: `dotnet test --filter "Category=live"` with
-`GITHUB_TOKEN` set. The retrieval regression gate lives there too.
+`GEMINI_API_KEY` set. The retrieval regression gate lives there too.
 
 ## Database migrations
 

@@ -27,7 +27,7 @@ public class UsageMeterTests
         await using var db = NewDb();
         var meter = new UsageMeter(
             db,
-            Config(("GitHubModels:Model", "openai/gpt-4o-mini")),
+            Config(("Gemini:Model", "gemini-flash-lite-latest")),
             TimeProvider.System,
             NullLogger<UsageMeter>.Instance);
         var userId = Guid.NewGuid();
@@ -37,7 +37,7 @@ public class UsageMeterTests
         var row = await db.AgentUsages.SingleAsync();
         row.UserId.Should().Be(userId);
         row.AgentName.Should().Be("match");
-        row.Model.Should().Be("openai/gpt-4o-mini");
+        row.Model.Should().Be("gemini-flash-lite-latest");
         row.InputTokens.Should().Be(100);
         row.OutputTokens.Should().Be(40);
         row.TotalTokens.Should().Be(140);
@@ -49,13 +49,13 @@ public class UsageMeterTests
         await using var db = NewDb();
         var meter = new UsageMeter(
             db,
-            Config(("GitHubModels:Model", "openai/gpt-4o-mini"),
-                   ("GitHubModels:Agents:match", "openai/gpt-4o")),
+            Config(("Gemini:Model", "gemini-flash-lite-latest"),
+                   ("Gemini:Agents:match", "gemini-pro-latest")),
             TimeProvider.System,
             NullLogger<UsageMeter>.Instance);
 
         await meter.RecordAsync(Guid.NewGuid(), "match", new AgentReply("answer", 1, 1, 2));
 
-        (await db.AgentUsages.SingleAsync()).Model.Should().Be("openai/gpt-4o");
+        (await db.AgentUsages.SingleAsync()).Model.Should().Be("gemini-pro-latest");
     }
 }

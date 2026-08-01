@@ -10,7 +10,7 @@ namespace CvManager.Agents.Tests;
 /// (authenticating as the agent-cv-tailoring Keycloak client) through the Agents HTTP endpoint.
 /// Excluded from the default run. Run on demand: <c>dotnet test --filter "Category=live"</c>.
 ///
-/// Preconditions: a GitHub Models PAT in <c>GITHUB_TOKEN</c>, and a running MCP server + Keycloak
+/// Preconditions: a Gemini API key in <c>GEMINI_API_KEY</c>, and a running MCP server + Keycloak
 /// (with the agent-cv-tailoring client) reachable at the configured URLs.
 /// </summary>
 [Trait("Category", "live")]
@@ -20,8 +20,8 @@ public class CvTailoringLiveSmokeTests
     public async Task Tailors_a_cv_end_to_end()
     {
         Skip.If(
-            string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GITHUB_TOKEN")),
-            "Live smoke test needs a GitHub Models PAT in GITHUB_TOKEN (and a running MCP server + Keycloak).");
+            string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GEMINI_API_KEY")),
+            "Live smoke test needs a Gemini API key in GEMINI_API_KEY (and a running MCP server + Keycloak).");
 
         using var factory = new WebApplicationFactory<Program>();
         using var client = factory.CreateClient();
