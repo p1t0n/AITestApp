@@ -16,4 +16,9 @@ public sealed class SearchIndexOptions
 
     /// <summary>How many chunks to embed per provider call.</summary>
     public int EmbedBatchSize { get; set; } = 32;
+
+    /// <summary>Seconds to wait after a pass that died on embedding-quota exhaustion. The daily
+    /// free-tier cap won't clear on the normal tick, and retrying anyway burns the next day's
+    /// allowance on guaranteed failures (P1T-98) — so this is deliberately long.</summary>
+    public int QuotaBackoffSeconds { get; set; } = 1800;
 }

@@ -1,3 +1,4 @@
+using System.ClientModel;
 using CvManager.Application.Abstractions;
 using CvManager.Infrastructure.Embeddings;
 using FluentAssertions;
@@ -59,6 +60,48 @@ public class EmbedderTests
         generator.CallCount.Should().Be(0);
     }
 
+    [Fact]
+    public async Task Exhausted_429_retries_throw_typed_quota_exception()
+    {
+        var generator = new ThrowingEmbeddingGenerator(status: 429);
+        var embedder = new GeminiEmbedder(
+            generator, "gemini-embedding-001", 1536,
+            new CapturingLogger<GeminiEmbedder>(), retryDelay: TimeSpan.Zero);
+
+        var act = () => embedder.EmbedAsync(["x"]);
+
+        await act.Should().ThrowAsync<EmbeddingQuotaExceededException>();
+        generator.CallCount.Should().Be(4); // all attempts spent before giving up
+    }
+
+    [Fact]
+    public async Task Recovers_when_429_clears_within_retry_budget()
+    {
+        var generator = new ThrowingEmbeddingGenerator(status: 429, failuresBeforeSuccess: 2);
+        var embedder = new GeminiEmbedder(
+            generator, "gemini-embedding-001", 1536,
+            new CapturingLogger<GeminiEmbedder>(), retryDelay: TimeSpan.Zero);
+
+        var batch = await embedder.EmbedAsync(["x"]);
+
+        batch.Vectors.Should().HaveCount(1);
+        generator.CallCount.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task Non_429_provider_errors_propagate_unwrapped()
+    {
+        var generator = new ThrowingEmbeddingGenerator(status: 500);
+        var embedder = new GeminiEmbedder(
+            generator, "gemini-embedding-001", 1536,
+            new CapturingLogger<GeminiEmbedder>(), retryDelay: TimeSpan.Zero);
+
+        var act = () => embedder.EmbedAsync(["x"]);
+
+        await act.Should().ThrowAsync<ClientResultException>();
+        generator.CallCount.Should().Be(1);
+    }
+
     /// <summary>Deterministic offline stand-in for an OpenAI embedding client.</summary>
     private sealed class FakeEmbeddingGenerator : IEmbeddingGenerator<string, Embedding<float>>
     {
@@ -110,6 +153,41 @@ public class EmbedderTests
             }
 
             return vector;
+        }
+    }
+
+    /// <summary>Throws <see cref="ClientResultException"/> with the given status until
+    /// <c>failuresBeforeSuccess</c> calls have failed, then delegates to the deterministic fake.</summary>
+    private sealed class ThrowingEmbeddingGenerator(int status, int? failuresBeforeSuccess = null)
+        : IEmbeddingGenerator<string, Embedding<float>>
+    {
+        private readonly FakeEmbeddingGenerator _inner = new();
+
+        public int CallCount { get; private set; }
+
+        public Task<GeneratedEmbeddings<Embedding<float>>> GenerateAsync(
+            IEnumerable<string> values,
+            EmbeddingGenerationOptions? options = null,
+            CancellationToken cancellationToken = default)
+        {
+            CallCount++;
+            if (failuresBeforeSuccess is { } limit && CallCount > limit)
+            {
+                return _inner.GenerateAsync(values, options, cancellationToken);
+            }
+
+            throw new FakeClientResultException(status);
+        }
+
+        public object? GetService(Type serviceType, object? serviceKey = null) => null;
+
+        public void Dispose() { }
+
+        private sealed class FakeClientResultException : ClientResultException
+        {
+            public FakeClientResultException(int status)
+                : base($"provider returned {status}")
+                => Status = status;
         }
     }
 

@@ -16,17 +16,20 @@ public sealed class GeminiEmbedder : IEmbedder
     private readonly ILogger<GeminiEmbedder> _logger;
 
     private readonly int _dimensions;
+    private readonly TimeSpan _retryDelay;
 
     public GeminiEmbedder(
         IEmbeddingGenerator<string, Embedding<float>> generator,
         string model,
         int dimensions,
-        ILogger<GeminiEmbedder> logger)
+        ILogger<GeminiEmbedder> logger,
+        TimeSpan? retryDelay = null)
     {
         _generator = generator;
         Model = model;
         _dimensions = dimensions;
         _logger = logger;
+        _retryDelay = retryDelay ?? TimeSpan.FromSeconds(20);
     }
 
     public string Model { get; }
@@ -51,8 +54,10 @@ public sealed class GeminiEmbedder : IEmbedder
     }
 
     /// <summary>Gemini's free tier throttles embedding requests per minute; a burst (reconciler
-    /// backfill, eval corpus) trips 429s that clear on their own. Waits and retries a few times
-    /// before letting the error surface to the caller's own failure handling.</summary>
+    /// backfill, eval corpus) trips 429s that clear on their own. Waits and retries a few times;
+    /// a 429 that outlives the whole retry budget is the daily request cap, not a throttle, so it
+    /// surfaces as <see cref="EmbeddingQuotaExceededException"/> for callers to back off on
+    /// (P1T-98). Other errors surface to the caller's own failure handling untouched.</summary>
     private async Task<GeneratedEmbeddings<Embedding<float>>> GenerateWithRetryAsync(
         IReadOnlyList<string> inputs, EmbeddingGenerationOptions options, CancellationToken ct)
     {
@@ -63,9 +68,15 @@ public sealed class GeminiEmbedder : IEmbedder
             {
                 return await _generator.GenerateAsync(inputs, options, cancellationToken: ct);
             }
-            catch (ClientResultException ex) when (ex.Status == 429 && attempt < maxAttempts)
+            catch (ClientResultException ex) when (ex.Status == 429)
             {
-                var delay = TimeSpan.FromSeconds(20 * attempt);
+                if (attempt >= maxAttempts)
+                {
+                    throw new EmbeddingQuotaExceededException(
+                        $"Embedding quota for {Model} still exhausted after {maxAttempts} attempts.", ex);
+                }
+
+                var delay = _retryDelay * attempt;
                 _logger.LogWarning(
                     "embedding-index: 429 from {Model}, attempt {Attempt}/{MaxAttempts}, waiting {DelaySeconds}s",
                     Model, attempt, maxAttempts, delay.TotalSeconds);

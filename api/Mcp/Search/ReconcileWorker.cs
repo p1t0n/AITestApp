@@ -1,3 +1,4 @@
+using CvManager.Application.Abstractions;
 using CvManager.Infrastructure.Search;
 using Microsoft.Extensions.Options;
 
@@ -33,11 +34,13 @@ public sealed class ReconcileWorker : BackgroundService
             return;
         }
 
-        var interval = TimeSpan.FromSeconds(Math.Max(1, _options.IntervalSeconds));
-        _logger.LogInformation("Semantic search reconciliation worker started (every {Interval}).", interval);
+        _logger.LogInformation(
+            "Semantic search reconciliation worker started (every {Interval}).",
+            NextDelay(failure: null, _options));
 
         while (!stoppingToken.IsCancellationRequested)
         {
+            Exception? failure = null;
             try
             {
                 using var scope = _scopeFactory.CreateScope();
@@ -48,15 +51,25 @@ public sealed class ReconcileWorker : BackgroundService
             {
                 break;
             }
+            catch (EmbeddingQuotaExceededException ex)
+            {
+                // The daily cap won't clear on the normal tick; hammering it burns the next
+                // day's allowance on guaranteed failures (P1T-98).
+                failure = ex;
+                _logger.LogWarning(ex,
+                    "Embedding quota exhausted; backing off for {Backoff} before the next reconcile pass.",
+                    NextDelay(ex, _options));
+            }
             catch (Exception ex)
             {
                 // Never crash the host: a transient DB/embedding failure just retries next tick.
+                failure = ex;
                 _logger.LogError(ex, "Semantic search reconciliation pass failed; retrying next tick.");
             }
 
             try
             {
-                await Task.Delay(interval, stoppingToken);
+                await Task.Delay(NextDelay(failure, _options), stoppingToken);
             }
             catch (OperationCanceledException)
             {
@@ -64,4 +77,12 @@ public sealed class ReconcileWorker : BackgroundService
             }
         }
     }
+
+    /// <summary>How long to wait before the next pass, given how the last one ended. Pure and
+    /// unit-tested directly; quota exhaustion earns the long backoff, everything else stays on
+    /// the normal tick.</summary>
+    public static TimeSpan NextDelay(Exception? failure, SearchIndexOptions options)
+        => failure is EmbeddingQuotaExceededException
+            ? TimeSpan.FromSeconds(Math.Max(1, options.QuotaBackoffSeconds))
+            : TimeSpan.FromSeconds(Math.Max(1, options.IntervalSeconds));
 }
