@@ -37,7 +37,9 @@ public static class EmbeddingServiceCollectionExtensions
             sp.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>(),
             cfg.EmbeddingModel,
             cfg.Dimensions,
-            sp.GetRequiredService<ILogger<GeminiEmbedder>>()));
+            sp.GetRequiredService<ILogger<GeminiEmbedder>>(),
+            clock: sp.GetService<TimeProvider>() ?? TimeProvider.System,
+            quotaBreakerWindow: TimeSpan.FromSeconds(Math.Max(1, cfg.QuotaBreakerSeconds))));
 
         return services;
     }

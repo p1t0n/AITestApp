@@ -17,19 +17,28 @@ public sealed class GeminiEmbedder : IEmbedder
 
     private readonly int _dimensions;
     private readonly TimeSpan _retryDelay;
+    private readonly TimeProvider _clock;
+    private readonly TimeSpan _quotaBreakerWindow;
+
+    private readonly object _breakerLock = new();
+    private DateTimeOffset _quotaOpenUntil = DateTimeOffset.MinValue;
 
     public GeminiEmbedder(
         IEmbeddingGenerator<string, Embedding<float>> generator,
         string model,
         int dimensions,
         ILogger<GeminiEmbedder> logger,
-        TimeSpan? retryDelay = null)
+        TimeSpan? retryDelay = null,
+        TimeProvider? clock = null,
+        TimeSpan? quotaBreakerWindow = null)
     {
         _generator = generator;
         Model = model;
         _dimensions = dimensions;
         _logger = logger;
         _retryDelay = retryDelay ?? TimeSpan.FromSeconds(20);
+        _clock = clock ?? TimeProvider.System;
+        _quotaBreakerWindow = quotaBreakerWindow ?? TimeSpan.FromSeconds(1800);
     }
 
     public string Model { get; }
@@ -40,6 +49,8 @@ public sealed class GeminiEmbedder : IEmbedder
         {
             return new EmbeddingBatch([], 0);
         }
+
+        ThrowIfBreakerOpen();
 
         var options = new EmbeddingGenerationOptions { Dimensions = _dimensions };
         var generated = await GenerateWithRetryAsync(inputs, options, ct);
@@ -72,6 +83,7 @@ public sealed class GeminiEmbedder : IEmbedder
             {
                 if (attempt >= maxAttempts)
                 {
+                    OpenBreaker();
                     throw new EmbeddingQuotaExceededException(
                         $"Embedding quota for {Model} still exhausted after {maxAttempts} attempts.", ex);
                 }
@@ -83,5 +95,32 @@ public sealed class GeminiEmbedder : IEmbedder
                 await Task.Delay(delay, ct);
             }
         }
+    }
+
+    /// <summary>While the breaker is open every embed call fails fast with the typed quota
+    /// exception — no provider request is spent. The daily cap cannot clear within any short
+    /// retry, so probing it just burns the next day's allowance (P1T-99).</summary>
+    private void ThrowIfBreakerOpen()
+    {
+        lock (_breakerLock)
+        {
+            if (_clock.GetUtcNow() < _quotaOpenUntil)
+            {
+                throw new EmbeddingQuotaExceededException(
+                    $"Embedding quota breaker for {Model} is open until {_quotaOpenUntil:O}.");
+            }
+        }
+    }
+
+    private void OpenBreaker()
+    {
+        lock (_breakerLock)
+        {
+            _quotaOpenUntil = _clock.GetUtcNow() + _quotaBreakerWindow;
+        }
+
+        _logger.LogWarning(
+            "embedding-index: quota exhausted for {Model}; breaker open for {WindowSeconds}s",
+            Model, _quotaBreakerWindow.TotalSeconds);
     }
 }

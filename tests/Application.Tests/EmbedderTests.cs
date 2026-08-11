@@ -102,6 +102,40 @@ public class EmbedderTests
         generator.CallCount.Should().Be(1);
     }
 
+    [Fact]
+    public async Task Quota_breaker_fails_fast_until_window_elapses()
+    {
+        var clock = new TestClock(DateTimeOffset.Parse("2026-08-11T00:00:00Z"));
+        var generator = new ThrowingEmbeddingGenerator(status: 429);
+        var embedder = new GeminiEmbedder(
+            generator, "gemini-embedding-001", 1536, new CapturingLogger<GeminiEmbedder>(),
+            retryDelay: TimeSpan.Zero, clock: clock, quotaBreakerWindow: TimeSpan.FromMinutes(30));
+
+        await embedder.Invoking(e => e.EmbedAsync(["a"]))
+            .Should().ThrowAsync<EmbeddingQuotaExceededException>();
+        generator.CallCount.Should().Be(4);
+
+        // Breaker open: fail fast, no provider calls spent.
+        await embedder.Invoking(e => e.EmbedAsync(["b"]))
+            .Should().ThrowAsync<EmbeddingQuotaExceededException>();
+        generator.CallCount.Should().Be(4);
+
+        // Window elapsed: the provider is probed again.
+        clock.Advance(TimeSpan.FromMinutes(31));
+        await embedder.Invoking(e => e.EmbedAsync(["c"]))
+            .Should().ThrowAsync<EmbeddingQuotaExceededException>();
+        generator.CallCount.Should().Be(8);
+    }
+
+    private sealed class TestClock(DateTimeOffset start) : TimeProvider
+    {
+        private DateTimeOffset _now = start;
+
+        public override DateTimeOffset GetUtcNow() => _now;
+
+        public void Advance(TimeSpan by) => _now += by;
+    }
+
     /// <summary>Deterministic offline stand-in for an OpenAI embedding client.</summary>
     private sealed class FakeEmbeddingGenerator : IEmbeddingGenerator<string, Embedding<float>>
     {
