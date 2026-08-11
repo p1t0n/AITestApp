@@ -52,13 +52,19 @@ public sealed record StaffingRecommendation(Guid EmployeeId, string Narrative);
 
 /// <summary>The pinned POST /agents/staffing report (P1T-71, camelCase over the wire).
 /// <see cref="Recommendation"/> is null when the narrative degrades; <see cref="Degraded"/> plus
-/// <see cref="Notes"/> explain any partial results (failed matches, cap trips, narrative faults).</summary>
+/// <see cref="Notes"/> explain any partial results (failed matches, cap trips, narrative faults).
+/// <see cref="ProposalId"/> (P1T-100) references the pending approval record created from this
+/// run; omitted from the wire when persistence degraded, keeping the pre-P1T-100 payload
+/// byte-identical.</summary>
 public sealed record StaffingReport(
     IReadOnlyList<string> Requirements,
     IReadOnlyList<StaffingCandidate> Candidates,
     StaffingRecommendation? Recommendation,
     bool Degraded,
-    IReadOnlyList<string> Notes);
+    IReadOnlyList<string> Notes,
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    Guid? ProposalId = null);
 
 /// <summary>One ordered progress event from a pipeline run. This is the streaming seam: the
 /// pipeline emits these in order (via <see cref="IProgress{T}"/> and on the outcome) and the SSE

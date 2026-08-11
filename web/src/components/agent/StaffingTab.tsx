@@ -21,6 +21,7 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import {
   apiErrorMessage,
+  decideStaffingProposal,
   runStaffing,
   useSkills,
   type StaffingReport,
@@ -35,6 +36,70 @@ import {
 } from "./staffingProgress";
 import { StaffingStepper } from "./StaffingStepper";
 import { StaffingCandidateCard, StaffingRecommendation } from "./StaffingCandidateCard";
+
+type DecisionState =
+  | { phase: "pending" | "saving" }
+  | { phase: "decided"; status: string }
+  | { phase: "failed"; message: string };
+
+// The human decision on a run's proposal (P1T-100): the pipeline only proposes — staffing
+// outcomes are approved or rejected here, once, by a person. A decision failure keeps the
+// buttons live for retry; a conflict (someone else decided first) reads as any other API error.
+function ProposalDecisionCard({ proposalId }: { proposalId: string }) {
+  const [state, setState] = useState<DecisionState>({ phase: "pending" });
+
+  async function decide(decision: "approved" | "rejected") {
+    setState({ phase: "saving" });
+    try {
+      const result = await decideStaffingProposal(proposalId, decision);
+      setState({ phase: "decided", status: result.status });
+    } catch (err) {
+      setState({ phase: "failed", message: apiErrorMessage(err) });
+    }
+  }
+
+  if (state.phase === "decided") {
+    return (
+      <Paper elevation={0} sx={{ p: 1.5, bgcolor: "action.hover", borderRadius: 2 }} data-testid="proposal-decided">
+        <Typography variant="body2" fontWeight={600}>
+          Proposal {state.status}
+        </Typography>
+      </Paper>
+    );
+  }
+
+  return (
+    <Paper elevation={0} sx={{ p: 1.5, bgcolor: "action.hover", borderRadius: 2 }} data-testid="proposal-decision">
+      <Typography variant="body2" fontWeight={600} sx={{ mb: 1 }}>
+        This proposal awaits your decision
+      </Typography>
+      {state.phase === "failed" && (
+        <Typography variant="body2" color="error" sx={{ mb: 1 }}>
+          {state.message}
+        </Typography>
+      )}
+      <Stack direction="row" spacing={1}>
+        <Button
+          size="small"
+          variant="contained"
+          disabled={state.phase === "saving"}
+          onClick={() => void decide("approved")}
+        >
+          Approve
+        </Button>
+        <Button
+          size="small"
+          variant="outlined"
+          color="inherit"
+          disabled={state.phase === "saving"}
+          onClick={() => void decide("rejected")}
+        >
+          Reject
+        </Button>
+      </Stack>
+    </Paper>
+  );
+}
 
 export function StaffingPanel({
   onOpenInMatch,
@@ -266,6 +331,8 @@ export function StaffingPanel({
             )}
 
             <StaffingRecommendation report={report} />
+
+            {report.proposalId && <ProposalDecisionCard proposalId={report.proposalId} />}
 
             <Box>
               <Typography variant="caption" color="text.secondary">

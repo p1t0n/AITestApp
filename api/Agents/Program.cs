@@ -147,6 +147,8 @@ builder.Services.AddOptions<StaffingOptions>().Bind(builder.Configuration.GetSec
 builder.Services.AddSingleton(sp => new StaffingThrottle(
     sp.GetRequiredService<IOptions<StaffingOptions>>().Value.MaxConcurrentMatches));
 builder.Services.AddSingleton(StaffingRetryPolicy.Default);
+// The proposal ledger (P1T-100): staffing runs persist a pending proposal; humans decide it.
+builder.Services.AddScoped<StaffingProposalStore>();
 builder.Services.AddScoped(sp => new StaffingPipeline(
     sp.GetRequiredService<IShortlistRunService>(),
     sp.GetRequiredService<IMatchRunService>(),
@@ -448,6 +450,7 @@ app.MapPost("/agents/resume-ingestion", async (
 app.MapPost("/agents/staffing", async (
     StaffingRequest request,
     StaffingPipeline pipeline,
+    StaffingProposalStore proposals,
     ClaimsPrincipal user,
     IUsageService usage,
     IOptions<Microsoft.AspNetCore.Http.Json.JsonOptions> json,
@@ -480,8 +483,55 @@ app.MapPost("/agents/staffing", async (
         json.Value.SerializerOptions,
         TimeSpan.FromSeconds(staffing.Value.SseKeepAliveSeconds),
         loggerFactory.CreateLogger(nameof(StaffingSse)),
-        http.RequestAborted);
+        http.RequestAborted,
+        persistProposal: (report, ct) => proposals.CreateAsync(userId, request.JobDescription, report, ct));
     return Results.Empty;
+}).RequireAuthorization();
+
+// GET /agents/staffing/proposals?status=pending -> the approval inbox, newest first (P1T-100).
+app.MapGet("/agents/staffing/proposals", async (
+    string? status, StaffingProposalStore proposals, CancellationToken ct) =>
+{
+    var list = await proposals.ListAsync(status, ct);
+    return Results.Ok(list.Select(ProposalResponse.From).ToList());
+}).RequireAuthorization();
+
+// POST /agents/staffing/proposals/{id}/decision  { "decision": "approved"|"rejected", "note"? }
+// The human write path: only an identified user can decide, a proposal is decided exactly once
+// (repeat -> 409), and the agent layer never calls this — humans hold write authority.
+app.MapPost("/agents/staffing/proposals/{id:guid}/decision", async (
+    Guid id,
+    ProposalDecisionRequest request,
+    StaffingProposalStore proposals,
+    ClaimsPrincipal user,
+    CancellationToken ct) =>
+{
+    if (user.GetUserId() is not { } decidedBy)
+    {
+        return Results.Forbid();
+    }
+
+    var approve = request.Decision?.Trim().ToLowerInvariant() switch
+    {
+        "approved" or "approve" => true,
+        "rejected" or "reject" => false,
+        _ => (bool?)null,
+    };
+    if (approve is null)
+    {
+        return Results.BadRequest(new { error = "decision must be 'approved' or 'rejected'." });
+    }
+
+    var (result, proposal) = await proposals.DecideAsync(id, decidedBy, approve.Value, request.Note, ct);
+    return result switch
+    {
+        ProposalDecisionResult.NotFound => Results.NotFound(),
+        ProposalDecisionResult.AlreadyDecided => Results.Problem(
+            title: "The proposal is already decided.",
+            detail: $"Current status: {proposal!.Status}.",
+            statusCode: StatusCodes.Status409Conflict),
+        _ => Results.Ok(ProposalResponse.From(proposal!)),
+    };
 }).RequireAuthorization();
 
 app.Run();
@@ -506,6 +556,34 @@ internal sealed record StaffingRequest(
     string? Location = null,
     decimal? MinYears = null,
     int? MatchTop = null);
+internal sealed record ProposalDecisionRequest(string? Decision, string? Note = null);
+internal sealed record ProposalCandidateResponse(
+    Guid EmployeeId, string Name, string Title, int Rank, int? MatchScore, string? MatchBand, string Rationale);
+internal sealed record ProposalResponse(
+    Guid Id,
+    string JobDescription,
+    string Status,
+    DateTimeOffset CreatedAt,
+    Guid? RecommendedEmployeeId,
+    bool ReportDegraded,
+    IReadOnlyList<ProposalCandidateResponse> Candidates,
+    Guid? DecidedByUserId,
+    DateTimeOffset? DecidedAt,
+    string? DecisionNote)
+{
+    public static ProposalResponse From(CvManager.Domain.Entities.StaffingProposal p) => new(
+        p.Id,
+        p.JobDescription,
+        p.Status,
+        p.CreatedAt,
+        p.RecommendedEmployeeId,
+        p.ReportDegraded,
+        p.Candidates.Select(c => new ProposalCandidateResponse(
+            c.EmployeeId, c.Name, c.Title, c.Rank, c.MatchScore, c.MatchBand, c.Rationale)).ToList(),
+        p.DecidedByUserId,
+        p.DecidedAt,
+        p.DecisionNote);
+}
 
 // Exposed so the integration/smoke tests (WebApplicationFactory) can reference the entry point.
 public partial class Program { }

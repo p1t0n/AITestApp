@@ -21,6 +21,8 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<PasskeyCredential> PasskeyCredentials => Set<PasskeyCredential>();
     public DbSet<AgentUsage> AgentUsages => Set<AgentUsage>();
+    public DbSet<StaffingProposal> StaffingProposals => Set<StaffingProposal>();
+    public DbSet<StaffingProposalCandidate> StaffingProposalCandidates => Set<StaffingProposalCandidate>();
     public DbSet<EmployeeSearchChunk> EmployeeSearchChunks => Set<EmployeeSearchChunk>();
 
     protected override void OnModelCreating(ModelBuilder b)
@@ -165,6 +167,30 @@ public class AppDbContext : DbContext, IAppDbContext
             e.HasIndex(x => new { x.UserId, x.Timestamp });
             e.HasOne<User>().WithMany()
                 .HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<StaffingProposal>(e =>
+        {
+            e.Property(x => x.JobDescription).IsRequired();
+            e.Property(x => x.Status).HasMaxLength(20).IsRequired();
+            e.Property(x => x.DecisionNote).HasMaxLength(2000);
+            // The approval inbox lists pending proposals newest-first.
+            e.HasIndex(x => new { x.Status, x.CreatedAt });
+            e.HasMany(x => x.Candidates).WithOne()
+                .HasForeignKey(x => x.ProposalId).OnDelete(DeleteBehavior.Cascade);
+            // Proposals outlive their users: the decision ledger keeps rows, the reference clears.
+            e.HasOne<User>().WithMany()
+                .HasForeignKey(x => x.RequestedByUserId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne<User>().WithMany()
+                .HasForeignKey(x => x.DecidedByUserId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        b.Entity<StaffingProposalCandidate>(e =>
+        {
+            e.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Title).HasMaxLength(200);
+            e.Property(x => x.MatchBand).HasMaxLength(50);
+            e.Property(x => x.Rationale).IsRequired();
         });
 
         b.Entity<EmployeeSearchChunk>(e =>
