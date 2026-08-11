@@ -30,6 +30,9 @@ public sealed class RosterQaAgent : IChatAgent
         - If roster_semantic_search returns an error or no matches, say that semantic search was
           unavailable or found nothing, then fall back to the structured tools (e.g. list employees
           and their skills) before concluding.
+        - If the result carries a degradedReason, the matches are real but keyword-ranked (semantic
+          ranking was unavailable) — use them as evidence and mention that ranking quality is
+          reduced.
 
         When you refer to an employee, give their full name and include their id in parentheses,
         e.g. "Ada Lovelace (a1b2c3d4-...)", so the answer can be linked back to a record.

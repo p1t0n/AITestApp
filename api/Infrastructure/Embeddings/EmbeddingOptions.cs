@@ -25,4 +25,9 @@ public sealed class EmbeddingOptions
 
     /// <summary>API key. Prefer the GEMINI_API_KEY env var over config in real use.</summary>
     public string ApiKey { get; set; } = "";
+
+    /// <summary>Seconds the embedder's quota breaker stays open after retries exhaust on 429s.
+    /// While open every embed call fails fast with <c>EmbeddingQuotaExceededException</c> instead
+    /// of spending more requests against a daily cap that cannot clear quickly (P1T-99).</summary>
+    public int QuotaBreakerSeconds { get; set; } = 1800;
 }

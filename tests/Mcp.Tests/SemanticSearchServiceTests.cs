@@ -221,4 +221,44 @@ public sealed class SemanticSearchServiceTests : IAsyncLifetime
         public Task<EmbeddingBatch> EmbedAsync(IReadOnlyList<string> inputs, CancellationToken ct = default)
             => throw new InvalidOperationException("backend down");
     }
+
+    [Fact]
+    public async Task Quota_exhaustion_falls_back_to_keyword_search_flagged_degraded()
+    {
+        await using var db = NewDb();
+        var service = new SemanticSearchService(db, new QuotaDeadEmbedder(),
+            Options.Create(new SemanticSearchOptions()), NullLogger<SemanticSearchService>.Instance);
+
+        var result = await service.SearchAsync("fintech");
+
+        result.Error.Should().BeNull();
+        result.DegradedReason.Should().NotBeNullOrWhiteSpace();
+        result.Results.Select(r => r.Name)
+            .Should().Contain(["Fiona Fintech", "Pat Payments"])
+            .And.NotContain("Gary Gaming");
+        result.Results[0].Snippets.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task Degraded_fallback_respects_filters_and_chunk_pool_rules()
+    {
+        await using var db = NewDb();
+        var service = new SemanticSearchService(db, new QuotaDeadEmbedder(),
+            Options.Create(new SemanticSearchOptions()), NullLogger<SemanticSearchService>.Instance);
+
+        // Hard filters still apply: only Gary is in Berlin, and he is off-topic for "fintech".
+        var filtered = await service.SearchAsync("fintech", new SemanticSearchFilters(Location: "Berlin"));
+        filtered.Results.Should().BeEmpty();
+
+        // Achievement bullet chunks stay out of the employee-level pool, same as the semantic path.
+        var bullets = await service.SearchAsync("logistics");
+        bullets.Results.Should().BeEmpty();
+    }
+
+    private sealed class QuotaDeadEmbedder : IEmbedder
+    {
+        public string Model => "quota-dead";
+        public Task<EmbeddingBatch> EmbedAsync(IReadOnlyList<string> inputs, CancellationToken ct = default)
+            => throw new EmbeddingQuotaExceededException("daily quota exhausted");
+    }
 }

@@ -45,13 +45,19 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
 
         var limit = Math.Clamp(topK ?? _options.DefaultTopK, 1, _options.MaxTopK);
 
-        // Embed the query. Retrieval failing must not fault the caller — return a soft error so the
+        // Embed the query. Retrieval failing must not fault the caller: quota exhaustion degrades
+        // to lexical ranking over the same chunk pool; anything else returns a soft error so the
         // agent can fall back to structured tools.
         Vector queryVector;
         try
         {
             var embedded = await _embedder.EmbedAsync([query], ct);
             queryVector = new Vector(embedded.Vectors[0]);
+        }
+        catch (EmbeddingQuotaExceededException ex)
+        {
+            _logger.LogWarning(ex, "Semantic search embedding quota exhausted; using lexical fallback.");
+            return await LexicalSearchAsync(query, filters, limit, ct);
         }
         catch (Exception ex)
         {
@@ -195,6 +201,89 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
             .ToList();
 
         return new ShortlistSearchResult(candidatesRanked);
+    }
+
+    private const string LexicalDegradedReason =
+        "Semantic ranking unavailable (embedding quota exhausted); results are keyword matches "
+        + "over career narratives, ranked lexically.";
+
+    /// <summary>
+    /// Keyword fallback while the embedding quota is exhausted: Postgres full-text search over the
+    /// same chunk pool (achievement bullets excluded), same hard pre-filters, aggregated to
+    /// employees the same way. Scores are ts_rank values — comparable within one result, not with
+    /// semantic similarities — and the result is flagged degraded so the agent can say so.
+    /// </summary>
+    private async Task<SemanticSearchResult> LexicalSearchAsync(
+        string query, SemanticSearchFilters? filters, int limit, CancellationToken ct)
+    {
+        var eligibleIds = await ResolveEligibleEmployeesAsync(filters, ct);
+        if (eligibleIds is { Count: 0 })
+        {
+            return SemanticSearchResult.Empty; // filters excluded everyone
+        }
+
+        var candidates = _db.EmployeeSearchChunks
+            .Where(c => c.SourceType != SearchChunkSource.Achievement);
+        if (eligibleIds is not null)
+        {
+            candidates = candidates.Where(c => eligibleIds.Contains(c.EmployeeId));
+        }
+
+        var rows = await candidates
+            .Where(c => EF.Functions.ToTsVector("english", c.Content)
+                .Matches(EF.Functions.WebSearchToTsQuery("english", query)))
+            .Select(c => new
+            {
+                c.EmployeeId,
+                c.Content,
+                Rank = (double)EF.Functions.ToTsVector("english", c.Content)
+                    .Rank(EF.Functions.WebSearchToTsQuery("english", query)),
+            })
+            .OrderByDescending(x => x.Rank)
+            .Take(Fetch(limit))
+            .ToListAsync(ct);
+
+        if (rows.Count == 0)
+        {
+            return new SemanticSearchResult([], null, LexicalDegradedReason);
+        }
+
+        var byEmployee = rows
+            .GroupBy(x => x.EmployeeId)
+            .Select(g => new
+            {
+                EmployeeId = g.Key,
+                BestRank = g.Max(x => x.Rank),
+                Snippets = g.OrderByDescending(x => x.Rank)
+                    .Take(_options.MaxSnippetsPerEmployee)
+                    .Select(x => Truncate(x.Content))
+                    .ToList(),
+            })
+            .OrderByDescending(x => x.BestRank)
+            .Take(limit)
+            .ToList();
+
+        var ids = byEmployee.Select(x => x.EmployeeId).ToList();
+        var employees = await _db.Employees
+            .Where(e => ids.Contains(e.Id) && e.Status == EmployeeStatus.Active)
+            .Select(e => new { e.Id, e.FirstName, e.LastName, e.Title })
+            .ToDictionaryAsync(e => e.Id, ct);
+
+        var hits = byEmployee
+            .Where(x => employees.ContainsKey(x.EmployeeId))
+            .Select(x =>
+            {
+                var e = employees[x.EmployeeId];
+                return new SemanticSearchHit(
+                    x.EmployeeId,
+                    $"{e.FirstName} {e.LastName}".Trim(),
+                    e.Title,
+                    Math.Round(x.BestRank, 4),
+                    x.Snippets);
+            })
+            .ToList();
+
+        return new SemanticSearchResult(hits, null, LexicalDegradedReason);
     }
 
     /// <summary>Chunks ranked by cosine distance to one query vector, capped and thresholded.</summary>
