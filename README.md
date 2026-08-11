@@ -15,6 +15,8 @@ See [SPEC.md](SPEC.md).
 - **MCP server** — 39 tools over the same Application layer, OAuth 2.1 (Keycloak) per-tool scopes.
 - **Semantic roster search (RAG)** — employee narratives embedded into pgvector by a self-healing
   reconcile worker; `roster_semantic_search` answers "who has done X" by meaning, with evidence.
+  When the embedding quota is exhausted a breaker fails fast and search degrades to Postgres
+  full-text over the same chunks, flagged `degradedReason` so agents disclose reduced ranking.
 - **JD Shortlist** — paste a job description, get coverage-ranked candidates with per-requirement
   evidence and one-click drill-in to a full Match assessment.
 - **Staffing pipeline** — one request runs shortlist → per-candidate Match fan-out → narrative
