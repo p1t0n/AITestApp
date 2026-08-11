@@ -65,7 +65,8 @@ public static class StaffingSse
         JsonSerializerOptions json,
         TimeSpan keepAliveInterval,
         ILogger logger,
-        CancellationToken ct)
+        CancellationToken ct,
+        Func<StaffingReport, CancellationToken, Task<Guid?>>? persistProposal = null)
     {
         response.ContentType = ContentType;
         response.Headers.CacheControl = "no-cache";
@@ -88,7 +89,26 @@ public static class StaffingSse
             }
             else
             {
-                await WriteFrameAsync(response, ReportEvent, outcome.Report!, json, ct);
+                var report = outcome.Report!;
+                if (persistProposal is not null)
+                {
+                    // Best-effort: the store returns null on failure, and the report ships anyway
+                    // with a note instead of a proposal id (degrade, never fail a finished run).
+                    if (await persistProposal(report, ct) is { } proposalId)
+                    {
+                        report = report with { ProposalId = proposalId };
+                    }
+                    else
+                    {
+                        report = report with
+                        {
+                            Degraded = true,
+                            Notes = [.. report.Notes, "The approval record could not be created; this report is view-only."],
+                        };
+                    }
+                }
+
+                await WriteFrameAsync(response, ReportEvent, report, json, ct);
             }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)

@@ -30,6 +30,16 @@ const staffing = {
   ) => Promise<void>,
 };
 
+const decisions = {
+  calls: [] as { proposalId: string; decision: string; note?: string }[],
+  impl: ((proposalId: string, decision: string) =>
+    Promise.resolve({ id: proposalId, status: decision })) as (
+    proposalId: string,
+    decision: "approved" | "rejected",
+    note?: string,
+  ) => Promise<{ id: string; status: string; decisionNote?: string | null }>,
+};
+
 const ADA = "11111111-2222-3333-4444-555555555555";
 const GRACE = "66666666-7777-8888-9999-aaaaaaaaaaaa";
 const LIN = "bbbbbbbb-cccc-dddd-eeee-ffffffffffff";
@@ -41,6 +51,10 @@ vi.mock("../api", async (importOriginal) => {
     runStaffing: (req: StaffingRequest, handlers: StaffingRunHandlers, signal?: AbortSignal) => {
       staffing.calls.push({ req, handlers, signal });
       return staffing.impl(req, handlers, signal);
+    },
+    decideStaffingProposal: (proposalId: string, decision: "approved" | "rejected", note?: string) => {
+      decisions.calls.push({ proposalId, decision, note });
+      return decisions.impl(proposalId, decision, note);
     },
     useSkills: () => ({
       data: [
@@ -197,6 +211,43 @@ function candidateCard(employeeId: string) {
 beforeEach(() => {
   staffing.calls = [];
   staffing.impl = () => Promise.resolve();
+  decisions.calls = [];
+  decisions.impl = (proposalId, decision) => Promise.resolve({ id: proposalId, status: decision });
+});
+
+describe("staffing proposal approval (P1T-100)", () => {
+  const PROPOSAL_ID = "dddddddd-1111-2222-3333-444444444444";
+
+  it("offers approve/reject when the report carries a proposal id and records the decision", async () => {
+    const user = await openStaffingTab();
+    await runToReport(user, { ...REPORT, proposalId: PROPOSAL_ID });
+
+    const card = screen.getByTestId("proposal-decision");
+    await user.click(within(card).getByRole("button", { name: "Approve" }));
+
+    expect(decisions.calls).toEqual([{ proposalId: PROPOSAL_ID, decision: "approved", note: undefined }]);
+    expect(await screen.findByTestId("proposal-decided")).toHaveTextContent(/approved/i);
+  });
+
+  it("renders no decision card when the report has no proposal id", async () => {
+    const user = await openStaffingTab();
+    await runToReport(user, REPORT);
+
+    expect(screen.queryByTestId("proposal-decision")).toBeNull();
+  });
+
+  it("keeps the buttons live for retry when the decision call fails", async () => {
+    decisions.impl = () => Promise.reject(new Error("boom"));
+    const user = await openStaffingTab();
+    await runToReport(user, { ...REPORT, proposalId: PROPOSAL_ID });
+
+    const card = screen.getByTestId("proposal-decision");
+    await user.click(within(card).getByRole("button", { name: "Reject" }));
+
+    expect(await screen.findByText("boom")).toBeInTheDocument();
+    expect(within(screen.getByTestId("proposal-decision")).getByRole("button", { name: "Reject" }))
+      .toBeEnabled();
+  });
 });
 
 describe("Staffing tab — inputs", () => {

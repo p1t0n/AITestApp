@@ -7,8 +7,10 @@ using CvManager.Agents.Tests.Fakes;
 using CvManager.Agents.Usage;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace CvManager.Agents.Tests;
 
@@ -75,6 +77,14 @@ public class StaffingEndpointTests
                 s.AddSingleton(chat ?? NarrativeChat());
                 // One match lane: the fan-out runs serially, so event order is exact.
                 s.AddSingleton(new StaffingThrottle(1));
+                // Working in-memory DB so the proposal ledger (P1T-100) persists in tests — the
+                // production registration points at Postgres, which isn't running here.
+                s.RemoveAll(typeof(DbContextOptions<CvManager.Infrastructure.Persistence.AppDbContext>));
+                s.RemoveAll(typeof(Microsoft.EntityFrameworkCore.Infrastructure
+                    .IDbContextOptionsConfiguration<CvManager.Infrastructure.Persistence.AppDbContext>));
+                var dbName = $"staffing-endpoint-{Guid.NewGuid()}";
+                s.AddDbContext<CvManager.Infrastructure.Persistence.AppDbContext>(
+                    o => o.UseInMemoryDatabase(dbName));
                 extra?.Invoke(s);
             }));
 
@@ -241,6 +251,54 @@ public class StaffingEndpointTests
 
         body.GetProperty("degraded").GetBoolean().Should().BeFalse();
         body.GetProperty("notes").GetArrayLength().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task The_report_carries_a_proposal_id_and_a_human_decides_it_exactly_once()
+    {
+        using var factory = FakedHost();
+        using var client = factory.CreateAuthenticatedClient();
+
+        using var response = await client.PostSseAsync(
+            "/agents/staffing",
+            new { jobDescription = "Platform engineer: Kafka, Kubernetes, leadership.", matchTop = 2 });
+        var frames = await response.ReadAllSseFramesAsync();
+        frames[^1].Event.Should().Be("report");
+        var proposalId = frames[^1].Json.GetProperty("proposalId").GetGuid();
+
+        // The proposal is in the pending inbox with the report's candidates snapshotted.
+        var pending = await client.GetFromJsonAsync<JsonElement>("/agents/staffing/proposals?status=pending");
+        var inbox = pending.EnumerateArray().Single(p => p.GetProperty("id").GetGuid() == proposalId);
+        inbox.GetProperty("status").GetString().Should().Be("pending");
+        inbox.GetProperty("recommendedEmployeeId").GetGuid().Should().Be(AdaId);
+        inbox.GetProperty("candidates").GetArrayLength().Should().Be(2);
+        inbox.GetProperty("candidates")[0].GetProperty("name").GetString().Should().Be("Ada Lovelace");
+
+        // Approve it — the human write path.
+        var approve = await client.PostAsJsonAsync(
+            $"/agents/staffing/proposals/{proposalId}/decision",
+            new { decision = "approved", note = "Staff Ada." });
+        approve.StatusCode.Should().Be(HttpStatusCode.OK);
+        var decided = await approve.Content.ReadFromJsonAsync<JsonElement>();
+        decided.GetProperty("status").GetString().Should().Be("approved");
+        decided.GetProperty("decisionNote").GetString().Should().Be("Staff Ada.");
+        decided.GetProperty("decidedByUserId").ValueKind.Should().Be(JsonValueKind.String);
+
+        // A second decision conflicts; the first stands.
+        var again = await client.PostAsJsonAsync(
+            $"/agents/staffing/proposals/{proposalId}/decision",
+            new { decision = "rejected" });
+        again.StatusCode.Should().Be(HttpStatusCode.Conflict);
+
+        var unknown = await client.PostAsJsonAsync(
+            $"/agents/staffing/proposals/{Guid.NewGuid()}/decision",
+            new { decision = "approved" });
+        unknown.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        var invalid = await client.PostAsJsonAsync(
+            $"/agents/staffing/proposals/{proposalId}/decision",
+            new { decision = "maybe" });
+        invalid.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]

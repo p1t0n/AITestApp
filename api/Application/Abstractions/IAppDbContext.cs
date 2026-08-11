@@ -23,6 +23,8 @@ public interface IAppDbContext
     DbSet<User> Users { get; }
     DbSet<PasskeyCredential> PasskeyCredentials { get; }
     DbSet<AgentUsage> AgentUsages { get; }
+    DbSet<StaffingProposal> StaffingProposals { get; }
+    DbSet<StaffingProposalCandidate> StaffingProposalCandidates { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

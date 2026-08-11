@@ -404,13 +404,35 @@ export interface StaffingReportCandidate {
 }
 
 /** The pinned staffing report (P1T-71). `recommendation` is absent when the narrative degraded;
- * `degraded` + `notes` explain any partial results. */
+ * `degraded` + `notes` explain any partial results. `proposalId` (P1T-100) references the pending
+ * approval record; absent when the run couldn't persist one. */
 export interface StaffingReport {
   requirements: string[];
   candidates: StaffingReportCandidate[];
   recommendation?: { employeeId: string; narrative: string } | null;
   degraded: boolean;
   notes: string[];
+  proposalId?: string | null;
+}
+
+/** A staffing proposal decision result (P1T-100). */
+export interface StaffingProposalDecision {
+  id: string;
+  status: "pending" | "approved" | "rejected";
+  decisionNote?: string | null;
+}
+
+/** Records the human decision on a staffing proposal — approve or reject, once. */
+export async function decideStaffingProposal(
+  proposalId: string,
+  decision: "approved" | "rejected",
+  note?: string,
+): Promise<StaffingProposalDecision> {
+  const res = await agentHttp.post<StaffingProposalDecision>(
+    `/staffing/proposals/${proposalId}/decision`,
+    { decision, note },
+  );
+  return res.data;
 }
 
 /** The terminal `error` frame (failed shortlist or an unexpected fault). */
