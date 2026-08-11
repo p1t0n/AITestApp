@@ -1,5 +1,11 @@
 # Per-request tracing and per-agent cost/latency with MAF + OTel (research, P1T-83)
 
+> **Status (2026-08-11, P1T-101):** both wiring items below are LANDED — the tracing spine +
+> Aspire dashboard shipped as P1T-94, the usage-ledger enrichment as P1T-95 — and the seams
+> survived the Gemini migration (the chat-client seam is now `GeminiServiceCollectionExtensions`;
+> `UsageMeter` prefers the response's real model id). Section 2's "needs manual work" list and the
+> wiring plan describe what was done, kept for the reasoning and source pins.
+
 What it takes to get one distributed trace per user request (SPA → Agents → MCP → Postgres) and
 per-agent/per-step cost and latency numbers out of the stack we run: `Microsoft.Agents.AI` +
 `Microsoft.Agents.AI.Workflows` 1.10.0, `Microsoft.Extensions.AI` 10.7.0, `ModelContextProtocol`
@@ -34,8 +40,8 @@ Facts worth pinning:
   enabled by default once `WithOpenTelemetry` is called) — the `executor.process` span per
   executor is exactly our per-step latency. Verified in the 1.10.0 nupkg XML docs and DLL string
   table (`executor.process`, `executor.id`, `executor.type`, `workflow_invoke`…). The prior
-  manual's "OpenTelemetry built in" claim is true but **opt-in per `WorkflowBuilder`** — our
-  pipeline never calls it today (`api/Agents/Staffing/StaffingPipeline.cs:149`).
+  manual's "OpenTelemetry built in" claim is true but **opt-in per `WorkflowBuilder`** — wired
+  via `builder.WithOpenTelemetry()` in `StaffingPipeline.BuildWorkflow` since P1T-94.
 - `OpenTelemetryChatClient` implements **GenAI semconv v1.41 — experimental, output subject to
   change** ([API docs remark](https://learn.microsoft.com/en-us/dotnet/api/microsoft.extensions.ai.opentelemetrychatclient)).
   Span attrs verified in the 10.7.0 DLL: `gen_ai.request.model`, `gen_ai.response.model`,
@@ -64,7 +70,7 @@ Facts worth pinning:
   `OpenTelemetry.Instrumentation.AspNetCore`; then `AddOpenTelemetry().WithTracing(t => t
   .AddAspNetCoreInstrumentation().AddSource(<table above>).AddOtlpExporter())` + `.WithMetrics`.
   Nothing emits without this — decorators no-op when `ActivitySource.HasListeners()` is false.
-- **Wrap the chat clients once** in `GitHubModelsServiceCollectionExtensions` (both the default
+- **Wrap the chat clients once** in `GeminiServiceCollectionExtensions` (both the default
   and the keyed per-agent clients) — one seam covers all four agents plus the staffing narrative
   call.
 - **`.WithOpenTelemetry()` on the staffing `WorkflowBuilder`** (one line at
@@ -93,8 +99,9 @@ Facts worth pinning:
 - **Cleanest DB-ledger enrichment: a `DelegatingChatClient`** inserted at the same registration
   seam (the M.E.AI middleware pattern; `OpenTelemetryChatClient` itself is one). It observes what
   the endpoint-level `UsageMeter` can't see cheaply: `response.ModelId` (the model **the provider
-  actually served**, vs. today's config lookup in `UsageMeter.cs:27` — which reads
-  `GitHubModels:*` keys and will silently mislabel rows after the Gemini migration), wall-clock
+  actually served**, vs. a config lookup — the original `UsageMeter` read provider config keys
+  and would have silently mislabeled rows across the Gemini migration; fixed in P1T-95, it now
+  prefers the captured `reply.ModelId`), wall-clock
   latency around `GetResponseAsync`, and `Activity.Current?.TraceId` for trace↔row correlation.
   Per-step attribution rides an ambient tag (an `AsyncLocal<string>` scope set by each run
   service/pipeline step, or `ChatOptions.AdditionalProperties`) — the staffing pipeline already
@@ -148,7 +155,7 @@ Add `aspire-dashboard` to `docker-compose.yml` next to postgres/keycloak; both s
 `Experimental.Microsoft.Extensions.AI`, `Experimental.Microsoft.Agents.AI`,
 `Microsoft.Agents.AI.Workflows`, `Experimental.ModelContextProtocol`, `System.Net.Http`, `Npgsql`
 + ASP.NET Core instrumentation; wrap the default and keyed chat clients with `UseOpenTelemetry`
-in `GitHubModelsServiceCollectionExtensions`; add `.WithOpenTelemetry()` to the staffing
+in `GeminiServiceCollectionExtensions`; add `.WithOpenTelemetry()` to the staffing
 `WorkflowBuilder`; add the Aspire dashboard to `docker-compose.yml` and `OTEL_EXPORTER_OTLP_*`
 env to both services. Sensitive data stays off. Acceptance: one staffing run renders as a single
 trace — request → `workflow_invoke` → `executor.process` per step → `chat`/`invoke_agent` → MCP
