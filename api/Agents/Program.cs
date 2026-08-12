@@ -99,6 +99,7 @@ builder.Services.AddAgentMcpIdentity(builder.Configuration, "cv-tailoring");
 builder.Services.AddAgentMcpIdentity(builder.Configuration, "match");
 builder.Services.AddAgentMcpIdentity(builder.Configuration, "shortlist");
 builder.Services.AddAgentMcpIdentity(builder.Configuration, "interview-kit");
+builder.Services.AddAgentMcpIdentity(builder.Configuration, "bench-report");
 builder.Services.AddAgentMcpIdentity(builder.Configuration, "resume-ingestion");
 
 // Agents. Add future agents (Resume Ingestion, Staffing/Match) here. Each resolves its own keyed
@@ -127,6 +128,13 @@ builder.Services.AddSingleton(sp => new InterviewKitAgent(
     sp.ResolveAgentChatClient("interview-kit"),
     sp.GetRequiredKeyedService<IMcpToolSource>("interview-kit"),
     sp.GetRequiredService<ILoggerFactory>()));
+// Bench report (P1T-104): server-composed aggregates (direct MCP employee_list + the proposals
+// ledger), model writes narrative only. Scoped — it reads the DB through IAppDbContext.
+builder.Services.AddScoped(sp => new BenchReportService(
+    sp.GetRequiredKeyedService<IMcpToolSource>("bench-report"),
+    sp.ResolveAgentChatClient("bench-report"),
+    sp.GetRequiredService<CvManager.Application.Abstractions.IAppDbContext>(),
+    sp.GetRequiredService<ILogger<BenchReportService>>()));
 
 // The first mcp:write agent (P1T-92): stages resumes as draft employees; humans promote.
 builder.Services.AddSingleton(sp => new ResumeIngestionAgent(
@@ -576,6 +584,32 @@ app.MapPost("/agents/staffing", async (
         http.RequestAborted,
         persistProposal: (report, ct) => proposals.CreateAsync(userId, request.JobDescription, report, ct));
     return Results.Empty;
+}).RequireAuthorization();
+
+// POST /agents/bench-report  {}  ->  { "answer": "<markdown>", "stats": {...}, "notes": [...] }
+// Every number is server-composed (direct MCP employee_list + the proposals ledger); the model
+// only writes prose over them. Input failures degrade to leaner stats + notes; a model failure
+// ships the deterministic fallback summary — this endpoint never 500s for upstream faults.
+app.MapPost("/agents/bench-report", async (
+    BenchReportService service,
+    ClaimsPrincipal user,
+    IUsageMeter meter,
+    IUsageService usage,
+    CancellationToken ct) =>
+{
+    var userId = user.GetUserId();
+    if (userId is { } pre && await usage.FindExceededAsync(pre, ct) is { } exceeded)
+    {
+        return CapReached(exceeded);
+    }
+
+    var outcome = await service.RunAsync(ct);
+    if (userId is { } uid && outcome.Reply is { } reply)
+    {
+        await meter.RecordAsync(uid, BenchReportService.AgentName, reply, ct: ct);
+    }
+
+    return Results.Ok(outcome.Response);
 }).RequireAuthorization();
 
 // GET /agents/staffing/proposals?status=pending -> the approval inbox, newest first (P1T-100).
