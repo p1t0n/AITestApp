@@ -143,6 +143,11 @@ builder.Services.AddSingleton(sp => new MatchRunService(
     sp.GetServices<IChatAgent>().First(a => a.Name == "match")));
 builder.Services.AddSingleton<IShortlistRunService>(sp => sp.GetRequiredService<ShortlistRunService>());
 builder.Services.AddSingleton<IMatchRunService>(sp => sp.GetRequiredService<MatchRunService>());
+// JD-only match (P1T-103): shortlist retrieval + per-candidate match fan-out, no narrative.
+builder.Services.AddSingleton(sp => new JdMatchRunService(
+    sp.GetRequiredService<IShortlistRunService>(),
+    sp.GetRequiredService<IMatchRunService>(),
+    sp.GetRequiredService<StaffingThrottle>()));
 
 // The staffing pipeline (P1T-75): a MAF workflow over the run services plus a tool-less narrative
 // call on the default chat client. The match throttle is process-wide — it protects the model
@@ -335,10 +340,16 @@ app.MapPost("/agents/interview-kit", async (
     }
 }).RequireAuthorization();
 
-// POST /agents/match  { "employeeId": "guid", "jobDescription": "..." }  ->  { "answer": "..." }
+// POST /agents/match — two modes (P1T-103):
+//   { "employeeId": "guid", "jobDescription": "..." }        -> { "answer": "..." } (unchanged)
+//   { "jobDescription": "...", "topK"? }                     -> { "requirements": [...],
+//     "results": [{ employeeId, name, title, retrievalScore, status, score, band, answer?, error? }] }
+// JD-only mode retrieves the top candidates via shortlist search and fans the match run out per
+// candidate (staffing throttle); one candidate's fault degrades that entry, never the call.
 app.MapPost("/agents/match", async (
     MatchRequest request,
     MatchRunService runner,
+    JdMatchRunService jdRunner,
     ClaimsPrincipal user,
     IUsageMeter meter,
     IUsageService usage,
@@ -346,7 +357,7 @@ app.MapPost("/agents/match", async (
 {
     if (request.EmployeeId == Guid.Empty)
     {
-        return Results.BadRequest(new { error = "employeeId is required." });
+        return Results.BadRequest(new { error = "employeeId must be a real id when present." });
     }
 
     if (string.IsNullOrWhiteSpace(request.JobDescription))
@@ -362,12 +373,36 @@ app.MapPost("/agents/match", async (
 
     try
     {
-        var run = await runner.RunAsync(request.EmployeeId, request.JobDescription, ct);
-        if (userId is { } uid)
+        if (request.EmployeeId is { } employeeId)
         {
-            await meter.RecordAsync(uid, run.AgentName, run.Reply, ct: ct);
+            var run = await runner.RunAsync(employeeId, request.JobDescription, ct);
+            if (userId is { } uid)
+            {
+                await meter.RecordAsync(uid, run.AgentName, run.Reply, ct: ct);
+            }
+            return Results.Ok(new MatchResponse(run.Answer));
         }
-        return Results.Ok(new MatchResponse(run.Answer));
+
+        var outcome = await jdRunner.RunAsync(request.JobDescription, request.TopK, ct);
+
+        // Meter first: tokens were spent even when the run degrades to a 502 below.
+        if (userId is { } jdUid)
+        {
+            foreach (var m in outcome.Metered)
+            {
+                await meter.RecordAsync(jdUid, m.AgentName, m.Reply, m.Step, ct);
+            }
+        }
+
+        if (outcome.FaultDetail is { } fault)
+        {
+            return Results.Problem(
+                title: "Upstream dependency failed (JD-match retrieval).",
+                detail: fault,
+                statusCode: StatusCodes.Status502BadGateway);
+        }
+
+        return Results.Ok(new JdMatchResponse(outcome.Requirements, outcome.Results));
     }
     catch (HttpRequestException ex)
     {
@@ -596,8 +631,11 @@ internal sealed record ResumeIngestionRequest(string ResumeText);
 internal sealed record RosterQaResponse(string Answer, string ThreadId);
 internal sealed record CvTailoringRequest(Guid EmployeeId, string JobDescription);
 internal sealed record InterviewKitRequest(Guid EmployeeId, string JobDescription);
-internal sealed record MatchRequest(Guid EmployeeId, string JobDescription);
+internal sealed record MatchRequest(Guid? EmployeeId, string JobDescription, int? TopK = null);
 internal sealed record MatchResponse(string Answer);
+internal sealed record JdMatchResponse(
+    IReadOnlyList<string> Requirements,
+    IReadOnlyList<JdMatchCandidateResult> Results);
 internal sealed record ShortlistRequest(
     string JobDescription,
     DateOnly? AvailableOn = null,

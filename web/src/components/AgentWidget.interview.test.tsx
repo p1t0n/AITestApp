@@ -23,6 +23,7 @@ vi.mock("../api", async (importOriginal) => {
     useInterviewKit: () => interviewState,
     useCvTailoring: () => ({ mutateAsync: vi.fn(), isPending: false }),
     useMatch: () => ({ mutateAsync: vi.fn(), isPending: false }),
+    useJdMatch: () => ({ mutateAsync: vi.fn(), isPending: false }),
     useApplyRewrite: () => ({ isPending: false, isSuccess: false, isError: false, error: null, mutate: vi.fn() }),
     useEmployees: () => ({
       data: [

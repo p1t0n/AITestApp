@@ -300,6 +300,36 @@ export function useMatch() {
   });
 }
 
+// ---- JD-only match mode (P1T-103) ----
+// POST /agents/match without an employeeId: shortlist retrieval picks the top candidates, the
+// match run fans out per candidate. Failed entries degrade in place (status "failed" + error).
+
+export interface JdMatchResult {
+  employeeId: string;
+  name: string;
+  title: string;
+  retrievalScore: number;
+  status: "completed" | "failed";
+  score?: number | null;
+  band?: string | null;
+  answer?: string | null;
+  error?: string | null;
+}
+
+export interface JdMatchResponse {
+  requirements: string[];
+  results: JdMatchResult[];
+}
+
+export function useJdMatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (req: { jobDescription: string; topK?: number }) =>
+      (await agentHttp.post<JdMatchResponse>("/match", req)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["usage"] }),
+  });
+}
+
 // ---- Interview kit agent (P1T-102) ----
 // Same input as Match/Tailoring; returns the markdown kit plus vetted structured questions.
 // `evidence` is present only when the server verified the quote verbatim against the CV.

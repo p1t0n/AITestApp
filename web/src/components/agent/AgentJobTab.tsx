@@ -21,9 +21,12 @@ import {
   useCvTailoring,
   useEmployees,
   useInterviewKit,
+  useJdMatch,
   useMatch,
   type AgentJobRequest,
   type InterviewQuestion,
+  type JdMatchResponse,
+  type JdMatchResult,
   type TailoringRewrite,
 } from "../../api";
 import { AgentMarkdown } from "./AgentMarkdown";
@@ -160,11 +163,15 @@ export function AgentJobForm({
   const tailoring = useCvTailoring();
   const match = useMatch();
   const interviewKit = useInterviewKit();
+  const jdMatch = useJdMatch();
   const run = mode === "cv-tailoring" ? tailoring : mode === "interview-kit" ? interviewKit : match;
+  const pending = run.isPending || jdMatch.isPending;
 
   const [employeeId, setEmployeeId] = useState<string | null>(initial?.employeeId ?? null);
   const [jobDescription, setJobDescription] = useState(initial?.jobDescription ?? "");
   const [result, setResult] = useState<FormResult | null>(null);
+  // JD-only match results (Match tab with no employee selected, P1T-103).
+  const [jdResult, setJdResult] = useState<JdMatchResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const options = useMemo(
@@ -177,15 +184,23 @@ export function AgentJobForm({
   );
   const selected = options.find((o) => o.id === employeeId) ?? null;
 
-  const canSubmit = !!employeeId && jobDescription.trim().length > 0 && !run.isPending;
+  // Match runs without an employee (JD-only mode); the other modes require one.
+  const canSubmit =
+    (mode === "match" || !!employeeId) && jobDescription.trim().length > 0 && !pending;
 
   async function submit() {
-    if (!employeeId || !jobDescription.trim() || run.isPending) return;
+    if (!canSubmit) return;
     setError(null);
     setResult(null);
+    setJdResult(null);
     const startedAt = performance.now();
-    const req: AgentJobRequest = { employeeId, jobDescription: jobDescription.trim() };
     try {
+      if (mode === "match" && !employeeId) {
+        setJdResult(await jdMatch.mutateAsync({ jobDescription: jobDescription.trim() }));
+        return;
+      }
+
+      const req: AgentJobRequest = { employeeId: employeeId!, jobDescription: jobDescription.trim() };
       // Tailoring returns answer + rewrites; the interview kit answer + questions; Match is
       // answer-only. Normalized into one FormResult shape.
       const res =
@@ -214,7 +229,15 @@ export function AgentJobForm({
           onChange={(_, v) => setEmployeeId(v?.id ?? null)}
           loading={employees.isLoading}
           isOptionEqualToValue={(o, v) => o.id === v.id}
-          renderInput={(params) => <TextField {...params} label="Employee" placeholder="Pick an employee" />}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label={mode === "match" ? "Employee (optional)" : "Employee"}
+              placeholder={
+                mode === "match" ? "Pick an employee, or leave empty to search the roster" : "Pick an employee"
+              }
+            />
+          )}
         />
 
         <Box>
@@ -247,10 +270,10 @@ export function AgentJobForm({
         <Button
           variant="contained"
           disabled={!canSubmit}
-          startIcon={run.isPending ? <CircularProgress size={16} color="inherit" /> : <SmartToyIcon />}
+          startIcon={pending ? <CircularProgress size={16} color="inherit" /> : <SmartToyIcon />}
           onClick={() => void submit()}
         >
-          {run.isPending
+          {pending
             ? mode === "cv-tailoring"
               ? "Tailoring…"
               : mode === "interview-kit"
@@ -260,7 +283,9 @@ export function AgentJobForm({
               ? "Tailor CV"
               : mode === "interview-kit"
                 ? "Build interview kit"
-                : "Assess fit"}
+                : employeeId
+                  ? "Assess fit"
+                  : "Find matches"}
         </Button>
 
         {error && (
@@ -293,8 +318,75 @@ export function AgentJobForm({
         )}
 
         {result && result.questions.length > 0 && <InterviewQuestions questions={result.questions} />}
+
+        {jdResult && <JdMatchResults response={jdResult} />}
       </Stack>
     </Box>
+  );
+}
+
+/** Ranked JD-only match results (P1T-103): score/band per candidate, failed entries degrade in
+ * place with their error instead of hiding. */
+function JdMatchResults({ response }: { response: JdMatchResponse }) {
+  return (
+    <Box>
+      <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
+        {response.requirements.map((r) => (
+          <Chip key={r} label={r} size="small" />
+        ))}
+      </Stack>
+      {response.results.length === 0 ? (
+        <Typography variant="body2" color="text.secondary">
+          No candidates matched this job description.
+        </Typography>
+      ) : (
+        <Stack spacing={1}>
+          {response.results.map((r) => (
+            <JdMatchCard key={r.employeeId} result={r} />
+          ))}
+        </Stack>
+      )}
+    </Box>
+  );
+}
+
+function JdMatchCard({ result }: { result: JdMatchResult }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }} data-testid={`jd-match-${result.employeeId}`}>
+      <Stack direction="row" alignItems="center" justifyContent="space-between">
+        <Box>
+          <Typography variant="body2" fontWeight={600}>
+            {result.name}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {result.title}
+          </Typography>
+        </Box>
+        {result.status === "failed" ? (
+          <Chip label="Match failed" size="small" color="warning" />
+        ) : (
+          <Chip
+            label={result.score != null ? `${result.score}/100 · ${result.band ?? "?"}` : (result.band ?? "n/a")}
+            size="small"
+            color={result.band === "Strong" ? "success" : "default"}
+          />
+        )}
+      </Stack>
+      {result.error && (
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          {result.error}
+        </Typography>
+      )}
+      {result.answer && (
+        <>
+          <Button size="small" onClick={() => setOpen((v) => !v)}>
+            {open ? "Hide analysis" : "Show analysis"}
+          </Button>
+          {open && <AgentMarkdown text={result.answer} />}
+        </>
+      )}
+    </Paper>
   );
 }
 

@@ -151,6 +151,9 @@ available as tabs in the in-app widget):
 - `POST /agents/cv-tailoring {employeeId, jobDescription}` — tailoring guidance for one CV, plus
   vetted before/after achievement-bullet rewrites (`{answer, rewrites[]}`).
 - `POST /agents/match {employeeId, jobDescription}` — gap analysis + scored fit assessment.
+  Omit `employeeId` (JD-only mode) to retrieve the top candidates and score each:
+  `{jobDescription, topK?}` → `{requirements, results[]}` with per-candidate score/band; a failed
+  match degrades that entry, never the call.
 - `POST /agents/interview-kit {employeeId, jobDescription}` — markdown interview kit plus vetted
   structured questions (`{answer, questions[]}`); evidence quotes verified against the CV.
 - `POST /agents/shortlist {jobDescription, availableOn?, skillIds?, location?, minYears?, topK?}` —
