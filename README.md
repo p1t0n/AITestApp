@@ -33,8 +33,12 @@ See [SPEC.md](SPEC.md).
 - **Interview kit** — pick an employee + JD, get gap-targeted interview questions; every evidence
   quote is verified verbatim against the captured `cv_get` result (unverifiable quotes are
   stripped — the model's evidence claims are checked, never trusted).
+- **Bench & capability-gap report** — one click composes deterministic roster stats (via a direct
+  MCP roster call) and staffing-demand stats (the proposals ledger), and the model writes only the
+  narrative over them; every number on screen is server-composed, and a model fault degrades to a
+  deterministic summary.
 - **AI agent widget** — dockable in-app assistant with Roster Q&A / Tailor CV / Match / Interview /
-  Shortlist / Staffing / Usage tabs; per-user token caps enforced server-side.
+  Shortlist / Staffing / Bench / Usage tabs; per-user token caps enforced server-side.
 - **Auth** — passkey (WebAuthn) sign-in for the app; OAuth 2.1 service accounts for agents.
 - **Retrieval evals** — frozen golden set + live regression gate + threshold-sweep CLI; retrieval
   quality is measured, not guessed (see `manuals/retrieval-eval-baseline.md`).
@@ -166,6 +170,9 @@ available as tabs in the in-app widget):
   candidates snapshotted with rank/score/rationale).
 - `POST /agents/staffing/proposals/{id}/decision {decision: approved|rejected, note?}` — records
   the human decision, exactly once (repeat → 409); requires an identified user.
+- `POST /agents/bench-report {}` — bench pressure + capability gaps: `{answer, stats, notes}`;
+  stats are server-composed (roster via MCP + proposals ledger), the model writes prose only, and
+  faults degrade to a deterministic summary with notes.
 - `GET /agents/usage` — the caller's token usage vs their daily/weekly/monthly caps.
 
 Example:

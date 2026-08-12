@@ -166,6 +166,20 @@
       ]
     },
     {
+      "clientId": "agent-bench-report",
+      "name": "Bench report agent (confidential, mcp:read only)",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "agent-bench-report-secret",
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": [
+        "mcp-audience",
+        "mcp:read"
+      ]
+    },
+    {
       "clientId": "agent-resume-ingestion",
       "name": "Resume Ingestion agent (confidential, mcp:read + mcp:write — stages drafts only)",
       "enabled": true,
