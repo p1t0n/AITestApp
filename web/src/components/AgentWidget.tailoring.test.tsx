@@ -70,6 +70,7 @@ vi.mock("../api", async (importOriginal) => {
     useUsage: () => ({ data: undefined, isLoading: false, isError: false, error: null }),
     useRosterQa: () => ({ mutateAsync: vi.fn(), isPending: false }),
     useMatch: () => ({ mutateAsync: vi.fn(), isPending: false }),
+    useJdMatch: () => ({ mutateAsync: vi.fn(), isPending: false }),
     useInterviewKit: () => ({ mutateAsync: vi.fn(), isPending: false }),
     useShortlist: () => ({ mutateAsync: vi.fn(), isPending: false }),
   };

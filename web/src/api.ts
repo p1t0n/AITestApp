@@ -300,6 +300,80 @@ export function useMatch() {
   });
 }
 
+// ---- JD-only match mode (P1T-103) ----
+// POST /agents/match without an employeeId: shortlist retrieval picks the top candidates, the
+// match run fans out per candidate. Failed entries degrade in place (status "failed" + error).
+
+export interface JdMatchResult {
+  employeeId: string;
+  name: string;
+  title: string;
+  retrievalScore: number;
+  status: "completed" | "failed";
+  score?: number | null;
+  band?: string | null;
+  answer?: string | null;
+  error?: string | null;
+}
+
+export interface JdMatchResponse {
+  requirements: string[];
+  results: JdMatchResult[];
+}
+
+export function useJdMatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (req: { jobDescription: string; topK?: number }) =>
+      (await agentHttp.post<JdMatchResponse>("/match", req)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["usage"] }),
+  });
+}
+
+// ---- Bench report agent (P1T-104) ----
+// Every number in `stats` is server-composed (direct MCP roster call + the proposals ledger);
+// the markdown `answer` is model prose over those numbers — or a deterministic fallback summary
+// when the model degraded (see `notes`).
+
+export interface BenchNameCount {
+  name: string;
+  count: number;
+}
+
+export interface BenchProposalStats {
+  total: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+  recentJobDescriptions: string[];
+  frequentCandidates: BenchNameCount[];
+}
+
+export interface BenchStats {
+  activeEmployees: number;
+  fullyAvailable: number;
+  partiallyAvailable: number;
+  fullyBooked: number;
+  averageCapacityPercent: number;
+  topTitles: BenchNameCount[];
+  locations: BenchNameCount[];
+  proposals?: BenchProposalStats | null;
+}
+
+export interface BenchReportResponse {
+  answer: string;
+  stats: BenchStats;
+  notes: string[];
+}
+
+export function useBenchReport() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => (await agentHttp.post<BenchReportResponse>("/bench-report", {})).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["usage"] }),
+  });
+}
+
 // ---- Interview kit agent (P1T-102) ----
 // Same input as Match/Tailoring; returns the markdown kit plus vetted structured questions.
 // `evidence` is present only when the server verified the quote verbatim against the CV.

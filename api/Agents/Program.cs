@@ -99,6 +99,7 @@ builder.Services.AddAgentMcpIdentity(builder.Configuration, "cv-tailoring");
 builder.Services.AddAgentMcpIdentity(builder.Configuration, "match");
 builder.Services.AddAgentMcpIdentity(builder.Configuration, "shortlist");
 builder.Services.AddAgentMcpIdentity(builder.Configuration, "interview-kit");
+builder.Services.AddAgentMcpIdentity(builder.Configuration, "bench-report");
 builder.Services.AddAgentMcpIdentity(builder.Configuration, "resume-ingestion");
 
 // Agents. Add future agents (Resume Ingestion, Staffing/Match) here. Each resolves its own keyed
@@ -127,6 +128,13 @@ builder.Services.AddSingleton(sp => new InterviewKitAgent(
     sp.ResolveAgentChatClient("interview-kit"),
     sp.GetRequiredKeyedService<IMcpToolSource>("interview-kit"),
     sp.GetRequiredService<ILoggerFactory>()));
+// Bench report (P1T-104): server-composed aggregates (direct MCP employee_list + the proposals
+// ledger), model writes narrative only. Scoped — it reads the DB through IAppDbContext.
+builder.Services.AddScoped(sp => new BenchReportService(
+    sp.GetRequiredKeyedService<IMcpToolSource>("bench-report"),
+    sp.ResolveAgentChatClient("bench-report"),
+    sp.GetRequiredService<CvManager.Application.Abstractions.IAppDbContext>(),
+    sp.GetRequiredService<ILogger<BenchReportService>>()));
 
 // The first mcp:write agent (P1T-92): stages resumes as draft employees; humans promote.
 builder.Services.AddSingleton(sp => new ResumeIngestionAgent(
@@ -143,6 +151,11 @@ builder.Services.AddSingleton(sp => new MatchRunService(
     sp.GetServices<IChatAgent>().First(a => a.Name == "match")));
 builder.Services.AddSingleton<IShortlistRunService>(sp => sp.GetRequiredService<ShortlistRunService>());
 builder.Services.AddSingleton<IMatchRunService>(sp => sp.GetRequiredService<MatchRunService>());
+// JD-only match (P1T-103): shortlist retrieval + per-candidate match fan-out, no narrative.
+builder.Services.AddSingleton(sp => new JdMatchRunService(
+    sp.GetRequiredService<IShortlistRunService>(),
+    sp.GetRequiredService<IMatchRunService>(),
+    sp.GetRequiredService<StaffingThrottle>()));
 
 // The staffing pipeline (P1T-75): a MAF workflow over the run services plus a tool-less narrative
 // call on the default chat client. The match throttle is process-wide — it protects the model
@@ -335,10 +348,16 @@ app.MapPost("/agents/interview-kit", async (
     }
 }).RequireAuthorization();
 
-// POST /agents/match  { "employeeId": "guid", "jobDescription": "..." }  ->  { "answer": "..." }
+// POST /agents/match — two modes (P1T-103):
+//   { "employeeId": "guid", "jobDescription": "..." }        -> { "answer": "..." } (unchanged)
+//   { "jobDescription": "...", "topK"? }                     -> { "requirements": [...],
+//     "results": [{ employeeId, name, title, retrievalScore, status, score, band, answer?, error? }] }
+// JD-only mode retrieves the top candidates via shortlist search and fans the match run out per
+// candidate (staffing throttle); one candidate's fault degrades that entry, never the call.
 app.MapPost("/agents/match", async (
     MatchRequest request,
     MatchRunService runner,
+    JdMatchRunService jdRunner,
     ClaimsPrincipal user,
     IUsageMeter meter,
     IUsageService usage,
@@ -346,7 +365,7 @@ app.MapPost("/agents/match", async (
 {
     if (request.EmployeeId == Guid.Empty)
     {
-        return Results.BadRequest(new { error = "employeeId is required." });
+        return Results.BadRequest(new { error = "employeeId must be a real id when present." });
     }
 
     if (string.IsNullOrWhiteSpace(request.JobDescription))
@@ -362,12 +381,36 @@ app.MapPost("/agents/match", async (
 
     try
     {
-        var run = await runner.RunAsync(request.EmployeeId, request.JobDescription, ct);
-        if (userId is { } uid)
+        if (request.EmployeeId is { } employeeId)
         {
-            await meter.RecordAsync(uid, run.AgentName, run.Reply, ct: ct);
+            var run = await runner.RunAsync(employeeId, request.JobDescription, ct);
+            if (userId is { } uid)
+            {
+                await meter.RecordAsync(uid, run.AgentName, run.Reply, ct: ct);
+            }
+            return Results.Ok(new MatchResponse(run.Answer));
         }
-        return Results.Ok(new MatchResponse(run.Answer));
+
+        var outcome = await jdRunner.RunAsync(request.JobDescription, request.TopK, ct);
+
+        // Meter first: tokens were spent even when the run degrades to a 502 below.
+        if (userId is { } jdUid)
+        {
+            foreach (var m in outcome.Metered)
+            {
+                await meter.RecordAsync(jdUid, m.AgentName, m.Reply, m.Step, ct);
+            }
+        }
+
+        if (outcome.FaultDetail is { } fault)
+        {
+            return Results.Problem(
+                title: "Upstream dependency failed (JD-match retrieval).",
+                detail: fault,
+                statusCode: StatusCodes.Status502BadGateway);
+        }
+
+        return Results.Ok(new JdMatchResponse(outcome.Requirements, outcome.Results));
     }
     catch (HttpRequestException ex)
     {
@@ -543,6 +586,32 @@ app.MapPost("/agents/staffing", async (
     return Results.Empty;
 }).RequireAuthorization();
 
+// POST /agents/bench-report  {}  ->  { "answer": "<markdown>", "stats": {...}, "notes": [...] }
+// Every number is server-composed (direct MCP employee_list + the proposals ledger); the model
+// only writes prose over them. Input failures degrade to leaner stats + notes; a model failure
+// ships the deterministic fallback summary — this endpoint never 500s for upstream faults.
+app.MapPost("/agents/bench-report", async (
+    BenchReportService service,
+    ClaimsPrincipal user,
+    IUsageMeter meter,
+    IUsageService usage,
+    CancellationToken ct) =>
+{
+    var userId = user.GetUserId();
+    if (userId is { } pre && await usage.FindExceededAsync(pre, ct) is { } exceeded)
+    {
+        return CapReached(exceeded);
+    }
+
+    var outcome = await service.RunAsync(ct);
+    if (userId is { } uid && outcome.Reply is { } reply)
+    {
+        await meter.RecordAsync(uid, BenchReportService.AgentName, reply, ct: ct);
+    }
+
+    return Results.Ok(outcome.Response);
+}).RequireAuthorization();
+
 // GET /agents/staffing/proposals?status=pending -> the approval inbox, newest first (P1T-100).
 app.MapGet("/agents/staffing/proposals", async (
     string? status, StaffingProposalStore proposals, CancellationToken ct) =>
@@ -596,8 +665,11 @@ internal sealed record ResumeIngestionRequest(string ResumeText);
 internal sealed record RosterQaResponse(string Answer, string ThreadId);
 internal sealed record CvTailoringRequest(Guid EmployeeId, string JobDescription);
 internal sealed record InterviewKitRequest(Guid EmployeeId, string JobDescription);
-internal sealed record MatchRequest(Guid EmployeeId, string JobDescription);
+internal sealed record MatchRequest(Guid? EmployeeId, string JobDescription, int? TopK = null);
 internal sealed record MatchResponse(string Answer);
+internal sealed record JdMatchResponse(
+    IReadOnlyList<string> Requirements,
+    IReadOnlyList<JdMatchCandidateResult> Results);
 internal sealed record ShortlistRequest(
     string JobDescription,
     DateOnly? AvailableOn = null,

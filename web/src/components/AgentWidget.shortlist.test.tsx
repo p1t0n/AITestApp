@@ -48,6 +48,7 @@ vi.mock("../api", async (importOriginal) => {
     useRosterQa: () => ({ mutateAsync: vi.fn(), isPending: false }),
     useCvTailoring: () => ({ mutateAsync: vi.fn(), isPending: false }),
     useMatch: () => ({ mutateAsync: vi.fn(), isPending: false }),
+    useJdMatch: () => ({ mutateAsync: vi.fn(), isPending: false }),
     useInterviewKit: () => ({ mutateAsync: vi.fn(), isPending: false }),
   };
 });
