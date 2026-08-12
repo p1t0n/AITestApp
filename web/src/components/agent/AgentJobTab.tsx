@@ -20,8 +20,10 @@ import {
   useApplyRewrite,
   useCvTailoring,
   useEmployees,
+  useInterviewKit,
   useMatch,
   type AgentJobRequest,
+  type InterviewQuestion,
   type TailoringRewrite,
 } from "../../api";
 import { AgentMarkdown } from "./AgentMarkdown";
@@ -31,6 +33,8 @@ interface FormResult {
   answer: string;
   /** Vetted per-achievement rewrites (CV Tailoring only; empty on the degrade path and for Match). */
   rewrites: TailoringRewrite[];
+  /** Vetted structured questions (Interview kit only; empty on the degrade path). */
+  questions: InterviewQuestion[];
   latencyMs: number;
   /** The employee the run was submitted for — Apply targets this even if the picker changes later. */
   employeeId: string;
@@ -148,14 +152,15 @@ export function AgentJobForm({
   mode,
   initial,
 }: {
-  mode: "cv-tailoring" | "match";
+  mode: "cv-tailoring" | "match" | "interview-kit";
   /** Pre-filled employee + JD (e.g. "Run full Match" from a shortlist card). Applied on mount. */
   initial?: AgentJobRequest;
 }) {
   const employees = useEmployees();
   const tailoring = useCvTailoring();
   const match = useMatch();
-  const run = mode === "cv-tailoring" ? tailoring : match;
+  const interviewKit = useInterviewKit();
+  const run = mode === "cv-tailoring" ? tailoring : mode === "interview-kit" ? interviewKit : match;
 
   const [employeeId, setEmployeeId] = useState<string | null>(initial?.employeeId ?? null);
   const [jobDescription, setJobDescription] = useState(initial?.jobDescription ?? "");
@@ -181,11 +186,14 @@ export function AgentJobForm({
     const startedAt = performance.now();
     const req: AgentJobRequest = { employeeId, jobDescription: jobDescription.trim() };
     try {
-      // Tailoring returns the hybrid contract (answer + rewrites); Match is answer-only.
+      // Tailoring returns answer + rewrites; the interview kit answer + questions; Match is
+      // answer-only. Normalized into one FormResult shape.
       const res =
         mode === "cv-tailoring"
-          ? await tailoring.mutateAsync(req)
-          : { ...(await match.mutateAsync(req)), rewrites: [] };
+          ? { ...(await tailoring.mutateAsync(req)), questions: [] }
+          : mode === "interview-kit"
+            ? { ...(await interviewKit.mutateAsync(req)), rewrites: [] }
+            : { ...(await match.mutateAsync(req)), rewrites: [], questions: [] };
       setResult({ ...res, latencyMs: performance.now() - startedAt, employeeId: req.employeeId });
     } catch (err) {
       setError(apiErrorMessage(err));
@@ -245,10 +253,14 @@ export function AgentJobForm({
           {run.isPending
             ? mode === "cv-tailoring"
               ? "Tailoring…"
-              : "Assessing…"
+              : mode === "interview-kit"
+                ? "Preparing…"
+                : "Assessing…"
             : mode === "cv-tailoring"
               ? "Tailor CV"
-              : "Assess fit"}
+              : mode === "interview-kit"
+                ? "Build interview kit"
+                : "Assess fit"}
         </Button>
 
         {error && (
@@ -279,6 +291,43 @@ export function AgentJobForm({
         {result && result.rewrites.length > 0 && (
           <RewrittenBullets employeeId={result.employeeId} rewrites={result.rewrites} />
         )}
+
+        {result && result.questions.length > 0 && <InterviewQuestions questions={result.questions} />}
+      </Stack>
+    </Box>
+  );
+}
+
+/** Structured interview questions (Interview kit contract). Evidence renders only when the
+ * server verified the quote against the CV — no client-side trust in model text. */
+function InterviewQuestions({ questions }: { questions: InterviewQuestion[] }) {
+  return (
+    <Box>
+      <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+        Questions
+      </Typography>
+      <Stack spacing={1}>
+        {questions.map((q, i) => (
+          <Paper key={i} variant="outlined" sx={{ p: 1.5, borderRadius: 2 }} data-testid={`interview-question-${i}`}>
+            <Typography variant="body2" fontWeight={600} sx={{ overflowWrap: "anywhere" }}>
+              {i + 1}. {q.question}
+            </Typography>
+            {q.probes && (
+              <Typography variant="caption" color="text.secondary">
+                Probes: {q.probes}
+              </Typography>
+            )}
+            {q.evidence && (
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: 0.5, fontStyle: "italic", overflowWrap: "anywhere" }}
+              >
+                “{q.evidence}”
+              </Typography>
+            )}
+          </Paper>
+        ))}
       </Stack>
     </Box>
   );

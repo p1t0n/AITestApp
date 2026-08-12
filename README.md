@@ -30,8 +30,11 @@ See [SPEC.md](SPEC.md).
   achievement bullets, phrased after anonymized cross-CV style exemplars (`style_exemplar_search`)
   and screened by a fabrication guard; one-click **Apply** persists a rewrite through the user's
   own session (the agent never writes).
-- **AI agent widget** — dockable in-app assistant with Roster Q&A / Tailor CV / Match / Shortlist /
-  Staffing / Usage tabs; per-user token caps enforced server-side.
+- **Interview kit** — pick an employee + JD, get gap-targeted interview questions; every evidence
+  quote is verified verbatim against the captured `cv_get` result (unverifiable quotes are
+  stripped — the model's evidence claims are checked, never trusted).
+- **AI agent widget** — dockable in-app assistant with Roster Q&A / Tailor CV / Match / Interview /
+  Shortlist / Staffing / Usage tabs; per-user token caps enforced server-side.
 - **Auth** — passkey (WebAuthn) sign-in for the app; OAuth 2.1 service accounts for agents.
 - **Retrieval evals** — frozen golden set + live regression gate + threshold-sweep CLI; retrieval
   quality is measured, not guessed (see `manuals/retrieval-eval-baseline.md`).
@@ -148,6 +151,8 @@ available as tabs in the in-app widget):
 - `POST /agents/cv-tailoring {employeeId, jobDescription}` — tailoring guidance for one CV, plus
   vetted before/after achievement-bullet rewrites (`{answer, rewrites[]}`).
 - `POST /agents/match {employeeId, jobDescription}` — gap analysis + scored fit assessment.
+- `POST /agents/interview-kit {employeeId, jobDescription}` — markdown interview kit plus vetted
+  structured questions (`{answer, questions[]}`); evidence quotes verified against the CV.
 - `POST /agents/shortlist {jobDescription, availableOn?, skillIds?, location?, minYears?, topK?}` —
   JD → coverage-ranked candidates with per-requirement evidence (structured JSON).
 - `POST /agents/staffing {jobDescription, availableOn?, skillIds?, location?, minYears?, matchTop?}` —

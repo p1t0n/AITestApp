@@ -98,6 +98,7 @@ builder.Services.AddAgentMcpIdentity(builder.Configuration, "roster-qa");
 builder.Services.AddAgentMcpIdentity(builder.Configuration, "cv-tailoring");
 builder.Services.AddAgentMcpIdentity(builder.Configuration, "match");
 builder.Services.AddAgentMcpIdentity(builder.Configuration, "shortlist");
+builder.Services.AddAgentMcpIdentity(builder.Configuration, "interview-kit");
 builder.Services.AddAgentMcpIdentity(builder.Configuration, "resume-ingestion");
 
 // Agents. Add future agents (Resume Ingestion, Staffing/Match) here. Each resolves its own keyed
@@ -121,6 +122,10 @@ builder.Services.AddSingleton(sp => new CvTailoringAgent(
 builder.Services.AddSingleton(sp => new ShortlistAgent(
     sp.ResolveAgentChatClient("shortlist"),
     sp.GetRequiredKeyedService<IMcpToolSource>("shortlist"),
+    sp.GetRequiredService<ILoggerFactory>()));
+builder.Services.AddSingleton(sp => new InterviewKitAgent(
+    sp.ResolveAgentChatClient("interview-kit"),
+    sp.GetRequiredKeyedService<IMcpToolSource>("interview-kit"),
     sp.GetRequiredService<ILoggerFactory>()));
 
 // The first mcp:write agent (P1T-92): stages resumes as draft employees; humans promote.
@@ -273,6 +278,56 @@ app.MapPost("/agents/cv-tailoring", async (
     catch (HttpRequestException ex)
     {
         // MCP server unreachable, Keycloak token failure, or model endpoint error: upstream fault.
+        return Results.Problem(
+            title: "Upstream dependency failed (MCP server, auth, or model).",
+            detail: ex.Message,
+            statusCode: StatusCodes.Status502BadGateway);
+    }
+}).RequireAuthorization();
+
+// POST /agents/interview-kit  { "employeeId": "guid", "jobDescription": "..." }
+// -> { "answer": "<markdown kit>", "questions": [{ question, probes?, evidence? }] }
+// The answer is turn 1's markdown verbatim; structured questions come from turn 2, and every
+// evidence quote is validated against the captured cv_get result (unverifiable quotes drop from
+// the question, the question survives). Structured-turn corruption degrades to questions: [].
+app.MapPost("/agents/interview-kit", async (
+    InterviewKitRequest request,
+    InterviewKitAgent agent,
+    ClaimsPrincipal user,
+    IUsageMeter meter,
+    IUsageService usage,
+    ILoggerFactory loggerFactory,
+    CancellationToken ct) =>
+{
+    if (request.EmployeeId == Guid.Empty)
+    {
+        return Results.BadRequest(new { error = "employeeId is required." });
+    }
+
+    if (string.IsNullOrWhiteSpace(request.JobDescription))
+    {
+        return Results.BadRequest(new { error = "jobDescription is required." });
+    }
+
+    var userId = user.GetUserId();
+    if (userId is { } pre && await usage.FindExceededAsync(pre, ct) is { } exceeded)
+    {
+        return CapReached(exceeded);
+    }
+
+    var prompt = $"Build an interview kit for employee {request.EmployeeId} against this job description:\n\n{request.JobDescription}";
+
+    try
+    {
+        var outcome = await agent.GenerateAsync(prompt, ct);
+        if (userId is { } uid)
+        {
+            await meter.RecordAsync(uid, agent.Name, outcome.Reply, ct: ct);
+        }
+        return Results.Ok(InterviewKitComposer.Compose(outcome, loggerFactory.CreateLogger(nameof(InterviewKitComposer))));
+    }
+    catch (HttpRequestException ex)
+    {
         return Results.Problem(
             title: "Upstream dependency failed (MCP server, auth, or model).",
             detail: ex.Message,
@@ -540,6 +595,7 @@ internal sealed record RosterQaRequest(string Question, string? ThreadId = null)
 internal sealed record ResumeIngestionRequest(string ResumeText);
 internal sealed record RosterQaResponse(string Answer, string ThreadId);
 internal sealed record CvTailoringRequest(Guid EmployeeId, string JobDescription);
+internal sealed record InterviewKitRequest(Guid EmployeeId, string JobDescription);
 internal sealed record MatchRequest(Guid EmployeeId, string JobDescription);
 internal sealed record MatchResponse(string Answer);
 internal sealed record ShortlistRequest(
