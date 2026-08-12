@@ -152,6 +152,20 @@
       ]
     },
     {
+      "clientId": "agent-interview-kit",
+      "name": "Interview Kit agent (confidential, mcp:read only)",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "agent-interview-kit-secret",
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": [
+        "mcp-audience",
+        "mcp:read"
+      ]
+    },
+    {
       "clientId": "agent-resume-ingestion",
       "name": "Resume Ingestion agent (confidential, mcp:read + mcp:write — stages drafts only)",
       "enabled": true,

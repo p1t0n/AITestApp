@@ -13,12 +13,21 @@ import { StaffingPanel } from "./agent/StaffingTab";
 import { IngestionPanel } from "./agent/IngestionTab";
 import { UsagePanel } from "./agent/UsageTab";
 
-type Mode = "roster" | "cv-tailoring" | "match" | "shortlist" | "staffing" | "ingestion" | "usage";
+type Mode =
+  | "roster"
+  | "cv-tailoring"
+  | "match"
+  | "interview-kit"
+  | "shortlist"
+  | "staffing"
+  | "ingestion"
+  | "usage";
 
 const TABS: { mode: Mode; label: string }[] = [
   { mode: "roster", label: "Roster Q&A" },
   { mode: "cv-tailoring", label: "Tailor CV" },
   { mode: "match", label: "Match" },
+  { mode: "interview-kit", label: "Interview" },
   { mode: "shortlist", label: "Shortlist" },
   { mode: "staffing", label: "Staffing" },
   { mode: "ingestion", label: "Ingest" },

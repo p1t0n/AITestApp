@@ -300,6 +300,30 @@ export function useMatch() {
   });
 }
 
+// ---- Interview kit agent (P1T-102) ----
+// Same input as Match/Tailoring; returns the markdown kit plus vetted structured questions.
+// `evidence` is present only when the server verified the quote verbatim against the CV.
+
+export interface InterviewQuestion {
+  question: string;
+  probes?: string | null;
+  evidence?: string | null;
+}
+
+export interface InterviewKitResponse {
+  answer: string;
+  questions: InterviewQuestion[];
+}
+
+export function useInterviewKit() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (req: AgentJobRequest) =>
+      (await agentHttp.post<InterviewKitResponse>("/interview-kit", req)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["usage"] }),
+  });
+}
+
 // ---- Shortlist agent ----
 // Unlike the prose agents above, shortlist returns a pinned structured contract: the requirement
 // strings the model extracted from the JD plus coverage-ranked candidates with per-requirement
