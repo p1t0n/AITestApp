@@ -1,6 +1,9 @@
+using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using CvManager.Agents.Agents;
+using CvManager.Agents.Handoff;
 using CvManager.Agents.Usage;
 using Microsoft.Agents.AI.Workflows;
 using Microsoft.Extensions.AI;
@@ -38,6 +41,8 @@ public sealed class StaffingPipeline
     private readonly IUsageMeter _meter;
     private readonly StaffingThrottle _throttle;
     private readonly StaffingRetryPolicy _retry;
+    private readonly IAgentIdentitySource _identities;
+    private readonly TimeProvider _clock;
     private readonly ILogger<StaffingPipeline> _logger;
 
     public StaffingPipeline(
@@ -48,6 +53,8 @@ public sealed class StaffingPipeline
         IUsageMeter meter,
         StaffingThrottle throttle,
         StaffingRetryPolicy retry,
+        IAgentIdentitySource identities,
+        TimeProvider clock,
         ILogger<StaffingPipeline> logger)
     {
         _shortlist = shortlist;
@@ -57,6 +64,8 @@ public sealed class StaffingPipeline
         _meter = meter;
         _throttle = throttle;
         _retry = retry;
+        _identities = identities;
+        _clock = clock;
         _logger = logger;
     }
 
@@ -106,9 +115,13 @@ public sealed class StaffingPipeline
     private sealed class Runner(StaffingPipeline pipeline, Guid? userId, IProgress<StaffingProgressEvent>? progress)
     {
         private readonly List<StaffingProgressEvent> _events = [];
+        private readonly List<StageSlice> _slices = [];
+        private readonly List<DegradationEntry> _degradations = [];
         private readonly Lock _gate = new();
         private int _sequence;
         private int _matchesFinished;
+        private IReadOnlyDictionary<string, string?> _inputs = new Dictionary<string, string?>();
+        private RunProvenance _provenance = new(null, [], default);
 
         public async Task<StaffingRunOutcome> RunAsync(StaffingPipelineRequest request, CancellationToken ct)
         {
@@ -130,7 +143,13 @@ public sealed class StaffingPipeline
                     $"The staffing workflow completed without a report outcome. {error?.Data}");
             }
 
-            return new StaffingRunOutcome(result.Report, result.ShortlistFault, _events);
+            HandoffPackage package;
+            lock (_gate)
+            {
+                package = new HandoffPackage(_inputs, _provenance, [.. _slices], [.. _degradations]);
+            }
+
+            return new StaffingRunOutcome(result.Report, result.ShortlistFault, _events, package);
         }
 
         /// <summary>The explicit workflow spine. Executors are per-run instances (they close over
@@ -197,19 +216,117 @@ public sealed class StaffingPipeline
             }
         }
 
+        // ----- Handoff package accumulation (P1T-132) -------------------------------------------
+
+        private DateTimeOffset Now => pipeline._clock.GetUtcNow();
+
+        /// <summary>Builds one stage slice: identity (client id + scopes) from the McpAuth config
+        /// via the identity source (null for tool-less agents), model and token facts from the
+        /// reply (zeros when the stage never got one), timestamps from the injected clock.</summary>
+        private StageSlice Slice(
+            string stage,
+            string agentName,
+            AgentReply? reply,
+            DateTimeOffset startedAt,
+            string status,
+            string? degradeReason = null,
+            int? retryCount = null)
+        {
+            var identity = pipeline._identities.Find(agentName);
+            return new StageSlice(
+                stage,
+                identity?.ClientId,
+                identity?.Scopes ?? [],
+                reply?.ModelId,
+                reply?.InputTokens ?? 0,
+                reply?.OutputTokens ?? 0,
+                startedAt,
+                Now,
+                status,
+                degradeReason,
+                retryCount);
+        }
+
+        /// <summary>Appends a slice (the match fan-out races, hence the gate) and stamps its facts
+        /// as tags on the current stage span — no new span hierarchy.</summary>
+        private void AddSlice(StageSlice slice)
+        {
+            lock (_gate)
+            {
+                _slices.Add(slice);
+            }
+
+            if (Activity.Current is { } activity)
+            {
+                activity.SetTag("handoff.slice.stage", slice.Stage);
+                activity.SetTag("handoff.slice.status", slice.Status);
+                activity.SetTag("handoff.slice.agent_client_id", slice.AgentClientId);
+                activity.SetTag("handoff.slice.model_id", slice.ModelId);
+                activity.SetTag("handoff.slice.input_tokens", slice.InputTokens);
+                activity.SetTag("handoff.slice.output_tokens", slice.OutputTokens);
+                activity.SetTag("handoff.slice.retry_count", slice.RetryCount);
+            }
+        }
+
+        private void AddDegradation(string stage, string whatWasLost, string why)
+        {
+            lock (_gate)
+            {
+                _degradations.Add(new DegradationEntry(stage, whatWasLost, why));
+            }
+        }
+
+        /// <summary>The caps as they stood when the run began. Fail-open like the caps themselves:
+        /// an unreadable usage store yields an empty snapshot, never a failed run.</summary>
+        private async Task<IReadOnlyList<CapWindowSnapshot>> CapsSnapshotAsync(CancellationToken ct)
+        {
+            if (userId is not { } uid)
+            {
+                return [];
+            }
+
+            try
+            {
+                var snapshot = await pipeline._usage.GetSnapshotAsync(uid, ct);
+                return [ToWindow(snapshot.Daily), ToWindow(snapshot.Weekly), ToWindow(snapshot.Monthly)];
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                pipeline._logger.LogWarning(ex, "The handoff package's caps snapshot could not be read.");
+                return [];
+            }
+
+            static CapWindowSnapshot ToWindow(WindowUsage window) =>
+                new(window.Window, window.Used, window.Cap, window.ResetAt);
+        }
+
         // ----- Prepare -------------------------------------------------------------------------
 
-        private ValueTask<PreparedStage> PrepareAsync(
+        private async ValueTask<PreparedStage> PrepareAsync(
             StaffingPipelineRequest request, IWorkflowContext context, CancellationToken ct)
         {
             var matchTop = Math.Clamp(request.MatchTop ?? DefaultMatchTop, MinMatchTop, MaxMatchTop);
+
+            // The package's opening facts: the run's inputs and its provenance (caller + caps as
+            // they stood before any tokens were spent).
+            _provenance = new RunProvenance(userId, await CapsSnapshotAsync(ct), Now);
+            _inputs = new Dictionary<string, string?>
+            {
+                ["jobDescription"] = request.JobDescription,
+                ["availableOn"] = request.AvailableOn?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                ["skillIds"] = request.SkillIds is { Length: > 0 } ids ? string.Join(",", ids) : null,
+                ["location"] = request.Location,
+                ["minYears"] = request.MinYears?.ToString(CultureInfo.InvariantCulture),
+                ["matchTop"] = matchTop.ToString(CultureInfo.InvariantCulture),
+            };
+
             Emit("prepare", $"Prepared staffing request (matchTop={matchTop}).");
 
             // The shortlist step retrieves exactly the candidates the fan-out will assess.
             var shortlistRequest = new ShortlistAgentRequest(
                 request.JobDescription, request.AvailableOn, request.SkillIds,
                 request.Location, request.MinYears, TopK: matchTop);
-            return ValueTask.FromResult(new PreparedStage(request, shortlistRequest, matchTop));
+            return new PreparedStage(request, shortlistRequest, matchTop);
         }
 
         // ----- Shortlist -----------------------------------------------------------------------
@@ -219,16 +336,21 @@ public sealed class StaffingPipeline
         {
             Emit("shortlist", "Shortlisting candidates against the job description.",
                 status: StaffingStepStatus.Started);
+            var startedAt = Now;
             try
             {
                 var run = await pipeline._shortlist.RunAsync(prepared.Shortlist, ct);
 
                 // Meter first: tokens were spent even when the run degrades to a fault below.
                 // The extraction call (P1T-117) rides inside the shortlist run and meters under
-                // its own agent name, so the Usage tab's per-agent breakdown stays truthful.
+                // its own agent name, so the Usage tab's per-agent breakdown stays truthful. The
+                // extraction's slice shares the shortlist stage's time window for the same reason.
                 if (run.ExtractionReply is { } extractionReply)
                 {
                     await MeterAsync(Agents.JdRequirementExtractor.AgentName, extractionReply, "jd-extraction", ct);
+                    AddSlice(Slice(
+                        "jd-extraction", Agents.JdRequirementExtractor.AgentName, extractionReply,
+                        startedAt, StageSliceStatus.Completed));
                 }
 
                 await MeterAsync(run.AgentName, run.Reply, "shortlist", ct);
@@ -236,11 +358,16 @@ public sealed class StaffingPipeline
                 if (run.Response is null)
                 {
                     var fault = run.FaultDetail ?? "The shortlist step produced no result.";
+                    AddSlice(Slice(
+                        "shortlist", run.AgentName, run.Reply, startedAt, StageSliceStatus.Failed,
+                        degradeReason: fault));
+                    AddDegradation("shortlist", "The entire staffing report", fault);
                     Emit("shortlist", "Shortlist step failed (upstream retrieval fault).",
                         status: StaffingStepStatus.Failed, error: fault);
                     return new ShortlistStage(prepared, run, fault);
                 }
 
+                AddSlice(Slice("shortlist", run.AgentName, run.Reply, startedAt, StageSliceStatus.Completed));
                 Emit("shortlist", $"Shortlisted {run.Response.Candidates.Count} candidate(s).",
                     status: StaffingStepStatus.Completed);
                 return new ShortlistStage(prepared, run, Fault: null);
@@ -251,6 +378,10 @@ public sealed class StaffingPipeline
                 // a shortlist there is nothing to report, so this is the pipeline's one error
                 // outcome — surfaced as data for the endpoint to map, never thrown.
                 pipeline._logger.LogError(ex, "Staffing shortlist step failed.");
+                AddSlice(Slice(
+                    "shortlist", "shortlist", reply: null, startedAt, StageSliceStatus.Failed,
+                    degradeReason: ex.Message));
+                AddDegradation("shortlist", "The entire staffing report", ex.Message);
                 Emit("shortlist", "Shortlist step failed (upstream dependency).",
                     status: StaffingStepStatus.Failed, error: ex.Message);
                 return new ShortlistStage(prepared, Run: null, ex.Message);
@@ -277,13 +408,23 @@ public sealed class StaffingPipeline
             // Cap re-check before launching the fan-out: the shortlist step just spent tokens.
             if (await FindExceededAsync(ct) is { } window)
             {
+                var capNote =
+                    $"The {window.Window} token cap was reached after the shortlist step; match runs and the narrative were skipped.";
                 Emit("match", $"Token cap reached ({window.Window}); skipping match runs.");
+                var capMoment = Now;
+                foreach (var candidate in candidates)
+                {
+                    AddSlice(Slice(
+                        "match", "match", reply: null, capMoment, StageSliceStatus.Skipped,
+                        degradeReason: capNote));
+                }
+
+                AddDegradation("match", "The match runs and the narrative", capNote);
                 var skipped = candidates
                     .Select(c => new CandidateMatch(c, new StaffingMatchDetail(
                         StaffingMatchStatus.Skipped, null, null, null, $"Skipped: the {window.Window} token cap was reached.")))
                     .ToList();
-                return new MatchStage(stage, skipped, CapTripped: true,
-                    [$"The {window.Window} token cap was reached after the shortlist step; match runs and the narrative were skipped."]);
+                return new MatchStage(stage, skipped, CapTripped: true, [capNote]);
             }
 
             Emit("match", $"Assessing the top {candidates.Count} candidate(s) in parallel.");
@@ -318,13 +459,19 @@ public sealed class StaffingPipeline
             int totalCount, CancellationToken ct)
         {
             await pipeline._throttle.WaitAsync(ct);
+            var startedAt = Now;
+            var retries = 0;
             try
             {
                 // "Started" only once a throttle slot is held: the event marks real work, not a
                 // queued task, so the SSE stepper's per-candidate ticks reflect actual progress.
                 Emit("match", $"Match started for {candidate.Name}.", candidate.EmployeeId,
                     status: StaffingStepStatus.Started, candidateName: candidate.Name, totalCount: totalCount);
-                var run = await RunWithRateLimitRetryAsync(candidate.EmployeeId, jobDescription, extraction, ct);
+                var run = await RunWithRateLimitRetryAsync(
+                    candidate.EmployeeId, jobDescription, extraction, () => retries++, ct);
+                AddSlice(Slice(
+                    "match", "match", run.Reply, startedAt, StageSliceStatus.Completed,
+                    retryCount: retries));
                 Emit("match", $"Match completed for {candidate.Name}.", candidate.EmployeeId,
                     status: StaffingStepStatus.Completed, candidateName: candidate.Name,
                     totalCount: totalCount, countsMatchRun: true);
@@ -334,6 +481,10 @@ public sealed class StaffingPipeline
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 pipeline._logger.LogError(ex, "Staffing match step failed for {EmployeeId}.", candidate.EmployeeId);
+                AddSlice(Slice(
+                    "match", "match", reply: null, startedAt, StageSliceStatus.Failed,
+                    degradeReason: ex.Message, retryCount: retries));
+                AddDegradation("match", $"The match assessment for {candidate.Name}", ex.Message);
                 Emit("match", $"Match failed for {candidate.Name}.", candidate.EmployeeId,
                     status: StaffingStepStatus.Failed, candidateName: candidate.Name,
                     totalCount: totalCount, error: ex.Message, countsMatchRun: true);
@@ -347,7 +498,8 @@ public sealed class StaffingPipeline
         }
 
         private async Task<MatchRunOutcome> RunWithRateLimitRetryAsync(
-            Guid employeeId, string jobDescription, Agents.JdRequirements? extraction, CancellationToken ct)
+            Guid employeeId, string jobDescription, Agents.JdRequirements? extraction,
+            Action onRetry, CancellationToken ct)
         {
             for (var failures = 1; ; failures++)
             {
@@ -358,6 +510,7 @@ public sealed class StaffingPipeline
                 catch (Exception ex) when (
                     StaffingRetryPolicy.IsRateLimit(ex) && failures < pipeline._retry.MaxAttempts)
                 {
+                    onRetry();
                     await Task.Delay(pipeline._retry.Delay(failures), ct);
                 }
             }
@@ -426,7 +579,11 @@ public sealed class StaffingPipeline
 
             if (match.CapTripped)
             {
-                // The match-stage cap note already covers the narrative; don't add a second one.
+                // The match-stage cap note (and degradation entry) already covers the narrative;
+                // don't add a second one — the skipped slice alone records that it never ran.
+                AddSlice(Slice(
+                    "narrative", PipelineAgentName, reply: null, Now, StageSliceStatus.Skipped,
+                    degradeReason: "A token cap was reached after the shortlist step."));
                 Emit("narrative", "Narrative skipped: token cap reached.");
                 return new NarrativeStage(match, empty, null, [], Degraded: true);
             }
@@ -434,19 +591,24 @@ public sealed class StaffingPipeline
             // Cap re-check before the narrative call: the match fan-out just spent tokens.
             if (await FindExceededAsync(ct) is { } window)
             {
+                var capNote =
+                    $"The {window.Window} token cap was reached after the match runs; the narrative was skipped.";
+                AddSlice(Slice(
+                    "narrative", PipelineAgentName, reply: null, Now, StageSliceStatus.Skipped,
+                    degradeReason: capNote));
+                AddDegradation("narrative", "The narrative rationales and recommendation", capNote);
                 Emit("narrative", $"Token cap reached ({window.Window}); skipping the narrative.");
-                return new NarrativeStage(match, empty, null,
-                    [$"The {window.Window} token cap was reached after the match runs; the narrative was skipped."],
-                    Degraded: true);
+                return new NarrativeStage(match, empty, null, [capNote], Degraded: true);
             }
 
             Emit("narrative", "Generating rationales and a recommendation.",
                 status: StaffingStepStatus.Started);
+            var startedAt = Now;
             try
             {
                 // Tool-less completion on the default chat client: the narrative needs no agent
                 // identity or MCP access — all its facts arrive pre-assembled in the prompt.
-                var narrativeClock = System.Diagnostics.Stopwatch.StartNew();
+                var narrativeClock = Stopwatch.StartNew();
                 // Schema-constrained since P1T-118; TryParse below stays as the fallback parser.
                 var narrativeOptions = new ChatOptions
                 {
@@ -457,19 +619,24 @@ public sealed class StaffingPipeline
                     [new ChatMessage(ChatRole.System, NarrativeInstructions), new ChatMessage(ChatRole.User, stage.Evidence)],
                     narrativeOptions,
                     ct);
-                await MeterAsync(PipelineAgentName, new AgentReply(
+                var reply = new AgentReply(
                     response.Text,
                     response.Usage?.InputTokenCount ?? 0,
                     response.Usage?.OutputTokenCount ?? 0,
                     response.Usage?.TotalTokenCount ?? 0,
                     response.ModelId,
-                    narrativeClock.ElapsedMilliseconds), "narrative", ct);
+                    narrativeClock.ElapsedMilliseconds);
+                await MeterAsync(PipelineAgentName, reply, "narrative", ct);
 
-                return ComposeNarrative(match, response.Text);
+                return ComposeNarrative(match, response.Text, startedAt, reply);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 pipeline._logger.LogError(ex, "Staffing narrative step failed.");
+                AddSlice(Slice(
+                    "narrative", PipelineAgentName, reply: null, startedAt, StageSliceStatus.Failed,
+                    degradeReason: ex.Message));
+                AddDegradation("narrative", "The narrative rationales and recommendation", ex.Message);
                 Emit("narrative", "Narrative step failed; falling back to templated rationales.",
                     status: StaffingStepStatus.Failed, error: ex.Message);
                 return new NarrativeStage(match, empty, null,
@@ -481,17 +648,27 @@ public sealed class StaffingPipeline
         /// <summary>Applies the corruption guards to the model's narrative JSON: rationales for
         /// unknown ids are dropped (the template covers those candidates), and the recommendation
         /// must name one of the report's candidates or it degrades to none.</summary>
-        private NarrativeStage ComposeNarrative(MatchStage match, string modelText)
+        private NarrativeStage ComposeNarrative(
+            MatchStage match, string modelText, DateTimeOffset startedAt, AgentReply reply)
         {
             var parsed = NarrativePayload.TryParse(modelText);
             if (parsed is null)
             {
+                // The tokens were spent even though the output was unusable — the failed slice
+                // reports both, honestly.
+                const string reason = "The narrative output was unparseable.";
+                AddSlice(Slice(
+                    "narrative", PipelineAgentName, reply, startedAt, StageSliceStatus.Failed,
+                    degradeReason: reason));
+                AddDegradation("narrative", "The narrative rationales and recommendation", reason);
                 Emit("narrative", "Narrative output was unparseable; falling back to templated rationales.",
-                    status: StaffingStepStatus.Failed, error: "The narrative output was unparseable.");
+                    status: StaffingStepStatus.Failed, error: reason);
                 return new NarrativeStage(match, new Dictionary<Guid, string>(), null,
                     ["The narrative output was unparseable; rationales are templated from shortlist and match evidence."],
                     Degraded: true);
             }
+
+            AddSlice(Slice("narrative", PipelineAgentName, reply, startedAt, StageSliceStatus.Completed));
 
             var knownIds = match.Matches.Select(m => m.Candidate.EmployeeId).ToHashSet();
 
@@ -519,6 +696,8 @@ public sealed class StaffingPipeline
 
             // The step still completed — it produced rationales; the dropped recommendation is a
             // report-level degrade (note + degraded:true), not a step failure.
+            AddDegradation("narrative", "The recommendation",
+                "The narrative recommendation was missing or named an unknown candidate.");
             Emit("narrative", "Narrative recommendation was missing or named an unknown candidate; dropped.",
                 status: StaffingStepStatus.Completed);
             return new NarrativeStage(match, rationales, null,

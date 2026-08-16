@@ -5,6 +5,7 @@ using OpenTelemetry.Trace;
 using CvManager.Agents.Agents;
 using CvManager.Agents.Auth;
 using CvManager.Agents.Configuration;
+using CvManager.Agents.Handoff;
 using CvManager.Agents.Mcp;
 using CvManager.Agents.Staffing;
 using CvManager.Agents.Usage;
@@ -214,6 +215,9 @@ builder.Services.AddSingleton(sp => new StaffingThrottle(
 builder.Services.AddSingleton(StaffingRetryPolicy.Default);
 // The proposal ledger (P1T-100): staffing runs persist a pending proposal; humans decide it.
 builder.Services.AddScoped<StaffingProposalStore>();
+// The handoff package's identity facts (client ids + scopes, never secrets) come from the same
+// McpAuth sections that register the agents' token providers (P1T-132).
+builder.Services.AddSingleton<IAgentIdentitySource, ConfigAgentIdentitySource>();
 builder.Services.AddScoped(sp => new StaffingPipeline(
     sp.GetRequiredService<IShortlistRunService>(),
     sp.GetRequiredService<IMatchRunService>(),
@@ -222,6 +226,8 @@ builder.Services.AddScoped(sp => new StaffingPipeline(
     sp.GetRequiredService<IUsageMeter>(),
     sp.GetRequiredService<StaffingThrottle>(),
     sp.GetRequiredService<StaffingRetryPolicy>(),
+    sp.GetRequiredService<IAgentIdentitySource>(),
+    sp.GetRequiredService<TimeProvider>(),
     sp.GetRequiredService<ILogger<StaffingPipeline>>()));
 
 var app = builder.Build();
