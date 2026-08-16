@@ -43,8 +43,10 @@ public class StaffingPipelineTests
 
     private static MatchRunOutcome MatchOk(Guid employeeId) => new(
         "match",
-        $"Gap analysis for {employeeId}.\n\nOverall score: 78/100\nOverall band: Strong",
-        new AgentReply("answer", 200, 50, 250));
+        $"Gap analysis for {employeeId}.",
+        new AgentReply("answer", 200, 50, 250),
+        Score: 78,
+        Band: "Strong");
 
     private static FakeMatchRunService MatchAlwaysOk() =>
         new((id, _) => Task.FromResult(MatchOk(id)));
@@ -111,7 +113,7 @@ public class StaffingPipelineTests
         first.Match.Status.Should().Be("completed");
         first.Match.Score.Should().Be(78);
         first.Match.Band.Should().Be("Strong");
-        first.Match.Answer.Should().Contain("Overall score: 78/100");
+        first.Match.Answer.Should().Contain("Gap analysis for");
         first.Match.Error.Should().BeNull();
         first.Rationale.Should().Be("R1");
         report.Candidates[1].Rationale.Should().Be("R2");
@@ -137,6 +139,9 @@ public class StaffingPipelineTests
         prompt.Should().Contain("Person 1").And.Contain("Person 2")
             .And.Contain(Id(1).ToString()).And.Contain("2/3");
         chat.ReceivedOptions[0]?.Tools.Should().BeNullOrEmpty();
+        // Schema-constrained narrative since P1T-118 (TryParse remains the fallback parser).
+        chat.ReceivedOptions[0]!.ResponseFormat.Should().BeOfType<ChatResponseFormatJson>()
+            .Which.Schema.Should().NotBeNull();
     }
 
     [Fact]

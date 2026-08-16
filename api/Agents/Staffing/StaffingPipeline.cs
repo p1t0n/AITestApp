@@ -316,12 +316,11 @@ public sealed class StaffingPipeline
                 Emit("match", $"Match started for {candidate.Name}.", candidate.EmployeeId,
                     status: StaffingStepStatus.Started, candidateName: candidate.Name, totalCount: totalCount);
                 var run = await RunWithRateLimitRetryAsync(candidate.EmployeeId, jobDescription, ct);
-                var facts = MatchAnswerParser.Parse(run.Answer);
                 Emit("match", $"Match completed for {candidate.Name}.", candidate.EmployeeId,
                     status: StaffingStepStatus.Completed, candidateName: candidate.Name,
                     totalCount: totalCount, countsMatchRun: true);
                 return (new CandidateMatch(candidate, new StaffingMatchDetail(
-                    StaffingMatchStatus.Completed, facts.Score, facts.Band, run.Answer, Error: null)), run.Reply);
+                    StaffingMatchStatus.Completed, run.Score, run.Band, run.Answer, Error: null)), run.Reply);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -400,12 +399,9 @@ public sealed class StaffingPipeline
             """
             You write the closing narrative for a staffing report. You are given a job description
             and per-candidate evidence: shortlist requirement coverage and (when available) a match
-            assessment. Reply with ONLY minimal JSON — no prose, no markdown fences — of this exact
-            shape:
-            {"rationales":[{"employeeId":"<id>","rationale":"<one or two sentences>"}],
-             "recommendation":{"employeeId":"<id>","narrative":"<two to four sentences>"} }
-            Include one rationale per candidate, using exactly the employeeId values given. The
-            recommendation must pick exactly one of the given candidates. Ground every statement
+            assessment. Reply with the structured object: one rationale (one or two sentences) per
+            candidate, using exactly the employeeId values given, and a recommendation (two to four
+            sentences) that picks exactly one of the given candidates. Ground every statement
             strictly in the evidence provided — never invent skills, experience, or facts.
             """;
 
@@ -442,9 +438,15 @@ public sealed class StaffingPipeline
                 // Tool-less completion on the default chat client: the narrative needs no agent
                 // identity or MCP access — all its facts arrive pre-assembled in the prompt.
                 var narrativeClock = System.Diagnostics.Stopwatch.StartNew();
+                // Schema-constrained since P1T-118; TryParse below stays as the fallback parser.
+                var narrativeOptions = new ChatOptions
+                {
+                    ResponseFormat = ChatResponseFormat.ForJsonSchema(
+                        AIJsonUtilities.CreateJsonSchema(typeof(NarrativePayload)), "staffing_narrative"),
+                };
                 var response = await pipeline._chat.GetResponseAsync(
                     [new ChatMessage(ChatRole.System, NarrativeInstructions), new ChatMessage(ChatRole.User, stage.Evidence)],
-                    options: null,
+                    narrativeOptions,
                     ct);
                 await MeterAsync(PipelineAgentName, new AgentReply(
                     response.Text,

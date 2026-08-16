@@ -1,8 +1,14 @@
+using System.Text.Json;
+using CvManager.Agents.Staffing;
+
 namespace CvManager.Agents.Agents;
 
-/// <summary>What one match run produced: the answer text, plus the reply carrying the token usage
-/// the caller meters under <see cref="AgentName"/>.</summary>
-public sealed record MatchRunOutcome(string AgentName, string Answer, AgentReply Reply);
+/// <summary>What one match run produced: the gap-analysis markdown, the parsed deterministic
+/// facts (score/band — from the structured verdict, or the legacy regex fallback; null when the
+/// answer stated none), plus the reply carrying the token usage the caller meters under
+/// <see cref="AgentName"/>.</summary>
+public sealed record MatchRunOutcome(
+    string AgentName, string Answer, AgentReply Reply, int? Score = null, string? Band = null);
 
 /// <summary>The match step seam: lets the staffing pipeline consume the run service while its
 /// tests substitute a fake (the real service needs a live agent stack).</summary>
@@ -33,6 +39,38 @@ public sealed class MatchRunService : IMatchRunService
     {
         var prompt = $"Assess employee {employeeId} against this job description:\n\n{jobDescription}";
         var reply = await _agent.AskAsync(prompt, ct);
-        return new MatchRunOutcome(_agent.Name, reply.Text, reply);
+
+        // Structured verdict first (the wire is schema-constrained since P1T-118); the legacy
+        // regex parser stays as the fallback for a non-JSON reply, so the answer ships either way.
+        if (TryParseAssessment(reply.Text) is { } assessment)
+        {
+            return new MatchRunOutcome(
+                _agent.Name,
+                assessment.GapAnalysisMarkdown,
+                reply,
+                assessment.Score is >= 0 and <= 100 ? assessment.Score : null,
+                assessment.Band?.ToDisplay());
+        }
+
+        var facts = MatchAnswerParser.Parse(reply.Text);
+        return new MatchRunOutcome(_agent.Name, reply.Text, reply, facts.Score, facts.Band);
+    }
+
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
+    {
+        PropertyNameCaseInsensitive = true,
+    };
+
+    private static MatchAssessment? TryParseAssessment(string text)
+    {
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<MatchAssessment>(text.Trim(), Json);
+            return string.IsNullOrWhiteSpace(parsed?.GapAnalysisMarkdown) ? null : parsed;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 }

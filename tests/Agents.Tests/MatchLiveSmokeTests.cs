@@ -23,8 +23,10 @@ public class MatchLiveSmokeTests
             string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GEMINI_API_KEY")),
             "Live smoke test needs a Gemini API key in GEMINI_API_KEY (and a running MCP server + Keycloak).");
 
+        // The agents endpoints all RequireAuthorization; the original unauthenticated client
+        // started 401ing when auth landed and went unnoticed (live smokes are opt-in).
         using var factory = new WebApplicationFactory<Program>();
-        using var client = factory.CreateClient();
+        using var client = factory.CreateAuthenticatedClient();
 
         var response = await client.PostAsJsonAsync(
             "/agents/match",

@@ -51,8 +51,10 @@ public class StaffingEndpointTests
 
     private static FakeMatchRunService MatchOk() => new((id, _) => Task.FromResult(new MatchRunOutcome(
         "match",
-        $"Gap analysis for {id}.\n\nOverall score: 78/100\nOverall band: Strong",
-        new AgentReply("answer", 200, 50, 250))));
+        $"Gap analysis for {id}.",
+        new AgentReply("answer", 200, 50, 250),
+        Score: 78,
+        Band: "Strong")));
 
     private static FakeChatClient NarrativeChat() => new(() => new ChatResponse(new ChatMessage(
         ChatRole.Assistant,
@@ -240,7 +242,7 @@ public class StaffingEndpointTests
         match.GetProperty("status").GetString().Should().Be("completed");
         match.GetProperty("score").GetInt32().Should().Be(78);
         match.GetProperty("band").GetString().Should().Be("Strong");
-        match.GetProperty("answer").GetString().Should().Contain("Overall score: 78/100");
+        match.GetProperty("answer").GetString().Should().Contain("Gap analysis for");
         match.GetProperty("error").ValueKind.Should().Be(JsonValueKind.Null, "error is pinned as an explicit null");
 
         ada.GetProperty("rationale").GetString().Should().Be("Best coverage.");
@@ -308,7 +310,7 @@ public class StaffingEndpointTests
             id == GraceId
                 ? throw new InvalidOperationException("cv_get exploded")
                 : Task.FromResult(new MatchRunOutcome(
-                    "match", "Overall score: 78/100\nOverall band: Strong", new AgentReply("a", 200, 50, 250))));
+                    "match", "Analysis.", new AgentReply("a", 200, 50, 250), Score: 78, Band: "Strong")));
         using var factory = FakedHost(match: match);
         using var client = factory.CreateAuthenticatedClient();
 
