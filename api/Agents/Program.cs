@@ -58,6 +58,7 @@ builder.Services.AddOpenTelemetry()
             "Experimental.Microsoft.Agents.AI",       // invoke_agent spans
             "Microsoft.Agents.AI.Workflows",          // workflow_invoke / executor.process
             "Experimental.ModelContextProtocol",      // MCP client RPCs (context propagates via _meta)
+            "CvManager.Agents.RosterScan",             // roster_scan.job spans (P1T-124/125)
             "System.Net.Http",
             "Npgsql")
         .AddOtlpExporter())
@@ -188,6 +189,10 @@ builder.Services.AddSingleton<CvManager.Agents.RosterScan.IRosterDigestSource>(s
     new CvManager.Agents.RosterScan.McpRosterDigestSource(
         sp.GetRequiredKeyedService<IMcpToolSource>("roster-scan")));
 builder.Services.AddScoped<CvManager.Agents.RosterScan.ScoringJobStore>();
+// The deterministic filter resolver (shared semantics with semantic search's prefilter); the
+// Agents host doesn't pull the full Application registration, so it registers here directly.
+builder.Services.AddScoped<CvManager.Application.Search.IEmployeeFilterService,
+    CvManager.Application.Search.EmployeeFilterService>();
 builder.Services.AddScoped<CvManager.Agents.RosterScan.RosterScanRunner>();
 builder.Services.AddSingleton<CvManager.Agents.RosterScan.RosterScanQueue>();
 builder.Services.AddSingleton<CvManager.Agents.RosterScan.IRosterScanQueue>(sp =>
@@ -727,6 +732,97 @@ app.MapPost("/agents/staffing/proposals/{id:guid}/decision", async (
             statusCode: StatusCodes.Status409Conflict),
         _ => Results.Ok(ProposalResponse.From(proposal!)),
     };
+}).RequireAuthorization();
+
+// POST /agents/roster-scan  { jobDescription, availableOn?, skillIds?, location?, minYears? }
+// -> 202 { jobId, estimate: { candidates, calls, rpdBudget } } — a durable Scoring Job, worked by
+// the background runner (P1T-124). Deliberately NO cap pre-check 429: the scan is a job, not a
+// blocking call — a pre-tripped cap just means the runner pauses it as paused(cap) immediately.
+app.MapPost("/agents/roster-scan", async (
+    CvManager.Agents.RosterScan.RosterScanRequest request,
+    CvManager.Agents.RosterScan.ScoringJobStore scanStore,
+    CvManager.Agents.RosterScan.IRosterScanQueue scanQueue,
+    CvManager.Agents.RosterScan.IRosterDigestSource digestSource,
+    CvManager.Application.Search.IEmployeeFilterService employeeFilters,
+    CvManager.Agents.RosterScan.RosterScanOptions scanOptions,
+    ClaimsPrincipal user,
+    CancellationToken ct) =>
+{
+    if (string.IsNullOrWhiteSpace(request.JobDescription))
+    {
+        return Results.BadRequest(new { error = "jobDescription is required." });
+    }
+
+    var hasFilters = request.AvailableOn is not null
+        || request.SkillIds is { Length: > 0 }
+        || !string.IsNullOrWhiteSpace(request.Location)
+        || request.MinYears is not null;
+    var scanFilters = hasFilters
+        ? new CvManager.Application.Search.SemanticSearchFilters(
+            request.AvailableOn, request.SkillIds, request.Location, request.MinYears)
+        : null;
+
+    // The honest submit-time expectation: candidate count from the deterministic filter set, or
+    // the roster total from one digest-page probe. An unreachable MCP makes the estimate 0 —
+    // the job still queues; the runner surfaces the real fault.
+    int candidates;
+    if (scanFilters is not null)
+    {
+        candidates = (await employeeFilters.ResolveEligibleAsync(scanFilters, ct))?.Count ?? 0;
+    }
+    else
+    {
+        try
+        {
+            candidates = (await digestSource.ListAsync(1, 1, ct))?.Total ?? 0;
+        }
+        catch (HttpRequestException)
+        {
+            candidates = 0;
+        }
+    }
+
+    var filtersJson = scanFilters is null
+        ? null
+        : System.Text.Json.JsonSerializer.Serialize(
+            scanFilters, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
+    var job = await scanStore.CreateAsync(
+        user.GetUserId(), request.JobDescription.Trim(), null, filtersJson, scanOptions.ChunkSize, [], ct);
+    scanQueue.Enqueue(job.Id);
+
+    var calls = (int)Math.Ceiling(candidates / (double)scanOptions.ChunkSize);
+    return Results.Accepted(
+        $"/agents/roster-scan/{job.Id}",
+        new CvManager.Agents.RosterScan.RosterScanAccepted(
+            job.Id,
+            new CvManager.Agents.RosterScan.RosterScanEstimate(candidates, calls, scanOptions.RequestsPerDay)));
+}).RequireAuthorization();
+
+// GET /agents/roster-scan/{id} — the polling contract: state, pause metadata, progress, and the
+// results so far (scored first by score desc). Requester-scoped: someone else's job is a 404.
+app.MapGet("/agents/roster-scan/{id:guid}", async (
+    Guid id,
+    CvManager.Agents.RosterScan.ScoringJobStore scanStore,
+    ClaimsPrincipal user,
+    CancellationToken ct) =>
+{
+    var job = await scanStore.GetAsync(id, ct);
+    return job is null || job.RequestedByUserId != user.GetUserId()
+        ? Results.NotFound()
+        : Results.Ok(CvManager.Agents.RosterScan.RosterScanJobView.Of(job));
+}).RequireAuthorization();
+
+// GET /agents/roster-scan — the caller's jobs newest-first, light rows with progress counts.
+app.MapGet("/agents/roster-scan", async (
+    CvManager.Agents.RosterScan.ScoringJobStore scanStore,
+    ClaimsPrincipal user,
+    CancellationToken ct) =>
+{
+    var jobs = await scanStore.ListAsync(user.GetUserId(), ct);
+    var progress = await scanStore.GetProgressAsync(jobs.Select(j => j.Id).ToList(), ct);
+    return Results.Ok(jobs.Select(j => new CvManager.Agents.RosterScan.RosterScanJobSummary(
+        j.Id, j.State, j.PauseReason, j.ResumeAt, j.CreatedAt, j.JobDescription,
+        progress.TryGetValue(j.Id, out var p) ? p : new CvManager.Agents.RosterScan.ScoringJobProgress(0, 0, 0, 0))));
 }).RequireAuthorization();
 
 app.Run();

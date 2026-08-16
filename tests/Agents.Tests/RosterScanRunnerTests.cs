@@ -112,6 +112,7 @@ public class RosterScanRunnerTests
             fakeExtractor,
             digests ?? new FakeDigests(Page(1, 3, (Ada, "Ada"), (Grace, "Grace")), Page(2, 3, (Linus, "Linus"))),
             fakeTransport,
+            new EmployeeFilterService(db),
             meter,
             usage ?? new ScriptedUsage(),
             new RosterScanOptions { ChunkSize = 2 },

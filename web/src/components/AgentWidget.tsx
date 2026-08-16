@@ -10,6 +10,7 @@ import { RosterChat } from "./agent/RosterQaTab";
 import { AgentJobForm } from "./agent/AgentJobTab";
 import { ShortlistPanel } from "./agent/ShortlistTab";
 import { StaffingPanel } from "./agent/StaffingTab";
+import { RosterScanPanel } from "./agent/RosterScanTab";
 import { BenchPanel } from "./agent/BenchTab";
 import { IngestionPanel } from "./agent/IngestionTab";
 import { UsagePanel } from "./agent/UsageTab";
@@ -21,6 +22,7 @@ type Mode =
   | "interview-kit"
   | "shortlist"
   | "staffing"
+  | "roster-scan"
   | "bench"
   | "ingestion"
   | "usage";
@@ -32,6 +34,7 @@ const TABS: { mode: Mode; label: string }[] = [
   { mode: "interview-kit", label: "Interview" },
   { mode: "shortlist", label: "Shortlist" },
   { mode: "staffing", label: "Staffing" },
+  { mode: "roster-scan", label: "Scan" },
   { mode: "bench", label: "Bench" },
   { mode: "ingestion", label: "Ingest" },
   { mode: "usage", label: "Usage" },
@@ -185,6 +188,11 @@ export default function AgentWidget({ dock, isNarrow }: { dock: AgentDock; isNar
               key="staffing"
               onOpenInMatch={(employeeId, jd) => openPrefilled("match", employeeId, jd)}
               onTailorCv={(employeeId, jd) => openPrefilled("cv-tailoring", employeeId, jd)}
+            />
+          ) : mode === "roster-scan" ? (
+            <RosterScanPanel
+              key="roster-scan"
+              onOpenInMatch={(employeeId, jd) => openPrefilled("match", employeeId, jd)}
             />
           ) : mode === "bench" ? (
             <BenchPanel key="bench" />

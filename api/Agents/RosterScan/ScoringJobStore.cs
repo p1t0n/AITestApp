@@ -261,4 +261,28 @@ public sealed class ScoringJobStore(IAppDbContext db, TimeProvider clock)
             .Where(j => j.RequestedByUserId == requestedBy)
             .OrderByDescending(j => j.CreatedAt)
             .ToListAsync(ct);
+
+    /// <summary>Progress per job in one grouped query — the list endpoint's counts.</summary>
+    public async Task<Dictionary<Guid, ScoringJobProgress>> GetProgressAsync(
+        IReadOnlyList<Guid> jobIds, CancellationToken ct = default)
+    {
+        var counts = await db.ScoringJobCandidates.AsNoTracking()
+            .Where(c => jobIds.Contains(c.JobId))
+            .GroupBy(c => new { c.JobId, c.Status })
+            .Select(g => new { g.Key.JobId, g.Key.Status, Count = g.Count() })
+            .ToListAsync(ct);
+
+        return counts
+            .GroupBy(x => x.JobId)
+            .ToDictionary(
+                g => g.Key,
+                g =>
+                {
+                    int Of(string status) => g.Where(x => x.Status == status).Sum(x => x.Count);
+                    var scored = Of(ScoringCandidateStatus.Scored);
+                    var failed = Of(ScoringCandidateStatus.Failed);
+                    var pending = Of(ScoringCandidateStatus.Pending);
+                    return new ScoringJobProgress(scored, failed, pending, scored + failed + pending);
+                });
+    }
 }
