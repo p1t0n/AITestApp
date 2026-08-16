@@ -37,11 +37,9 @@ public class CvTailoringEndpointTests
     private static AIFunction ExemplarTool(string? payload = null) =>
         AIFunctionFactory.Create((Guid[] achievementIds) => payload ?? ExemplarPayload, "style_exemplar_search");
 
-    /// <summary>The scripted happy path: cv_get, exemplar call, markdown answer, rewrites JSON.</summary>
+    /// <summary>The scripted happy path (cv_get is pre-fetched in code since P1T-131): exemplar
+    /// call, markdown answer, rewrites JSON.</summary>
     private static FakeChatClient ScriptedChat(string? rewritesJson = null) => new(
-        () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
-            [new FunctionCallContent("call-1", "cv_get",
-                new Dictionary<string, object?> { ["employeeId"] = Guid.NewGuid() })])),
         () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
             [new FunctionCallContent("call-2", "style_exemplar_search",
                 new Dictionary<string, object?> { ["achievementIds"] = new[] { Achievement1Text } })])),

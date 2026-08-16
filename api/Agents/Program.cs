@@ -329,12 +329,11 @@ app.MapPost("/agents/cv-tailoring", async (
         return CapReached(exceeded);
     }
 
-    // Compose the two typed fields into the prompt that opens the agent's 2-turn session.
-    var prompt = $"Tailor the CV of employee {request.EmployeeId} to this job description:\n\n{request.JobDescription}";
-
     try
     {
-        var outcome = await agent.TailorAsync(prompt, ct);
+        // The agent pre-fetches cv_get deterministically (P1T-131) and opens its 2-turn session
+        // with the JD + the captured CV.
+        var outcome = await agent.TailorAsync(request.EmployeeId, request.JobDescription, ct);
         if (userId is { } uid)
         {
             await meter.RecordAsync(uid, agent.Name, outcome.Reply, ct: ct);

@@ -166,9 +166,13 @@ Binds `http://localhost:5200`. Four agents plus a staffing pipeline that compose
 available as tabs in the in-app widget):
 
 - `POST /agents/roster-qa {question}` — Q&A over the roster; uses `roster_semantic_search` for
-  capability questions and cites evidence snippets.
+  capability questions and cites evidence snippets. The first model call is forced to a tool
+  (`RequireAny`), and an answer with no tool result behind it retries once, then ships with an
+  explicit "could not be grounded" note (the Capture-Verify Guard).
 - `POST /agents/cv-tailoring {employeeId, jobDescription}` — tailoring guidance for one CV, plus
-  vetted before/after achievement-bullet rewrites (`{answer, rewrites[]}`).
+  vetted before/after achievement-bullet rewrites (`{answer, rewrites[]}`). `cv_get` is
+  pre-fetched deterministically (fixed order → code; see
+  `manuals/mcp-tool-descriptions.md`); only the exemplar search stays model-driven.
 - `POST /agents/match {employeeId, jobDescription}` — gap analysis + scored fit assessment.
   Omit `employeeId` (JD-only mode) to retrieve the top candidates and score each:
   `{jobDescription, topK?}` → `{requirements, results[]}` with per-candidate score/band; a failed
