@@ -1,3 +1,5 @@
+using CvManager.Agents.Agents;
+using CvManager.Agents.Handoff;
 using CvManager.Agents.Staffing;
 using CvManager.Domain.Entities;
 using CvManager.Infrastructure.Persistence;
@@ -43,13 +45,35 @@ public class StaffingProposalStoreTests
         degraded,
         degraded ? ["match failed"] : []);
 
+    /// <summary>A representative accumulated package: provenance with a caps snapshot, one slice
+    /// per stage, and a degradation entry only for degraded runs (mirroring the report's notes).</summary>
+    private static HandoffPackage Package(bool degraded = false) => new(
+        new Dictionary<string, string?> { ["jobDescription"] = "Platform engineer.", ["matchTop"] = "2" },
+        new RunProvenance(
+            Guid.Parse("33333333-3333-3333-3333-333333333333"),
+            [new CapWindowSnapshot("daily", 1_000, 50_000, DateTimeOffset.Parse("2026-08-17T00:00:00Z"))],
+            DateTimeOffset.Parse("2026-08-16T12:00:00Z")),
+        [
+            new StageSlice(
+                "shortlist", "agent-shortlist", ["mcp:read", "mcp:search"], "gemini-3.5-flash-lite",
+                100, 20, DateTimeOffset.Parse("2026-08-16T12:00:01Z"), DateTimeOffset.Parse("2026-08-16T12:00:03Z"),
+                StageSliceStatus.Completed),
+            new StageSlice(
+                "match", "agent-match", ["mcp:read"], null,
+                degraded ? 0 : 200, degraded ? 0 : 50,
+                DateTimeOffset.Parse("2026-08-16T12:00:03Z"), DateTimeOffset.Parse("2026-08-16T12:00:06Z"),
+                degraded ? StageSliceStatus.Failed : StageSliceStatus.Completed,
+                degraded ? "model error" : null, RetryCount: degraded ? 2 : 0),
+        ],
+        degraded ? [new DegradationEntry("match", "The match assessment for Grace Hopper", "model error")] : []);
+
     [Fact]
     public async Task CreateAsync_persists_a_pending_proposal_snapshotting_the_report()
     {
         await using var db = NewDb();
         var requester = Guid.NewGuid();
 
-        var id = await Store(db).CreateAsync(requester, "Platform engineer.", Report(degraded: true));
+        var id = await Store(db).CreateAsync(requester, "Platform engineer.", Report(degraded: true), Package(degraded: true));
 
         id.Should().NotBeNull();
         var proposal = await db.StaffingProposals.Include(p => p.Candidates).SingleAsync();
@@ -74,7 +98,7 @@ public class StaffingProposalStoreTests
         var db = NewDb();
         await db.DisposeAsync(); // a dead context makes SaveChanges throw
 
-        var id = await Store(db).CreateAsync(null, "JD", Report());
+        var id = await Store(db).CreateAsync(null, "JD", Report(), Package());
 
         id.Should().BeNull();
     }
@@ -84,7 +108,7 @@ public class StaffingProposalStoreTests
     {
         await using var db = NewDb();
         var store = Store(db);
-        var id = (await store.CreateAsync(null, "JD", Report()))!.Value;
+        var id = (await store.CreateAsync(null, "JD", Report(), Package()))!.Value;
         var approver = Guid.NewGuid();
 
         var (result, proposal) = await store.DecideAsync(id, approver, approve: true, note: "  go ahead  ");
@@ -105,7 +129,7 @@ public class StaffingProposalStoreTests
     {
         await using var db = NewDb();
         var store = Store(db);
-        var id = (await store.CreateAsync(null, "JD", Report()))!.Value;
+        var id = (await store.CreateAsync(null, "JD", Report(), Package()))!.Value;
 
         var (missing, _) = await store.DecideAsync(Guid.NewGuid(), Guid.NewGuid(), true, null);
         missing.Should().Be(ProposalDecisionResult.NotFound);
@@ -121,8 +145,8 @@ public class StaffingProposalStoreTests
     {
         await using var db = NewDb();
         var store = Store(db);
-        var first = (await store.CreateAsync(null, "JD one", Report()))!.Value;
-        var second = (await store.CreateAsync(null, "JD two", Report()))!.Value;
+        var first = (await store.CreateAsync(null, "JD one", Report(), Package()))!.Value;
+        var second = (await store.CreateAsync(null, "JD two", Report(), Package()))!.Value;
         await store.DecideAsync(first, Guid.NewGuid(), approve: true, note: null);
 
         var pending = await store.ListAsync(StaffingProposalStatus.Pending);
@@ -134,5 +158,107 @@ public class StaffingProposalStoreTests
 
         var approved = await store.ListAsync("Approved"); // case-insensitive
         approved.Should().ContainSingle().Which.Id.Should().Be(first);
+    }
+
+    // ----- The persisted handoff document (P1T-133) -------------------------------------------
+
+    [Fact]
+    public async Task CreateAsync_persists_the_full_handoff_document_that_round_trips()
+    {
+        await using var db = NewDb();
+        var report = Report();
+        var package = Package();
+
+        await Store(db).CreateAsync(null, "Platform engineer.", report, package);
+
+        var stored = (await db.StaffingProposals.SingleAsync()).PackageJson;
+        var document = StaffingHandoffDocument.TryDeserialize(stored);
+        document.Should().NotBeNull();
+        // The report round-trips whole — same wire JSON in as out, no truncation.
+        System.Text.Json.JsonSerializer.Serialize(document!.Report, StaffingHandoffDocument.Json)
+            .Should().Be(System.Text.Json.JsonSerializer.Serialize(report, StaffingHandoffDocument.Json));
+        document.Inputs["jobDescription"].Should().Be("Platform engineer.");
+        document.Provenance.CallerUserId.Should().Be(Guid.Parse("33333333-3333-3333-3333-333333333333"));
+        document.Provenance.CapsSnapshotAtStart.Should().ContainSingle().Which.Window.Should().Be("daily");
+        document.Slices.Should().HaveCount(2);
+        document.Slices[0].Scopes.Should().Equal("mcp:read", "mcp:search");
+        document.Degradations.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task The_persisted_document_survives_a_restart()
+    {
+        var dbName = $"proposals-{Guid.NewGuid()}";
+        AppDbContext Db() => new(new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(dbName).Options);
+
+        Guid id;
+        await using (var db = Db())
+        {
+            id = (await Store(db).CreateAsync(null, "JD", Report(), Package()))!.Value;
+        }
+
+        // A fresh context over the same store: nothing survives in memory but the row itself.
+        await using (var db = Db())
+        {
+            var reloaded = await db.StaffingProposals.SingleAsync(p => p.Id == id);
+            var document = StaffingHandoffDocument.TryDeserialize(reloaded.PackageJson);
+            document.Should().NotBeNull();
+            document!.Report.Candidates.Should().HaveCount(2);
+            document.Slices.Should().HaveCount(2);
+        }
+    }
+
+    [Fact]
+    public async Task A_degraded_runs_document_marks_its_losses_explicitly()
+    {
+        await using var db = NewDb();
+
+        await Store(db).CreateAsync(null, "JD", Report(degraded: true), Package(degraded: true));
+
+        var document = StaffingHandoffDocument.TryDeserialize(
+            (await db.StaffingProposals.SingleAsync()).PackageJson)!;
+        document.Report.Degraded.Should().BeTrue();
+        document.Report.Notes.Should().NotBeEmpty();
+        document.Degradations.Should().NotBeEmpty(
+            "degradation entries travel whenever the report carries notes");
+        var failed = document.Slices.Should().ContainSingle(s => s.Status == StageSliceStatus.Failed).Subject;
+        failed.RetryCount.Should().Be(2);
+        failed.DegradeReason.Should().Be("model error");
+    }
+
+    [Fact]
+    public void TryDeserialize_degrades_to_null_on_legacy_or_corrupt_columns()
+    {
+        StaffingHandoffDocument.TryDeserialize(null).Should().BeNull();
+        StaffingHandoffDocument.TryDeserialize("").Should().BeNull();
+        StaffingHandoffDocument.TryDeserialize("{not json").Should().BeNull();
+    }
+
+    /// <summary>Reflection gate: every public field of the wire <see cref="StaffingReport"/> must
+    /// appear in the persisted document's report node — report growth can't silently outpace the
+    /// package. The sample report populates every optional field so WhenWritingNull can't hide one.</summary>
+    [Fact]
+    public void The_persisted_report_carries_every_wire_report_field()
+    {
+        var fullReport = Report() with
+        {
+            ProposalId = Guid.NewGuid(),
+            Extraction = new JdRequirements(
+                [new JdRequirement("kafka", RequirementKind.Skill, RequirementPriority.MustHave, null, "kafka", false)],
+                JdSeniority.Senior, null, []),
+        };
+        var document = StaffingHandoffDocument.From(Package(), fullReport);
+
+        using var json = System.Text.Json.JsonDocument.Parse(document.Serialize());
+        var reportKeys = json.RootElement.GetProperty("report").EnumerateObject()
+            .Select(p => p.Name).ToHashSet();
+
+        foreach (var property in typeof(StaffingReport).GetProperties())
+        {
+            var wireName = System.Text.Json.JsonNamingPolicy.CamelCase.ConvertName(property.Name);
+            reportKeys.Should().Contain(wireName,
+                $"the persisted package must carry StaffingReport.{property.Name}");
+        }
     }
 }

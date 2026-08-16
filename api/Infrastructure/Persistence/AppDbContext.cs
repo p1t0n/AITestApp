@@ -176,6 +176,11 @@ public class AppDbContext : DbContext, IAppDbContext
             e.Property(x => x.JobDescription).IsRequired();
             e.Property(x => x.Status).HasMaxLength(20).IsRequired();
             e.Property(x => x.DecisionNote).HasMaxLength(2000);
+            if (isNpgsql)
+            {
+                e.Property(x => x.PackageJson).HasColumnType("jsonb");
+            }
+
             // The approval inbox lists pending proposals newest-first.
             e.HasIndex(x => new { x.Status, x.CreatedAt });
             e.HasMany(x => x.Candidates).WithOne()

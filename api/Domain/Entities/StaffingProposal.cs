@@ -34,6 +34,12 @@ public class StaffingProposal
 
     public string? DecisionNote { get; set; }
 
+    /// <summary>The serialized handoff package (P1T-133): inputs, the full report, provenance,
+    /// stage slices, and degradations — everything the approver needs to decide without
+    /// re-running the pipeline. Jsonb on PostgreSQL. Null on rows created before the package
+    /// existed; the snapshot columns above remain the queryable index either way.</summary>
+    public string? PackageJson { get; set; }
+
     public List<StaffingProposalCandidate> Candidates { get; set; } = [];
 }
 
