@@ -151,6 +151,10 @@ builder.Services.AddSingleton(sp => new MatchRunService(
     sp.GetServices<IChatAgent>().First(a => a.Name == "match")));
 builder.Services.AddSingleton<IShortlistRunService>(sp => sp.GetRequiredService<ShortlistRunService>());
 builder.Services.AddSingleton<IMatchRunService>(sp => sp.GetRequiredService<MatchRunService>());
+// JD requirement extraction (P1T-116): tool-less structured call, the single source of
+// requirements for Shortlist/Match/Interview Kit/Roster Scan (consumers wired in P1T-117).
+builder.Services.AddSingleton<IJdRequirementExtractor>(sp => new JdRequirementExtractor(
+    sp.ResolveAgentChatClient(JdRequirementExtractor.AgentName)));
 // JD-only match (P1T-103): shortlist retrieval + per-candidate match fan-out, no narrative.
 builder.Services.AddSingleton(sp => new JdMatchRunService(
     sp.GetRequiredService<IShortlistRunService>(),
