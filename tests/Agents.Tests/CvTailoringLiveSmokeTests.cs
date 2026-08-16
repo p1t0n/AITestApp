@@ -24,7 +24,7 @@ public class CvTailoringLiveSmokeTests
             "Live smoke test needs a Gemini API key in GEMINI_API_KEY (and a running MCP server + Keycloak).");
 
         using var factory = new WebApplicationFactory<Program>();
-        using var client = factory.CreateClient();
+        using var client = factory.CreateAuthenticatedClient();
 
         var response = await client.PostAsJsonAsync(
             "/agents/cv-tailoring",

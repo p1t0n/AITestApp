@@ -2,109 +2,156 @@ using CvManager.Agents.Agents;
 using CvManager.Agents.Tests.Fakes;
 using FluentAssertions;
 using Microsoft.Extensions.AI;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace CvManager.Agents.Tests;
 
 /// <summary>
-/// Seam-level tests for <see cref="ShortlistRunService"/>: the extracted core of
-/// POST /agents/shortlist. Driven by a real <see cref="ShortlistAgent"/> over a fake chat client
-/// and fake tool source, they prove the extraction is complete — the service produces the same
-/// composed response (including the templated-rationale degrade and the corruption guard) and the
-/// same upstream-fault outcomes the endpoint used to produce inline, plus the reply the shell
-/// needs for metering.
+/// Seam-level tests for <see cref="ShortlistRunService"/> (P1T-117 orchestration): extraction →
+/// deterministic retrieval → rationales. Pins that the retrieval receives the extractor's texts
+/// verbatim, that extraction/retrieval faults degrade as data with the extraction reply still
+/// metered, and that the composed response carries the full extraction additively.
 /// </summary>
 public class ShortlistRunServiceTests
 {
-    private const string AdaIdText = "11111111-1111-1111-1111-111111111111";
+    private static readonly Guid Ada = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
-    private const string ToolPayload =
-        """
-        {"results":[{"employeeId":"11111111-1111-1111-1111-111111111111","name":"Ada Lovelace","title":"Platform Lead","score":0.91,"matchedCount":2,"totalRequirements":3,"evidence":[{"requirement":"event streaming with Kafka","matched":true,"snippet":"Built Kafka pipelines.","similarity":0.88},{"requirement":"Kubernetes operations","matched":true,"snippet":"Ran K8s clusters.","similarity":0.8},{"requirement":"team leadership","matched":false}]}],"error":null}
-        """;
+    private sealed class FakeExtractor(JdExtractionOutcome outcome) : IJdRequirementExtractor
+    {
+        public string? LastJd { get; private set; }
 
-    private static AIFunction ShortlistTool(string? payload = null) =>
-        AIFunctionFactory.Create((string[] requirements) => payload ?? ToolPayload, "roster_shortlist_search");
-
-    private static FakeChatClient ScriptedChat() => new(
-        () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
-            [new FunctionCallContent("call-1", "roster_shortlist_search",
-                new Dictionary<string, object?>
-                {
-                    ["requirements"] = new[] { "event streaming with Kafka", "Kubernetes operations", "team leadership" },
-                })])),
-        () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
-            $$"""[{"employeeId":"{{AdaIdText}}","rationale":"Strong Kafka and K8s evidence."}]"""))
+        public Task<JdExtractionOutcome> ExtractAsync(string jobDescription, CancellationToken ct = default)
         {
-            Usage = new UsageDetails { InputTokenCount = 123, OutputTokenCount = 45, TotalTokenCount = 168 },
+            LastJd = jobDescription;
+            return Task.FromResult(outcome);
+        }
+    }
+
+    private sealed class FakeSearch(ShortlistToolPayload? payload) : IShortlistSearch
+    {
+        public IReadOnlyList<string>? LastRequirements { get; private set; }
+        public ShortlistAgentRequest? LastRequest { get; private set; }
+
+        public Task<ShortlistToolPayload?> SearchAsync(
+            IReadOnlyList<string> requirements, ShortlistAgentRequest request, CancellationToken ct = default)
+        {
+            LastRequirements = requirements;
+            LastRequest = request;
+            return Task.FromResult(payload);
+        }
+    }
+
+    private static JdRequirements Extraction(params string[] texts) => new(
+        texts.Select(t => new JdRequirement(t, RequirementKind.Skill, RequirementPriority.MustHave,
+            null, EvidenceSpan: t, Inferred: false)).ToList(),
+        JdSeniority.Senior,
+        "Amsterdam",
+        []);
+
+    private static JdExtractionOutcome ExtractionOk(params string[] texts) => new(
+        "jd-extraction", new AgentReply("{}", 90, 30, 120), Extraction(texts), FaultDetail: null);
+
+    private static ShortlistToolPayload Payload() => new(
+    [
+        new ShortlistToolCandidate(Ada, "Ada Lovelace", "Platform Lead", 0.91, 1, 1,
+            [new ShortlistToolEvidence("kafka", true, "Built Kafka pipelines.", 0.9)]),
+    ]);
+
+    private static ShortlistAgent RationaleAgent(out FakeChatClient chat)
+    {
+        chat = new FakeChatClient(() => new ChatResponse(new ChatMessage(ChatRole.Assistant,
+            $$"""{"rationales":[{"employeeId":"{{Ada}}","rationale":"Strong Kafka evidence."}]}"""))
+        {
+            Usage = new UsageDetails { InputTokenCount = 50, OutputTokenCount = 10, TotalTokenCount = 60 },
         });
-
-    private static ShortlistRunService Service(IChatClient chat, AIFunction? tool = null) =>
-        new(new ShortlistAgent(chat, new FakeToolSource(tool ?? ShortlistTool()), NullLoggerFactory.Instance));
+        return new ShortlistAgent(chat);
+    }
 
     [Fact]
-    public async Task Composes_the_response_from_the_captured_tool_result_and_surfaces_the_reply_for_metering()
+    public async Task Passes_the_extracted_requirement_texts_to_the_retrieval_verbatim()
     {
-        var run = await Service(ScriptedChat()).RunAsync(
-            new ShortlistAgentRequest("Platform engineer: Kafka, Kubernetes, leadership.", TopK: 5));
+        var search = new FakeSearch(Payload());
+        var service = new ShortlistRunService(
+            new FakeExtractor(ExtractionOk("kafka", "kubernetes")), search, RationaleAgent(out _));
+        var request = new ShortlistAgentRequest("JD text", TopK: 4);
 
-        run.AgentName.Should().Be("shortlist");
+        var run = await service.RunAsync(request);
+
         run.FaultDetail.Should().BeNull();
-        run.Reply.TotalTokens.Should().Be(168, "the shell meters from the surfaced reply");
-
-        run.Response.Should().NotBeNull();
-        run.Response!.Requirements.Should().Equal(
-            "event streaming with Kafka", "Kubernetes operations", "team leadership");
-        var ada = run.Response.Candidates.Should().ContainSingle().Subject;
-        ada.EmployeeId.Should().Be(Guid.Parse(AdaIdText));
-        ada.Name.Should().Be("Ada Lovelace");
-        ada.Title.Should().Be("Platform Lead");
-        ada.Score.Should().BeApproximately(0.91, 0.0001);
-        ada.Coverage.Should().Be(new ShortlistCoverage(2, 3));
-        ada.Rationale.Should().Be("Strong Kafka and K8s evidence.");
-        ada.Requirements.Should().HaveCount(3);
-        ada.Requirements[0].Snippet.Should().Be("Built Kafka pipelines.");
-        ada.Requirements[2].Matched.Should().BeFalse();
+        search.LastRequirements.Should().Equal("kafka", "kubernetes");
+        search.LastRequest.Should().BeSameAs(request, "filters pass through untouched");
     }
 
     [Fact]
-    public async Task Degrades_to_a_templated_rationale_when_the_model_returns_prose()
+    public async Task Composes_the_response_with_the_extraction_attached_and_both_replies()
     {
-        var chat = new FakeChatClient(
-            () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
-                [new FunctionCallContent("call-1", "roster_shortlist_search",
-                    new Dictionary<string, object?> { ["requirements"] = new[] { "Kafka" } })])),
-            () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
-                "Ada seems like a great fit for this role!")));
+        var service = new ShortlistRunService(
+            new FakeExtractor(ExtractionOk("kafka")), new FakeSearch(Payload()), RationaleAgent(out _));
 
-        var run = await Service(chat).RunAsync(new ShortlistAgentRequest("Platform engineer."));
+        var run = await service.RunAsync(new ShortlistAgentRequest("JD text"));
 
-        run.Response.Should().NotBeNull("unparseable model prose must not fail the run");
-        run.Response!.Candidates[0].Rationale.Should().Be(
-            "Matched 2/3 requirements: event streaming with Kafka, Kubernetes operations; missing: team leadership.");
+        run.Response!.Requirements.Should().Equal("kafka");
+        run.Response.Candidates.Should().ContainSingle()
+            .Which.Rationale.Should().Be("Strong Kafka evidence.");
+        run.Response.Extraction!.Seniority.Should().Be(JdSeniority.Senior);
+        run.Reply.TotalTokens.Should().Be(60, "the shortlist-attributed reply is the rationale call");
+        run.ExtractionReply!.TotalTokens.Should().Be(120, "extraction tokens are metered separately");
     }
 
     [Fact]
-    public async Task Reports_an_upstream_fault_when_the_model_never_calls_the_tool()
+    public async Task Dedupes_blank_and_repeated_requirement_texts_and_caps_at_eight()
     {
-        var chat = new FakeChatClient(
-            () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "No tool needed, trust me.")));
+        var texts = new[] { "kafka", "KAFKA", " ", "a", "b", "c", "d", "e", "f", "g", "h" };
+        var search = new FakeSearch(Payload());
+        var service = new ShortlistRunService(
+            new FakeExtractor(ExtractionOk(texts)), search, RationaleAgent(out _));
 
-        var run = await Service(chat).RunAsync(new ShortlistAgentRequest("Platform engineer."));
+        await service.RunAsync(new ShortlistAgentRequest("JD text"));
+
+        search.LastRequirements.Should().HaveCount(8).And.StartWith("kafka");
+    }
+
+    [Fact]
+    public async Task Extraction_fault_degrades_as_data_with_the_extraction_reply_intact()
+    {
+        var faulted = new JdExtractionOutcome(
+            "jd-extraction", new AgentReply("essay", 80, 20, 100), Requirements: null, "did not parse");
+        var search = new FakeSearch(Payload());
+        var service = new ShortlistRunService(new FakeExtractor(faulted), search, RationaleAgent(out var chat));
+
+        var run = await service.RunAsync(new ShortlistAgentRequest("JD text"));
 
         run.Response.Should().BeNull();
-        run.FaultDetail.Should().Be("The agent did not produce a roster_shortlist_search result.");
+        run.FaultDetail.Should().Be("did not parse");
+        run.ExtractionReply!.TotalTokens.Should().Be(100);
+        run.Reply.TotalTokens.Should().Be(0, "no shortlist model call happened");
+        search.LastRequirements.Should().BeNull("retrieval never ran");
+        chat.CallCount.Should().Be(0);
     }
 
     [Fact]
-    public async Task Reports_an_upstream_fault_when_the_tool_returns_a_soft_retrieval_error()
+    public async Task Retrieval_soft_error_degrades_as_data_before_the_rationale_call()
     {
-        var run = await Service(
-                ScriptedChat(),
-                ShortlistTool("""{"results":[],"error":"The semantic search backend is unavailable."}"""))
-            .RunAsync(new ShortlistAgentRequest("Platform engineer."));
+        var service = new ShortlistRunService(
+            new FakeExtractor(ExtractionOk("kafka")),
+            new FakeSearch(new ShortlistToolPayload([], "embedding backend down")),
+            RationaleAgent(out var chat));
+
+        var run = await service.RunAsync(new ShortlistAgentRequest("JD text"));
 
         run.Response.Should().BeNull();
-        run.FaultDetail.Should().Be("The semantic search backend is unavailable.");
+        run.FaultDetail.Should().Be("embedding backend down");
+        chat.CallCount.Should().Be(0, "no rationale call for a failed retrieval");
+    }
+
+    [Fact]
+    public async Task Unreadable_tool_result_degrades_as_data()
+    {
+        var service = new ShortlistRunService(
+            new FakeExtractor(ExtractionOk("kafka")), new FakeSearch(null), RationaleAgent(out _));
+
+        var run = await service.RunAsync(new ShortlistAgentRequest("JD text"));
+
+        run.Response.Should().BeNull();
+        run.FaultDetail.Should().Contain("unreadable");
     }
 }

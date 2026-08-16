@@ -13,7 +13,30 @@ public sealed record JdRequirements(
     [property: JsonPropertyName("requirements")] IReadOnlyList<JdRequirement> Requirements,
     [property: JsonPropertyName("seniority")] JdSeniority Seniority,
     [property: JsonPropertyName("location")] string? Location,
-    [property: JsonPropertyName("ambiguities")] IReadOnlyList<string> Ambiguities);
+    [property: JsonPropertyName("ambiguities")] IReadOnlyList<string> Ambiguities)
+{
+    /// <summary>The extraction rendered as a prompt block for downstream agents (Match, Interview
+    /// Kit): the structured facts the model should assess against, instead of re-reading the raw
+    /// JD from scratch. Honest markers travel along (unspecified, inferred).</summary>
+    public string ToPromptBlock()
+    {
+        var lines = new List<string> { "Extracted role requirements (from the job description):" };
+        foreach (var r in Requirements)
+        {
+            var years = r.MinYears is { } y ? $", min {y} yrs" : "";
+            var inferred = r.Inferred ? " (inferred — no verbatim JD evidence)" : "";
+            lines.Add($"- [{r.Priority}/{r.Kind}] {r.Text}{years}{inferred}");
+        }
+
+        lines.Add($"Seniority: {Seniority}; Location: {Location ?? "unspecified"}");
+        if (Ambiguities.Count > 0)
+        {
+            lines.Add("JD ambiguities: " + string.Join("; ", Ambiguities));
+        }
+
+        return string.Join('\n', lines);
+    }
+}
 
 /// <summary>One extracted requirement. <see cref="EvidenceSpan"/> is the model's verbatim quote
 /// from the JD backing the requirement; the extractor verifies it (checked, never trusted) and

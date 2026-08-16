@@ -12,11 +12,11 @@ namespace CvManager.Agents.Tests.Eval;
 public sealed record JdFixture(string Id, string JobDescription, string[][] ExpectedConcepts);
 
 /// <summary>
-/// Live requirement-extraction eval (P1T-97): the shortlist agent's first duty is distilling a JD
-/// into 3-8 requirement phrases that the retrieval tool then searches on — garbage here poisons
-/// the whole staffing pipeline. Runs the REAL <see cref="ShortlistAgent"/> (production
-/// instructions) against the real model with a fake shortlist tool that captures the requirement
-/// strings the model actually passed. Floors in <see cref="AgentEvalBaselines"/>.
+/// Live requirement-extraction eval (P1T-97): distilling a JD into 3-8 requirement phrases feeds
+/// the retrieval — garbage here poisons the whole staffing pipeline. Since P1T-117 the
+/// distillation lives in <see cref="JdRequirementExtractor"/> (the single source for every
+/// consumer), so the eval runs THAT against the real model. Floors in
+/// <see cref="AgentEvalBaselines"/>.
 /// </summary>
 [Trait("Category", "eval")]
 public class RequirementExtractionEvalTests(ITestOutputHelper output)
@@ -67,15 +67,13 @@ public class RequirementExtractionEvalTests(ITestOutputHelper output)
         var precisions = new List<double>();
         var withinBand = 0;
 
+        var extractor = new JdRequirementExtractor(chatClient);
         foreach (var jd in Fixtures)
         {
-            var tool = AIFunctionFactory.Create(
-                (string[] requirements) => """{"results":[],"error":null}""",
-                "roster_shortlist_search");
-            var agent = new ShortlistAgent(chatClient, new FakeToolSource(tool), NullLoggerFactory.Instance);
-
-            var outcome = await agent.ShortlistAsync(new ShortlistAgentRequest(jd.JobDescription));
-            var requirements = outcome.Requirements.Select(r => r.ToLowerInvariant()).ToList();
+            var outcome = await extractor.ExtractAsync(jd.JobDescription);
+            var requirements = (outcome.Requirements?.Requirements ?? [])
+                .Select(r => r.Text.ToLowerInvariant())
+                .ToList();
 
             var covered = jd.ExpectedConcepts.Count(concept =>
                 concept.Any(keyword => requirements.Any(r => r.Contains(keyword))));

@@ -120,10 +120,12 @@ builder.Services.AddSingleton(sp => new CvTailoringAgent(
     sp.ResolveAgentChatClient("cv-tailoring"),
     sp.GetRequiredKeyedService<IMcpToolSource>("cv-tailoring"),
     sp.GetRequiredService<ILoggerFactory>()));
+// Since P1T-117 the shortlist splits into a deterministic retrieval (the MCP tool invoked with
+// the extractor's requirements — same agent identity/scopes) and a tool-less rationale model call.
 builder.Services.AddSingleton(sp => new ShortlistAgent(
-    sp.ResolveAgentChatClient("shortlist"),
-    sp.GetRequiredKeyedService<IMcpToolSource>("shortlist"),
-    sp.GetRequiredService<ILoggerFactory>()));
+    sp.ResolveAgentChatClient("shortlist")));
+builder.Services.AddSingleton<IShortlistSearch>(sp => new McpShortlistSearch(
+    sp.GetRequiredKeyedService<IMcpToolSource>("shortlist")));
 builder.Services.AddSingleton(sp => new InterviewKitAgent(
     sp.ResolveAgentChatClient("interview-kit"),
     sp.GetRequiredKeyedService<IMcpToolSource>("interview-kit"),
@@ -310,6 +312,7 @@ app.MapPost("/agents/cv-tailoring", async (
 app.MapPost("/agents/interview-kit", async (
     InterviewKitRequest request,
     InterviewKitAgent agent,
+    IJdRequirementExtractor extractor,
     ClaimsPrincipal user,
     IUsageMeter meter,
     IUsageService usage,
@@ -336,6 +339,19 @@ app.MapPost("/agents/interview-kit", async (
 
     try
     {
+        // One extraction per JD (P1T-117): gap-targeting sees the structured requirements.
+        // An extraction fault degrades to a plain-JD kit, never fails the call.
+        var extraction = await extractor.ExtractAsync(request.JobDescription, ct);
+        if (userId is { } xuid)
+        {
+            await meter.RecordAsync(xuid, JdRequirementExtractor.AgentName, extraction.Reply, ct: ct);
+        }
+
+        if (extraction.Requirements is { } extracted)
+        {
+            prompt += $"\n\n{extracted.ToPromptBlock()}";
+        }
+
         var outcome = await agent.GenerateAsync(prompt, ct);
         if (userId is { } uid)
         {
@@ -362,6 +378,7 @@ app.MapPost("/agents/match", async (
     MatchRequest request,
     MatchRunService runner,
     JdMatchRunService jdRunner,
+    IJdRequirementExtractor extractor,
     ClaimsPrincipal user,
     IUsageMeter meter,
     IUsageService usage,
@@ -387,7 +404,15 @@ app.MapPost("/agents/match", async (
     {
         if (request.EmployeeId is { } employeeId)
         {
-            var run = await runner.RunAsync(employeeId, request.JobDescription, ct);
+            // One extraction per JD (P1T-117): the structured requirements ride into the match
+            // prompt. An extraction fault degrades to a plain-JD match, never fails the call.
+            var extraction = await extractor.ExtractAsync(request.JobDescription, ct);
+            if (userId is { } xuid)
+            {
+                await meter.RecordAsync(xuid, JdRequirementExtractor.AgentName, extraction.Reply, ct: ct);
+            }
+
+            var run = await runner.RunAsync(employeeId, request.JobDescription, extraction.Requirements, ct);
             if (userId is { } uid)
             {
                 await meter.RecordAsync(uid, run.AgentName, run.Reply, ct: ct);
@@ -460,14 +485,20 @@ app.MapPost("/agents/shortlist", async (
                 request.TopK),
             ct);
 
-        // Meter first: tokens were spent even when the run degrades to a 502 below.
+        // Meter first: tokens were spent even when the run degrades to a 502 below. The
+        // extraction call (P1T-117) meters under its own agent name.
         if (userId is { } uid)
         {
+            if (run.ExtractionReply is { } extractionReply)
+            {
+                await meter.RecordAsync(uid, JdRequirementExtractor.AgentName, extractionReply, ct: ct);
+            }
+
             await meter.RecordAsync(uid, run.AgentName, run.Reply, ct: ct);
         }
 
-        // The run service reports a degraded run (model skipped the tool, or a soft retrieval
-        // error) as data; mapping it to HTTP is this shell's job — same philosophy as the catch.
+        // The run service reports a degraded run (extraction, retrieval, or a soft tool error)
+        // as data; mapping it to HTTP is this shell's job — same philosophy as the catch.
         if (run.Response is null)
         {
             return Results.Problem(

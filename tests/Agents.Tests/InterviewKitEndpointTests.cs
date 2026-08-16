@@ -24,8 +24,11 @@ public class InterviewKitEndpointTests
     private static AIFunction CvGetTool() =>
         AIFunctionFactory.Create((Guid employeeId) => CvPayload, "cv_get");
 
-    /// <summary>Scripted happy path: cv_get call, markdown kit, questions JSON.</summary>
+    /// <summary>Scripted happy path: the extractor's reply (call 1 since P1T-117), then cv_get
+    /// call, markdown kit, questions JSON.</summary>
     private static FakeChatClient ScriptedChat(string? questionsJson = null) => new(
+        () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
+            """{"requirements":[{"text":"platform engineering","kind":"Skill","priority":"Unspecified","minYears":null,"evidenceSpan":null,"inferred":true}],"seniority":"Unspecified","location":null,"ambiguities":[]}""")),
         () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
             [new FunctionCallContent("call-1", "cv_get",
                 new Dictionary<string, object?> { ["employeeId"] = Guid.NewGuid() })])),

@@ -64,7 +64,10 @@ public sealed record StaffingReport(
     IReadOnlyList<string> Notes,
     [property: System.Text.Json.Serialization.JsonIgnore(
         Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    Guid? ProposalId = null);
+    Guid? ProposalId = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    CvManager.Agents.Agents.JdRequirements? Extraction = null);
 
 /// <summary>One ordered progress event from a pipeline run. This is the streaming seam: the
 /// pipeline emits these in order (via <see cref="IProgress{T}"/> and on the outcome) and the SSE

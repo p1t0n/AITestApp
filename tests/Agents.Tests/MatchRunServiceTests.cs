@@ -48,6 +48,23 @@ public class MatchRunServiceTests
     }
 
     [Fact]
+    public async Task Appends_the_extraction_prompt_block_when_the_caller_provides_one()
+    {
+        var agent = new RecordingChatAgent();
+        var extraction = new JdRequirements(
+            [new JdRequirement("event streaming", RequirementKind.Skill, RequirementPriority.MustHave,
+                5, "event streaming", Inferred: false)],
+            JdSeniority.Senior, "Amsterdam", ["Budget unclear"]);
+
+        await new MatchRunService(agent).RunAsync(Guid.NewGuid(), "JD text.", extraction);
+
+        agent.LastQuestion.Should().Contain("Extracted role requirements")
+            .And.Contain("[MustHave/Skill] event streaming, min 5 yrs")
+            .And.Contain("Seniority: Senior; Location: Amsterdam")
+            .And.Contain("Budget unclear");
+    }
+
+    [Fact]
     public async Task Parses_the_structured_verdict_into_markdown_score_and_band()
     {
         var run = await new MatchRunService(new RecordingChatAgent(
