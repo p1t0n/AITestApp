@@ -47,6 +47,7 @@ public sealed class RosterQaAgent : IChatAgent
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     private AIAgent? _agent;
+    private bool _hasTools;
 
     public RosterQaAgent(IChatClient chatClient, IMcpToolSource toolSource, ILoggerFactory loggerFactory)
     {
@@ -56,6 +57,17 @@ public sealed class RosterQaAgent : IChatAgent
     }
 
     public string Name => "roster-qa";
+
+    /// <summary>The Capture-Verify Guard's hardened retry instruction (P1T-130): appended as an
+    /// extra user message when the first run answered without any tool result behind it.</summary>
+    private const string GroundingRetryInstruction =
+        "IMPORTANT: You must ground your answer in a tool result. Call one of the provided " +
+        "roster tools first, then answer strictly from its output.";
+
+    /// <summary>Appended to the answer when even the retry produced no tool-backed evidence —
+    /// an answer-level degrade, never an error (P1T-130).</summary>
+    private const string UngroundedNote =
+        "\n\n_Note: this answer could not be grounded in roster data._";
 
     public Task<AgentReply> AskAsync(string question, CancellationToken ct = default)
         => AskAsync(question, [], ct);
@@ -67,19 +79,50 @@ public sealed class RosterQaAgent : IChatAgent
         string question, IReadOnlyList<ChatMessage> history, CancellationToken ct = default)
     {
         var agent = await GetAgentAsync(ct);
-        var session = await agent.CreateSessionAsync(ct);
         var messages = history.Append(new ChatMessage(ChatRole.User, question)).ToList();
         using var metering = Usage.MeteringScope.Begin();
-        var response = await agent.RunAsync(messages, session, null, ct);
-        var usage = response.Usage;
+        using var capture = CaptureScope.Begin();
+
+        // Force grounding on the first model call (P1T-130): RequireAny is one-shot by design —
+        // FunctionInvokingChatClient resets the tool mode after the first iteration, so the model
+        // must start from a tool but stays free to answer once results are in hand. RequireAny
+        // over RequireSpecific: exact-fact questions legitimately ground through employee_list
+        // and friends, not just roster_semantic_search — force grounding, not one tool. Applied
+        // on every turn of a thread too (no opt-out flag): each answer must stand on fresh roster
+        // data, and a follow-up re-query is cheap.
+        // A tool-less agent (possible only in tests) has nothing to force and nothing to verify.
+        var options = _hasTools
+            ? new ChatClientAgentRunOptions
+            {
+                ChatOptions = new ChatOptions { ToolMode = ChatToolMode.RequireAny },
+            }
+            : null;
+
+        var session = await agent.CreateSessionAsync(ct);
+        var response = await agent.RunAsync(messages, session, options, ct);
+        long inputTokens = response.Usage?.InputTokenCount ?? 0;
+        long outputTokens = response.Usage?.OutputTokenCount ?? 0;
+        long totalTokens = response.Usage?.TotalTokenCount ?? 0;
+        var text = response.Text;
+
+        // Capture-Verify: an answer with no captured tool result behind it gets ONE retry with a
+        // hardened instruction; a second ungrounded answer ships with an explicit degrade note.
+        // Tokens from both attempts are real and both are reported (the caller meters the total).
+        if (_hasTools && !capture.Captured)
+        {
+            var retrySession = await agent.CreateSessionAsync(ct);
+            var retryMessages = messages
+                .Append(new ChatMessage(ChatRole.User, GroundingRetryInstruction))
+                .ToList();
+            var retry = await agent.RunAsync(retryMessages, retrySession, options, ct);
+            inputTokens += retry.Usage?.InputTokenCount ?? 0;
+            outputTokens += retry.Usage?.OutputTokenCount ?? 0;
+            totalTokens += retry.Usage?.TotalTokenCount ?? 0;
+            text = capture.Captured ? retry.Text : retry.Text + UngroundedNote;
+        }
+
         var (modelId, latencyMs) = metering.Snapshot();
-        return new AgentReply(
-            response.Text,
-            usage?.InputTokenCount ?? 0,
-            usage?.OutputTokenCount ?? 0,
-            usage?.TotalTokenCount ?? 0,
-            modelId,
-            latencyMs);
+        return new AgentReply(text, inputTokens, outputTokens, totalTokens, modelId, latencyMs);
     }
 
     private async Task<AIAgent> GetAgentAsync(CancellationToken ct)
@@ -97,13 +140,16 @@ public sealed class RosterQaAgent : IChatAgent
                 return stillCached;
             }
 
-            var tools = await _toolSource.GetToolsAsync(ct);
+            // Wrapped so every successful invocation reports into the run's CaptureScope —
+            // the Capture-Verify Guard's evidence that an answer has real data behind it.
+            var tools = CaptureVerifyGuard.WrapTools(await _toolSource.GetToolsAsync(ct));
+            _hasTools = tools.Count > 0;
             _agent = new ChatClientAgent(
                 _chatClient,
                 instructions: Instructions,
                 name: "RosterQa",
                 description: "Answers read-only questions about the employee roster.",
-                tools: tools.ToList(),
+                tools: tools,
                 loggerFactory: _loggerFactory);
             return _agent;
         }
