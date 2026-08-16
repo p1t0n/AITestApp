@@ -36,7 +36,10 @@ public class RosterQaAgentTests
     [Fact]
     public async Task Surfaces_token_usage_from_the_model_response()
     {
+        // Grounded flow: tool call first, then the answer carrying the usage.
         var chat = new FakeChatClient(
+            () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
+                [new FunctionCallContent("call-1", "employee_list", new Dictionary<string, object?>())])),
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "Ada Lovelace (id-1) knows React."))
             {
                 Usage = new UsageDetails { InputTokenCount = 123, OutputTokenCount = 45, TotalTokenCount = 168 },
@@ -136,5 +139,89 @@ public class RosterQaAgentTests
 
         listCalled.Should().BeTrue("the agent should fall back to structured tools on a semantic-search error");
         answer.Text.Should().Contain("Ada Lovelace");
+    }
+
+    // ----- First-call forcing + Capture-Verify Guard (P1T-130) -------------------------------
+
+    [Fact]
+    public async Task The_first_model_call_carries_RequireAny_and_later_iterations_reset_it()
+    {
+        var chat = new FakeChatClient(
+            () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
+                [new FunctionCallContent("call-1", "employee_list", new Dictionary<string, object?>())])),
+            () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "Ada Lovelace (id-1) knows React.")));
+        var agent = new RosterQaAgent(chat, new FakeToolSource(EmployeeListTool(() => { })), NullLoggerFactory.Instance);
+
+        await agent.AskAsync("Who knows React?");
+
+        chat.ReceivedOptions[0]!.ToolMode.Should().Be(ChatToolMode.RequireAny,
+            "the first call must be forced to ground itself in a tool");
+        chat.ReceivedOptions[1]!.ToolMode.Should().NotBe(ChatToolMode.RequireAny,
+            "the forcing is one-shot — the loop resets it so the model is free to answer");
+    }
+
+    [Fact]
+    public async Task A_grounded_answer_passes_untouched_with_no_retry()
+    {
+        var chat = new FakeChatClient(
+            () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
+                [new FunctionCallContent("call-1", "employee_list", new Dictionary<string, object?>())])),
+            () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "Ada Lovelace (id-1) knows React.")));
+        var agent = new RosterQaAgent(chat, new FakeToolSource(EmployeeListTool(() => { })), NullLoggerFactory.Instance);
+
+        var answer = await agent.AskAsync("Who knows React?");
+
+        answer.Text.Should().Be("Ada Lovelace (id-1) knows React.");
+        answer.Text.Should().NotContain("could not be grounded");
+        chat.CallCount.Should().Be(2, "one turn to call the tool, one to answer — no guard retry");
+    }
+
+    [Fact]
+    public async Task An_ungrounded_answer_gets_one_hardened_retry_that_can_recover()
+    {
+        var toolInvoked = false;
+        var chat = new FakeChatClient(
+            // Attempt 1: the model answers directly — nothing captured behind it.
+            () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "Everyone knows React, probably.")),
+            // Retry: it grounds itself and answers from the tool result.
+            () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
+                [new FunctionCallContent("call-1", "employee_list", new Dictionary<string, object?>())])),
+            () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "Ada Lovelace (id-1) knows React.")));
+        var agent = new RosterQaAgent(
+            chat, new FakeToolSource(EmployeeListTool(() => toolInvoked = true)), NullLoggerFactory.Instance);
+
+        var answer = await agent.AskAsync("Who knows React?");
+
+        toolInvoked.Should().BeTrue("the hardened retry grounded itself");
+        answer.Text.Should().Be("Ada Lovelace (id-1) knows React.");
+        answer.Text.Should().NotContain("could not be grounded", "the retry recovered — no degrade note");
+        // The retry carried the hardened grounding instruction.
+        chat.ReceivedMessages[1].Any(m => (m.Text ?? "").Contains("must ground your answer"))
+            .Should().BeTrue("the retry adds the hardened instruction");
+    }
+
+    [Fact]
+    public async Task A_second_ungrounded_answer_ships_with_the_degrade_note_and_summed_usage()
+    {
+        var chat = new FakeChatClient(
+            () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "Probably Ada."))
+            {
+                Usage = new UsageDetails { InputTokenCount = 10, OutputTokenCount = 5, TotalTokenCount = 15 },
+            },
+            () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "Still guessing: Ada."))
+            {
+                Usage = new UsageDetails { InputTokenCount = 20, OutputTokenCount = 7, TotalTokenCount = 27 },
+            });
+        var agent = new RosterQaAgent(
+            chat, new FakeToolSource(EmployeeListTool(() => { })), NullLoggerFactory.Instance);
+
+        var answer = await agent.AskAsync("Who knows React?");
+
+        answer.Text.Should().StartWith("Still guessing: Ada.");
+        answer.Text.Should().Contain("could not be grounded in roster data");
+        // Both attempts spent tokens; both are reported for metering.
+        answer.InputTokens.Should().Be(30);
+        answer.OutputTokens.Should().Be(12);
+        answer.TotalTokens.Should().Be(42);
     }
 }
