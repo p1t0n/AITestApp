@@ -12,7 +12,7 @@ See [SPEC.md](SPEC.md).
 
 - **Employee management** — CRUD for employees + languages, availability (capacity step-function),
   skills (catalog-backed), qualifications, experiences, achievements; assembled CV view.
-- **MCP server** — 39 tools over the same Application layer, OAuth 2.1 (Keycloak) per-tool scopes.
+- **MCP server** — 40 tools over the same Application layer, OAuth 2.1 (Keycloak) per-tool scopes.
 - **Semantic roster search (RAG)** — employee narratives embedded into pgvector by a self-healing
   reconcile worker; `roster_semantic_search` answers "who has done X" by meaning, with evidence.
   When the embedding quota is exhausted a breaker fails fast and search degrades to Postgres
@@ -219,7 +219,7 @@ See `manuals/semantic-roster-search.md` for the full RAG documentation.
 
 ## MCP tools
 
-39 tools, 1:1 thin adapters over the Application layer, annotated read-only / write /
+40 tools, 1:1 thin adapters over the Application layer, annotated read-only / write /
 destructive so clients can gate dangerous calls:
 
 - **Employees:** `employee_list`, `employee_get`, `employee_create`, `employee_update`, `employee_delete`
@@ -229,7 +229,8 @@ destructive so clients can gate dangerous calls:
 - **CV:** `cv_get` (assembled data, not a PDF)
 - **Semantic search (RAG):** `roster_semantic_search` (query by meaning + hard filters, evidence
   snippets), `roster_shortlist_search` (multi-requirement coverage-ranked candidate retrieval),
-  `style_exemplar_search` (anonymized cross-CV strong-phrasing exemplars for bullet rewriting)
+  `style_exemplar_search` (anonymized cross-CV strong-phrasing exemplars for bullet rewriting),
+  `roster_digest_list` (paged career digests for bulk scoring sweeps)
 
 Each tool requires a scope: read-only tools need `mcp:read`, create/update need `mcp:write`,
 deletes need `mcp:admin`. The server hides tools the token isn't scoped for and forbids the call.

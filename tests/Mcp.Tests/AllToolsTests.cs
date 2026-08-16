@@ -22,6 +22,7 @@ public class AllToolsTests
         "skill_list", "skill_create", "skill_update", "skill_delete",
         "cv_get",
         "roster_semantic_search", "roster_shortlist_search", "style_exemplar_search",
+        "roster_digest_list",
     };
 
     private static async Task<CallToolResult> Call(McpClient c, string name, Dictionary<string, object?>? args = null) =>
