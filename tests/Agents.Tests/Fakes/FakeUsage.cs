@@ -5,10 +5,12 @@ namespace CvManager.Agents.Tests.Fakes;
 
 /// <summary>An <see cref="IUsageService"/> stand-in with a fixed cap verdict, so endpoint tests
 /// can exercise the 429 path without a database.</summary>
-internal sealed class FakeUsageService(WindowUsage? exceeded = null) : IUsageService
+internal sealed class FakeUsageService(WindowUsage? exceeded = null, UsageSnapshot? snapshot = null) : IUsageService
 {
     public Task<UsageSnapshot> GetSnapshotAsync(Guid userId, CancellationToken ct = default) =>
-        throw new NotSupportedException("Endpoint tests only exercise FindExceededAsync.");
+        snapshot is not null
+            ? Task.FromResult(snapshot)
+            : throw new NotSupportedException("This test does not script a usage snapshot.");
 
     public Task<WindowUsage?> FindExceededAsync(Guid userId, CancellationToken ct = default) =>
         Task.FromResult(exceeded);

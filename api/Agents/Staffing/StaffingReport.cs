@@ -104,4 +104,5 @@ public static class StaffingStepStatus
 public sealed record StaffingRunOutcome(
     StaffingReport? Report,
     string? ShortlistFault,
-    IReadOnlyList<StaffingProgressEvent> Events);
+    IReadOnlyList<StaffingProgressEvent> Events,
+    Handoff.HandoffPackage Package);

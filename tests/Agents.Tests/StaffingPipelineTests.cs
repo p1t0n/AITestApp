@@ -78,6 +78,8 @@ public class StaffingPipelineTests
         meter ?? new RecordingUsageMeter(),
         new StaffingThrottle(maxConcurrentMatches),
         retry ?? new StaffingRetryPolicy(MaxAttempts: 3, _ => TimeSpan.Zero),
+        new NullAgentIdentitySource(),
+        TimeProvider.System,
         NullLogger<StaffingPipeline>.Instance);
 
     private static Task<StaffingRunOutcome> RunAsync(

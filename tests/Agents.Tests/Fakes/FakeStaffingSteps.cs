@@ -1,7 +1,15 @@
 using CvManager.Agents.Agents;
+using CvManager.Agents.Handoff;
 using CvManager.Agents.Usage;
 
 namespace CvManager.Agents.Tests.Fakes;
+
+/// <summary>An <see cref="IAgentIdentitySource"/> for tests that don't assert identity facts:
+/// every agent resolves as tool-less.</summary>
+internal sealed class NullAgentIdentitySource : IAgentIdentitySource
+{
+    public AgentIdentity? Find(string agentName) => null;
+}
 
 /// <summary>An <see cref="IShortlistRunService"/> stand-in: replays a scripted outcome (or throws)
 /// and records the requests it received, so pipeline tests can pin the clamped topK. The
