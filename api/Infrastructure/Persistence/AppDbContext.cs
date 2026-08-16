@@ -23,6 +23,8 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<AgentUsage> AgentUsages => Set<AgentUsage>();
     public DbSet<StaffingProposal> StaffingProposals => Set<StaffingProposal>();
     public DbSet<StaffingProposalCandidate> StaffingProposalCandidates => Set<StaffingProposalCandidate>();
+    public DbSet<ScoringJob> ScoringJobs => Set<ScoringJob>();
+    public DbSet<ScoringJobCandidate> ScoringJobCandidates => Set<ScoringJobCandidate>();
     public DbSet<EmployeeSearchChunk> EmployeeSearchChunks => Set<EmployeeSearchChunk>();
 
     protected override void OnModelCreating(ModelBuilder b)
@@ -191,6 +193,40 @@ public class AppDbContext : DbContext, IAppDbContext
             e.Property(x => x.Title).HasMaxLength(200);
             e.Property(x => x.MatchBand).HasMaxLength(50);
             e.Property(x => x.Rationale).IsRequired();
+        });
+
+        b.Entity<ScoringJob>(e =>
+        {
+            e.Property(x => x.JobDescription).IsRequired();
+            e.Property(x => x.State).HasMaxLength(20).IsRequired();
+            e.Property(x => x.PauseReason).HasMaxLength(20);
+            e.Property(x => x.FailureDetail).HasMaxLength(2000);
+            // The resume timer scans for due paused jobs; startup recovery scans for orphans.
+            e.HasIndex(x => new { x.State, x.ResumeAt });
+            // The polling list is per requester, newest-first.
+            e.HasIndex(x => new { x.RequestedByUserId, x.CreatedAt });
+            e.HasMany(x => x.Candidates).WithOne()
+                .HasForeignKey(x => x.JobId).OnDelete(DeleteBehavior.Cascade);
+            // Jobs outlive their users, like the proposal ledger.
+            e.HasOne<User>().WithMany()
+                .HasForeignKey(x => x.RequestedByUserId).OnDelete(DeleteBehavior.SetNull);
+
+            if (isNpgsql)
+            {
+                e.Property(x => x.ExtractionJson).HasColumnType("jsonb");
+                e.Property(x => x.FiltersJson).HasColumnType("jsonb");
+            }
+        });
+
+        b.Entity<ScoringJobCandidate>(e =>
+        {
+            e.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Title).HasMaxLength(200);
+            e.Property(x => x.Status).HasMaxLength(20).IsRequired();
+            e.Property(x => x.Band).HasMaxLength(50);
+            e.Property(x => x.Error).HasMaxLength(2000);
+            // Progress counts group by status within a job; chunk writes look rows up per job.
+            e.HasIndex(x => new { x.JobId, x.Status });
         });
 
         b.Entity<EmployeeSearchChunk>(e =>
