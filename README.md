@@ -19,6 +19,10 @@ See [SPEC.md](SPEC.md).
   full-text over the same chunks, flagged `degradedReason` so agents disclose reduced ranking.
 - **JD Shortlist** — paste a job description, get coverage-ranked candidates with per-requirement
   evidence and one-click drill-in to a full Match assessment.
+- **Honest JD extraction** — one structured extraction per JD (must-have vs nice-to-have,
+  verbatim-verified evidence spans, `inferred` badges, an explicit ambiguities outlet) feeds
+  Shortlist, Match, Interview Kit, and the staffing pipeline; the widget's requirement chips
+  render the honesty badges (see `manuals/jd-requirement-extraction.md`).
 - **Staffing pipeline** — one request runs shortlist → per-candidate Match fan-out → narrative
   recommendation as a Microsoft Agent Framework workflow, streamed over SSE with live per-step
   progress; the report is evidence-linked and recommendation-first, and partial failures degrade

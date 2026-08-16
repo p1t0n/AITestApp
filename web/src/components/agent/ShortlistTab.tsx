@@ -22,6 +22,7 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import HighlightOffIcon from "@mui/icons-material/HighlightOff";
+import RequirementChips from "./RequirementChips";
 import {
   apiErrorMessage,
   useShortlist,
@@ -277,11 +278,10 @@ export function ShortlistPanel({
               <Typography variant="caption" color="text.secondary">
                 How the JD was read
               </Typography>
-              <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
-                {result.data.requirements.map((r) => (
-                  <Chip key={r} label={r} size="small" />
-                ))}
-              </Stack>
+              <RequirementChips
+                requirements={result.data.requirements}
+                extraction={result.data.extraction}
+              />
             </Box>
 
             {result.data.candidates.length === 0 ? (

@@ -256,4 +256,77 @@ describe("Shortlist tab", () => {
 
     expect(await screen.findByText(/no candidates matched/i)).toBeInTheDocument();
   });
+
+  // ---- Extraction badges (P1T-120) ----
+  // With the structured extraction on the payload the requirement chips carry the honesty
+  // badges; without it (degraded runs, older payloads) they stay the plain strings — the
+  // preceding tests all run the fallback path.
+
+  it("renders extraction badges: must-have color, years, inferred marker, ambiguities note", async () => {
+    shortlistState.mutateAsync.mockResolvedValue({
+      ...RESPONSE,
+      extraction: {
+        requirements: [
+          {
+            text: "React expertise",
+            kind: "Skill",
+            priority: "MustHave",
+            minYears: 5,
+            evidenceSpan: "5+ years of React",
+            inferred: false,
+          },
+          {
+            text: "Team leadership",
+            kind: "Experience",
+            priority: "NiceToHave",
+            minYears: null,
+            evidenceSpan: null,
+            inferred: true,
+          },
+          {
+            text: "GraphQL",
+            kind: "Skill",
+            priority: "Unspecified",
+            minYears: null,
+            evidenceSpan: "GraphQL",
+            inferred: false,
+          },
+        ],
+        seniority: "Senior",
+        location: null,
+        ambiguities: ["The JD does not state team size"],
+      },
+    });
+    const user = await openShortlistTab();
+
+    await user.type(jdField(), "Senior React engineer");
+    await user.click(submitButton());
+
+    // Must-have: primary-colored chip, minYears folded into the label.
+    const mustHave = await screen.findByText("React expertise · 5+ yrs");
+    expect(mustHave.closest(".MuiChip-root")).toHaveClass("MuiChip-colorPrimary");
+
+    // Inferred: the marker icon rides on the chip.
+    expect(screen.getByTestId("inferred-Team leadership")).toBeInTheDocument();
+
+    // Unspecified: plain default chip — no priority color, no marker.
+    const unspecified = screen.getByText("GraphQL").closest(".MuiChip-root");
+    expect(unspecified).not.toHaveClass("MuiChip-colorPrimary");
+    expect(screen.queryByTestId("inferred-GraphQL")).not.toBeInTheDocument();
+
+    // The model's explicit ambiguity outlet renders as a note.
+    expect(screen.getByText(/JD is unclear about: The JD does not state team size/)).toBeInTheDocument();
+  });
+
+  it("falls back to plain requirement chips when the payload has no extraction", async () => {
+    shortlistState.mutateAsync.mockResolvedValue(RESPONSE);
+    const user = await openShortlistTab();
+
+    await user.type(jdField(), "Senior React engineer");
+    await user.click(submitButton());
+
+    const chip = (await screen.findAllByText("React expertise"))[0].closest(".MuiChip-root");
+    expect(chip).not.toHaveClass("MuiChip-colorPrimary");
+    expect(screen.queryByText(/JD is unclear about/)).not.toBeInTheDocument();
+  });
 });

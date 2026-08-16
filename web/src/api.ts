@@ -433,9 +433,44 @@ export interface ShortlistCandidate {
   rationale: string;
 }
 
+// ---- JD extraction (P1T-117/120) ----
+// The structured reading of the JD that fed retrieval: priorities, evidence spans, inferred
+// badges, ambiguities. Additive on shortlist/staffing responses; absent on degraded runs.
+
+export type ExtractionPriority = "MustHave" | "NiceToHave" | "Unspecified";
+export type ExtractionKind =
+  | "Skill"
+  | "Experience"
+  | "Qualification"
+  | "Language"
+  | "Availability"
+  | "Location"
+  | "Other";
+export type ExtractionSeniority = "Junior" | "Mid" | "Senior" | "Lead" | "Principal" | "Unspecified";
+
+export interface JdExtractedRequirement {
+  text: string;
+  kind: ExtractionKind;
+  priority: ExtractionPriority;
+  minYears?: number | null;
+  /** Verbatim JD quote backing the requirement; null when the model could not quote one. */
+  evidenceSpan?: string | null;
+  /** True when the evidence quote could not be verified verbatim — badged, never hidden. */
+  inferred: boolean;
+}
+
+export interface JdExtraction {
+  requirements: JdExtractedRequirement[];
+  seniority: ExtractionSeniority;
+  location?: string | null;
+  /** The model's explicit "the JD is unclear about X" outlet — honesty, not filler. */
+  ambiguities: string[];
+}
+
 export interface ShortlistResponse {
   requirements: string[];
   candidates: ShortlistCandidate[];
+  extraction?: JdExtraction | null;
 }
 
 export function useShortlist() {
@@ -511,6 +546,7 @@ export interface StaffingReport {
   degraded: boolean;
   notes: string[];
   proposalId?: string | null;
+  extraction?: JdExtraction | null;
 }
 
 /** A staffing proposal decision result (P1T-100). */
