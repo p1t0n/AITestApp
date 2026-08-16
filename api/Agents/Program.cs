@@ -703,6 +703,29 @@ app.MapGet("/agents/staffing/proposals", async (
     return Results.Ok(list.Select(ProposalResponse.From).ToList());
 }).RequireAuthorization();
 
+// GET /agents/staffing/proposals/{id} -> the approver drill-in (P1T-134): proposal metadata plus
+// the full deserialized handoff package — the complete report (evidence, match markdown,
+// recommendation narrative, extraction), the provenance (caller, agent identities/scopes, models,
+// tokens, caps state), and the degradations — everything needed to decide without re-running.
+// Pre-package rows (before the P1T-133 migration) return package: null honestly.
+app.MapGet("/agents/staffing/proposals/{id:guid}", async (
+    Guid id,
+    StaffingProposalStore proposals,
+    ClaimsPrincipal user,
+    CancellationToken ct) =>
+{
+    // Identified users only — the same rule as the decision endpoint: approvers act by identity.
+    if (user.GetUserId() is null)
+    {
+        return Results.Forbid();
+    }
+
+    var proposal = await proposals.GetAsync(id, ct);
+    return proposal is null
+        ? Results.NotFound()
+        : Results.Ok(ProposalDetailResponse.From(proposal));
+}).RequireAuthorization();
+
 // POST /agents/staffing/proposals/{id}/decision  { "decision": "approved"|"rejected", "note"? }
 // The human write path: only an identified user can decide, a proposal is decided exactly once
 // (repeat -> 409), and the agent layer never calls this — humans hold write authority.
@@ -885,6 +908,32 @@ internal sealed record ProposalResponse(
         p.DecidedByUserId,
         p.DecidedAt,
         p.DecisionNote);
+}
+
+/// <summary>The approver drill-in (P1T-134): the inbox metadata plus the full persisted handoff
+/// document. <c>Package</c> is null (serialized explicitly, not omitted) for rows created before
+/// the package existed or whose column no longer parses — the metadata still serves.</summary>
+internal sealed record ProposalDetailResponse(
+    Guid Id,
+    string JobDescription,
+    string Status,
+    DateTimeOffset CreatedAt,
+    Guid? RecommendedEmployeeId,
+    bool ReportDegraded,
+    IReadOnlyList<ProposalCandidateResponse> Candidates,
+    Guid? DecidedByUserId,
+    DateTimeOffset? DecidedAt,
+    string? DecisionNote,
+    StaffingHandoffDocument? Package)
+{
+    public static ProposalDetailResponse From(CvManager.Domain.Entities.StaffingProposal p)
+    {
+        var meta = ProposalResponse.From(p);
+        return new(
+            meta.Id, meta.JobDescription, meta.Status, meta.CreatedAt, meta.RecommendedEmployeeId,
+            meta.ReportDegraded, meta.Candidates, meta.DecidedByUserId, meta.DecidedAt, meta.DecisionNote,
+            StaffingHandoffDocument.TryDeserialize(p.PackageJson));
+    }
 }
 
 // Exposed so the integration/smoke tests (WebApplicationFactory) can reference the entry point.
