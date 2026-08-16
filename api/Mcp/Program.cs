@@ -106,7 +106,8 @@ builder.Services
     .WithTools<CvTools>(toolSerializerOptions)
     .WithTools<RosterSearchTools>(toolSerializerOptions)
     .WithTools<RosterShortlistTools>(toolSerializerOptions)
-    .WithTools<RosterStyleTools>(toolSerializerOptions);
+    .WithTools<RosterStyleTools>(toolSerializerOptions)
+    .WithTools<RosterDigestTools>(toolSerializerOptions);
 
 var app = builder.Build();
 

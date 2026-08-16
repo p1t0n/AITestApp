@@ -23,6 +23,7 @@ public static class DependencyInjection
         services.AddScoped<ISkillCatalogService, SkillCatalogService>();
         services.AddScoped<ICvService, CvService>();
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<Search.IEmployeeDigestService, Search.EmployeeDigestService>();
 
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 
