@@ -15,6 +15,11 @@ internal static class AuthTestExtensions
     /// authorization).
     /// </summary>
     public static HttpClient CreateAuthenticatedClient(this WebApplicationFactory<Program> factory)
+        => factory.CreateAuthenticatedClient(Guid.NewGuid());
+
+    /// <summary>Same, for a caller-chosen user id — live smokes that persist user-FK rows (e.g.
+    /// roster-scan jobs) seed a real Users row and mint its token, mirroring production.</summary>
+    public static HttpClient CreateAuthenticatedClient(this WebApplicationFactory<Program> factory, Guid userId)
     {
         var config = factory.Services.GetRequiredService<IConfiguration>();
         var key = config["Auth:Jwt:SigningKey"]
@@ -24,11 +29,11 @@ internal static class AuthTestExtensions
 
         var client = factory.CreateClient();
         client.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", MintHs256(key, issuer, audience));
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", MintHs256(key, issuer, audience, userId));
         return client;
     }
 
-    private static string MintHs256(string key, string issuer, string audience)
+    private static string MintHs256(string key, string issuer, string audience, Guid userId)
     {
         static string B64(byte[] b) =>
             Convert.ToBase64String(b).TrimEnd('=').Replace('+', '-').Replace('/', '_');
@@ -37,7 +42,7 @@ internal static class AuthTestExtensions
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var payload = B64(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new Dictionary<string, object>
         {
-            ["sub"] = Guid.NewGuid().ToString(),
+            ["sub"] = userId.ToString(),
             ["iss"] = issuer,
             ["aud"] = audience,
             ["nbf"] = now,
