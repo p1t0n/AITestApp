@@ -14,6 +14,11 @@ namespace CvManager.Agents.Tests.Eval;
 /// extraction (10 JDs): concept coverage 0.93-1.00, phrase precision 0.83-1.00 avg 0.98+, all runs
 /// inside the 3-8 band. Re-measure:
 /// <c>GEMINI_API_KEY=&lt;key&gt; dotnet test tests/Agents.Tests --filter "Category=eval"</c>.</para>
+///
+/// <para>Re-measured 2026-08-16 (P1T-118) on the pinned <c>gemini-3.5-flash-lite</c> with the
+/// schema-constrained closing report: two consecutive full runs green at these floors. Before the
+/// conversion the eval sat below floor on both the old alias and the pin (model drift since
+/// 2026-08-01, different fixtures failing per run) — the floors themselves stand unchanged.</para>
 /// </summary>
 public static class AgentEvalBaselines
 {

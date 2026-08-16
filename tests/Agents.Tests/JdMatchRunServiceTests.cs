@@ -27,8 +27,10 @@ public class JdMatchRunServiceTests
 
     private static MatchRunOutcome MatchOutcome(Guid id, int score, string band) => new(
         "match",
-        $"Analysis for {id}.\n\nOverall score: {score}/100\nOverall band: {band}",
-        new AgentReply("answer", 200, 50, 250));
+        $"Analysis for {id}.",
+        new AgentReply("answer", 200, 50, 250),
+        score,
+        band);
 
     private static JdMatchRunService Service(
         IShortlistRunService shortlist, IMatchRunService match) =>

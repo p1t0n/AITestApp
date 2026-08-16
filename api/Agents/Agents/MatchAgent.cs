@@ -20,20 +20,25 @@ public sealed class MatchAgent : IChatAgent
         """
         You are the Match assistant for a CV Manager. You are given an employee id and a target job
         description. Call the cv_get tool to fetch that employee's full CV, then assess their fit
-        for the role. Produce two sections:
+        for the role and reply with the structured object.
+
+        gapAnalysisMarkdown holds the full analysis as markdown, in two sections:
 
         1. Gap analysis — list each concrete requirement in the job description and mark it Met,
            Partial, or Missing, citing the specific CV evidence (skill, experience, qualification,
            years) for Met/Partial, or noting the absence for Missing.
         2. Fit assessment — an explicit per-requirement rubric (each requirement scored out of an
-           equal share of 100), an overall score out of 100 that is the sum of the rubric rows, and
-           an overall band: Strong (>=75), Moderate (50-74), Weak (25-49), or Insufficient evidence.
-           The number must follow from the rubric — never invent a score.
+           equal share of 100) and the overall verdict.
+
+        score is the overall 0-100 total of the rubric rows — the number must follow from the
+        rubric, never invented. band is Strong (>=75), Moderate (50-74), Weak (25-49), or
+        InsufficientEvidence. When the employee cannot be assessed (cv_get reports not found, or
+        the CV holds no usable evidence), say so plainly in gapAnalysisMarkdown and set score and
+        band to null — never fabricate a verdict.
 
         Use ONLY facts returned by cv_get — never invent skills, experience, qualifications, or
-        achievements the CV does not contain; an unsupported requirement is Missing, not assumed. If
-        cv_get reports the employee was not found, say so plainly and stop. You have read-only
-        access and cannot change any data.
+        achievements the CV does not contain; an unsupported requirement is Missing, not assumed.
+        You have read-only access and cannot change any data.
         """;
 
     private readonly IChatClient _chatClient;
@@ -57,7 +62,18 @@ public sealed class MatchAgent : IChatAgent
         var agent = await GetAgentAsync(ct);
         var session = await agent.CreateSessionAsync(ct);
         using var metering = Usage.MeteringScope.Begin();
-        var response = await agent.RunAsync(question, session, null, ct);
+        // Structured verdict on the wire (P1T-118): schema-constrained final message; the compat
+        // probes verified tools + response_format coexist in one request. MatchRunService parses
+        // (with the legacy regex parser as fallback).
+        var options = new ChatClientAgentRunOptions
+        {
+            ChatOptions = new ChatOptions
+            {
+                ResponseFormat = ChatResponseFormat.ForJsonSchema(
+                    AIJsonUtilities.CreateJsonSchema(typeof(MatchAssessment)), "match_assessment"),
+            },
+        };
+        var response = await agent.RunAsync(question, session, options, ct);
         var usage = response.Usage;
         var (modelId, latencyMs) = metering.Snapshot();
         return new AgentReply(

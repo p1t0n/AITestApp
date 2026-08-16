@@ -46,8 +46,10 @@ public class MatchEndpointTests
             s.AddSingleton<IMatchRunService>(new FakeMatchRunService((id, _) => Task.FromResult(
                 new MatchRunOutcome(
                     "match",
-                    $"Analysis.\n\nOverall score: {(id == AdaId ? 82 : 55)}/100\nOverall band: {(id == AdaId ? "Strong" : "Moderate")}",
-                    new AgentReply("answer", 200, 50, 250)))));
+                    "Analysis.",
+                    new AgentReply("answer", 200, 50, 250),
+                    Score: id == AdaId ? 82 : 55,
+                    Band: id == AdaId ? "Strong" : "Moderate"))));
         });
 
     [Fact]

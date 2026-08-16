@@ -107,6 +107,48 @@ public class CompatEndpointProbeTests
         calls.Should().OnlyContain(c => c.Name == "lookup_office_city");
     }
 
+    [SkippableFact]
+    public async Task Structured_output_combined_with_tools_works_in_one_request()
+    {
+        // Gemini documents structured-output + function-calling combined for the 3 series only;
+        // the compat wire's support is undocumented. P1T-118 converts agents that end a TOOL run
+        // with structured JSON (Match, ResumeIngestion), so this combo is the load-bearing probe.
+        var client = BuildChatClient();
+        var options = new ChatOptions
+        {
+            Tools = [LookupTool()],
+            ResponseFormat = ChatResponseFormat.ForJsonSchema<ProbeExtraction>(),
+        };
+
+        var first = await client.GetResponseAsync(
+            [new ChatMessage(ChatRole.User,
+                "Look up the office city for employee 'Alex Doe' with the tool, then report: " +
+                "seniority Senior, minYears 5, and one requirement naming that city.")],
+            options);
+
+        var calls = FunctionCalls(first);
+        calls.Should().NotBeEmpty("the model must still be able to call tools under a response format");
+
+        // Manual second turn (no FunctionInvokingChatClient here): return the tool result and ask
+        // for the final structured answer.
+        var followUp = new List<ChatMessage>
+        {
+            new(ChatRole.User,
+                "Look up the office city for employee 'Alex Doe' with the tool, then report: " +
+                "seniority Senior, minYears 5, and one requirement naming that city."),
+        };
+        followUp.AddRange(first.Messages);
+        followUp.Add(new ChatMessage(
+            ChatRole.Tool,
+            [new FunctionResultContent(calls[0].CallId, "Amsterdam")]));
+
+        var final = await client.GetResponseAsync(followUp, options);
+        var result = System.Text.Json.JsonSerializer.Deserialize<ProbeExtraction>(
+            final.Text, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
+        result.Should().NotBeNull("the final message after the tool round-trip must be schema-valid JSON");
+        result!.Requirements.Should().Contain(r => r.Contains("Amsterdam", StringComparison.OrdinalIgnoreCase));
+    }
+
     /// <summary>The raw production wiring (endpoint, compat handler, thought-signature policy,
     /// pinned model) without metering/OTel — probes measure the wire, not our decorators.</summary>
     private static IChatClient BuildChatClient()

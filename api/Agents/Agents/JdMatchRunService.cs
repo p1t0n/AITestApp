@@ -80,10 +80,9 @@ public sealed class JdMatchRunService(
                     metered.Add(new JdMatchMeteredReply(run.AgentName, run.Reply, "jd-match"));
                 }
 
-                var facts = MatchAnswerParser.Parse(run.Answer);
                 results[index] = new JdMatchCandidateResult(
                     candidate.EmployeeId, candidate.Name, candidate.Title, candidate.Score,
-                    StaffingMatchStatus.Completed, facts.Score, facts.Band, run.Answer, Error: null);
+                    StaffingMatchStatus.Completed, run.Score, run.Band, run.Answer, Error: null);
             }
             catch (HttpRequestException ex)
             {

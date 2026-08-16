@@ -31,6 +31,22 @@ public class ResumeIngestionAgentTests
         new(id, name, args ?? []);
 
     [Fact]
+    public async Task Requests_the_structured_closing_schema_on_the_wire()
+    {
+        var chat = new FakeChatClient(() => new ChatResponse(new ChatMessage(ChatRole.Assistant,
+            """{"proposals":[],"aborted":false,"abortReason":null}""")));
+        var agent = new ResumeIngestionAgent(chat, new FakeToolSource(
+                Tool("employee_create_draft", () => DraftPayload()),
+                Tool("skill_list", () => "[]")),
+            NullLoggerFactory.Instance);
+
+        await agent.IngestAsync("Resume.");
+
+        chat.ReceivedOptions[0]!.ResponseFormat.Should().BeOfType<ChatResponseFormatJson>()
+            .Which.Schema.Should().NotBeNull("the closing report is schema-constrained since P1T-118");
+    }
+
+    [Fact]
     public async Task Exposes_only_the_narrowed_write_surface_to_the_model()
     {
         var chat = new FakeChatClient(() => new ChatResponse(new ChatMessage(ChatRole.Assistant,

@@ -79,9 +79,9 @@ public sealed class ResumeIngestionAgent
         6. Skills with no catalog match (even by meaning) are NOT added and NOT created — collect
            their names as proposals for human review.
 
-        When done, reply with ONLY this JSON — no prose, no markdown fences:
-        {"proposals":["<unmatched skill name>", ...],"aborted":false,"abortReason":null}
-        Set "aborted" to true (with a short reason) only when step 5 stopped the run.
+        When done, finish with the structured report: proposals = the unmatched skill names from
+        step 6 (empty when all matched); aborted = true with a short abortReason only when step 5
+        stopped the run, otherwise false with abortReason null.
         """;
 
     private readonly IChatClient _chatClient;
@@ -123,7 +123,18 @@ public sealed class ResumeIngestionAgent
 
         var session = await agent.CreateSessionAsync(ct);
         using var metering = Usage.MeteringScope.Begin();
-        var response = await agent.RunAsync("Resume text:\n\n" + resumeText, session, null, ct);
+        // The closing report is schema-constrained (P1T-118); tools still run under a response
+        // format (verified by the compat probes). The run service parses strictly, with the old
+        // brace-hunt as fallback.
+        var options = new ChatClientAgentRunOptions
+        {
+            ChatOptions = new ChatOptions
+            {
+                ResponseFormat = ChatResponseFormat.ForJsonSchema(
+                    AIJsonUtilities.CreateJsonSchema(typeof(IngestionClosing)), "ingestion_closing"),
+            },
+        };
+        var response = await agent.RunAsync("Resume text:\n\n" + resumeText, session, options, ct);
         var usage = response.Usage;
         var (modelId, latencyMs) = metering.Snapshot();
         var reply = new AgentReply(

@@ -11,7 +11,7 @@ namespace CvManager.Agents.Tests;
 /// </summary>
 public class MatchRunServiceTests
 {
-    private sealed class RecordingChatAgent : IChatAgent
+    private sealed class RecordingChatAgent(string reply = "Fit: MODERATE (60/100)") : IChatAgent
     {
         public string? LastQuestion { get; private set; }
 
@@ -20,7 +20,7 @@ public class MatchRunServiceTests
         public Task<AgentReply> AskAsync(string question, CancellationToken ct = default)
         {
             LastQuestion = question;
-            return Task.FromResult(new AgentReply("Fit: MODERATE (60/100)", 123, 45, 168));
+            return Task.FromResult(new AgentReply(reply, 123, 45, 168));
         }
     }
 
@@ -45,5 +45,51 @@ public class MatchRunServiceTests
         run.AgentName.Should().Be("match");
         run.Answer.Should().Be("Fit: MODERATE (60/100)");
         run.Reply.TotalTokens.Should().Be(168);
+    }
+
+    [Fact]
+    public async Task Parses_the_structured_verdict_into_markdown_score_and_band()
+    {
+        var run = await new MatchRunService(new RecordingChatAgent(
+                """{"score":91,"band":"Strong","gapAnalysisMarkdown":"## Gap analysis\n\nAll met."}"""))
+            .RunAsync(Guid.NewGuid(), "Senior React engineer.");
+
+        run.Answer.Should().Be("## Gap analysis\n\nAll met.");
+        run.Score.Should().Be(91);
+        run.Band.Should().Be("Strong");
+    }
+
+    [Fact]
+    public async Task Maps_InsufficientEvidence_to_the_legacy_display_band()
+    {
+        var run = await new MatchRunService(new RecordingChatAgent(
+                """{"score":null,"band":"InsufficientEvidence","gapAnalysisMarkdown":"No usable CV evidence."}"""))
+            .RunAsync(Guid.NewGuid(), "Senior React engineer.");
+
+        run.Band.Should().Be("Insufficient evidence", "report/UI contracts keep the parser-era string");
+        run.Score.Should().BeNull("honest absence stays null, never invented");
+    }
+
+    [Fact]
+    public async Task Falls_back_to_the_regex_parser_on_a_non_json_reply()
+    {
+        var run = await new MatchRunService(new RecordingChatAgent(
+                "## Fit assessment\n\nOverall score: 60/100\nOverall band: Moderate"))
+            .RunAsync(Guid.NewGuid(), "Senior React engineer.");
+
+        run.Answer.Should().Contain("Fit assessment", "the raw markdown ships when there is no JSON");
+        run.Score.Should().Be(60);
+        run.Band.Should().Be("Moderate");
+    }
+
+    [Fact]
+    public async Task Out_of_range_structured_score_is_dropped_not_trusted()
+    {
+        var run = await new MatchRunService(new RecordingChatAgent(
+                """{"score":780,"band":"Strong","gapAnalysisMarkdown":"Analysis."}"""))
+            .RunAsync(Guid.NewGuid(), "Senior React engineer.");
+
+        run.Score.Should().BeNull();
+        run.Band.Should().Be("Strong");
     }
 }

@@ -38,6 +38,21 @@ public class MatchAgentTests
     }
 
     [Fact]
+    public async Task Requests_the_structured_verdict_schema_on_the_wire()
+    {
+        var chat = new FakeChatClient(
+            () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
+                """{"score":68,"band":"Moderate","gapAnalysisMarkdown":"Analysis."}""")));
+        var agent = new MatchAgent(
+            chat, new FakeToolSource(CvGetTool(() => { })), NullLoggerFactory.Instance);
+
+        await agent.AskAsync("Assess Ada against a React role.");
+
+        chat.ReceivedOptions[0]!.ResponseFormat.Should().BeOfType<ChatResponseFormatJson>()
+            .Which.Schema.Should().NotBeNull("the match verdict is schema-constrained since P1T-118");
+    }
+
+    [Fact]
     public async Task Invokes_cv_get_when_the_model_requests_it()
     {
         var toolInvoked = false;
