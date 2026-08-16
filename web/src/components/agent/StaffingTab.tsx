@@ -34,6 +34,7 @@ import {
   settleStaffingProgress,
   type StaffingProgress,
 } from "./staffingProgress";
+import RequirementChips from "./RequirementChips";
 import { StaffingStepper } from "./StaffingStepper";
 import { StaffingCandidateCard, StaffingRecommendation } from "./StaffingCandidateCard";
 
@@ -338,11 +339,7 @@ export function StaffingPanel({
               <Typography variant="caption" color="text.secondary">
                 How the JD was read
               </Typography>
-              <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
-                {report.requirements.map((r) => (
-                  <Chip key={r} label={r} size="small" />
-                ))}
-              </Stack>
+              <RequirementChips requirements={report.requirements} extraction={report.extraction} />
             </Box>
 
             {report.candidates.length === 0 ? (
