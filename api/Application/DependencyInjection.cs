@@ -24,6 +24,7 @@ public static class DependencyInjection
         services.AddScoped<ICvService, CvService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<Search.IEmployeeDigestService, Search.EmployeeDigestService>();
+        services.AddScoped<Search.IEmployeeFilterService, Search.EmployeeFilterService>();
 
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 

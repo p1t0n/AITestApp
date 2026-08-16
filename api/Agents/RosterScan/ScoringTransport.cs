@@ -59,6 +59,10 @@ public sealed class RosterScanOptions
 
     /// <summary>How often the worker sweeps for due paused / orphaned jobs.</summary>
     public double ResumeSweepSeconds { get; set; } = 30;
+
+    /// <summary>The day's call budget the submit estimate is judged against (the pinned model's
+    /// free-tier RPD, P1T-114).</summary>
+    public int RequestsPerDay { get; set; } = 500;
 }
 
 /// <summary>

@@ -28,6 +28,7 @@ public sealed class RosterScanRunner(
     IJdRequirementExtractor extractor,
     IRosterDigestSource digests,
     IScoringTransport transport,
+    IEmployeeFilterService filters,
     IUsageMeter meter,
     IUsageService usage,
     RosterScanOptions options,
@@ -35,6 +36,9 @@ public sealed class RosterScanRunner(
     ILogger<RosterScanRunner> logger)
 {
     public const string AgentName = "roster-scan";
+
+    /// <summary>One span per job pass, so a scan reads as one trace in the Aspire dashboard.</summary>
+    public static readonly System.Diagnostics.ActivitySource Tracing = new("CvManager.Agents.RosterScan");
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
@@ -44,6 +48,9 @@ public sealed class RosterScanRunner(
     /// <summary>Runs one pass over a queued job until it completes, pauses, or fails.</summary>
     public async Task<RosterScanRunResult> RunAsync(ScoringJob job, CancellationToken ct = default)
     {
+        using var activity = Tracing.StartActivity("roster_scan.job");
+        activity?.SetTag("roster_scan.job_id", job.Id);
+
         if (!await store.TryTransitionAsync(job.Id, ScoringJobState.Running, ct: ct))
         {
             logger.LogWarning("Scoring job {JobId} could not move to running (state {State}); skipping.",
@@ -97,7 +104,7 @@ public sealed class RosterScanRunner(
 
         if (job.Candidates.Count == 0 && !await HasCandidatesAsync(job.Id, ct))
         {
-            await SweepDigestsAsync(job.Id, ct);
+            await SweepDigestsAsync(job, ct);
         }
 
         return extraction;
@@ -107,17 +114,26 @@ public sealed class RosterScanRunner(
         => (await store.GetPendingCandidatesAsync(jobId, 1, ct)).Count > 0
            || (await store.GetAsync(jobId, ct))?.Candidates.Count > 0;
 
-    private async Task SweepDigestsAsync(Guid jobId, CancellationToken ct)
+    private async Task SweepDigestsAsync(ScoringJob job, CancellationToken ct)
     {
+        // Pre-filters resolve to a deterministic eligible-id set (same semantics as semantic
+        // search's SQL prefilter); the model still only ever sees MCP-captured digests.
+        var scanFilters = job.FiltersJson is { Length: > 0 } json
+            ? JsonSerializer.Deserialize<SemanticSearchFilters>(json, Json)
+            : null;
+        var eligible = await filters.ResolveEligibleAsync(scanFilters, ct);
+
         for (var page = 1; ; page++)
         {
             var digestPage = await digests.ListAsync(page, EmployeeDigestService.DefaultPageSize, ct)
                 ?? throw new InvalidOperationException("The roster_digest_list result was unreadable.");
-            if (digestPage.Items.Count > 0)
+            var seeds = digestPage.Items
+                .Where(d => eligible is null || eligible.Contains(d.EmployeeId))
+                .Select(d => new ScoringCandidateSeed(d.EmployeeId, d.Name, d.Title, d.Digest))
+                .ToList();
+            if (seeds.Count > 0)
             {
-                await store.AddCandidatesAsync(jobId, digestPage.Items
-                    .Select(d => new ScoringCandidateSeed(d.EmployeeId, d.Name, d.Title, d.Digest))
-                    .ToList(), ct);
+                await store.AddCandidatesAsync(job.Id, seeds, ct);
             }
 
             if (page * digestPage.PageSize >= digestPage.Total || digestPage.Items.Count == 0)
