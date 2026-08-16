@@ -40,6 +40,9 @@ See [SPEC.md](SPEC.md).
 - **AI agent widget** — dockable in-app assistant with Roster Q&A / Tailor CV / Match / Interview /
   Shortlist / Staffing / Bench / Usage tabs; per-user token caps enforced server-side.
 - **Auth** — passkey (WebAuthn) sign-in for the app; OAuth 2.1 service accounts for agents.
+- **Extraction-fidelity eval** — frozen golden JD set (incl. deliberately sparse/ambiguous
+  honesty cases) + CLI + live regression gate with a hard fabrication-rate=0 ceiling: no invented
+  must-haves, seniority, location, or years when the JD is silent.
 - **Retrieval evals** — frozen golden set + live regression gate + threshold-sweep CLI; retrieval
   quality is measured, not guessed (see `manuals/retrieval-eval-baseline.md`).
 - **Demo data** — committed 500-employee synthetic roster + seeder CLI for realistic demos.
@@ -72,6 +75,7 @@ tools/
   GenerateDemoRoster/  demo dataset generator (one-off, LLM-assisted)
   SeedDemoRoster/      demo roster seeder CLI (--count / --wipe)
   RetrievalEval/       retrieval eval + threshold-sweep CLI (+ RetrievalEval.Core)
+  ExtractionEval/      JD extraction-fidelity eval CLI (+ ExtractionEval.Core, golden JD set)
 keycloak/          realm-export.json (OAuth realm: clients, scopes, audience mapper)
 manuals/           tech docs: semantic search + shortlist, staffing pipeline, MAF research,
                    eval baseline, decision records
@@ -260,4 +264,4 @@ dotnet ef migrations add <Name> \
 - Server-side PDF rendering (CV is React-rendered; print to PDF for now)
 - Web integration tests (WebApplicationFactory + Testcontainers) and Playwright e2e
 - SPA edit forms for languages / qualifications / experiences (API already supports them)
-- Shortlist-specific retrieval evals (requirement-extraction fidelity, coverage-merge ranking)
+- Shortlist coverage-merge ranking evals (requirement-extraction fidelity shipped as ExtractionEval)

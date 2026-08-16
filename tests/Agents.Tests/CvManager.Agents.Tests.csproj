@@ -28,6 +28,7 @@
     <!-- Eval-only: the ingestion eval's fake MCP tools validate with the REAL Application
          validators so the self-correction loop sees production error shapes. -->
     <ProjectReference Include="..\..\api\Application\CvManager.Application.csproj" />
+    <ProjectReference Include="..\..\tools\ExtractionEval.Core\ExtractionEval.Core.csproj" />
   </ItemGroup>
 
 </Project>
