@@ -664,7 +664,8 @@ app.MapPost("/agents/staffing", async (
         TimeSpan.FromSeconds(staffing.Value.SseKeepAliveSeconds),
         loggerFactory.CreateLogger(nameof(StaffingSse)),
         http.RequestAborted,
-        persistProposal: (report, ct) => proposals.CreateAsync(userId, request.JobDescription, report, ct));
+        persistProposal: (report, package, ct) =>
+            proposals.CreateAsync(userId, request.JobDescription, report, package, ct));
     return Results.Empty;
 }).RequireAuthorization();
 

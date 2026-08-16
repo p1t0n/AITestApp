@@ -23,10 +23,15 @@ public sealed class StaffingProposalStore(
     TimeProvider clock,
     ILogger<StaffingProposalStore> logger)
 {
-    /// <summary>Persists a run's report as a pending proposal. Returns the proposal id, or null
-    /// when persistence failed (logged; the caller degrades the report instead of failing).</summary>
+    /// <summary>Persists a run's report as a pending proposal, with the full handoff document
+    /// (package + report, P1T-133) in the jsonb column. Returns the proposal id, or null when
+    /// persistence failed (logged; the caller degrades the report instead of failing).</summary>
     public async Task<Guid?> CreateAsync(
-        Guid? requestedBy, string jobDescription, StaffingReport report, CancellationToken ct = default)
+        Guid? requestedBy,
+        string jobDescription,
+        StaffingReport report,
+        CvManager.Agents.Handoff.HandoffPackage package,
+        CancellationToken ct = default)
     {
         try
         {
@@ -39,6 +44,7 @@ public sealed class StaffingProposalStore(
                 ReportDegraded = report.Degraded,
                 Status = StaffingProposalStatus.Pending,
                 CreatedAt = clock.GetUtcNow(),
+                PackageJson = StaffingHandoffDocument.From(package, report).Serialize(),
                 Candidates = report.Candidates.Select((c, i) => new StaffingProposalCandidate
                 {
                     Id = Guid.NewGuid(),

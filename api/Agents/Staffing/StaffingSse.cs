@@ -66,7 +66,7 @@ public static class StaffingSse
         TimeSpan keepAliveInterval,
         ILogger logger,
         CancellationToken ct,
-        Func<StaffingReport, CancellationToken, Task<Guid?>>? persistProposal = null)
+        Func<StaffingReport, Handoff.HandoffPackage, CancellationToken, Task<Guid?>>? persistProposal = null)
     {
         response.ContentType = ContentType;
         response.Headers.CacheControl = "no-cache";
@@ -94,7 +94,7 @@ public static class StaffingSse
                 {
                     // Best-effort: the store returns null on failure, and the report ships anyway
                     // with a note instead of a proposal id (degrade, never fail a finished run).
-                    if (await persistProposal(report, ct) is { } proposalId)
+                    if (await persistProposal(report, outcome.Package, ct) is { } proposalId)
                     {
                         report = report with { ProposalId = proposalId };
                     }
