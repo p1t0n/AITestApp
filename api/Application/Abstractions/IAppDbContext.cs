@@ -25,6 +25,8 @@ public interface IAppDbContext
     DbSet<AgentUsage> AgentUsages { get; }
     DbSet<StaffingProposal> StaffingProposals { get; }
     DbSet<StaffingProposalCandidate> StaffingProposalCandidates { get; }
+    DbSet<ScoringJob> ScoringJobs { get; }
+    DbSet<ScoringJobCandidate> ScoringJobCandidates { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
