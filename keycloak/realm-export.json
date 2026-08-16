@@ -193,6 +193,20 @@
         "mcp:read",
         "mcp:write"
       ]
+    },
+    {
+      "clientId": "agent-roster-scan",
+      "name": "Roster Scan runner (confidential, mcp:read — digest sweeps only)",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "agent-roster-scan-secret",
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": [
+        "mcp-audience",
+        "mcp:read"
+      ]
     }
   ]
 }

@@ -101,6 +101,7 @@ builder.Services.AddAgentMcpIdentity(builder.Configuration, "shortlist");
 builder.Services.AddAgentMcpIdentity(builder.Configuration, "interview-kit");
 builder.Services.AddAgentMcpIdentity(builder.Configuration, "bench-report");
 builder.Services.AddAgentMcpIdentity(builder.Configuration, "resume-ingestion");
+builder.Services.AddAgentMcpIdentity(builder.Configuration, "roster-scan");
 
 // Agents. Add future agents (Resume Ingestion, Staffing/Match) here. Each resolves its own keyed
 // IMcpToolSource (own MCP identity) and its model-appropriate chat client (default or override).
@@ -179,6 +180,19 @@ builder.Services.AddSingleton<CvManager.Agents.RosterScan.IScoringTransport>(sp 
         sp.GetRequiredService<System.Threading.RateLimiting.RateLimiter>(),
         sp.GetRequiredService<CvManager.Agents.RosterScan.RosterScanOptions>(),
         sp.GetRequiredService<TimeProvider>()));
+
+// Roster Scan runner (P1T-124): jobs drain through an in-process channel; the worker also sweeps
+// for due paused jobs and restart orphans. The store/runner are scoped (EF-backed) — the worker
+// opens a scope per job pass.
+builder.Services.AddSingleton<CvManager.Agents.RosterScan.IRosterDigestSource>(sp =>
+    new CvManager.Agents.RosterScan.McpRosterDigestSource(
+        sp.GetRequiredKeyedService<IMcpToolSource>("roster-scan")));
+builder.Services.AddScoped<CvManager.Agents.RosterScan.ScoringJobStore>();
+builder.Services.AddScoped<CvManager.Agents.RosterScan.RosterScanRunner>();
+builder.Services.AddSingleton<CvManager.Agents.RosterScan.RosterScanQueue>();
+builder.Services.AddSingleton<CvManager.Agents.RosterScan.IRosterScanQueue>(sp =>
+    sp.GetRequiredService<CvManager.Agents.RosterScan.RosterScanQueue>());
+builder.Services.AddHostedService<CvManager.Agents.RosterScan.RosterScanWorker>();
 // JD-only match (P1T-103): shortlist retrieval + per-candidate match fan-out, no narrative.
 builder.Services.AddSingleton(sp => new JdMatchRunService(
     sp.GetRequiredService<IShortlistRunService>(),

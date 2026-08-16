@@ -61,6 +61,10 @@ public class ScoringJobCandidate
 
     public string Title { get; set; } = string.Empty;
 
+    /// <summary>The career digest this candidate is scored from, captured at intake — so a
+    /// resumed job scores exactly what the original sweep saw, without re-fetching.</summary>
+    public string Digest { get; set; } = string.Empty;
+
     /// <summary>One of <see cref="ScoringCandidateStatus"/>.</summary>
     public string Status { get; set; } = ScoringCandidateStatus.Pending;
 
