@@ -48,13 +48,15 @@ public sealed record TailoringAgentOutcome(
 
 /// <summary>
 /// Read-only agent that tailors one employee's CV to a target job description. A Microsoft Agent
-/// Framework <see cref="ChatClientAgent"/> backed by the configured chat model, narrowed to the
-/// <c>cv_get</c> + <c>style_exemplar_search</c> MCP tools. One run is a single 2-turn session:
-/// turn 1 fetches the CV, selects up to 8 JD-relevant achievement ids, calls the exemplar tool
-/// once, and answers with the advisory prose exactly as before; turn 2 (driven by this class, not
-/// the caller) returns only minimal rewrites JSON. Per-run decorating <see cref="AIFunction"/>s
-/// capture the cv_get result and the exemplar call so the endpoint composes rewrites from
-/// tool-sourced facts, never from model text. The agent never fabricates data and writes nothing.
+/// Framework <see cref="ChatClientAgent"/> backed by the configured chat model. The <c>cv_get</c>
+/// call is a fixed prerequisite, so it runs deterministically in code (P1T-131) and its verbatim
+/// result opens the session; the model's tool surface is exactly <c>style_exemplar_search</c> —
+/// the genuinely dynamic call, where the model picks which bullets deserve exemplars. One run is
+/// a single 2-turn session: turn 1 selects up to 8 JD-relevant achievement ids, calls the
+/// exemplar tool once, and answers with the advisory prose exactly as before; turn 2 (driven by
+/// this class, not the caller) returns only minimal rewrites JSON. The captured cv_get result and
+/// the decorated exemplar call let the endpoint compose rewrites from tool-sourced facts, never
+/// from model text. The agent never fabricates data and writes nothing.
 /// </summary>
 public sealed class CvTailoringAgent
 {
@@ -71,22 +73,24 @@ public sealed class CvTailoringAgent
 
     private const string Instructions =
         """
-        You are the CV Tailoring assistant for a CV Manager. You are given an employee id and a
-        target job description. The conversation has exactly two steps.
+        You are the CV Tailoring assistant for a CV Manager. You are given a target job
+        description and the employee's full CV — the verbatim result of the cv_get tool, already
+        fetched for you and included in the message. The conversation has exactly two steps.
 
-        STEP 1 — the current message. Call the cv_get tool to fetch that employee's full CV. Then
-        select up to 8 achievement ids from the CV's experiences whose bullets are most relevant
-        to the job description, and call the style_exemplar_search tool exactly once, passing
-        those ids as the "achievementIds" argument. Then produce:
+        STEP 1 — the current message. From the CV's experiences, select up to 8 achievement ids
+        whose bullets are most relevant to the job description, and call the
+        style_exemplar_search tool exactly once, passing those ids as the "achievementIds"
+        argument. Then produce:
 
         1. A ready-to-paste rewritten professional summary (a short paragraph) aimed at the role.
         2. Concrete tailoring guidance: which skills and experiences to emphasise, which to drop or
            de-emphasise, and how to reorder them for this job description.
 
-        Do not mention the exemplars or the upcoming rewrites in this reply. Use ONLY facts
-        returned by cv_get — never invent skills, experience, qualifications, or achievements the
-        CV does not contain. If cv_get reports the employee was not found, say so plainly and stop
-        (do not call style_exemplar_search). You have read-only access and cannot change any data.
+        Do not mention the exemplars or the upcoming rewrites in this reply. Use ONLY facts from
+        the provided CV — never invent skills, experience, qualifications, or achievements the CV
+        does not contain. If the CV result reports the employee was not found or contains an
+        error, say so plainly and stop (do not call style_exemplar_search). You have read-only
+        access and cannot change any data.
 
         STEP 2 — the user will then say "Now the rewrites." Reply with ONLY a JSON array — no
         prose, no markdown fences, no explanations — of this exact shape:
@@ -118,22 +122,40 @@ public sealed class CvTailoringAgent
 
     public string Name => "cv-tailoring";
 
-    public async Task<TailoringAgentOutcome> TailorAsync(string question, CancellationToken ct = default)
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
+    {
+        PropertyNameCaseInsensitive = true,
+    };
+
+    public async Task<TailoringAgentOutcome> TailorAsync(
+        Guid employeeId, string jobDescription, CancellationToken ct = default)
     {
         var tools = await GetToolsAsync(ct);
 
-        // Per-run capture seam (mirrors the shortlist agent): decorate both AIFunctions so this
-        // run records the cv_get result, the achievement ids the model selected, and the exemplar
-        // result. The ChatClientAgent itself is rebuilt per run (cheap — the expensive MCP tool
-        // listing is cached), which keeps the capture strictly request-scoped.
-        var capture = new TailoringCapture();
+        // Fixed order → code (P1T-131): cv_get is a hard prerequisite of the whole run — the
+        // employee is known before the model says a word — so it is invoked deterministically
+        // here (the P1T-117 shortlist-retrieval pattern) instead of hoping the tool loop calls
+        // it. The exemplar call stays model-driven: genuinely dynamic, the model picks which
+        // bullets deserve exemplars.
+        var cvGet = tools.OfType<AIFunction>().FirstOrDefault(t => t.Name == CvTool)
+            ?? throw new HttpRequestException($"The MCP server did not expose the {CvTool} tool.");
+        var cvResult = await cvGet.InvokeAsync(
+            new AIFunctionArguments { ["employeeId"] = employeeId }, ct);
+
+        // Per-run capture seam (mirrors the shortlist agent): the cv_get result is captured from
+        // the deterministic call above; the exemplar decorator records the model's selection and
+        // the tool's payload. The ChatClientAgent itself is rebuilt per run (cheap — the
+        // expensive MCP tool listing is cached), which keeps the capture strictly request-scoped.
+        var capture = new TailoringCapture
+        {
+            Cv = ToolResultPayload.Extract<TailoringCvPayload>(
+                cvResult,
+                obj => obj.ContainsKey("experiences") || obj.ContainsKey("Experiences"),
+                Json),
+        };
         var runTools = tools
-            .Select(t => t switch
-            {
-                AIFunction f when f.Name == CvTool => new CapturingCvGetFunction(f, capture),
-                AIFunction f when f.Name == ExemplarTool => new CapturingExemplarFunction(f, capture),
-                _ => t,
-            })
+            .Where(t => t.Name == ExemplarTool)
+            .Select(t => t is AIFunction f ? (AITool)new CapturingExemplarFunction(f, capture) : t)
             .ToList();
 
         var agent = new ChatClientAgent(
@@ -146,6 +168,18 @@ public sealed class CvTailoringAgent
 
         var session = await agent.CreateSessionAsync(ct);
         using var metering = Usage.MeteringScope.Begin();
+
+        // The opening message carries the JD and the verbatim cv_get result — the model reads
+        // the CV instead of fetching it.
+        var question =
+            $"""
+             Tailor the CV of employee {employeeId} to this job description:
+
+             {jobDescription}
+
+             The employee's full CV (the verbatim cv_get result):
+             {RenderToolResult(cvResult)}
+             """;
 
         // Turn 1: the tailoring markdown — this is the answer, byte-identical in behavior to the
         // pre-rewrite agent. A failure here is an upstream fault and propagates to the endpoint.
@@ -178,6 +212,16 @@ public sealed class CvTailoringAgent
         return new TailoringAgentOutcome(
             reply, rewritesText, capture.SelectedAchievementIds ?? [], capture.Exemplars, capture.Cv);
     }
+
+    /// <summary>The cv_get result as prompt text: tool results usually arrive as JSON text (or a
+    /// TextContent wrapping it); anything else serializes as JSON.</summary>
+    private static string RenderToolResult(object? result) => result switch
+    {
+        null => "(the tool returned no result)",
+        string text => text,
+        Microsoft.Extensions.AI.TextContent content => content.Text,
+        _ => JsonSerializer.Serialize(result, Json),
+    };
 
     private async Task<IReadOnlyList<AITool>> GetToolsAsync(CancellationToken ct)
     {
@@ -213,29 +257,6 @@ internal sealed class TailoringCapture
     public TailoringCvPayload? Cv { get; set; }
     public IReadOnlyList<Guid>? SelectedAchievementIds { get; set; }
     public TailoringExemplarPayload? Exemplars { get; set; }
-}
-
-/// <summary>Decorates <c>cv_get</c> to record the CV the model fetched — the endpoint resolves
-/// each rewrite's original bullet text and experience id from it (the Agents service may not
-/// query the employee DB directly; MCP is the boundary). Behaves identically otherwise.</summary>
-internal sealed class CapturingCvGetFunction(AIFunction inner, TailoringCapture capture)
-    : DelegatingAIFunction(inner)
-{
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
-    {
-        PropertyNameCaseInsensitive = true,
-    };
-
-    protected override async ValueTask<object?> InvokeCoreAsync(
-        AIFunctionArguments arguments, CancellationToken cancellationToken)
-    {
-        var result = await base.InvokeCoreAsync(arguments, cancellationToken);
-        capture.Cv = ToolResultPayload.Extract<TailoringCvPayload>(
-            result,
-            obj => obj.ContainsKey("experiences") || obj.ContainsKey("Experiences"),
-            Json) ?? capture.Cv;
-        return result;
-    }
 }
 
 /// <summary>Decorates <c>style_exemplar_search</c> to record, per run, the achievement ids the
