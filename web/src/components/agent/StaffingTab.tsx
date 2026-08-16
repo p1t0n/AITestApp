@@ -37,6 +37,7 @@ import {
 import RequirementChips from "./RequirementChips";
 import { StaffingStepper } from "./StaffingStepper";
 import { StaffingCandidateCard, StaffingRecommendation } from "./StaffingCandidateCard";
+import { ProposalInbox } from "./ProposalInbox";
 
 type DecisionState =
   | { phase: "pending" | "saving" }
@@ -46,7 +47,14 @@ type DecisionState =
 // The human decision on a run's proposal (P1T-100): the pipeline only proposes — staffing
 // outcomes are approved or rejected here, once, by a person. A decision failure keeps the
 // buttons live for retry; a conflict (someone else decided first) reads as any other API error.
-function ProposalDecisionCard({ proposalId }: { proposalId: string }) {
+// Exported for the approval inbox drill-in (P1T-135), which decides from the persisted package.
+export function ProposalDecisionCard({
+  proposalId,
+  onDecided,
+}: {
+  proposalId: string;
+  onDecided?: (status: string) => void;
+}) {
   const [state, setState] = useState<DecisionState>({ phase: "pending" });
 
   async function decide(decision: "approved" | "rejected") {
@@ -54,6 +62,7 @@ function ProposalDecisionCard({ proposalId }: { proposalId: string }) {
     try {
       const result = await decideStaffingProposal(proposalId, decision);
       setState({ phase: "decided", status: result.status });
+      onDecided?.(result.status);
     } catch (err) {
       setState({ phase: "failed", message: apiErrorMessage(err) });
     }
@@ -197,6 +206,10 @@ export function StaffingPanel({
   return (
     <Box sx={{ flex: 1, overflowY: "auto", p: 1.5 }}>
       <Stack spacing={1.5}>
+        {/* The approval inbox (P1T-135): pending proposals decided from their persisted
+            handoff packages — nothing here re-runs the pipeline. */}
+        <ProposalInbox onOpenInMatch={onOpenInMatch} onTailorCv={onTailorCv} />
+
         <Box>
           <Typography variant="caption" color="text.secondary">
             Job description

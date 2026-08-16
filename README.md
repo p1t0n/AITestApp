@@ -29,7 +29,10 @@ See [SPEC.md](SPEC.md).
   instead of erroring (see `manuals/staffing-pipeline.md`).
 - **Human approval of staffing proposals** — every staffing run ends as a *pending proposal* a
   person approves or rejects (once) in the widget; the pipeline only proposes, humans hold write
-  authority, and the decision ledger survives restarts.
+  authority, and the decision ledger survives restarts. Each proposal persists its full **handoff
+  package** — the complete report, run provenance (agent identities/scopes, models, tokens, caps),
+  and degradations — so an approver arriving later decides from the package alone via the widget's
+  approval inbox drill-in (see `manuals/handoff-package.md`).
 - **CV bullet rewriting** — Tailor CV also returns vetted before/after rewrites of the CV's
   achievement bullets, phrased after anonymized cross-CV style exemplars (`style_exemplar_search`)
   and screened by a fabrication guard; one-click **Apply** persists a rewrite through the user's
@@ -180,6 +183,9 @@ available as tabs in the in-app widget):
   The report carries a `proposalId` — the run's pending approval record.
 - `GET /agents/staffing/proposals?status=pending` — the approval inbox (proposals newest-first,
   candidates snapshotted with rank/score/rationale).
+- `GET /agents/staffing/proposals/{id}` — the approver drill-in: proposal metadata plus the full
+  persisted handoff package (report, provenance, stage slices, degradations); pre-package rows
+  return `package: null`; requires an identified user.
 - `POST /agents/staffing/proposals/{id}/decision {decision: approved|rejected, note?}` — records
   the human decision, exactly once (repeat → 409); requires an identified user.
 - `POST /agents/bench-report {}` — bench pressure + capability gaps: `{answer, stats, notes}`;

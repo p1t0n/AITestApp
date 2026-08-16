@@ -94,6 +94,8 @@ vi.mock("../api", async (importOriginal) => {
     useJdMatch: () => ({ mutateAsync: vi.fn(), isPending: false }),
     useInterviewKit: () => ({ mutateAsync: vi.fn(), isPending: false }),
     useShortlist: () => ({ mutateAsync: vi.fn(), isPending: false }),
+    // Empty inbox: these tests exercise the run flow; the inbox has its own test file.
+    useStaffingProposals: () => ({ data: [], isLoading: false, refetch: vi.fn() }),
   };
 });
 
