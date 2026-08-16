@@ -157,6 +157,28 @@ builder.Services.AddSingleton<IMatchRunService>(sp => sp.GetRequiredService<Matc
 // requirements for Shortlist/Match/Interview Kit/Roster Scan (consumers wired in P1T-117).
 builder.Services.AddSingleton<IJdRequirementExtractor>(sp => new JdRequirementExtractor(
     sp.ResolveAgentChatClient(JdRequirementExtractor.AgentName)));
+
+// Roster Scan scoring transport (P1T-123): the sync-vs-batch seam. The limiter is process-wide —
+// it protects the model's RPM across every concurrent scan, like the staffing throttle. The
+// runner (P1T-124) consumes both.
+builder.Services.AddSingleton(sp =>
+    builder.Configuration.GetSection(CvManager.Agents.RosterScan.RosterScanOptions.Section)
+        .Get<CvManager.Agents.RosterScan.RosterScanOptions>() ?? new CvManager.Agents.RosterScan.RosterScanOptions());
+builder.Services.AddSingleton<System.Threading.RateLimiting.RateLimiter>(sp =>
+    new System.Threading.RateLimiting.FixedWindowRateLimiter(new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+    {
+        Window = TimeSpan.FromMinutes(1),
+        PermitLimit = sp.GetRequiredService<CvManager.Agents.RosterScan.RosterScanOptions>().RequestsPerMinute,
+        QueueLimit = int.MaxValue,
+        QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst,
+        AutoReplenishment = true,
+    }));
+builder.Services.AddSingleton<CvManager.Agents.RosterScan.IScoringTransport>(sp =>
+    new CvManager.Agents.RosterScan.QueuedSyncScoringTransport(
+        sp.ResolveAgentChatClient("roster-scan"),
+        sp.GetRequiredService<System.Threading.RateLimiting.RateLimiter>(),
+        sp.GetRequiredService<CvManager.Agents.RosterScan.RosterScanOptions>(),
+        sp.GetRequiredService<TimeProvider>()));
 // JD-only match (P1T-103): shortlist retrieval + per-candidate match fan-out, no narrative.
 builder.Services.AddSingleton(sp => new JdMatchRunService(
     sp.GetRequiredService<IShortlistRunService>(),
