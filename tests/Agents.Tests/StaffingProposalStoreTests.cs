@@ -169,14 +169,16 @@ public class StaffingProposalStoreTests
         var report = Report();
         var package = Package();
 
-        await Store(db).CreateAsync(null, "Platform engineer.", report, package);
+        var id = await Store(db).CreateAsync(null, "Platform engineer.", report, package);
 
         var stored = (await db.StaffingProposals.SingleAsync()).PackageJson;
         var document = StaffingHandoffDocument.TryDeserialize(stored);
         document.Should().NotBeNull();
-        // The report round-trips whole — same wire JSON in as out, no truncation.
+        // The report round-trips whole — same wire JSON in as out (plus its own proposal id,
+        // stamped at creation so the drill-in matches the requester's SSE report), no truncation.
         System.Text.Json.JsonSerializer.Serialize(document!.Report, StaffingHandoffDocument.Json)
-            .Should().Be(System.Text.Json.JsonSerializer.Serialize(report, StaffingHandoffDocument.Json));
+            .Should().Be(System.Text.Json.JsonSerializer.Serialize(
+                report with { ProposalId = id }, StaffingHandoffDocument.Json));
         document.Inputs["jobDescription"].Should().Be("Platform engineer.");
         document.Provenance.CallerUserId.Should().Be(Guid.Parse("33333333-3333-3333-3333-333333333333"));
         document.Provenance.CapsSnapshotAtStart.Should().ContainSingle().Which.Window.Should().Be("daily");

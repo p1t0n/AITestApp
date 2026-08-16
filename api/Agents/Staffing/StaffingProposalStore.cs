@@ -35,16 +35,20 @@ public sealed class StaffingProposalStore(
     {
         try
         {
+            var id = Guid.NewGuid();
+            // The persisted report carries its own proposal id — the drill-in then serves exactly
+            // what the requester's SSE report showed (which gains the same id after this call).
+            var document = StaffingHandoffDocument.From(package, report with { ProposalId = id });
             var proposal = new StaffingProposal
             {
-                Id = Guid.NewGuid(),
+                Id = id,
                 RequestedByUserId = requestedBy,
                 JobDescription = jobDescription,
                 RecommendedEmployeeId = report.Recommendation?.EmployeeId,
                 ReportDegraded = report.Degraded,
                 Status = StaffingProposalStatus.Pending,
                 CreatedAt = clock.GetUtcNow(),
-                PackageJson = StaffingHandoffDocument.From(package, report).Serialize(),
+                PackageJson = document.Serialize(),
                 Candidates = report.Candidates.Select((c, i) => new StaffingProposalCandidate
                 {
                     Id = Guid.NewGuid(),
@@ -67,6 +71,17 @@ public sealed class StaffingProposalStore(
             logger.LogError(ex, "Failed to persist the staffing proposal; the report ships without one.");
             return null;
         }
+    }
+
+    /// <summary>One proposal with candidates in rank order, or null — the approver drill-in read
+    /// (P1T-134). Read-only; the package column deserializes at the endpoint.</summary>
+    public async Task<StaffingProposal?> GetAsync(Guid id, CancellationToken ct = default)
+    {
+        var proposal = await db.StaffingProposals.AsNoTracking()
+            .Include(p => p.Candidates)
+            .FirstOrDefaultAsync(p => p.Id == id, ct);
+        proposal?.Candidates.Sort((a, b) => a.Rank.CompareTo(b.Rank));
+        return proposal;
     }
 
     /// <summary>Proposals newest-first, optionally filtered to one status, candidates in rank order.</summary>
