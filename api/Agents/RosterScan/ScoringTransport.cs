@@ -56,6 +56,9 @@ public sealed class RosterScanOptions
 
     /// <summary>Base for the exponential retry backoff (base, 2×base, 4×base…).</summary>
     public double RetryBaseSeconds { get; set; } = 2;
+
+    /// <summary>How often the worker sweeps for due paused / orphaned jobs.</summary>
+    public double ResumeSweepSeconds { get; set; } = 30;
 }
 
 /// <summary>

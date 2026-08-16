@@ -4,8 +4,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CvManager.Agents.RosterScan;
 
-/// <summary>One employee slot to seed at job creation (identity from the digest sweep).</summary>
-public sealed record ScoringCandidateSeed(Guid EmployeeId, string Name, string Title);
+/// <summary>One employee slot to seed (identity + the digest captured from the sweep).</summary>
+public sealed record ScoringCandidateSeed(Guid EmployeeId, string Name, string Title, string Digest = "");
 
 /// <summary>One candidate's settled result from a scoring chunk.</summary>
 public sealed record ScoringCandidateResult(
@@ -81,20 +81,68 @@ public sealed class ScoringJobStore(IAppDbContext db, TimeProvider clock)
             ChunkSize = chunkSize,
             CreatedAt = now,
             UpdatedAt = now,
-            Candidates = candidates.Select(c => new ScoringJobCandidate
-            {
-                Id = Guid.NewGuid(),
-                EmployeeId = c.EmployeeId,
-                Name = c.Name,
-                Title = c.Title,
-                Status = ScoringCandidateStatus.Pending,
-            }).ToList(),
+            Candidates = candidates.Select(ToPendingRow).ToList(),
         };
 
         db.ScoringJobs.Add(job);
         await db.SaveChangesAsync(ct);
         return job;
     }
+
+    /// <summary>Persists the intake extraction (one extraction per JD, reused by every chunk and
+    /// by resumes).</summary>
+    public async Task SetExtractionAsync(Guid jobId, string extractionJson, CancellationToken ct = default)
+    {
+        var job = await db.ScoringJobs.FirstOrDefaultAsync(j => j.Id == jobId, ct);
+        if (job is null)
+        {
+            return;
+        }
+
+        job.ExtractionJson = extractionJson;
+        job.UpdatedAt = clock.GetUtcNow();
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Adds pending candidate rows from an intake sweep (idempotent per employee — a
+    /// re-run intake never duplicates a row).</summary>
+    public async Task AddCandidatesAsync(
+        Guid jobId, IReadOnlyList<ScoringCandidateSeed> candidates, CancellationToken ct = default)
+    {
+        var existing = await db.ScoringJobCandidates
+            .Where(c => c.JobId == jobId)
+            .Select(c => c.EmployeeId)
+            .ToListAsync(ct);
+        var known = existing.ToHashSet();
+
+        foreach (var seed in candidates.Where(s => !known.Contains(s.EmployeeId)))
+        {
+            var row = ToPendingRow(seed);
+            row.JobId = jobId;
+            db.ScoringJobCandidates.Add(row);
+        }
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>The next pending candidates in stable id order — one scoring chunk's worth.</summary>
+    public async Task<List<ScoringJobCandidate>> GetPendingCandidatesAsync(
+        Guid jobId, int take, CancellationToken ct = default)
+        => await db.ScoringJobCandidates.AsNoTracking()
+            .Where(c => c.JobId == jobId && c.Status == ScoringCandidateStatus.Pending)
+            .OrderBy(c => c.EmployeeId)
+            .Take(take)
+            .ToListAsync(ct);
+
+    private static ScoringJobCandidate ToPendingRow(ScoringCandidateSeed seed) => new()
+    {
+        Id = Guid.NewGuid(),
+        EmployeeId = seed.EmployeeId,
+        Name = seed.Name,
+        Title = seed.Title,
+        Digest = seed.Digest,
+        Status = ScoringCandidateStatus.Pending,
+    };
 
     /// <summary>Attempts a guarded state transition. Returns false (and changes nothing) when the
     /// job is missing or the move is illegal. Pause metadata is set on a move to paused and
