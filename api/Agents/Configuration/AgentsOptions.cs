@@ -13,9 +13,11 @@ public sealed class GeminiOptions
     /// <summary>OpenAI-compatible inference endpoint.</summary>
     public string Endpoint { get; set; } = "https://generativelanguage.googleapis.com/v1beta/openai";
 
-    /// <summary>Default model id (e.g. <c>gemini-flash-lite-latest</c>).
+    /// <summary>Default model id. Pinned to an explicit generation: free-tier quotas differ
+    /// per model row (3.5-flash-lite: RPD 500 vs every Flash-proper row: RPD 20), and a
+    /// <c>-latest</c> alias may silently drift onto a low-quota row (P1T-114/P1T-115).
     /// Used by any agent without a per-agent override in <see cref="Agents"/>.</summary>
-    public string Model { get; set; } = "gemini-flash-lite-latest";
+    public string Model { get; set; } = "gemini-3.5-flash-lite";
 
     /// <summary>Gemini API key. Prefer the GEMINI_API_KEY env var over config in real use.</summary>
     public string ApiKey { get; set; } = "";
