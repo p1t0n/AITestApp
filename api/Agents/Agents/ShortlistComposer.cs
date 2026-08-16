@@ -22,11 +22,14 @@ public sealed record ShortlistCandidateItem(
     IReadOnlyList<ShortlistRequirementItem> Requirements,
     string Rationale);
 
-/// <summary>The pinned POST /agents/shortlist response: the requirement strings the model passed
-/// to the tool, and the tool's coverage-ranked candidates with per-candidate rationales.</summary>
+/// <summary>The pinned POST /agents/shortlist response: the requirement strings the retrieval ran
+/// with, the tool's coverage-ranked candidates with per-candidate rationales, and (additive,
+/// P1T-117) the full structured extraction — priorities, evidence spans, inferred badges,
+/// ambiguities — for consumers that render more than the plain chips.</summary>
 public sealed record ShortlistResponse(
     IReadOnlyList<string> Requirements,
-    IReadOnlyList<ShortlistCandidateItem> Candidates);
+    IReadOnlyList<ShortlistCandidateItem> Candidates,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] JdRequirements? Extraction = null);
 
 /// <summary>
 /// Endpoint-side composition of the shortlist response. Every deterministic field — candidate
@@ -44,7 +47,7 @@ public static class ShortlistComposer
 
     /// <summary>Composes the response. The caller guarantees <c>outcome.Tool</c> is non-null and
     /// error-free (upstream faults are handled before composition).</summary>
-    public static ShortlistResponse Compose(ShortlistAgentOutcome outcome)
+    public static ShortlistResponse Compose(ShortlistAgentOutcome outcome, JdRequirements? extraction = null)
     {
         var tool = outcome.Tool
             ?? throw new InvalidOperationException("Cannot compose a shortlist response without a captured tool result.");
@@ -66,7 +69,7 @@ public static class ShortlistComposer
                     : TemplatedRationale(candidate)))
             .ToList();
 
-        return new ShortlistResponse(outcome.Requirements, candidates);
+        return new ShortlistResponse(outcome.Requirements, candidates, extraction);
     }
 
     /// <summary>Parses the model's minimal rationale JSON leniently: tolerates surrounding prose
@@ -96,6 +99,12 @@ public static class ShortlistComposer
 
     private static List<RationaleEntry?>? TryParseEntries(string modelText)
     {
+        // Primary shape since P1T-117: the schema-constrained {"rationales":[...]} object.
+        if (TryDeserializeObject(modelText) is { Rationales: { } wrapped })
+        {
+            return wrapped.Select(e => e is null ? null : new RationaleEntry(e.EmployeeId, e.Rationale)).ToList();
+        }
+
         if (TryDeserialize(modelText) is { } direct)
         {
             return direct;
@@ -118,6 +127,18 @@ public static class ShortlistComposer
         try
         {
             return JsonSerializer.Deserialize<List<RationaleEntry?>>(text, Json);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static ShortlistRationalePayload? TryDeserializeObject(string text)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<ShortlistRationalePayload>(text.Trim(), Json);
         }
         catch (JsonException)
         {

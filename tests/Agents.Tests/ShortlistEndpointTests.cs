@@ -28,15 +28,21 @@ public class ShortlistEndpointTests
     private static AIFunction ShortlistTool(string? payload = null) =>
         AIFunctionFactory.Create((string[] requirements) => payload ?? ToolPayload, "roster_shortlist_search");
 
+    /// <summary>The extractor's structured reply (call 1 since P1T-117) — the requirement texts
+    /// the run service then passes to the retrieval tool deterministically.</summary>
+    private const string ExtractionJson =
+        """
+        {"requirements":[
+          {"text":"event streaming with Kafka","kind":"Skill","priority":"MustHave","minYears":null,"evidenceSpan":"Kafka","inferred":false},
+          {"text":"Kubernetes operations","kind":"Skill","priority":"MustHave","minYears":null,"evidenceSpan":"Kubernetes","inferred":false},
+          {"text":"team leadership","kind":"Experience","priority":"Unspecified","minYears":null,"evidenceSpan":"leadership","inferred":false}],
+         "seniority":"Unspecified","location":null,"ambiguities":[]}
+        """;
+
     private static FakeChatClient ScriptedChat() => new(
+        () => new ChatResponse(new ChatMessage(ChatRole.Assistant, ExtractionJson)),
         () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
-            [new FunctionCallContent("call-1", "roster_shortlist_search",
-                new Dictionary<string, object?>
-                {
-                    ["requirements"] = new[] { "event streaming with Kafka", "Kubernetes operations", "team leadership" },
-                })])),
-        () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
-            $$"""[{"employeeId":"{{AdaIdText}}","rationale":"Strong Kafka and K8s evidence."}]""")));
+            $$"""{"rationales":[{"employeeId":"{{AdaIdText}}","rationale":"Strong Kafka and K8s evidence."}]}""")));
 
     private static WebApplicationFactory<Program> FakedHost(
         IChatClient chat, AIFunction? tool = null, Action<IServiceCollection>? extra = null) =>
@@ -88,7 +94,8 @@ public class ShortlistEndpointTests
             "/agents/shortlist", new { jobDescription = "Platform engineer." });
 
         response.EnsureSuccessStatusCode();
-        meter.Records.Should().ContainSingle().Which.AgentName.Should().Be("shortlist");
+        // Two rows since P1T-117: the extraction call meters under its own agent name.
+        meter.Records.Select(r => r.AgentName).Should().Equal("jd-extraction", "shortlist");
     }
 
     [Fact]
@@ -132,9 +139,7 @@ public class ShortlistEndpointTests
     public async Task Degrades_to_templated_rationales_when_the_model_returns_prose()
     {
         var chat = new FakeChatClient(
-            () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
-                [new FunctionCallContent("call-1", "roster_shortlist_search",
-                    new Dictionary<string, object?> { ["requirements"] = new[] { "Kafka" } })])),
+            () => new ChatResponse(new ChatMessage(ChatRole.Assistant, ExtractionJson)),
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
                 "Ada seems like a great fit for this role!")));
         using var factory = FakedHost(chat, ShortlistTool());

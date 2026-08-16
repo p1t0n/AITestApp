@@ -145,6 +145,26 @@ public class StaffingPipelineTests
     }
 
     [Fact]
+    public async Task Match_runs_receive_the_shortlist_steps_extraction()
+    {
+        var extraction = new JdRequirements(
+            [new JdRequirement("kafka", RequirementKind.Skill, RequirementPriority.MustHave, null, "kafka", false)],
+            JdSeniority.Senior, null, []);
+        var outcome = ShortlistOk(Candidate(1), Candidate(2));
+        var shortlist = new FakeShortlistRunService(outcome with
+        {
+            Response = outcome.Response! with { Extraction = extraction },
+        });
+        var match = MatchAlwaysOk();
+        var pipeline = Pipeline(shortlist, match, NarrativeChat(NarrativeJson(Id(1), Id(2))));
+
+        await RunAsync(pipeline);
+
+        match.ReceivedExtractions.Should().HaveCount(2).And.OnlyContain(e => ReferenceEquals(e, extraction),
+            "one extraction per staffing run rides from the shortlist step into every match run");
+    }
+
+    [Fact]
     public async Task Emits_ordered_progress_events_covering_the_pipeline_stages()
     {
         var shortlist = new FakeShortlistRunService(ShortlistOk(Candidate(1), Candidate(2)));

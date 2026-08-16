@@ -37,13 +37,16 @@ internal sealed class FakeMatchRunService(Func<Guid, string, Task<MatchRunOutcom
 
     public int Calls => Volatile.Read(ref _calls);
     public List<(Guid EmployeeId, string JobDescription)> Requests { get; } = [];
+    public List<JdRequirements?> ReceivedExtractions { get; } = [];
 
-    public Task<MatchRunOutcome> RunAsync(Guid employeeId, string jobDescription, CancellationToken ct = default)
+    public Task<MatchRunOutcome> RunAsync(
+        Guid employeeId, string jobDescription, JdRequirements? requirements = null, CancellationToken ct = default)
     {
         Interlocked.Increment(ref _calls);
         lock (Requests)
         {
             Requests.Add((employeeId, jobDescription));
+            ReceivedExtractions.Add(requirements);
         }
 
         return run(employeeId, jobDescription);

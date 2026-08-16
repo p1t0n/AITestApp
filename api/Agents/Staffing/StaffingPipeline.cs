@@ -224,6 +224,13 @@ public sealed class StaffingPipeline
                 var run = await pipeline._shortlist.RunAsync(prepared.Shortlist, ct);
 
                 // Meter first: tokens were spent even when the run degrades to a fault below.
+                // The extraction call (P1T-117) rides inside the shortlist run and meters under
+                // its own agent name, so the Usage tab's per-agent breakdown stays truthful.
+                if (run.ExtractionReply is { } extractionReply)
+                {
+                    await MeterAsync(Agents.JdRequirementExtractor.AgentName, extractionReply, "jd-extraction", ct);
+                }
+
                 await MeterAsync(run.AgentName, run.Reply, "shortlist", ct);
 
                 if (run.Response is null)
@@ -281,8 +288,9 @@ public sealed class StaffingPipeline
 
             Emit("match", $"Assessing the top {candidates.Count} candidate(s) in parallel.");
             var jobDescription = stage.Prepared.Request.JobDescription;
+            var extraction = stage.Run.Response.Extraction;
             var results = await Task.WhenAll(
-                candidates.Select(c => RunOneMatchAsync(c, jobDescription, candidates.Count, ct)));
+                candidates.Select(c => RunOneMatchAsync(c, jobDescription, extraction, candidates.Count, ct)));
 
             // Meter sequentially after the fan-out: the meter (an EF-backed scoped service) is not
             // safe for concurrent use.
@@ -306,7 +314,8 @@ public sealed class StaffingPipeline
         /// 429-aware retries inside it, and any terminal fault mapped to a failed status — a failed
         /// candidate never fails the report.</summary>
         private async Task<(CandidateMatch Match, AgentReply? Reply)> RunOneMatchAsync(
-            ShortlistCandidateItem candidate, string jobDescription, int totalCount, CancellationToken ct)
+            ShortlistCandidateItem candidate, string jobDescription, Agents.JdRequirements? extraction,
+            int totalCount, CancellationToken ct)
         {
             await pipeline._throttle.WaitAsync(ct);
             try
@@ -315,7 +324,7 @@ public sealed class StaffingPipeline
                 // queued task, so the SSE stepper's per-candidate ticks reflect actual progress.
                 Emit("match", $"Match started for {candidate.Name}.", candidate.EmployeeId,
                     status: StaffingStepStatus.Started, candidateName: candidate.Name, totalCount: totalCount);
-                var run = await RunWithRateLimitRetryAsync(candidate.EmployeeId, jobDescription, ct);
+                var run = await RunWithRateLimitRetryAsync(candidate.EmployeeId, jobDescription, extraction, ct);
                 Emit("match", $"Match completed for {candidate.Name}.", candidate.EmployeeId,
                     status: StaffingStepStatus.Completed, candidateName: candidate.Name,
                     totalCount: totalCount, countsMatchRun: true);
@@ -338,13 +347,13 @@ public sealed class StaffingPipeline
         }
 
         private async Task<MatchRunOutcome> RunWithRateLimitRetryAsync(
-            Guid employeeId, string jobDescription, CancellationToken ct)
+            Guid employeeId, string jobDescription, Agents.JdRequirements? extraction, CancellationToken ct)
         {
             for (var failures = 1; ; failures++)
             {
                 try
                 {
-                    return await pipeline._match.RunAsync(employeeId, jobDescription, ct);
+                    return await pipeline._match.RunAsync(employeeId, jobDescription, extraction, ct);
                 }
                 catch (Exception ex) when (
                     StaffingRetryPolicy.IsRateLimit(ex) && failures < pipeline._retry.MaxAttempts)
@@ -551,7 +560,8 @@ public sealed class StaffingPipeline
                 candidates,
                 stage.Recommendation,
                 degraded,
-                [.. match.Notes, .. stage.Notes]);
+                [.. match.Notes, .. stage.Notes],
+                Extraction: match.Shortlist.Run.Response.Extraction);
             await context.YieldOutputAsync(new ReportResult(report, ShortlistFault: null), ct);
         }
 

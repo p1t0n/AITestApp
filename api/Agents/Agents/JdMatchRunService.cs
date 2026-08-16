@@ -55,10 +55,13 @@ public sealed class JdMatchRunService(
 
         var shortlistRun = await shortlist.RunAsync(
             new ShortlistAgentRequest(jobDescription, TopK: top), ct);
-        var metered = new List<JdMatchMeteredReply>
+        var metered = new List<JdMatchMeteredReply>();
+        if (shortlistRun.ExtractionReply is { } extractionReply)
         {
-            new(shortlistRun.AgentName, shortlistRun.Reply, "jd-shortlist"),
-        };
+            metered.Add(new(JdRequirementExtractor.AgentName, extractionReply, "jd-extraction"));
+        }
+
+        metered.Add(new(shortlistRun.AgentName, shortlistRun.Reply, "jd-shortlist"));
 
         if (shortlistRun.Response is null)
         {
@@ -74,7 +77,8 @@ public sealed class JdMatchRunService(
             await throttle.WaitAsync(ct);
             try
             {
-                var run = await match.RunAsync(candidate.EmployeeId, jobDescription, ct);
+                var run = await match.RunAsync(
+                    candidate.EmployeeId, jobDescription, shortlistRun.Response.Extraction, ct);
                 lock (meterGate)
                 {
                     metered.Add(new JdMatchMeteredReply(run.AgentName, run.Reply, "jd-match"));
