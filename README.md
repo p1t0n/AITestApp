@@ -37,12 +37,16 @@ See [SPEC.md](SPEC.md).
 - **Interview kit** — pick an employee + JD, get gap-targeted interview questions; every evidence
   quote is verified verbatim against the captured `cv_get` result (unverifiable quotes are
   stripped — the model's evidence claims are checked, never trusted).
+- **Roster Scan** — score the whole (optionally filtered) roster against one JD as a durable
+  background job: honest submit-time estimate (calls vs the day's quota), pause/resume across
+  free-tier quota windows and user caps, partial results while it runs, and per-candidate
+  band·score with an explicit "not scorable" outcome (see `manuals/roster-scan.md`).
 - **Bench & capability-gap report** — one click composes deterministic roster stats (via a direct
   MCP roster call) and staffing-demand stats (the proposals ledger), and the model writes only the
   narrative over them; every number on screen is server-composed, and a model fault degrades to a
   deterministic summary.
 - **AI agent widget** — dockable in-app assistant with Roster Q&A / Tailor CV / Match / Interview /
-  Shortlist / Staffing / Bench / Usage tabs; per-user token caps enforced server-side.
+  Shortlist / Staffing / Scan / Bench / Usage tabs; per-user token caps enforced server-side.
 - **Auth** — passkey (WebAuthn) sign-in for the app; OAuth 2.1 service accounts for agents.
 - **Extraction-fidelity eval** — frozen golden JD set (incl. deliberately sparse/ambiguous
   honesty cases) + CLI + live regression gate with a hard fabrication-rate=0 ceiling: no invented
@@ -181,6 +185,10 @@ available as tabs in the in-app widget):
 - `POST /agents/bench-report {}` — bench pressure + capability gaps: `{answer, stats, notes}`;
   stats are server-composed (roster via MCP + proposals ledger), the model writes prose only, and
   faults degrade to a deterministic summary with notes.
+- `POST /agents/roster-scan {jobDescription, availableOn?, skillIds?, location?, minYears?}` —
+  submit a bulk scan; 202 with `{jobId, estimate}`. `GET /agents/roster-scan/{id}` polls state,
+  pause metadata, progress, and ranked partial results; `GET /agents/roster-scan` lists the
+  caller's jobs. The job survives restarts and pauses on quota/cap windows instead of failing.
 - `GET /agents/usage` — the caller's token usage vs their daily/weekly/monthly caps.
 
 Example:
