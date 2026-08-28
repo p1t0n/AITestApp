@@ -67,8 +67,17 @@ public sealed record SelectionAggregate(
 /// cannot supply, so the model legitimately reads first (<c>employee_update</c> is a full replace
 /// needing firstName/lastName; <c>skill_create</c> needs a categoryId;
 /// <c>style_exemplar_search</c> needs achievementIds). Descriptions cannot move those: see P1T-137
-/// and P1T-136. P1T-138 would cut the variance by pinning temperature, at the cost of
-/// re-baselining. Never lower a floor to make a red run pass.</para>
+/// and P1T-136. Never lower a floor to make a red run pass.</para>
+///
+/// <para><b>P1T-138 (temperature pin, re-baseline pending):</b> <c>ToolSelectionRunner</c> now
+/// pins <c>Temperature = 0</c> to cut the run-to-run variance described above (seed is not settable
+/// — the Gemini OpenAI-compat endpoint 400s on an unrecognized "seed" field). The floors below are
+/// still the pre-pin ones; re-measuring under Temperature = 0 needs at least three live runs
+/// (`dotnet test tests/Mcp.Tests --filter "Category=eval"`) and was blocked on 2026-08-28 by the
+/// `gemini-3.5-flash-lite` free-tier daily quota (`GenerateRequestsPerDayPerProjectPerModel-FreeTier`,
+/// 500 requests/day) being exhausted from the day's other eval passes — every prompt in the first
+/// attempted run 429'd. Re-run once the quota resets and tighten these floors only from measured
+/// data.</para>
 /// </summary>
 public static class ToolSelectionBaselines
 {
