@@ -91,19 +91,87 @@ public class RosterStyleToolsTests
         stub.LastTopKPerBullet.Should().BeNull();
     }
 
+    [Fact]
+    public async Task Calling_with_theme_passes_it_through_and_returns_the_themed_result()
+    {
+        var stub = new StubExemplarSearch(new ExemplarSearchResult(
+            [], new ThemeExemplars("cost reduction", [new StyleExemplar("Cut [company] spend by 30%.", 0.88)])));
+
+        using var factory = McpTestHost
+            .CreateFactory(nameof(Calling_with_theme_passes_it_through_and_returns_the_themed_result))
+            .WithWebHostBuilder(builder => builder.ConfigureServices(services =>
+            {
+                services.RemoveAll<IExemplarSearchService>();
+                services.AddScoped<IExemplarSearchService>(_ => stub);
+            }));
+
+        await using var client = await McpTestHost.ConnectAsync(factory);
+
+        var result = await client.CallToolAsync("style_exemplar_search", new Dictionary<string, object?>
+        {
+            ["theme"] = "cost reduction",
+        });
+
+        result.IsError.Should().NotBe(true);
+        var text = McpTestHost.Text(result);
+        text.Should().Contain("cost reduction").And.Contain("Cut [company] spend by 30%.");
+
+        stub.LastAchievementIds.Should().BeNull();
+        stub.LastTheme.Should().Be("cost reduction");
+    }
+
+    [Fact]
+    public async Task Neither_achievementIds_nor_theme_is_a_validation_error()
+    {
+        var stub = new StubExemplarSearch(
+            ExemplarSearchResult.Empty, throwOnBothOrNeither: true);
+
+        using var factory = McpTestHost.CreateFactory(nameof(Neither_achievementIds_nor_theme_is_a_validation_error))
+            .WithWebHostBuilder(builder => builder.ConfigureServices(services =>
+            {
+                services.RemoveAll<IExemplarSearchService>();
+                services.AddScoped<IExemplarSearchService>(_ => stub);
+            }));
+
+        await using var client = await McpTestHost.ConnectAsync(factory);
+
+        var result = await client.CallToolAsync("style_exemplar_search", new Dictionary<string, object?>());
+
+        result.IsError.Should().Be(true);
+        McpTestHost.Text(result).Should().Contain("validation");
+    }
+
     private sealed class StubExemplarSearch : IExemplarSearchService
     {
         private readonly ExemplarSearchResult _result;
+        private readonly bool _throwOnBothOrNeither;
 
-        public StubExemplarSearch(ExemplarSearchResult result) => _result = result;
+        public StubExemplarSearch(ExemplarSearchResult result, bool throwOnBothOrNeither = false)
+        {
+            _result = result;
+            _throwOnBothOrNeither = throwOnBothOrNeither;
+        }
 
         public IReadOnlyList<Guid>? LastAchievementIds { get; private set; }
+        public string? LastTheme { get; private set; }
         public int? LastTopKPerBullet { get; private set; }
 
         public Task<ExemplarSearchResult> SearchAsync(
-            IReadOnlyList<Guid> achievementIds, int? topKPerBullet = null, CancellationToken ct = default)
+            IReadOnlyList<Guid>? achievementIds,
+            string? theme = null,
+            int? topKPerBullet = null,
+            CancellationToken ct = default)
         {
+            var hasIds = achievementIds is { Count: > 0 };
+            var hasTheme = !string.IsNullOrWhiteSpace(theme);
+            if (_throwOnBothOrNeither && hasIds == hasTheme)
+            {
+                throw new FluentValidation.ValidationException(
+                    "Provide either achievementIds or theme.");
+            }
+
             LastAchievementIds = achievementIds;
+            LastTheme = theme;
             LastTopKPerBullet = topKPerBullet;
             return Task.FromResult(_result);
         }

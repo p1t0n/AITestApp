@@ -71,6 +71,20 @@ Set from the minimum observed across at least three runs, minus headroom; a clus
 hold is left ungated.
 _Avoid_: per-group threshold
 
+### Style exemplars
+
+**Theme Mode**:
+`style_exemplar_search`'s id-less retrieval path: a free-text theme (e.g. "cost reduction") is
+embedded directly and ranked against the whole achievement-bullet pool, for a phrasing request
+that names no specific bullet. Mutually exclusive with id-keyed mode (`achievementIds`); exactly
+one must be supplied.
+_Avoid_: free-text search, keyword mode
+
+**Themed Exemplars**:
+The result of a Theme Mode search — a sibling to the id-keyed `BulletExemplars`, not a
+nullable-keyed variant of it, so the response states honestly which mode produced it.
+_Avoid_: theme result, generic exemplars
+
 ### Roster scanning
 
 **Roster Scan**:
