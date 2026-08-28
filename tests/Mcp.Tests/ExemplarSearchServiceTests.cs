@@ -3,6 +3,7 @@ using CvManager.Application.Search;
 using CvManager.Infrastructure.Persistence;
 using CvManager.Infrastructure.Search;
 using FluentAssertions;
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -155,6 +156,86 @@ public sealed class ExemplarSearchServiceTests : IAsyncLifetime
         var result = await Service(new ThrowingEmbedder()).SearchAsync([_oliveFintechBulletId]);
 
         result.Results.Should().BeEmpty();
+        result.Error.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task Both_achievementIds_and_theme_is_a_validation_error()
+    {
+        Func<Task> act = () => Service().SearchAsync([_oliveFintechBulletId], theme: "fintech");
+
+        await act.Should().ThrowAsync<ValidationException>();
+    }
+
+    [Fact]
+    public async Task Neither_achievementIds_nor_theme_is_a_validation_error()
+    {
+        Func<Task> act = () => Service().SearchAsync(achievementIds: null, theme: null);
+
+        await act.Should().ThrowAsync<ValidationException>();
+    }
+
+    [Fact]
+    public async Task An_empty_achievementIds_array_with_no_theme_is_also_a_validation_error()
+    {
+        Func<Task> act = () => Service().SearchAsync([]);
+
+        await act.Should().ThrowAsync<ValidationException>();
+    }
+
+    [Fact]
+    public async Task Theme_mode_returns_anonymized_quantified_bullets_across_the_whole_pool()
+    {
+        var result = await Service().SearchAsync(achievementIds: null, theme: "fintech", topKPerBullet: 10);
+
+        result.Error.Should().BeNull();
+        result.Results.Should().BeEmpty("theme mode never populates the id-keyed Results list");
+
+        result.ThemeResult.Should().NotBeNull();
+        var themed = result.ThemeResult!;
+        themed.Theme.Should().Be("fintech");
+        // Every quantified fintech achievement bullet across ALL employees — Olive's own included,
+        // since there is no requesting employee to exclude in theme mode.
+        themed.Exemplars.Select(e => e.Text).Should().BeEquivalentTo(
+        [
+            "Optimized fintech settlement flows, cutting operating costs 18% year over year.",
+            "Rebuilt fintech risk checks to score 10x more events per second at peak.",
+            .. AnonymizedFintechPool,
+        ]);
+    }
+
+    [Fact]
+    public async Task Theme_mode_has_no_owner_to_exclude_unlike_id_keyed_mode()
+    {
+        // Id-keyed mode over the same logistics bullet finds nothing (its only owner is excluded —
+        // see A_bullet_with_nothing_above_the_similarity_floor_gets_an_empty_exemplar_set). Theme
+        // mode has no requesting employee, so Olive's own bullet is eligible.
+        var result = await Service().SearchAsync(achievementIds: null, theme: "logistics");
+
+        result.Error.Should().BeNull();
+        result.ThemeResult.Should().NotBeNull();
+        result.ThemeResult!.Exemplars.Should().ContainSingle().Which.Text.Should().Be(
+            "Streamlined logistics scheduling, reducing idle fleet time 22% every quarter.");
+    }
+
+    [Fact]
+    public async Task Theme_mode_embeds_the_theme_in_a_single_call()
+    {
+        var embedder = new CountingKeywordEmbedder();
+
+        await Service(embedder).SearchAsync(achievementIds: null, theme: "fintech");
+
+        embedder.Calls.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Theme_mode_embedding_failure_returns_a_soft_error_not_an_exception()
+    {
+        var result = await Service(new ThrowingEmbedder())
+            .SearchAsync(achievementIds: null, theme: "fintech");
+
+        result.Results.Should().BeEmpty();
+        result.ThemeResult.Should().BeNull();
         result.Error.Should().NotBeNullOrWhiteSpace();
     }
 

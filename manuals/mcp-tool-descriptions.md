@@ -170,6 +170,24 @@ Recorded here rather than guessed at: the honest read is that the golden set cau
 the tool surface, which is exactly what it is for. Tracked as P1T-136 — the choice between the two
 options is a human's, since one changes the product surface and the other changes the yardstick.
 
+**Decision (P1T-136): option 1 — the affordance is now real.** `IExemplarSearchService.SearchAsync`
+takes `achievementIds` OR a free-text `theme`, mutually exclusive (both or neither is a `validation`
+error with per-field detail, not a silent empty result). Theme mode embeds the theme itself and
+ranks the whole achievement-bullet pool against it; unlike id mode there is no requesting employee,
+so nothing is excluded from the pool. The response shape says honestly which mode ran:
+`ExemplarSearchResult.Results` (id-keyed, a `BulletExemplars` per input bullet) and `ThemeResult`
+(a single `ThemeExemplars`) are siblings, not a nullable-keyed variant of one record — exactly one
+is populated. `style_exemplar_search`'s description now states both modes and the P1T-128 template
+still applies. Unit tests cover the id-less path with the fake embedder (including the no-owner-
+exclusion behavior, contrasted directly against the id-keyed empty-result case for the same
+underlying data) and confirm anonymization still runs.
+
+The tool-selection eval re-run and the `style` cluster floor are **pending**: the
+`gemini-3.5-flash-lite` free-tier daily quota (500 req/day) was already exhausted before this
+landed — the same constraint P1T-138 hit — confirmed by a direct probe returning
+`RESOURCE_EXHAUSTED` / `GenerateRequestsPerDayPerProjectPerModel-FreeTier`. The code and tests are
+landed; the measured `style` cluster figure and its floor still need a live run once quota resets.
+
 ## Part 2 — the sequencing audit (P1T-131)
 
 ### The rule
