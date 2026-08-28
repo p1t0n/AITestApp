@@ -1,8 +1,8 @@
 # MCP tool reliability: the description bar and the sequencing audit
 
-The tool-reliability bundle's written record (P1T-112). Part 1 is the **description bar** and
-pass 1's measured before/after (P1T-128; pass 2 — CRUD/write tools — is P1T-129). Part 2 is the
-**sequencing audit** (P1T-131).
+The tool-reliability bundle's written record (P1T-112). Part 1 is the **description bar** and both
+passes' measured before/after — pass 1 the read clusters (P1T-128), pass 2 the write surface
+(P1T-129). Part 2 is the **sequencing audit** (P1T-131).
 
 ## Part 1 — the description bar (P1T-128)
 
@@ -43,23 +43,44 @@ The confusable READ clusters the P1T-112 audit named:
 | search trio | `roster_semantic_search`, `roster_shortlist_search`, `style_exemplar_search` | one free-form question vs a JD's 3–8 requirements vs phrasing exemplars — each names the other two, plus the digest tool for sweeps and the structured reads for exact facts |
 | catalog reads | `category_list`, `category_tree`, `skill_list` | flat ids vs nested hierarchy (whose nodes carry their skills) vs the flat skill list; all three send per-person skills to `employee_get`, and `skill_list` separates `skill_create` (new catalog entry) from `employee_skill_add` (attach existing) |
 
-Write/CRUD tools are deliberately untouched — that is P1T-129.
+### What pass 2 rewrote (P1T-129)
+
+The remaining 28 one-liners — the whole write surface — plus `availability_list`, which sits in the
+middle of the availability family:
+
+| Family | Tools | Disambiguation added |
+| --- | --- | --- |
+| employee root | `employee_create`, `employee_create_draft`, `employee_update`, `employee_delete` | active-vs-draft (drafts are hidden until a human promotes them and may carry an empty email — the ingestion path); "capacity is not a root field, use `availability_add`"; children are separate calls after the id comes back |
+| the person-vs-catalog trap | `employee_skill_add` ↔ `skill_create`, `employee_skill_update` ↔ `skill_update`, `employee_skill_delete` ↔ `skill_delete`, plus `experience_skill_add` | each side names the other explicitly: attaching an EXISTING catalog skill to a PERSON vs adding a NEW skill to the shared CATALOG (touching nobody) vs linking a skill to one ROLE as evidence |
+| child families | `language_*`, `availability_*`, `experience_*`, `achievement_*`, `qualification_*`, `experience_skill_*` | which id each takes — the parent id to add, the row's own id to update or delete — since that is the other standing confusion; a certification is not a skill; a bullet belongs to a role, not a person |
+| catalog structure | `category_create/update/delete` | category-vs-skill, and the cycle rule on re-parenting |
+
+Parameter descriptions carry the formats that actually bite: dates as `yyyy-MM-dd`, the enum values
+spelled out (`Beginner|Intermediate|Advanced|Expert`, `Basic|Conversational|Professional|Fluent|Native`,
+`Degree|Certification`), which GUID is expected, and — where a DTO replaces a whole collection —
+an explicit "full replace, include what should survive" warning. Every destructive tool announces
+itself, names the non-destructive alternative (0% capacity instead of deleting a person; the
+child's own delete instead of the parent's), and states that it needs the admin scope.
+
+`employee_get` also gained a pointer at the write tools, because "change the title of employee X"
+measurably landed there.
 
 ### Measured before/after (P1T-127 instrument)
 
 `gemini-3.5-flash-lite`, 39 frozen golden prompts, real in-process MCP listing, `ToolMode.Auto`,
-first-tool credit. Two runs before the rewrite, four after — all six with 0 transport errors.
+first-tool credit. Two runs before any rewrite, four after pass 1, four after pass 2 — all ten
+with 0 transport errors.
 
-| Cluster | pre-pass (×2) | post-pass (×4) | note |
-| --- | ---: | ---: | --- |
-| capability | 100% | 100% ×4 | held |
-| exact-fact | 100% | 100% ×4 | held |
-| bulk-sweep | 100% | 100% ×4 | held |
-| catalog | 100% | 100% ×4 | held |
-| shortlist | 75% | 100%, 100%, 75%, 75% | moved, but unstable — see below |
-| style | 0% | 0% ×4 | unmoved — not a wording problem, see below |
-| writes | 75% | 75% ×4 | P1T-129's scope |
-| **overall first-tool** | **0.821, 0.821** | **0.846, 0.846, 0.821, 0.821** | any-call identical throughout |
+| Cluster | pre-pass (×2) | after pass 1 (×4) | after pass 2 (×2) | note |
+| --- | ---: | ---: | ---: | --- |
+| capability | 100% | 100% ×4 | 100% ×2 | held throughout |
+| exact-fact | 100% | 100% ×4 | 100% ×2 | held throughout |
+| bulk-sweep | 100% | 100% ×4 | 100% ×2 | held throughout |
+| catalog | 100% | 100% ×4 | 100% ×2 | held throughout |
+| shortlist | 75% | 100%, 100%, 75%, 75% | 75%, 100%, 75%, 75% | left `employee_list`, but never settled |
+| style | 0% | 0% ×4 | 0% ×4 | unmoved — an affordance problem, see below |
+| writes | 75% | 75% ×4 | 83%, 83%, 75%, 75% | pass 2's gain: `write-experience` left `skill_list` for `experience_add` |
+| **overall first-tool** | **0.821, 0.821** | **0.846, 0.846, 0.821, 0.821** | **0.846, 0.872, 0.821, 0.821** | any-call identical throughout |
 
 **The pre-pass baseline is the one P1T-127 could not take** — its free-tier RPD ran out
 mid-measurement, and the provisional floors it committed (0.85) were guesses that sat *above* the
@@ -78,16 +99,58 @@ prompt is 2.6 points of a 39-prompt average, so read the overall figures as 0.82
 The four gated read clusters (capability, exact-fact, bulk-sweep, catalog) sat at 100% in all six
 runs — the rewrite cost nothing there, which is the other half of what the pass had to show.
 
-That is also how the floors are now set — one prompt below the **minimum** observed, never from a
-run pair that happened to agree: global 0.80 (min observed 0.821 = 32/39, so 31/39 trips it), and
-**per-cluster first-tool floors** at the lowest figure each cluster held across every run
-(capability / exact-fact / bulk-sweep / catalog 100%, shortlist and writes 75%). Cluster floors are
-the sharper instrument: a careless edit to one description trips its own cluster long before it
-moves the average. style is ungated on purpose — a floor nobody can hold teaches nothing. The
-committed gate was then verified live end to end: run 4 came in at 0.821 with every floor held,
-green.
+### The floor policy, learned the hard way twice
 
-### The style cluster: an affordance problem, not a wording one
+Both passes set a floor from two agreeing runs and had a third run trip it — pass 1 looked like a
+clean 0.846 until run 3 read 0.821; pass 2 looked like 0.846/0.872 until run 3 read 0.821 with
+`write-draft` making **no tool call at all** and `sl-jd-paste` landing on `skill_list`. So:
+
+**Take at least three runs. Floor at the minimum observed, minus headroom. Never tighten a floor to
+express a hope.**
+
+Committed floors: global **0.79** (min observed 0.821 across ten runs, minus one prompt), and
+per-cluster first-tool floors — capability / exact-fact / bulk-sweep / catalog at **100%**,
+shortlist and writes at **0.75**, style ungated.
+
+The uncomfortable consequence, stated plainly: run-to-run variance here is worth about two prompts,
+which is **larger than either pass's aggregate gain**, so the global floor cannot detect losing that
+gain. The four read clusters — 100% in all ten runs — are the only gate worth its name, and the
+write/shortlist floors catch a collapse, not a slip. P1T-138 is the fix for the instrument itself
+(pin temperature, re-baseline; optionally score a majority over N samples per prompt), and until it
+lands the typical figures in the table above are the honest description of the pass, while the
+floors are the honest description of what can be *enforced*.
+
+### What is left is not wording: required arguments the prompt cannot supply
+
+Five misses survive both passes, and they share one shape — the expected tool has a **required
+argument the prompt never provides**, so the model calls something it can legally call. In three of
+the five that deflection is arguably the *correct* move:
+
+| Prompt | Expected | Model calls | The blocking contract |
+| --- | --- | --- | --- |
+| `write-update-title` | `employee_update` | `employee_get` | `SaveEmployeeDto` is a full replace with `firstName`/`lastName` `NotEmpty` — writing from the prompt alone would blank the person's name and email |
+| `write-skill-trap-catalog` | `skill_create` | `category_list` | needs a `categoryId` the prompt never gives (its sibling prompt, which supplies one, passes) |
+| `style-bullet` / `style-rewrite` / `style-metrics` | `style_exemplar_search` | `roster_semantic_search` etc. | needs `achievementIds`; the prompts name no bullet |
+| `write-draft` (last two runs only) | `employee_create_draft` | **no call at all** | the prompt says "stage this pasted resume" but carries no resume text, so there is nothing to put in the dto |
+
+`write-draft` deserves a note on provenance rather than a theory: it passed in the first eight runs
+and made no call in the last two. Those last two are also the first runs that saw a one-sentence
+edit to `employee_create`'s description (the email-uniqueness wording). A causal link is unlikely —
+the prompt is about drafts, not creates — and two runs of a ±2-prompt instrument cannot establish
+one either way. Left recorded, not concluded; P1T-138's variance fix is what would settle it.
+
+The eval scores a first call, and `AnyCallCorrect` cannot rescue these either — the harness
+measures one turn, so the follow-up write never happens. Tracked as P1T-137 (write side: partial
+update for `employee_update`, `skill_create` by category name, or a deliberate re-label) and
+P1T-136 (style side). Both decisions are a human's: one option changes the product surface, the
+other changes the yardstick.
+
+The honest summary of two passes: the description bar fixed what descriptions can fix — the
+read clusters held at 100%, the JD prompt left the plain roster listing, `experience_add` won its
+prompt back from `skill_list` — and then the instrument stopped rewarding wording and started
+pointing at tool contracts instead. That is the more useful finding of the two.
+
+#### The style cluster in detail
 
 Three prompts ask for phrasing help without naming a bullet ("show me examples of strongly phrased
 achievement bullets about cost reduction"). `style_exemplar_search` has a **required**
@@ -95,8 +158,8 @@ achievement bullets about cost reduction"). `style_exemplar_search` has a **requ
 the user gave — deflects to something it can actually fill: `roster_semantic_search`, `cv_get`, or
 `roster_digest_list`. Two description edits were tried and measured (a phrasing-first "when NOT"
 clause on `roster_semantic_search`, an explicit "this is the phrasing tool" line on
-`style_exemplar_search`); neither moved the cluster off 0% in any of the three post-pass runs.
-Descriptions cannot fix a tool the model has no legal way to call, so the fix is one of:
+`style_exemplar_search`); neither moved the cluster off 0% in any of the six runs since. The fix is
+one of:
 
 - make `achievementIds` optional with a free-text query fallback (a product change to
   `IExemplarSearchService` — exemplars for a described theme, not only for a specific bullet);
