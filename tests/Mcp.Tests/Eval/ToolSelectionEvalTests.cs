@@ -62,6 +62,41 @@ public class ToolSelectionScoringTests
     }
 
     [Fact]
+    public void Cluster_floors_gate_only_the_clusters_that_ran()
+    {
+        var capability = new GoldenPrompt("c1", GoldenPromptSet.Capability, "text", "roster_semantic_search");
+
+        // capability measured below its 100% floor; the other gated clusters simply did not run.
+        var violations = ToolSelectionReport.GateViolations(SelectionAggregate.From(
+        [
+            new PromptResult(capability, "roster_semantic_search", ["roster_semantic_search"]),
+            new PromptResult(capability with { Id = "c2" }, "employee_list", ["employee_list"]),
+        ]));
+
+        violations.Should().ContainSingle(v => v.Contains($"cluster '{GoldenPromptSet.Capability}'"));
+        violations.Should().NotContain(v => v.Contains(GoldenPromptSet.Catalog));
+    }
+
+    [Fact]
+    public void A_cluster_at_its_floor_is_not_a_violation()
+    {
+        var catalog = new GoldenPrompt("cat1", GoldenPromptSet.Catalog, "text", "category_list");
+
+        var violations = ToolSelectionReport.GateViolations(SelectionAggregate.From(
+            [new PromptResult(catalog, "category_list", ["category_list"])]));
+
+        violations.Should().NotContain(v => v.Contains("cluster"));
+    }
+
+    [Fact]
+    public void Every_gated_cluster_name_exists_in_the_golden_set()
+    {
+        var clusters = GoldenPromptSet.Load().Select(p => p.Cluster).Distinct().ToList();
+
+        ToolSelectionBaselines.ClusterFirstToolFloors.Keys.Should().BeSubsetOf(clusters);
+    }
+
+    [Fact]
     public void The_golden_set_is_well_formed()
     {
         var prompts = GoldenPromptSet.Load();

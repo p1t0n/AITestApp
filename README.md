@@ -250,6 +250,12 @@ destructive so clients can gate dangerous calls:
   `style_exemplar_search` (anonymized cross-CV strong-phrasing exemplars for bullet rewriting),
   `roster_digest_list` (paged career digests for bulk scoring sweeps)
 
+Descriptions follow a five-part bar — what it does, when to use it, when NOT to (naming the
+sibling tool), input notes with an inline example, what it does not return — because tool
+descriptions are what the model actually selects on. The confusable read clusters are rewritten to
+it and pinned by tests; a frozen 39-prompt eval measures which tool the model reaches for first
+(`manuals/mcp-tool-descriptions.md` carries the bar and the measured before/after).
+
 Each tool requires a scope: read-only tools need `mcp:read`, create/update need `mcp:write`,
 deletes need `mcp:admin`. The server hides tools the token isn't scoped for and forbids the call.
 Failures return a structured error (`not_found` / `conflict` / `validation` with per-field detail)
@@ -263,7 +269,8 @@ cd web && npm test   # frontend: vitest component tests
 ```
 
 Live tests (real embeddings / models) are opt-in: `dotnet test --filter "Category=live"` with
-`GEMINI_API_KEY` set. The retrieval regression gate lives there too.
+`GEMINI_API_KEY` set. The retrieval regression gate lives there too, as does the tool-selection
+gate (`--filter "Category=eval"`, ~3 min, 39 model calls).
 
 ## Database migrations
 

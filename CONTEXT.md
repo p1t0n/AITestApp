@@ -51,6 +51,25 @@ tool result after the fact — no capture behind the claim → retry once, then 
 Complements (or substitutes for) forced tool invocation.
 _Avoid_: tool enforcement, output validation (too generic)
 
+### Tool reliability
+
+**Description Bar**:
+The five-part shape every MCP tool description must carry: what it does, when to use it, when NOT
+to (naming the sibling tool), input notes with an inline example, and what it does not return.
+Pinned by tests, measured by the Tool-Selection Eval.
+_Avoid_: tool docs, tool prompt
+
+**Tool-Selection Eval**:
+The frozen golden-prompt instrument that measures which tool the model calls FIRST for a given
+request, over the real MCP listing. Its gate is a set of measured floors, global and per cluster.
+_Avoid_: tool test, selection benchmark
+
+**Cluster Floor**:
+A per-cluster first-tool floor in the Tool-Selection Eval gate — the sharp instrument: a careless
+edit to one description trips its own cluster long before it moves the overall average. Only
+clusters measured at their floor twice are gated.
+_Avoid_: per-group threshold
+
 ### Roster scanning
 
 **Roster Scan**:
