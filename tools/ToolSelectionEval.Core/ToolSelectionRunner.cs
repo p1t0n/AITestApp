@@ -26,7 +26,17 @@ public static class ToolSelectionRunner
         // never executed (no UseFunctionInvocation in this pipeline) — but strip invocability
         // anyway so a bug can't call a real tool.
         var declarations = tools.Select(t => t.AsDeclarationOnly()).Cast<AITool>().ToList();
-        var options = new ChatOptions { Tools = declarations, ToolMode = ChatToolMode.Auto };
+        // Pinned per P1T-138: run-to-run first-tool accuracy on this model moved ±2 prompts at
+        // default temperature — larger than either description pass's aggregate gain. Seed is
+        // NOT set: the Gemini OpenAI-compat endpoint rejects an unrecognized "seed" field with a
+        // hard 400 (verified directly against the endpoint), so Temperature = 0 alone is what's
+        // available here to cut variance.
+        var options = new ChatOptions
+        {
+            Tools = declarations,
+            ToolMode = ChatToolMode.Auto,
+            Temperature = 0f,
+        };
 
         var results = new List<PromptResult>();
         foreach (var prompt in prompts)
