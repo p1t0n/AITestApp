@@ -252,8 +252,10 @@ destructive so clients can gate dangerous calls:
 
 Descriptions follow a five-part bar — what it does, when to use it, when NOT to (naming the
 sibling tool), input notes with an inline example, what it does not return — because tool
-descriptions are what the model actually selects on. The confusable read clusters are rewritten to
-it and pinned by tests; a frozen 39-prompt eval measures which tool the model reaches for first
+descriptions are what the model actually selects on. All 41 tools are written to it and pinned by
+tests, including the standing traps (attaching an existing catalog skill to a person vs adding a new
+skill to the catalog; creating an employee vs staging a draft) and every destructive tool naming its
+safer alternative. A frozen 39-prompt eval measures which tool the model reaches for first
 (`manuals/mcp-tool-descriptions.md` carries the bar and the measured before/after).
 
 Each tool requires a scope: read-only tools need `mcp:read`, create/update need `mcp:write`,

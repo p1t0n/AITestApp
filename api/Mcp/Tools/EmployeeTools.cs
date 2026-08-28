@@ -37,7 +37,11 @@ public class EmployeeTools
          "roster_shortlist_search ranks against a job description; do NOT use it when the CV is " +
          "what's wanted (prose to review, render or quote verbatim, achievement-bullet ids) — " +
          "cv_get assembles the CV; do NOT loop it over the roster — employee_list for summary " +
-         "rows, roster_digest_list for narrative digests. Input: id — the employee GUID; e.g. " +
+         "rows, roster_digest_list for narrative digests; and do NOT use it when the request is " +
+         "to CHANGE something — it only reads: employee_update edits root fields like title or " +
+         "email, availability_add records a capacity change, and the child *_add / *_update tools " +
+         "edit skills, languages, qualifications and experiences. Input: id — the employee GUID; " +
+         "e.g. " +
          "{\"id\": \"7b2e8d3a-1111-2222-3333-444455556666\"}. An unknown id returns a " +
          "not_found error, never an empty employee. Returns stored data only — no CV layout, no " +
          "PDF, no relevance scores."),
@@ -49,35 +53,87 @@ public class EmployeeTools
         => McpToolExecutor.RunAsync(() => employees.GetAsync(id, ct));
 
     [McpServerTool(Name = "employee_create", ReadOnly = false, Destructive = false),
-     Description("Create an employee from root fields (children are managed by their own tools)."),
+     Description(
+         "Create ONE ACTIVE employee from root fields only — first/last name, title, email, and " +
+         "optional phone, location, summary, photoUrl. The new employee is immediately visible to " +
+         "the roster, search and staffing. Use it when a human is adding a known colleague. Do " +
+         "NOT use it for a resume an agent just parsed — employee_create_draft stages a hidden " +
+         "draft for human promotion, which is the ingestion path; do NOT use it to change an " +
+         "existing person — employee_update; do NOT try to pass skills, languages, availability, " +
+         "qualifications or experiences here — they are separate tools (employee_skill_add, " +
+         "language_add, availability_add, qualification_add, experience_add) run after this one " +
+         "returns the new id. Input: dto with the root fields; e.g. {\"dto\": {\"firstName\": " +
+         "\"Jane\", \"lastName\": \"Doe\", \"title\": \"Senior Engineer\", \"email\": " +
+         "\"jane@example.com\", \"location\": \"Berlin\"}}. The email must be unique among " +
+         "ACTIVE employees — a clash returns a conflict error, malformed fields a validation error " +
+         "with per-field detail. Returns the created employee (with its new id) and NO children."),
      Authorize(Policy = McpScopes.Write)]
     public static Task<object> Create(
         IEmployeeService employees,
+        [Description("Root fields of the new employee. Required: firstName, lastName, title, " +
+                     "email (unique). Optional: phone, location, summary, photoUrl.")]
         SaveEmployeeDto dto,
         CancellationToken ct)
         => McpToolExecutor.RunAsync(() => employees.CreateAsync(dto, ct));
 
     [McpServerTool(Name = "employee_create_draft", ReadOnly = false, Destructive = false),
-     Description("Create a DRAFT employee from root fields (resume ingestion). Drafts are hidden from the roster, search, and staffing until a human promotes them; email may be empty if the source text has none. Returns the draft plus a duplicateWarning when a same-name employee already exists."),
+     Description(
+         "Stage ONE DRAFT employee from root fields — the resume-ingestion path. Drafts are hidden " +
+         "from the roster, search, staffing and every list until a HUMAN promotes them, so this is " +
+         "the tool for anything extracted from a pasted CV or resume rather than confirmed by a " +
+         "person. Unlike employee_create it accepts an EMPTY email, because a resume often has " +
+         "none — never invent one. Do NOT use it when a human is entering a colleague they know " +
+         "— employee_create makes an active employee; do NOT use it to amend an existing draft — " +
+         "employee_update by id. Input: dto with whatever the source text actually supports; e.g. " +
+         "{\"dto\": {\"firstName\": \"Jane\", \"lastName\": \"Doe\", \"title\": " +
+         "\"Backend Engineer\", \"email\": \"\"}}. Returns the draft (with its new id) plus a " +
+         "duplicateWarning when a same-name employee already exists — surface that warning, do not " +
+         "silently merge. Children are NOT created here; add them by id afterwards."),
      Authorize(Policy = McpScopes.Write)]
     public static Task<object> CreateDraft(
         IEmployeeService employees,
+        [Description("Root fields extracted from the source text. email may be an empty string " +
+                     "when the resume has none — never fabricate one.")]
         SaveEmployeeDto dto,
         CancellationToken ct)
         => McpToolExecutor.RunAsync(() => employees.CreateDraftAsync(dto, ct));
 
     [McpServerTool(Name = "employee_update", ReadOnly = false, Destructive = false),
-     Description("Update an employee's root fields by id."),
+     Description(
+         "CHANGE an existing employee's root fields by id — name, title, email, phone, location, " +
+         "summary, photoUrl. Use it for edits like 'change their title to Staff Engineer', 'fix " +
+         "their email', 'update their professional summary'. This is a full replace of the root " +
+         "fields, so send every field you want kept, not just the changed one. Do NOT use " +
+         "employee_get for a change — that only reads; do NOT use it for children: skills go " +
+         "through employee_skill_add/update, capacity through availability_add (capacity is a " +
+         "dated step function, not a root field), and likewise language_*, qualification_*, " +
+         "experience_*; do NOT use it to create anyone — employee_create / employee_create_draft. " +
+         "Input: id (employee GUID) + dto; e.g. {\"id\": " +
+         "\"7b2e8d3a-1111-2222-3333-444455556666\", \"dto\": {\"firstName\": \"Jane\", " +
+         "\"lastName\": \"Doe\", \"title\": \"Staff Engineer\", \"email\": " +
+         "\"jane@example.com\"}}. An unknown id returns not_found; a duplicate email conflict. " +
+         "Returns the updated employee, children untouched; it never promotes a draft."),
      Authorize(Policy = McpScopes.Write)]
     public static Task<object> Update(
         IEmployeeService employees,
         [Description("Employee id (GUID).")] Guid id,
+        [Description("The employee's root fields AFTER the edit — a full replace, so include the " +
+                     "fields that stay the same as well.")]
         SaveEmployeeDto dto,
         CancellationToken ct)
         => McpToolExecutor.RunAsync(() => employees.UpdateAsync(id, dto, ct));
 
     [McpServerTool(Name = "employee_delete", ReadOnly = false, Destructive = true, Idempotent = true),
-     Description("Delete an employee by id, including all children."),
+     Description(
+         "DESTRUCTIVE, irreversible: delete one employee by id together with every child — " +
+         "languages, availability, skills, qualifications, experiences and their achievement " +
+         "bullets — and their search-index chunks. Use it only on an explicit human instruction to " +
+         "remove a person's record. Do NOT use it to take someone off staffing consideration " +
+         "(availability_add with capacityPercent 0 expresses that), to drop one child record (the " +
+         "child's own *_delete tool does), or to discard a bad draft you would rather correct " +
+         "(employee_update). Input: id (employee GUID); e.g. {\"id\": " +
+         "\"7b2e8d3a-1111-2222-3333-444455556666\"}. Requires the admin scope; idempotent — " +
+         "deleting an already-deleted id is not an error. Returns no employee data."),
      Authorize(Policy = McpScopes.Admin)]
     public static Task<object> Delete(
         IEmployeeService employees,

@@ -45,31 +45,42 @@ public sealed record SelectionAggregate(
 /// two runs, first-tool 0.821 both times, 0 errors; per cluster
 /// capability/exact-fact/bulk-sweep/catalog 100%, shortlist 75%, writes 75%, style 0%.</para>
 ///
-/// <para><b>Post-pass (P1T-128 read-cluster rewrite):</b> four runs — 0.846, 0.846, 0.821, 0.821,
-/// 0 errors. capability/exact-fact/bulk-sweep/catalog held at 100% in every run; style stayed 0%
-/// and writes 75% throughout. The shortlist cluster is the one that moved and the one that is
-/// unstable: its <c>sl-jd-paste</c> prompt never picked <c>employee_list</c> again (its consistent
-/// pre-pass miss), choosing <c>roster_shortlist_search</c> twice and <c>roster_digest_list</c>
-/// twice — selection moved into the roster-search family but is not pinned. Selection on this
-/// model is NOT deterministic; two identical runs are a coincidence, not proof.</para>
+/// <para><b>After pass 1 (P1T-128, read clusters):</b> four runs — 0.846, 0.846, 0.821, 0.821, 0
+/// errors. capability/exact-fact/bulk-sweep/catalog held at 100% in every run; style stayed 0% and
+/// writes 75% throughout. Selection on this model is NOT deterministic; two identical runs are a
+/// coincidence, not proof.</para>
 ///
-/// <para>Floors are therefore set one prompt below the MINIMUM observed, never from a run pair
-/// that happened to agree: global 0.80 (min observed 0.821 = 32/39, so 31/39 trips it), clusters
-/// at the lowest figure each held across all runs. style is knowingly ungated — its misses are an
-/// affordance problem (a required <c>achievementIds</c> argument the prompts cannot supply), not a
-/// wording one, and a floor nobody can hold teaches nothing. Raise these deliberately when
-/// P1T-129 lands; never lower one to make a red run pass.</para>
+/// <para><b>After pass 2 (P1T-129, the write surface):</b> three runs — 0.846, 0.872, 0.821, 0
+/// errors. writes read 83%, 83%, 75% (its gain: <c>write-experience</c>, which used to land on
+/// <c>skill_list</c>, now goes to <c>experience_add</c>); shortlist 75%, 100%, 75%; the four read
+/// clusters held 100% in all eight runs to date.</para>
+///
+/// <para><b>Floor policy, learned the hard way twice:</b> take at least THREE runs and floor at
+/// the minimum observed minus headroom. Two agreeing runs misled this eval twice — pass 1 looked
+/// like a clean 0.846 until a third run came in at 0.821, and pass 2 looked like 0.846/0.872 until
+/// a third came in at 0.821 with a prompt that made NO tool call at all. Run-to-run variance on
+/// this model is worth ~2 prompts, which is larger than either pass's aggregate gain, so the
+/// aggregate floor cannot detect losing that gain — only the four read clusters, steady at 100%
+/// across every run, are a gate worth its name. Do not tighten a floor to express a hope.</para>
+///
+/// <para>The five misses that survive both passes are one class — a REQUIRED argument the prompt
+/// cannot supply, so the model legitimately reads first (<c>employee_update</c> is a full replace
+/// needing firstName/lastName; <c>skill_create</c> needs a categoryId;
+/// <c>style_exemplar_search</c> needs achievementIds). Descriptions cannot move those: see P1T-137
+/// and P1T-136. P1T-138 would cut the variance by pinning temperature, at the cost of
+/// re-baselining. Never lower a floor to make a red run pass.</para>
 /// </summary>
 public static class ToolSelectionBaselines
 {
-    public const double FirstToolAccuracyFloor = 0.80;  // min observed 0.821 (post-pass 0.846/0.846/0.821/0.821)
-    public const double AnyCallAccuracyFloor = 0.80;    // tracks first-tool on this set
+    public const double FirstToolAccuracyFloor = 0.79;  // min observed 0.821 over 8 runs, minus headroom
+    public const double AnyCallAccuracyFloor = 0.79;    // tracks first-tool on this set
     public const int ErrorCeiling = 2;                  // measured 0; headroom for transport flakes
 
-    /// <summary>Per-cluster first-tool floors — the sharp instrument: a careless edit to one
-    /// description trips its own cluster long before it moves a 39-prompt average. Each floor is
-    /// the lowest figure the cluster held across every measured run, so it gates regression, not
-    /// variance. style is absent on purpose (0% pre and post).</summary>
+    /// <summary>Per-cluster first-tool floors. The four read clusters at 1.0 are the real gate —
+    /// 100% in every run measured, so any dip is signal. shortlist and writes sit at the lowest
+    /// figure each has held (0.75), which is where variance put them, not where the pass left them
+    /// (typically 100% and 83%): they catch a collapse, not a slip. style is absent on purpose
+    /// (0% throughout — an affordance gap, P1T-136).</summary>
     public static readonly IReadOnlyDictionary<string, double> ClusterFirstToolFloors =
         new Dictionary<string, double>
         {

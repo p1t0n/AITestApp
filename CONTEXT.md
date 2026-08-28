@@ -65,9 +65,10 @@ request, over the real MCP listing. Its gate is a set of measured floors, global
 _Avoid_: tool test, selection benchmark
 
 **Cluster Floor**:
-A per-cluster first-tool floor in the Tool-Selection Eval gate — the sharp instrument: a careless
-edit to one description trips its own cluster long before it moves the overall average. Only
-clusters measured at their floor twice are gated.
+A per-cluster first-tool floor in the Tool-Selection Eval gate — sharper than the aggregate: a
+careless edit to one description trips its own cluster long before it moves the overall average.
+Set from the minimum observed across at least three runs, minus headroom; a cluster nobody can
+hold is left ungated.
 _Avoid_: per-group threshold
 
 ### Roster scanning
