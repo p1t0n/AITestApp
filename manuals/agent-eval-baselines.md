@@ -9,6 +9,11 @@ precedent (`manuals/retrieval-eval-baseline.md`): committed floors in
 GEMINI_API_KEY=<key> dotnet test tests/Agents.Tests --filter "Category=eval"
 ```
 
+A third live eval, the **tool-selection eval** (P1T-127), sits in `tests/Mcp.Tests` rather than
+here because it measures the MCP tool surface, not an agent: its floors and the description pass's
+before/after live in `manuals/mcp-tool-descriptions.md`
+(`dotnet test tests/Mcp.Tests --filter "Category=eval"`).
+
 Run on demand and before merging changes to agent instructions, extraction contracts, or the
 model choice. A floor failure is a hard test failure — re-baseline deliberately, never by
 loosening a floor to make a red run pass.

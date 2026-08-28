@@ -9,14 +9,38 @@ namespace CvManager.Mcp.Tools;
 public class EmployeeTools
 {
     [McpServerTool(Name = "employee_list", ReadOnly = true, Destructive = false),
-     Description("List all employees with a summary (name, title, location, email, current capacity)."),
+     Description(
+         "List every active employee as one flat roster row each — id, first/last name, " +
+         "title, location, email, current capacity percent and status. No paging, no filters, no " +
+         "narrative text. Use it when the roster itself is the answer: 'list everyone with their " +
+         "emails', 'how many employees do we have', 'show each person and their location'. Do NOT " +
+         "use it for capability questions ('who has built X') — roster_semantic_search ranks by " +
+         "meaning; do NOT use it to rank people against a job description or its must-haves — " +
+         "roster_shortlist_search returns coverage and per-requirement evidence; do NOT use it to " +
+         "sweep career narratives in bulk — roster_digest_list pages compact digests; do NOT use " +
+         "it for one person — employee_get returns their child records, cv_get the assembled CV. " +
+         "Input: none; e.g. {}. Rows carry NO skills, languages, qualifications, experiences, " +
+         "availability history or CV prose, and draft employees are excluded."),
      Authorize(Policy = McpScopes.Read)]
     public static async Task<IReadOnlyList<EmployeeSummaryDto>> List(
         IEmployeeService employees, CancellationToken ct)
         => await employees.ListAsync(includeDrafts: false, ct);
 
     [McpServerTool(Name = "employee_get", ReadOnly = true, Destructive = false),
-     Description("Get one employee, including all children (languages, availability, skills, qualifications, experiences), by id."),
+     Description(
+         "Get ONE employee by id with every child record: languages, the full availability step " +
+         "function (effectiveFrom + capacityPercent entries), skills with level and years, " +
+         "qualifications and experiences — each child carrying its own id for follow-up writes. " +
+         "Use it when you already have the employeeId and need that person's exact structured " +
+         "facts (a skill's years, an availability date, contact fields, draft status). Do NOT use " +
+         "it to FIND people — roster_semantic_search answers capability questions, " +
+         "roster_shortlist_search ranks against a job description; do NOT use it when the CV is " +
+         "what's wanted (prose to review, render or quote verbatim, achievement-bullet ids) — " +
+         "cv_get assembles the CV; do NOT loop it over the roster — employee_list for summary " +
+         "rows, roster_digest_list for narrative digests. Input: id — the employee GUID; e.g. " +
+         "{\"id\": \"7b2e8d3a-1111-2222-3333-444455556666\"}. An unknown id returns a " +
+         "not_found error, never an empty employee. Returns stored data only — no CV layout, no " +
+         "PDF, no relevance scores."),
      Authorize(Policy = McpScopes.Read)]
     public static Task<object> Get(
         IEmployeeService employees,
