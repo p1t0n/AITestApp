@@ -10,11 +10,13 @@ public class EmployeesController : ControllerBase
 {
     private readonly IEmployeeService _employees;
     private readonly ICvService _cv;
+    private readonly ICvPdfRenderer _pdf;
 
-    public EmployeesController(IEmployeeService employees, ICvService cv)
+    public EmployeesController(IEmployeeService employees, ICvService cv, ICvPdfRenderer pdf)
     {
         _employees = employees;
         _cv = cv;
+        _pdf = pdf;
     }
 
     [HttpGet]
@@ -49,4 +51,14 @@ public class EmployeesController : ControllerBase
 
     [HttpGet("{id:guid}/cv")]
     public Task<CvDto> GetCv(Guid id, CancellationToken ct) => _cv.BuildAsync(id, ct);
+
+    /// <summary>Server-side CV render (P1T-139) — the headless sibling of the SPA's browser print.
+    /// Thin adapter: the CV projection and the renderer both live below the Web layer.</summary>
+    [HttpGet("{id:guid}/cv.pdf")]
+    [Produces("application/pdf")]
+    public async Task<IActionResult> GetCvPdf(Guid id, CancellationToken ct)
+    {
+        var cv = await _cv.BuildAsync(id, ct);
+        return File(_pdf.Render(cv), "application/pdf", CvPdfFileName.For(cv));
+    }
 }

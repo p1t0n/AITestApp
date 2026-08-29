@@ -18,6 +18,9 @@
          Npgsql 10.0.2 pulls 10.0.4) — avoids the MSB3277 version-conflict warning. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.8" />
     <PackageReference Include="Pgvector" Version="0.3.2" />
+    <!-- Server-side CV render (P1T-139). Community licence: free at this project's scale, and it
+         needs no browser process, so the render stays usable from a worker or an agent path. -->
+    <PackageReference Include="QuestPDF" Version="2026.8.0" />
     <PackageReference Include="Pgvector.EntityFrameworkCore" Version="0.3.0" />
   </ItemGroup>
 

@@ -11,8 +11,9 @@ import {
   Typography,
 } from "@mui/material";
 import PrintIcon from "@mui/icons-material/Print";
+import DownloadIcon from "@mui/icons-material/Download";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { useCv } from "../api";
+import { useCv, useDownloadCvPdf } from "../api";
 import type { Qualification } from "../types";
 
 function CvSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -39,6 +40,7 @@ function qualLine(q: Qualification): string {
 export default function CvPage() {
   const { id = "" } = useParams();
   const { data: cv, isLoading } = useCv(id);
+  const downloadPdf = useDownloadCvPdf(id);
 
   if (isLoading || !cv) return <CircularProgress />;
 
@@ -48,9 +50,21 @@ export default function CvPage() {
         <Button startIcon={<ArrowBackIcon />} component={RouterLink} to={`/employees/${id}`}>
           Back
         </Button>
-        <Button variant="contained" startIcon={<PrintIcon />} onClick={() => window.print()}>
-          Print / Save PDF
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <Button startIcon={<PrintIcon />} onClick={() => window.print()}>
+            Print
+          </Button>
+          {/* Server-rendered PDF (P1T-139) — the same document a headless caller would get,
+              rather than whatever the browser's print dialog makes of this page. */}
+          <Button
+            variant="contained"
+            startIcon={<DownloadIcon />}
+            disabled={downloadPdf.isPending}
+            onClick={() => downloadPdf.mutate()}
+          >
+            {downloadPdf.isPending ? "Preparing…" : "Download PDF"}
+          </Button>
+        </Stack>
       </Stack>
 
       <Paper sx={{ p: 5, maxWidth: 820, mx: "auto" }} id="cv-sheet">

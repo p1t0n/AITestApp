@@ -843,6 +843,30 @@ export function useCv(id: string) {
   });
 }
 
+/**
+ * Server-side CV render (P1T-139). Fetched through axios rather than linked to directly so the
+ * session token rides along on the request; the response is then handed to the browser as a
+ * download under the filename the server chose.
+ */
+export function useDownloadCvPdf(id: string) {
+  return useMutation({
+    mutationFn: async () => {
+      const res = await http.get<Blob>(`/employees/${id}/cv.pdf`, { responseType: "blob" });
+      const disposition = (res.headers["content-disposition"] as string | undefined) ?? "";
+      const filename = /filename="?([^";]+)"?/.exec(disposition)?.[1] ?? "cv.pdf";
+      const url = URL.createObjectURL(res.data);
+      try {
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        link.click();
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    },
+  });
+}
+
 export function useCreateEmployee() {
   const qc = useQueryClient();
   return useMutation({

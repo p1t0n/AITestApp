@@ -244,7 +244,7 @@ destructive so clients can gate dangerous calls:
 - **Children:** `language_*`, `availability_*`, `employee_skill_*`, `qualification_*`, `experience_*`,
   `achievement_*`, `experience_skill_*`
 - **Skill catalog:** `category_list/tree/create/update/delete`, `skill_list/create/update/delete`
-- **CV:** `cv_get` (assembled data, not a PDF)
+- **CV:** `cv_get` (assembled data; the PDF render is a Web API endpoint, not an MCP tool)
 - **Semantic search (RAG):** `roster_semantic_search` (query by meaning + hard filters, evidence
   snippets), `roster_shortlist_search` (multi-requirement coverage-ranked candidate retrieval),
   `style_exemplar_search` (anonymized cross-CV strong-phrasing exemplars for bullet rewriting),
@@ -288,12 +288,13 @@ dotnet ef migrations add <Name> \
 - `GET/POST/PUT/DELETE /api/employees` — employee CRUD
 - `GET /api/employees/{id}` — full detail
 - `GET /api/employees/{id}/cv` — assembled CV
+- `GET /api/employees/{id}/cv.pdf` — the same CV rendered server-side to PDF (QuestPDF, no browser);
+  see `manuals/cv-pdf-render.md`
 - `.../availability`, `.../skills`, `.../languages`, `.../qualifications`, `.../experiences` — child resources
 - `GET/POST/DELETE /api/catalog/categories`, `/api/catalog/categories/tree`, `/api/catalog/skills` — skill catalog
 
 ## Not yet built (next increments)
 
-- Server-side PDF rendering (CV is React-rendered; print to PDF for now)
 - Web integration tests (WebApplicationFactory + Testcontainers) and Playwright e2e
 - SPA edit forms for languages / qualifications / experiences (API already supports them)
 - Shortlist coverage-merge ranking evals (requirement-extraction fidelity shipped as ExtractionEval)
