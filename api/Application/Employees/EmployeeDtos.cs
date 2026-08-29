@@ -78,3 +78,16 @@ public record SaveEmployeeDto(
     string? Location,
     string? Summary,
     string? PhotoUrl);
+
+/// <summary>Partial update: every field is optional, and only the fields present (non-null)
+/// overwrite the employee's current value — the complement to <see cref="SaveEmployeeDto"/>'s full
+/// replace. Cannot clear an optional field to null in one call; use the full-replace path for that.</summary>
+public record UpdateEmployeeDto(
+    string? FirstName,
+    string? LastName,
+    string? Title,
+    string? Email,
+    string? Phone,
+    string? Location,
+    string? Summary,
+    string? PhotoUrl);

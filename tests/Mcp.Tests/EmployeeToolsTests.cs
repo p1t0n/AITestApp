@@ -95,4 +95,29 @@ public class EmployeeToolsTests
         gone.IsError.Should().BeTrue();
         ResultText(gone).Should().Contain("not_found");
     }
+
+    [Fact]
+    public async Task employee_update_with_only_title_leaves_other_fields_untouched()
+    {
+        using var factory = McpTestHost.CreateFactory(nameof(employee_update_with_only_title_leaves_other_fields_untouched));
+        await using var client = await McpTestHost.ConnectAsync(factory);
+
+        var created = await client.CallToolAsync(
+            "employee_create", new Dictionary<string, object?> { ["dto"] = ValidDto() });
+        var id = IdOf(created);
+
+        var updated = await client.CallToolAsync(
+            "employee_update",
+            new Dictionary<string, object?>
+            {
+                ["id"] = id,
+                ["dto"] = new Dictionary<string, object?> { ["title"] = "Staff Engineer" },
+            });
+
+        updated.IsError.Should().NotBe(true);
+        var text = ResultText(updated);
+        text.Should().Contain("Staff Engineer");
+        text.Should().Contain("Lovelace");
+        text.Should().Contain("ada@example.com");
+    }
 }

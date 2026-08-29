@@ -59,7 +59,7 @@ public class ToolDescriptionBarTests
             "\"firstName\":", "EMPTY email"]),
         ("employee_update", [
             "employee_get", "employee_skill_add", "availability_add", "employee_create",
-            "full replace", "\"title\":", "not_found"]),
+            "PARTIAL UPDATE", "\"title\":", "not_found"]),
         ("employee_delete", [
             "availability_add", "employee_update", "DESTRUCTIVE", "admin scope", "\"id\":"]),
         ("employee_skill_add", [

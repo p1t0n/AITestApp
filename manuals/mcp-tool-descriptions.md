@@ -145,6 +145,39 @@ update for `employee_update`, `skill_create` by category name, or a deliberate r
 P1T-136 (style side). Both decisions are a human's: one option changes the product surface, the
 other changes the yardstick.
 
+#### The write cluster's two survivors, resolved (P1T-137)
+
+Landed **option 1** for `employee_update`, **option 3** for `skill_create`'s trap prompt:
+
+* `employee_update` now takes `UpdateEmployeeDto` — every root field optional, only the fields
+  present overwrite the employee's current value (`FirstName`/`LastName`, if sent, still cannot be
+  blank). The old `SaveEmployeeDto` full-replace path is unchanged for `employee_create` and stays
+  available on REST as `PUT /api/employees/{id}`; a new `PATCH /api/employees/{id}` exposes the
+  same partial-update method REST-side, so validation stays identical across both surfaces
+  (product invariant 7). `write-update-title` — "Change the title of employee … to Staff
+  Engineer" — is now a single legal `employee_update` call with just `{"title": "Staff Engineer"}`;
+  no re-label needed, this was a real product gap in the tool contract, not an eval sensitivity to
+  loosen. The tool description dropped the "full replace" warning for one describing partial-update
+  semantics and the null-vs-empty-string distinction.
+* `skill_create` keeps its required `categoryId` — inventing a default/"Uncategorized" category
+  (option 2) would let an agent silently miscategorize a new catalog entry, a worse failure than a
+  prerequisite read. `write-skill-trap-catalog` — "Create a brand-new skill entry called 'Zig'…" —
+  is re-labeled with `AlsoAcceptable: ["category_list", "category_tree", "skill_list"]`: the prompt
+  never supplies a category, so a prerequisite read is the legally correct first call, matching
+  `write-new-catalog-skill`'s sibling prompt that does supply one.
+
+Application-layer tests cover `PatchAsync`: a title-only patch leaves the other fields untouched, a
+supplied empty `firstName` still throws `ValidationException`, and an unknown id still throws
+`NotFoundException` (`tests/Application.Tests/EmployeeServiceValidationTests.cs`). An MCP-level
+test confirms the same round trip through `employee_update` with a single-field dto
+(`tests/Mcp.Tests/EmployeeToolsTests.cs`).
+
+**Eval re-run: pending.** Same blocker as P1T-136 and P1T-138 — `gemini-3.5-flash-lite`'s free-tier
+daily quota (500 req/day) is exhausted; `dotnet test --filter "Category!=e2e"` on 2026-08-28 shows
+every live/eval test failing on `429 Too Many Requests`, none of them touching this change's code
+path. The `writes` cluster figure and its floor stay at the pass-2 values above until quota resets
+and the eval can be re-run honestly.
+
 The honest summary of two passes: the description bar fixed what descriptions can fix — the
 read clusters held at 100%, the JD prompt left the plain roster listing, `experience_add` won its
 prompt back from `skill_list` — and then the instrument stopped rewarding wording and started
