@@ -1,3 +1,5 @@
+using System.ClientModel;
+using System.ClientModel.Primitives;
 using CvManager.ToolSelectionEval;
 using FluentAssertions;
 using Microsoft.Extensions.AI;
@@ -86,6 +88,64 @@ public class ToolSelectionScoringTests
             [new PromptResult(catalog, "category_list", ["category_list"])]));
 
         violations.Should().NotContain(v => v.Contains("cluster"));
+    }
+
+    [Fact]
+    public void A_failed_call_records_the_status_and_the_service_message()
+    {
+        // The OpenAI-compat client reports every HTTP fault as "Service request failed.", which
+        // makes a quota 429 indistinguishable from a real collapse in the report (P1T-137).
+        var quota = new ClientResultException(new FakeResponse(
+            429, """{"error":{"code":429,"status":"RESOURCE_EXHAUSTED","message":"quota exceeded"}}"""));
+
+        var described = ToolSelectionRunner.DescribeFault(quota);
+
+        described.Should().StartWith("HTTP 429");
+        described.Should().Contain("RESOURCE_EXHAUSTED");
+    }
+
+    [Fact]
+    public void A_non_transport_fault_keeps_its_own_message()
+    {
+        ToolSelectionRunner.DescribeFault(new InvalidOperationException("boom")).Should().Be("boom");
+    }
+
+    [Fact]
+    public void A_run_past_the_error_ceiling_is_reported_as_unusable()
+    {
+        // Every cluster reads 0% when the transport dies mid-run; the report must not let that be
+        // mistaken for a selection regression.
+        var dead = SelectionAggregate.From(
+            Enumerable.Range(0, 10)
+                .Select(i => new PromptResult(Strict with { Id = $"p{i}" }, null, [], "HTTP 429"))
+                .ToList());
+
+        var report = ToolSelectionReport.Render(dead, "model", new DateOnly(2026, 8, 29));
+
+        report.Should().Contain("Not a usable measurement");
+    }
+
+    [Fact]
+    public void A_clean_run_is_not_flagged_unusable()
+    {
+        var clean = SelectionAggregate.From([new PromptResult(Strict, "cv_get", ["cv_get"])]);
+
+        ToolSelectionReport.Render(clean, "model", new DateOnly(2026, 8, 29))
+            .Should().NotContain("Not a usable measurement");
+    }
+
+    /// <summary>Minimal <see cref="PipelineResponse"/> so a fault can be built without a live call.</summary>
+    private sealed class FakeResponse(int status, string body) : PipelineResponse
+    {
+        public override int Status => status;
+        public override string ReasonPhrase => "";
+        public override BinaryData Content => BinaryData.FromString(body);
+        public override Stream? ContentStream { get => null; set => throw new NotSupportedException(); }
+        protected override PipelineResponseHeaders HeadersCore => throw new NotSupportedException();
+        public override BinaryData BufferContent(CancellationToken ct = default) => Content;
+        public override ValueTask<BinaryData> BufferContentAsync(CancellationToken ct = default) =>
+            ValueTask.FromResult(Content);
+        public override void Dispose() { }
     }
 
     [Fact]
