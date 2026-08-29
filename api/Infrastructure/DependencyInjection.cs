@@ -1,4 +1,6 @@
 using CvManager.Application.Abstractions;
+using CvManager.Application.Cv;
+using CvManager.Infrastructure.Documents;
 using CvManager.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -16,6 +18,9 @@ public static class DependencyInjection
         services.AddDbContext<AppDbContext>(options =>
             options.UseNpgsql(connectionString, npgsql => npgsql.UseVector()));
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
+
+        // Stateless and thread-safe — one instance serves every request.
+        services.AddSingleton<ICvPdfRenderer, CvPdfRenderer>();
 
         return services;
     }

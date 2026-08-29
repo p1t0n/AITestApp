@@ -85,6 +85,21 @@ The result of a Theme Mode search — a sibling to the id-keyed `BulletExemplars
 nullable-keyed variant of it, so the response states honestly which mode produced it.
 _Avoid_: theme result, generic exemplars
 
+### CV rendering
+
+**CV Projection**:
+The render-ready dump of one employee in fixed order (`CvDto`), assembled by `CvService` as a pure
+function of the employee detail. Every renderer — the SPA page, the server-side PDF — consumes this
+same projection, so they cannot drift apart in content.
+_Avoid_: CV model, CV view model
+
+**Headless Render**:
+Producing a CV document with no browser in the loop: `ICvPdfRenderer` turns a CV Projection into
+PDF bytes from a pure, network-free call, so a worker, an export path or an agent can render one
+without a print dialog or a Chromium process. The SPA's print button stays as the human-driven
+alternative.
+_Avoid_: PDF export, server print
+
 ### Roster scanning
 
 **Roster Scan**:
