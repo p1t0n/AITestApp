@@ -44,6 +44,11 @@ Don't stop polling at the first `n/n` — the worker may not have projected the 
 
 ## Driving the UI (passkey auth!)
 
+For the standard journeys there is now a suite instead of a scratch script — `cd web && npm run
+test:e2e` starts its own database, API and SPA (ports 55433 / 5079 / 5174, dev stack untouched) and
+drives sign-up, sign-in and the roster in Chromium. See `manuals/playwright-e2e.md`. Reach for the
+manual route below when you need to drive something the suite does not cover.
+
 The whole SPA is passkey-gated. Playwright (devDep in `web/`) + a CDP **virtual authenticator**
 handles signup headlessly:
 
