@@ -75,8 +75,23 @@ _Avoid_: per-group threshold
 `employee_update`'s write semantics: only the fields present in the request change; an omitted or
 null field keeps its current value. Complement to the full-replace `SaveEmployeeDto` path used by
 `employee_create` and REST's `PUT`, which still requires every field on every call. An empty string
-clears an optional field; null does not (P1T-137).
+clears an optional field; null does not (P1T-137). Exists to remove a forced read-before-write, so
+it is measured by the Tool-Selection Eval like any other affordance.
 _Avoid_: patch, partial replace
+
+### Style exemplars
+
+**Theme Mode**:
+`style_exemplar_search`'s id-less retrieval path: a free-text theme (e.g. "cost reduction") is
+embedded directly and ranked against the whole achievement-bullet pool, for a phrasing request
+that names no specific bullet. Mutually exclusive with id-keyed mode (`achievementIds`); exactly
+one must be supplied.
+_Avoid_: free-text search, keyword mode
+
+**Themed Exemplars**:
+The result of a Theme Mode search — a sibling to the id-keyed `BulletExemplars`, not a
+nullable-keyed variant of it, so the response states honestly which mode produced it.
+_Avoid_: theme result, generic exemplars
 
 ### Roster scanning
 
