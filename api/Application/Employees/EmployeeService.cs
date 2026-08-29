@@ -67,7 +67,7 @@ public class EmployeeService : IEmployeeService
         var e = new Employee { Id = Guid.NewGuid() };
         Apply(e, dto);
         _db.Employees.Add(e);
-        await _db.SaveChangesAsync(ct);
+        await SaveGuardingEmailAsync(e.Email, "Use the existing employee, or give this one a different address.", ct);
         return await GetAsync(e.Id, ct);
     }
 
@@ -116,16 +116,8 @@ public class EmployeeService : IEmployeeService
         }
 
         e.Status = EmployeeStatus.Active;
-        try
-        {
-            await _db.SaveChangesAsync(ct);
-        }
-        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("IX_Employees_Email") == true)
-        {
-            // The partial unique index only binds Active rows, so the clash surfaces exactly here.
-            throw new ConflictException(
-                $"An active employee already uses the email '{e.Email}'. Resolve the duplicate before promoting.");
-        }
+        // The partial unique index only binds Active rows, so a draft's clash surfaces exactly here.
+        await SaveGuardingEmailAsync(e.Email, "Resolve the duplicate before promoting.", ct);
 
         return await GetAsync(id, ct);
     }
@@ -136,7 +128,7 @@ public class EmployeeService : IEmployeeService
         var e = await _db.Employees.FirstOrDefaultAsync(x => x.Id == id, ct)
             ?? throw new NotFoundException(nameof(Employee), id);
         Apply(e, dto);
-        await _db.SaveChangesAsync(ct);
+        await SaveGuardingEmailAsync(e.Email, "Use a different address for this employee.", ct);
         return await GetAsync(id, ct);
     }
 
@@ -146,7 +138,7 @@ public class EmployeeService : IEmployeeService
         var e = await _db.Employees.FirstOrDefaultAsync(x => x.Id == id, ct)
             ?? throw new NotFoundException(nameof(Employee), id);
         ApplyPatch(e, dto);
-        await _db.SaveChangesAsync(ct);
+        await SaveGuardingEmailAsync(e.Email, "Use a different address for this employee.", ct);
         return await GetAsync(id, ct);
     }
 
@@ -156,6 +148,24 @@ public class EmployeeService : IEmployeeService
             ?? throw new NotFoundException(nameof(Employee), id);
         _db.Employees.Remove(e);
         await _db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Saves, translating the roster's one database-level uniqueness rule into a Conflict. Email
+    /// uniqueness lives in a partial unique index over Active rows — a rule EF cannot pre-check
+    /// without a race — so the clash can only ever be caught here, on the way out. Left unhandled it
+    /// reaches the caller as a 500 for what is an ordinary, correctable mistake (P1T-140).
+    /// </summary>
+    private async Task SaveGuardingEmailAsync(string email, string remedy, CancellationToken ct)
+    {
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("IX_Employees_Email") == true)
+        {
+            throw new ConflictException($"An active employee already uses the email '{email}'. {remedy}");
+        }
     }
 
     private async Task<Employee?> LoadFullAsync(Guid id, bool track, CancellationToken ct)

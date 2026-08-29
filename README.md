@@ -94,6 +94,7 @@ tests/
   Application.Tests/  Application unit tests
   Agents.Tests/       agent + endpoint tests (fake chat client / tool source)
   Mcp.Tests/          MCP integration tests (in-process client, Testcontainers pgvector, Keycloak e2e)
+  Web.Tests/          Web API integration tests (WebApplicationFactory + Testcontainers Postgres)
 docker-compose.yml Postgres (pgvector image) + Keycloak
 SPEC.md            full design + decisions
 ```
@@ -270,6 +271,10 @@ dotnet test          # backend: unit + Testcontainers integration (needs Docker)
 cd web && npm test   # frontend: vitest component tests
 ```
 
+The Web API suite (`tests/Web.Tests`) drives the real host over a throwaway Postgres container: the
+migrations, the dev seed, the authorization gate and the error shapes all run for real. See
+`manuals/web-api-integration-tests.md`.
+
 Live tests (real embeddings / models) are opt-in: `dotnet test --filter "Category=live"` with
 `GEMINI_API_KEY` set. The retrieval regression gate lives there too, as does the tool-selection
 gate (`--filter "Category=eval"`, ~3 min, 39 model calls).
@@ -295,6 +300,7 @@ dotnet ef migrations add <Name> \
 
 ## Not yet built (next increments)
 
-- Web integration tests (WebApplicationFactory + Testcontainers) and Playwright e2e
+- Playwright e2e (the .NET half — Web API integration tests — shipped; see
+  `manuals/web-api-integration-tests.md`)
 - SPA edit forms for languages / qualifications / experiences (API already supports them)
 - Shortlist coverage-merge ranking evals (requirement-extraction fidelity shipped as ExtractionEval)

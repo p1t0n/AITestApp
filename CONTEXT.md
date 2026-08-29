@@ -108,6 +108,21 @@ without a print dialog or a Chromium process. The SPA's print button stays as th
 alternative.
 _Avoid_: PDF export, server print
 
+### Testing
+
+**Boundary Test**:
+A test that drives a host over HTTP with the app's own authentication in force — the only place the
+service boundary's rules (the authorization fallback policy, the ProblemDetails mapping, route
+constraints) are actually observable. Distinct from an Application-layer unit test, which reaches
+past the boundary by construction.
+_Avoid_: API test, controller test
+
+**Database Truth**:
+Behaviour enforced by Postgres rather than by code — partial unique indexes, cascade deletes,
+date/enum mapping. Invisible to EF InMemory, so it is only ever proven by an integration test
+against a real database.
+_Avoid_: DB constraint (too narrow), infrastructure behaviour
+
 ### Roster scanning
 
 **Roster Scan**:

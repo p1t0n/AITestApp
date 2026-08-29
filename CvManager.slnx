@@ -28,6 +28,9 @@
   <Folder Name="/tests/Mcp.Tests/">
     <Project Path="tests/Mcp.Tests/CvManager.Mcp.Tests.csproj" />
   </Folder>
+  <Folder Name="/tests/Web.Tests/">
+    <Project Path="tests/Web.Tests/CvManager.Web.Tests.csproj" />
+  </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/ExtractionEval.Core/ExtractionEval.Core.csproj" />
     <Project Path="tools/ExtractionEval/ExtractionEval.csproj" />

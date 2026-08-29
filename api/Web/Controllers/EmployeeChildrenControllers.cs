@@ -111,6 +111,7 @@ public class AchievementsController : ControllerBase
         _svc.PatchTextAsync(id, dto.Text, ct);
 }
 
+[ApiController]
 public class ExperiencesController : ControllerBase
 {
     private readonly IExperienceService _svc;
