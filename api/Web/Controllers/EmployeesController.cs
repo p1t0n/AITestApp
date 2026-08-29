@@ -42,6 +42,12 @@ public class EmployeesController : ControllerBase
     public Task<EmployeeDetailDto> Update(Guid id, SaveEmployeeDto dto, CancellationToken ct) =>
         _employees.UpdateAsync(id, dto, ct);
 
+    /// <summary>Partial update — only the fields present in <paramref name="dto"/> change (P1T-137).
+    /// PUT above keeps full-replace semantics; this is the patch-shaped sibling.</summary>
+    [HttpPatch("{id:guid}")]
+    public Task<EmployeeDetailDto> Patch(Guid id, UpdateEmployeeDto dto, CancellationToken ct) =>
+        _employees.PatchAsync(id, dto, ct);
+
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {

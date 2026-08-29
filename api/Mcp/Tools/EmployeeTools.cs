@@ -102,26 +102,28 @@ public class EmployeeTools
      Description(
          "CHANGE an existing employee's root fields by id — name, title, email, phone, location, " +
          "summary, photoUrl. Use it for edits like 'change their title to Staff Engineer', 'fix " +
-         "their email', 'update their professional summary'. This is a full replace of the root " +
-         "fields, so send every field you want kept, not just the changed one. Do NOT use " +
-         "employee_get for a change — that only reads; do NOT use it for children: skills go " +
-         "through employee_skill_add/update, capacity through availability_add (capacity is a " +
-         "dated step function, not a root field), and likewise language_*, qualification_*, " +
-         "experience_*; do NOT use it to create anyone — employee_create / employee_create_draft. " +
-         "Input: id (employee GUID) + dto; e.g. {\"id\": " +
-         "\"7b2e8d3a-1111-2222-3333-444455556666\", \"dto\": {\"firstName\": \"Jane\", " +
-         "\"lastName\": \"Doe\", \"title\": \"Staff Engineer\", \"email\": " +
-         "\"jane@example.com\"}}. An unknown id returns not_found; a duplicate email conflict. " +
-         "Returns the updated employee, children untouched; it never promotes a draft."),
+         "their email', 'update their professional summary'. PARTIAL UPDATE: send only the " +
+         "field(s) you are changing — every field you omit (or send as null) keeps its current " +
+         "value, so a single-field edit like a title change is one call with no prior read needed. " +
+         "To CLEAR an optional field (phone, location, summary, photoUrl) to empty, send it as an " +
+         "empty string, not null — null means 'leave unchanged'. Do NOT use employee_get for a " +
+         "change — that only reads; do NOT use it for children: skills go through " +
+         "employee_skill_add/update, capacity through availability_add (capacity is a dated step " +
+         "function, not a root field), and likewise language_*, qualification_*, experience_*; do " +
+         "NOT use it to create anyone — employee_create / employee_create_draft. Input: id " +
+         "(employee GUID) + dto; e.g. {\"id\": \"7b2e8d3a-1111-2222-3333-444455556666\", \"dto\": " +
+         "{\"title\": \"Staff Engineer\"}}. An unknown id returns not_found; a supplied firstName " +
+         "or lastName cannot be blank. Returns the updated employee, children untouched; it never " +
+         "promotes a draft."),
      Authorize(Policy = McpScopes.Write)]
     public static Task<object> Update(
         IEmployeeService employees,
         [Description("Employee id (GUID).")] Guid id,
-        [Description("The employee's root fields AFTER the edit — a full replace, so include the " +
-                     "fields that stay the same as well.")]
-        SaveEmployeeDto dto,
+        [Description("Only the root field(s) to change — omitted or null fields keep their " +
+                     "current value. Send an empty string to clear an optional field.")]
+        UpdateEmployeeDto dto,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => employees.UpdateAsync(id, dto, ct));
+        => McpToolExecutor.RunAsync(() => employees.PatchAsync(id, dto, ct));
 
     [McpServerTool(Name = "employee_delete", ReadOnly = false, Destructive = true, Idempotent = true),
      Description(

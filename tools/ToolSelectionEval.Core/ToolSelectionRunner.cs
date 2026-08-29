@@ -1,3 +1,4 @@
+using System.ClientModel;
 using Microsoft.Extensions.AI;
 
 namespace CvManager.ToolSelectionEval;
@@ -68,7 +69,7 @@ public static class ToolSelectionRunner
                 }
                 catch (Exception ex)
                 {
-                    result = new PromptResult(prompt, null, [], ex.Message);
+                    result = new PromptResult(prompt, null, [], DescribeFault(ex));
                     if (attempt < 3)
                     {
                         await Task.Delay(TimeSpan.FromSeconds(2 * attempt), ct);
@@ -86,6 +87,39 @@ public static class ToolSelectionRunner
         }
 
         return SelectionAggregate.From(results);
+    }
+
+    /// <summary>
+    /// The exception message alone is useless for diagnosis: the OpenAI-compat client surfaces
+    /// every HTTP fault as "Service request failed.", so a quota-exhausted run and a genuine
+    /// selection collapse render identically in the report — two runs on 2026-08-29 had to be
+    /// thrown away before anyone could say which they were. Pull out the status code and the
+    /// service's own message so a 429 reads as a 429.
+    /// </summary>
+    public static string DescribeFault(Exception ex)
+    {
+        if (ex is not ClientResultException { Status: > 0 } failure) return ex.Message;
+
+        var body = TryReadBody(failure);
+        return body is null ? $"HTTP {failure.Status}" : $"HTTP {failure.Status}: {body}";
+    }
+
+    private static string? TryReadBody(ClientResultException failure)
+    {
+        string raw;
+        try
+        {
+            raw = failure.GetRawResponse()?.Content?.ToString() ?? "";
+        }
+        catch (Exception)
+        {
+            // A response whose body was never buffered — nothing to add beyond the status.
+            return null;
+        }
+
+        var flat = string.Join(" ", raw.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        if (flat.Length == 0) return null;
+        return flat.Length <= 200 ? flat : flat[..200] + "…";
     }
 
     public static string Describe(PromptResult r) => r.Error is { } error

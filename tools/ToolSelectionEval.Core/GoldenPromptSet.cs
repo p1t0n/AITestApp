@@ -118,7 +118,10 @@ public static class GoldenPromptSet
             "(catalog skill 8a8a8a8a-1111-2222-3333-444455556666), 5 years of it.", "employee_skill_add"),
         new("write-skill-trap-catalog", Writes,
             "Create a brand-new skill entry called 'Zig' so we can start tagging people with it.",
-            "skill_create"),
+            "skill_create",
+            // categoryId is a required argument the prompt never supplies (P1T-137): a
+            // prerequisite read is the legally correct first call, not a miss.
+            AlsoAcceptable: ["category_list", "category_tree", "skill_list"]),
         new("write-new-employee", Writes,
             "Add a new employee: Jane Doe, Senior Engineer, jane@example.com, Berlin.", "employee_create"),
         new("write-draft", Writes,

@@ -22,7 +22,7 @@ public class EmployeeDraftLifecycleTests
             .Options);
 
     private static EmployeeService NewService(AppDbContext db) =>
-        new(db, new SaveEmployeeValidator());
+        new(db, new SaveEmployeeValidator(), new UpdateEmployeeValidator());
 
     private static SaveEmployeeDto Dto(string first = "Torvald", string last = "Emberwright", string email = "t@example.com") =>
         new(first, last, "Senior Engineer", email, null, null, null, null);

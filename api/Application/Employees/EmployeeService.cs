@@ -23,6 +23,8 @@ public interface IEmployeeService
     /// <summary>Flips a Draft to Active — the human publication gate. Requires a valid email.</summary>
     Task<EmployeeDetailDto> PromoteAsync(Guid id, CancellationToken ct = default);
     Task<EmployeeDetailDto> UpdateAsync(Guid id, SaveEmployeeDto dto, CancellationToken ct = default);
+    /// <summary>Partial update: only the fields present in <paramref name="dto"/> change.</summary>
+    Task<EmployeeDetailDto> PatchAsync(Guid id, UpdateEmployeeDto dto, CancellationToken ct = default);
     Task DeleteAsync(Guid id, CancellationToken ct = default);
 }
 
@@ -30,10 +32,12 @@ public class EmployeeService : IEmployeeService
 {
     private readonly IAppDbContext _db;
     private readonly IValidator<SaveEmployeeDto> _validator;
-    public EmployeeService(IAppDbContext db, IValidator<SaveEmployeeDto> validator)
+    private readonly IValidator<UpdateEmployeeDto> _patchValidator;
+    public EmployeeService(IAppDbContext db, IValidator<SaveEmployeeDto> validator, IValidator<UpdateEmployeeDto> patchValidator)
     {
         _db = db;
         _validator = validator;
+        _patchValidator = patchValidator;
     }
 
     private static DateOnly Today => DateOnly.FromDateTime(DateTime.UtcNow);
@@ -136,6 +140,16 @@ public class EmployeeService : IEmployeeService
         return await GetAsync(id, ct);
     }
 
+    public async Task<EmployeeDetailDto> PatchAsync(Guid id, UpdateEmployeeDto dto, CancellationToken ct = default)
+    {
+        await _patchValidator.ValidateAndThrowAsync(dto, ct);
+        var e = await _db.Employees.FirstOrDefaultAsync(x => x.Id == id, ct)
+            ?? throw new NotFoundException(nameof(Employee), id);
+        ApplyPatch(e, dto);
+        await _db.SaveChangesAsync(ct);
+        return await GetAsync(id, ct);
+    }
+
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
         var e = await _db.Employees.FirstOrDefaultAsync(x => x.Id == id, ct)
@@ -168,5 +182,19 @@ public class EmployeeService : IEmployeeService
         e.Location = dto.Location;
         e.Summary = dto.Summary;
         e.PhotoUrl = dto.PhotoUrl;
+    }
+
+    /// <summary>Only overwrites fields present (non-null) in <paramref name="dto"/>; an omitted
+    /// field keeps its current value.</summary>
+    private static void ApplyPatch(Employee e, UpdateEmployeeDto dto)
+    {
+        if (dto.FirstName is not null) e.FirstName = dto.FirstName.Trim();
+        if (dto.LastName is not null) e.LastName = dto.LastName.Trim();
+        if (dto.Title is not null) e.Title = dto.Title.Trim();
+        if (dto.Email is not null) e.Email = dto.Email.Trim();
+        if (dto.Phone is not null) e.Phone = dto.Phone;
+        if (dto.Location is not null) e.Location = dto.Location;
+        if (dto.Summary is not null) e.Summary = dto.Summary;
+        if (dto.PhotoUrl is not null) e.PhotoUrl = dto.PhotoUrl;
     }
 }

@@ -99,6 +99,50 @@ prompt is 2.6 points of a 39-prompt average, so read the overall figures as 0.82
 The four gated read clusters (capability, exact-fact, bulk-sweep, catalog) sat at 100% in all six
 runs — the rewrite cost nothing there, which is the other half of what the pass had to show.
 
+### After the affordances (P1T-136 + P1T-137, measured 2026-08-29)
+
+Same instrument, now under P1T-138's `Temperature = 0` pin, with both affordance fixes landed:
+`style_exemplar_search`'s Theme Mode and `employee_update`'s Partial Update (plus `skill_create`'s
+prerequisite reads scored as correct). Two clean runs:
+
+| Cluster | after pass 2 (best) | run A | run B |
+| --- | ---: | ---: | ---: |
+| capability | 100% | 100% | 100% |
+| exact-fact | 100% | 100% | 100% |
+| bulk-sweep | 100% | 100% | 100% |
+| catalog | 100% | 100% | 100% |
+| shortlist | 100% | 75% | 100% |
+| style | 0% | **100%** | **100%** |
+| writes | 83% | **100%** | **100%** |
+| **overall first-tool** | **0.872** | **0.974** | **1.000** |
+
+0 transport errors in both. The single miss in run A is the familiar `sl-jd-paste`, landing on
+`skill_list` this time — the one prompt that has never settled across any run of this eval.
+
+**What this says.** The two description passes moved the aggregate about 2 points, inside the
+run-to-run noise. The two affordance fixes moved it roughly 12, and moved the two clusters that
+descriptions had never once shifted — `style` off a flat 0% across six runs, `writes` off 75–83%.
+The instrument's real finding was never "the wording is wrong"; it was "these tool contracts force
+a read the prompt cannot satisfy". Fixing the contracts is what paid.
+
+**Floors NOT tightened yet — deliberately.** The floor policy above wants three runs and a floor at
+the minimum minus headroom. The day's free-tier quota (500 requests, 39 per run) ran out after two
+clean runs, and this eval has been misled by two agreeing runs twice already. Two is exactly the
+trap the policy exists for, so the committed floors stay where pass 2 left them until a third clean
+run lands. Tighten then, from the minimum of three.
+
+**A run past the error ceiling is not a measurement.** Two of the day's five runs died partway
+through on quota and rendered as `writes 0%` / near-total collapse — indistinguishable, in the
+report as it stood, from a real regression. The runner reported every HTTP fault as the OpenAI-compat
+client's `Service request failed.`, with no status. Fixed under P1T-137: a fault now carries its HTTP
+status and the service's own message, so a 429 reads as a 429, and any run over the error ceiling is
+flagged **"Not a usable measurement"** at the top of the report. Check that line before believing a
+cluster fell.
+
+One practical note for whoever takes the third run: the runner paces prompts 4s apart, which is
+15 requests/minute — right at this model's free-tier per-minute limit, so a run can trip the rate
+window as well as the daily cap. Run the eval first, before anything else that spends quota.
+
 ### The floor policy, learned the hard way twice
 
 Both passes set a floor from two agreeing runs and had a third run trip it — pass 1 looked like a
@@ -145,6 +189,38 @@ update for `employee_update`, `skill_create` by category name, or a deliberate r
 P1T-136 (style side). Both decisions are a human's: one option changes the product surface, the
 other changes the yardstick.
 
+#### The write cluster's two survivors, resolved (P1T-137)
+
+Landed **option 1** for `employee_update`, **option 3** for `skill_create`'s trap prompt:
+
+* `employee_update` now takes `UpdateEmployeeDto` — every root field optional, only the fields
+  present overwrite the employee's current value (`FirstName`/`LastName`, if sent, still cannot be
+  blank). The old `SaveEmployeeDto` full-replace path is unchanged for `employee_create` and stays
+  available on REST as `PUT /api/employees/{id}`; a new `PATCH /api/employees/{id}` exposes the
+  same partial-update method REST-side, so validation stays identical across both surfaces
+  (product invariant 7). `write-update-title` — "Change the title of employee … to Staff
+  Engineer" — is now a single legal `employee_update` call with just `{"title": "Staff Engineer"}`;
+  no re-label needed, this was a real product gap in the tool contract, not an eval sensitivity to
+  loosen. The tool description dropped the "full replace" warning for one describing partial-update
+  semantics and the null-vs-empty-string distinction.
+* `skill_create` keeps its required `categoryId` — inventing a default/"Uncategorized" category
+  (option 2) would let an agent silently miscategorize a new catalog entry, a worse failure than a
+  prerequisite read. `write-skill-trap-catalog` — "Create a brand-new skill entry called 'Zig'…" —
+  is re-labeled with `AlsoAcceptable: ["category_list", "category_tree", "skill_list"]`: the prompt
+  never supplies a category, so a prerequisite read is the legally correct first call, matching
+  `write-new-catalog-skill`'s sibling prompt that does supply one.
+
+Application-layer tests cover `PatchAsync`: a title-only patch leaves the other fields untouched, a
+supplied empty `firstName` still throws `ValidationException`, and an unknown id still throws
+`NotFoundException` (`tests/Application.Tests/EmployeeServiceValidationTests.cs`). An MCP-level
+test confirms the same round trip through `employee_update` with a single-field dto
+(`tests/Mcp.Tests/EmployeeToolsTests.cs`).
+
+**Eval re-run: done, 2026-08-29 — see "After the affordances" above.** The `writes` cluster read
+**100% in both clean runs**, up from 83% at its pass-2 best. Both survivors are gone:
+`write-update-title` now calls `employee_update` directly, and `write-skill-trap-catalog`'s
+prerequisite `category_list` read is scored as correct.
+
 The honest summary of two passes: the description bar fixed what descriptions can fix — the
 read clusters held at 100%, the JD prompt left the plain roster listing, `experience_add` won its
 prompt back from `skill_list` — and then the instrument stopped rewarding wording and started
@@ -182,11 +258,9 @@ still applies. Unit tests cover the id-less path with the fake embedder (includi
 exclusion behavior, contrasted directly against the id-keyed empty-result case for the same
 underlying data) and confirm anonymization still runs.
 
-The tool-selection eval re-run and the `style` cluster floor are **pending**: the
-`gemini-3.5-flash-lite` free-tier daily quota (500 req/day) was already exhausted before this
-landed — the same constraint P1T-138 hit — confirmed by a direct probe returning
-`RESOURCE_EXHAUSTED` / `GenerateRequestsPerDayPerProjectPerModel-FreeTier`. The code and tests are
-landed; the measured `style` cluster figure and its floor still need a live run once quota resets.
+**Eval re-run: done, 2026-08-29 — see "After the affordances" above.** The `style` cluster went
+**0% → 100% in both clean runs**: all three theme-only prompts now call `style_exemplar_search`
+first. Its floor is still ungated pending a third clean run, for the reason given there.
 
 ## Part 2 — the sequencing audit (P1T-131)
 

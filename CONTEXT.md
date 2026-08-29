@@ -71,6 +71,14 @@ Set from the minimum observed across at least three runs, minus headroom; a clus
 hold is left ungated.
 _Avoid_: per-group threshold
 
+**Partial Update**:
+`employee_update`'s write semantics: only the fields present in the request change; an omitted or
+null field keeps its current value. Complement to the full-replace `SaveEmployeeDto` path used by
+`employee_create` and REST's `PUT`, which still requires every field on every call. An empty string
+clears an optional field; null does not (P1T-137). Exists to remove a forced read-before-write, so
+it is measured by the Tool-Selection Eval like any other affordance.
+_Avoid_: patch, partial replace
+
 ### Style exemplars
 
 **Theme Mode**:

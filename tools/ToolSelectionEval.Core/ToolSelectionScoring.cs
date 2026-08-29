@@ -63,11 +63,32 @@ public sealed record SelectionAggregate(
 /// aggregate floor cannot detect losing that gain — only the four read clusters, steady at 100%
 /// across every run, are a gate worth its name. Do not tighten a floor to express a hope.</para>
 ///
-/// <para>The five misses that survive both passes are one class — a REQUIRED argument the prompt
-/// cannot supply, so the model legitimately reads first (<c>employee_update</c> is a full replace
-/// needing firstName/lastName; <c>skill_create</c> needs a categoryId;
-/// <c>style_exemplar_search</c> needs achievementIds). Descriptions cannot move those: see P1T-137
-/// and P1T-136. Never lower a floor to make a red run pass.</para>
+/// <para>The five misses that survived both description passes were one class — a REQUIRED
+/// argument the prompt cannot supply, so the model legitimately read first
+/// (<c>employee_update</c> was a full replace needing firstName/lastName; <c>skill_create</c>
+/// needs a categoryId; <c>style_exemplar_search</c> needed achievementIds). Descriptions could
+/// not move those; affordances did — P1T-136 and P1T-137, measured below. Never lower a floor to
+/// make a red run pass.</para>
+///
+/// <para><b>After P1T-136 + P1T-137, under the Temperature = 0 pin (measured 2026-08-29,
+/// <c>gemini-3.5-flash-lite</c>):</b> two clean runs — first-tool <b>0.974</b> (38/39) and
+/// <b>1.000</b> (39/39), 0 errors in both. Every cluster read 100% in both runs except shortlist,
+/// which read 75% then 100%; its single miss is <c>sl-jd-paste</c> landing on <c>skill_list</c>.
+/// The two affordance fixes closed what descriptions could not: <c>style</c> went 0% → 100%
+/// (P1T-136's Theme Mode) and <c>writes</c> 83% → 100% (P1T-137's Partial Update, plus
+/// <c>skill_create</c>'s prerequisite reads now scored as correct). Aggregate moved 0.821–0.872
+/// → 0.974–1.000.</para>
+///
+/// <para><b>Floors NOT tightened yet, deliberately.</b> The policy below wants three runs; the
+/// day's free-tier quota (500 requests, 39 per run) ran out after two clean ones. Two agreeing
+/// runs have misled this eval twice already — that is exactly the trap the policy exists for, so
+/// the floors stay where they are until a third clean run lands. Tighten then, from the minimum
+/// of three, not from the two above.</para>
+///
+/// <para><b>Reading a red run:</b> a run past the error ceiling is not a measurement. Two runs on
+/// 2026-08-29 rendered as <c>writes 0%</c> / total collapse purely because the transport died
+/// partway through on quota. The report now says so at the top, and a fault carries its HTTP
+/// status, so a 429 is legible as a 429. Check that before believing a cluster fell.</para>
 ///
 /// <para><b>P1T-138 (temperature pin, re-baseline pending):</b> <c>ToolSelectionRunner</c> now
 /// pins <c>Temperature = 0</c> to cut the run-to-run variance described above (seed is not settable
@@ -115,6 +136,18 @@ public static class ToolSelectionReport
             $"any-call **{a.AnyCallAccuracy:F3}** (floor {ToolSelectionBaselines.AnyCallAccuracyFloor:F2}) · " +
             $"errors **{a.Errors}** (ceiling {ToolSelectionBaselines.ErrorCeiling})");
         sb.AppendLine();
+
+        // Past the error ceiling the figures below are an artifact of transport, not of selection —
+        // a quota-exhausted run reads as a total collapse of whichever clusters ran last. Say so at
+        // the top, where someone skimming the cluster table will see it (P1T-137).
+        if (a.Errors > ToolSelectionBaselines.ErrorCeiling)
+        {
+            sb.AppendLine(
+                $"> **Not a usable measurement.** {a.Errors} of {a.Results.Count} prompts failed in " +
+                "transport, so every figure below understates selection. Check the per-prompt errors " +
+                "for the status code (a 429 means quota, not a regression) and re-run.");
+            sb.AppendLine();
+        }
         sb.AppendLine("| Cluster | first-tool | floor |");
         sb.AppendLine("| --- | ---: | ---: |");
         foreach (var (cluster, accuracy) in a.FirstToolByCluster.OrderBy(kv => kv.Key))
