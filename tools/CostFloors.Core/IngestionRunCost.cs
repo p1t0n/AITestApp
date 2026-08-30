@@ -43,12 +43,19 @@ public static class IngestionRunCost
     /// against the agent's own procedure, and the write surface gives no way to do it in fewer
     /// calls: each child is its own tool.
     ///
+    /// <para>P1T-155 made the head of this path LONGER on purpose: one unfiltered
+    /// <c>skill_list</c> became one filtered lookup per extracted skill name. Eight calls in place
+    /// of one, and the run got cheaper — the dump was 3,063 tokens re-sent on every later call,
+    /// the lookups are ~87 each and they all fit in a single turn. Call count was never the cost;
+    /// TURN count is (see <see cref="ReferenceIngestionTurns"/>).</para>
+    ///
     /// <para>The floor test derives this from <c>GroundTruth</c> rather than trusting the list, so
     /// a fixture edit that changes the shape fails loudly instead of quietly re-baselining.</para>
     /// </summary>
     public static readonly IReadOnlyList<string> ReferenceIngestionPath =
     [
-        "skill_list",
+        "skill_list", "skill_list", "skill_list", "skill_list",
+        "skill_list", "skill_list", "skill_list", "skill_list",
         "employee_create_draft",
         "language_add", "language_add", "language_add",
         "employee_skill_add", "employee_skill_add", "employee_skill_add", "employee_skill_add",
@@ -58,20 +65,37 @@ public static class IngestionRunCost
     ];
 
     /// <summary>
+    /// The REFERENCE INGESTION TURNS: the same path, grouped the way the agent's Batching rule
+    /// tells it to issue them — every call that does not need another's result goes out in the
+    /// same turn as parallel tool calls. This is the declared shape of a converged ingestion, the
+    /// write-loop sibling of roster-qa's Convergent Path (<c>CostFloors.RosterQaConvergentPath</c>).
+    ///
+    /// <para>Six turns: the skill lookups, the draft, then one turn per child KIND. Only two
+    /// boundaries here are real — the children need the draft's id, and the skill adds need the
+    /// lookups' ids. The four child kinds are mutually independent and could collapse further; the
+    /// declared shape keeps them apart so each turn's arguments stay bounded and a validation error
+    /// costs one kind's retry rather than the whole draft's.</para>
+    /// </summary>
+    public static readonly IReadOnlyList<string> ReferenceIngestionTurns =
+        ["skill_list", "employee_create_draft", "language_add", "employee_skill_add",
+         "qualification_add", "experience_add"];
+
+    /// <summary>
     /// Model calls the SERIAL shape takes: one tool call per assistant turn, plus the closing turn
-    /// that writes the report. This is the shape the ledger recorded — nothing forces batching,
-    /// and a model correcting one child at a time necessarily ends up here.
+    /// that writes the report. The shape the ledger recorded, and now the shape the Batching rule
+    /// exists to prevent — it is kept measured because nothing structurally forces batching, so a
+    /// model that ignores the rule lands back here and the Runtime Budget still has to hold.
     /// </summary>
     public static int SerialIterations => ReferenceIngestionPath.Count + 1;
 
     /// <summary>
-    /// Model calls the BATCHED shape takes: <c>skill_list</c>, <c>employee_create_draft</c>, then
-    /// one turn per child KIND with its adds issued as parallel tool calls, plus the closing turn.
-    /// Same writes, same order, same results — only the turn boundaries move. That it is a third
-    /// of <see cref="SerialIterations"/> is the whole finding: on a write loop, iteration count is
-    /// the lever, because every iteration re-sends the resume and everything written so far.
+    /// Model calls the BATCHED shape takes: one per entry in <see cref="ReferenceIngestionTurns"/>
+    /// plus the closing turn that writes the report. Same writes, same order, same results — only
+    /// the turn boundaries move. That it is under a third of <see cref="SerialIterations"/> is the
+    /// whole finding: on a write loop, iteration count is the lever, because every iteration
+    /// re-sends the resume and everything written so far.
     /// </summary>
-    public const int BatchedIterations = 7;
+    public static int BatchedIterations => ReferenceIngestionTurns.Count + 1;
 
     /// <summary>
     /// Ceiling on the SERIAL reference ingestion, in <see cref="TokenEstimate"/> tokens, measured
@@ -80,38 +104,58 @@ public static class IngestionRunCost
     /// composed terms are the tool schema and instruction sizes, taken from Ratchets the other
     /// floors already hold true.
     ///
-    /// <para>Ratcheted at 111,638, today's measured value, and the number that explains the
-    /// 157,252-token ledger row: a perfectly ordinary resume, no thrash, no retries, nothing the
-    /// agent did wrong. It decomposes as <b>46.1% Baseline Prompt Size</b> (3,025 × 17 calls),
-    /// <b>43.9% one unfiltered <c>skill_list</c> result</b> (3,063 fetched on turn 1 and re-sent
-    /// sixteen times), 3.5% the resume, and 6.5% everything the agent actually wrote.</para>
+    /// <para>P1T-150 ratcheted this at 111,638 over 17 calls, decomposing as 46.1% Baseline Prompt
+    /// Size, <b>43.9% one unfiltered <c>skill_list</c> result</b> fetched on turn 1 and re-sent
+    /// sixteen times, 3.5% the resume, 6.5% everything the agent wrote. P1T-155 ratchets it to
+    /// <b>103,865 over 24 calls</b> — and the two numbers are worth reading together, because the
+    /// run got 7% cheaper while getting SEVEN CALLS LONGER. The catalog dump became eight filtered
+    /// lookups: eight more calls, and the 49,008 they replace collapses to 2,185. What is left is
+    /// almost entirely the Baseline Prompt Size, now <b>73.1%</b> of a shape whose only remaining
+    /// defect is that it takes a turn per call.</para>
     ///
-    /// <para>The two findings worth reading twice. First, the catalog dump is the largest single
-    /// line item — the same defect that was 42% of the roster-qa run, except here it is not a
-    /// mistake the model made: step 1 of the agent's own instructions tells it to load the whole
-    /// catalog. P1T-145's <c>nameContains</c> exists and this agent cannot use it as written.
-    /// Second, the resume is <b>3.5%</b>. The premise this ticket opened with — that ingestion is
-    /// expensive because a pasted resume is genuinely large input — is false at this size; the
-    /// bill is the loop, not the document.</para>
+    /// <para>Which is the point: this ceiling is no longer the interesting number. It prices the
+    /// shape the Batching rule exists to prevent, and it is kept measured only because nothing
+    /// structurally forces batching. <see cref="BatchedRunCeiling"/> is what an ordinary ingestion
+    /// should cost.</para>
     ///
     /// <para>These are ESTIMATED tokens and the ledger row was 155,668 REAL ones; see
     /// <see cref="TokenEstimate"/> on why the two differ, and never quote an estimate as a bill.</para>
     /// </summary>
-    public const int SerialRunCeiling = 111_638;
+    public const int SerialRunCeiling = 103_865;
 
     /// <summary>
-    /// Ceiling on the BATCHED reference ingestion, same measurement, same units: 44,001 over
-    /// <see cref="BatchedIterations"/> calls. Identical writes, identical results, identical
-    /// order — only the turn boundaries move, and the bill falls <b>61%</b>. That gap is what
-    /// makes iteration count, not payload size, the lever on a write loop.
+    /// Ceiling on the DECLARED reference ingestion — <see cref="ReferenceIngestionTurns"/>, same
+    /// measurement, same units. Identical writes, identical results, identical order; only the
+    /// turn boundaries move.
+    ///
+    /// <para>Ratcheted at <b>31,247 over 7 calls</b>, against the 44,001 P1T-150 measured for
+    /// batching alone and the 111,638 the serial-and-dumping shape cost — <b>72% off</b>. The two
+    /// levers compound rather than merely add: batching cuts the number of times anything is
+    /// re-sent, and the filtered lookup cuts what there is to re-send. Neither one was ever going
+    /// to get here on its own.</para>
+    ///
+    /// <para>It buys those tokens with instructions — <c>AgentInstructionCeilings</c> for this
+    /// agent was raised 523 → 663 to carry the two rules, and that 140 is paid on all seven calls.
+    /// 980 against 80,391 is the trade, and it is the same trade P1T-145 made on <c>skill_list</c>'s
+    /// schema: on a re-sent term, the thing that shortens the loop is worth more than its own
+    /// weight many times over.</para>
+    ///
+    /// <para>What this does NOT say: that a run now fits inside the 40,000 Runtime Budget. That
+    /// ceiling counts REAL model tokens and this one counts <see cref="TokenEstimate"/> ones —
+    /// roughly 2.4× apart on GUID-dense payloads, in the wrong direction. Only
+    /// <c>IngestionConvergenceLiveFloorTests</c> can answer that, and it needs a key.</para>
     /// </summary>
-    public const int BatchedRunCeiling = 44_001;
+    public const int BatchedRunCeiling = 31_247;
 
     /// <summary>
-    /// Ceiling on what the resume text itself contributes across the whole serial run — in the
-    /// conversation from turn one, so re-sent by every call there is. Isolated because it is the
-    /// one term that is NOT waste, and because measuring it is what disproved the assumption that
-    /// it was the problem: 3,893 of 111,638.
+    /// Ceiling on what the resume text itself contributes across the DECLARED run — it is in the
+    /// conversation from turn one, so every call re-sends it. Isolated because it is the one term
+    /// that is NOT waste, and because measuring it is what disproved the premise P1T-150 opened
+    /// with: that ingestion is expensive because a pasted resume is large input.
+    ///
+    /// <para>1,603 of 31,247 — <b>5.1%</b>, and P1T-155 ratcheted it down from 3,893 without
+    /// touching the resume, by removing calls that were re-sending it. The document was never the
+    /// bill; the loop was, and it still is.</para>
     /// </summary>
-    public const int SerialResumeReSendCeiling = 3_893;
+    public const int ResumeReSendCeiling = 1_603;
 }

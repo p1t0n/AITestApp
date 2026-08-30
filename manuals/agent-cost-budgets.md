@@ -485,10 +485,10 @@ this agent could stop applying, and P1T-149 moves that onto the Keycloak identit
 landed, and `McpAuth:resume-ingestion:Tools` mirrors `ToolNames` — `AgentToolAllowlistTests`
 asserts the shipped config against `CostFloors.AgentToolAllowlists`, so the two cannot drift.
 
-### 7.5 What is still open
+### 7.5 What was still open
 
 Nothing above makes the run cheaper — it measures it and stops it truncating. Two levers, both
-priced by the same floor:
+priced by the same floor, and both landed in §8:
 
 - **Batch the children.** Issuing all adds of one kind as parallel tool calls in a single turn is
   the identical writes in the identical order, and the floor measures it at **44,001 over 7 calls
@@ -500,3 +500,97 @@ priced by the same floor:
 
 Both are instruction rewrites whose effect depends on what a model actually does, so both need a
 live confirmation this ticket could not run — the same shape as P1T-148. That is **P1T-155**.
+
+## 8. Turn Batching: 111,638 → 31,247, on a path that got LONGER (P1T-155)
+
+§7 left two levers and an ordering claim: batch first, because filtering the catalog "buys tokens
+with iterations". Doing both showed the ordering claim was right and its reasoning was wrong. The
+lookups cost no iterations at all once the run batches, because they do not need each other's
+results and go out in a single turn. Both levers land in the same place — the turn count — which
+is why they compound instead of adding.
+
+### 8.1 The two rules
+
+Both are instruction rewrites in `ResumeIngestionAgent`; no tool, endpoint or write changed.
+
+- **Turn Batching.** *"ONE turn per kind of call, never one per child. Calls that do not need each
+  other's results go out together as parallel tool calls in a single turn; only wait for a result
+  you are about to pass as an argument. Every turn re-sends the whole conversation, so ten calls
+  over ten turns cost ten times what the same ten cost in one."* The rule states the mechanism, not
+  just the instruction — Turn Amplification is the reason, and a model that knows the reason
+  generalises it to the kinds this procedure does not enumerate.
+- **Filtered lookups.** Step 1 was *"Call skill_list once to load the skill catalog"*; it is now
+  one `skill_list` per skill name in the resume, `nameContains` set to the shortest distinctive
+  word of it, all in one turn, and *"NEVER unfiltered"*. The affordance is P1T-145's, built for
+  roster-qa, and this agent had been told not to use it.
+
+The instruction Ratchet was **raised 523 → 663** to carry them — the second deliberate re-baseline
+in this chain, after `skill_list`'s schema. It is the same trade P1T-145 made and it is not close:
+140 tokens on each of 7 calls is 980, against 80,391 removed.
+
+### 8.2 The declared shape
+
+The reference path is now **23 tool calls**, up from 16 — eight filtered lookups where there was
+one dump. Its declared turns are six:
+
+```
+8× skill_list → employee_create_draft → 3× language_add → 8× employee_skill_add
+   → qualification_add → 2× experience_add → answer
+```
+
+**7 model calls, 31,247 estimated tokens.** Both are declared in `IngestionRunCost` and measured
+end to end by `IngestionRunCostFloorTests`, the same instrument that priced §7.1.
+
+| # | called after this call | adds | × re-sends | total |
+|---|---|---|---|---|
+| 1 | `skill_list` ×8 | 229 | 7 | 1,603 |
+| 2 | `employee_create_draft` | 774 | 6 | 4,644 |
+| 3 | `language_add` ×3 | 126 | 5 | 630 |
+| 4 | `employee_skill_add` ×8 | 116 | 4 | 464 |
+| 5 | `qualification_add` | 430 | 3 | 1,290 |
+| 6 | `experience_add` ×2 | 64 | 2 | 128 |
+| 7 | — (closing report) | 333 | 1 | 333 |
+
+| what | share |
+|---|---|
+| Baseline Prompt Size (663 instructions + 6 tool schemas) × 7 calls | 22,155 — 70.9% |
+| eight `skill_list` lookups | 4,644 — 14.9% |
+| the resume itself | 1,603 — 5.1% |
+| everything the agent wrote | 2,845 — 9.1% |
+
+### 8.3 Three things this measurement says
+
+1. **Call count is not cost; turn count is.** The path got 44% longer and the bill fell 72%. Every
+   instinct that reads a tool trace and counts calls is measuring the wrong axis on a write loop.
+   `CONTEXT.md` gained **Turn Batching** for exactly this, and Structural Path Length was amended:
+   twenty-three calls, seven turns, and the second number is the one that bills.
+2. **The levers compound.** Batching alone was 44,001 (§7.5); filtering alone, measured on the way
+   through, is 103,865 over 24 calls — a 7% cut for seven more calls, barely worth doing. Together
+   they are 31,247. Batching cuts how many times anything is re-sent; filtering cuts what there is
+   to re-send. Neither multiplies without the other.
+3. **What is left is the prompt.** 70.9% of the declared run is now the Baseline Prompt Size, and
+   the remaining terms are 1,603 of resume and 2,845 of the agent's actual work. There is no third
+   lever of this size: the next one is the 6 tool schemas it is shown (2,502 of the 3,165 baseline), and
+   shortening those is P1T-128/129 territory, not a shape change.
+
+### 8.4 The budget stayed put, and what is still owed
+
+`MaxIterations` stays **24** and `MaxInputTokens` stays **40,000**. 24 is no longer the number an
+ordinary run approaches — it is the backstop for a run that ignores the Batching rule, which is 24
+calls exactly. Walking it down toward 7 would truncate a partially-batched run for being long
+rather than for being expensive, and §3.2 is explicit that the token ceiling is the one that
+should bind.
+
+Whether an ordinary ingestion now *finishes* inside 40,000 rather than degrading is the ticket's
+actual goal and this measurement **cannot answer it**: 31,247 is `TokenEstimate` tokens and
+`MaxInputTokens` counts real ones, roughly 2.4× apart on the GUID-dense payloads a write loop
+carries. Quoting the estimate against the budget would be the error §7.1 warns about, one section
+after warning about it.
+
+So the same thing is owed here as in §6: **`IngestionConvergenceLiveFloorTests`** (`Category=live`,
+committed and unmeasured) — the reference resume at ≤11 real model calls, ≤40,000 real input
+tokens, no Degradation, and every child of the ground truth actually written. That last group is
+not decoration: this is the one agent holding `mcp:write`, batching changes how much the model
+holds in one turn, and a cheaper run that stages a worse draft is a regression however it prices.
+It writes a real draft when it runs, which is the run being measured rather than a side effect to
+design away.

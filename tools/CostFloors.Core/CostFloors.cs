@@ -61,9 +61,14 @@ public static class CostFloors
     /// <summary>
     /// Ceiling on <c>skill_list</c> called with NO filter — the whole catalog, one default page.
     /// Split out from <see cref="ReadToolResultCeilings"/> because that entry measures the hot
-    /// path (a single-name lookup) and this one has to stay measured too: resume-ingestion still
-    /// loads the catalog with one unfiltered call, so nobody may quietly let it grow unbounded.
-    /// 3,091 measured over the 79-skill seeded catalog — the 3,080 rows plus the page envelope.
+    /// path (a single-name lookup) and this one has to stay measured too. 3,091 over the 79-skill
+    /// seeded catalog — the 3,080 rows plus the page envelope.
+    ///
+    /// <para>No agent asks for this any more: P1T-155 took resume-ingestion, the last one whose
+    /// instructions demanded the dump, onto <c>nameContains</c>. It stays measured because the
+    /// call is still reachable — the parameter is optional and an unfiltered sweep is a legitimate
+    /// inventory — and because it is the number every argument for the filter is denominated
+    /// against (35× the lookup, and the lookup is what Turn Amplification multiplies).</para>
     /// </summary>
     public const int SkillListUnfilteredPageCeiling = 3_100;
 
@@ -234,7 +239,14 @@ public static class CostFloors
             // answers — and paid for the new rules out of the old prose rather than growing.
             ["RosterQaAgent"] = 415,
             ["CvTailoringAgent"] = 498,
-            ["ResumeIngestionAgent"] = 523,
+            // RAISED 523 -> 663 by P1T-155, and the second deliberate re-baseline in this chain
+            // (skill_list's schema was the first). Two new rules: batch every call that does not
+            // need another's result into one turn, and resolve skills through nameContains rather
+            // than loading the catalog. +140 tokens on every call, against a 3,063-token result
+            // that was re-sent on every call after the first and a turn count of 24 rather than 7.
+            // The batched reference run pays 980 for the words and IngestionRunCost.BatchedRunCeiling
+            // is 62% lower than the serial one it replaces. Down from here, never back up.
+            ["ResumeIngestionAgent"] = 663,
             ["MatchAgent"] = 328,
             ["ShortlistAgent"] = 121,
             ["InterviewKitAgent"] = 371,
@@ -263,8 +275,11 @@ public static class CostFloors
             // schema (613 → 611), which is the last 3 tokens off it.
             ["RosterQaAgent"] = 1_873,
             ["CvTailoringAgent"] = 1_187,
-            // +132 for P1T-145's skill_list schema, which this agent is also shown.
-            ["ResumeIngestionAgent"] = 3_025,
+            // +132 for P1T-145's skill_list schema, which this agent is also shown, then +140 for
+            // P1T-155's Batching and lookup rules. The one baseline in this table that went UP:
+            // on a write loop the instructions are what buy the turn count down, and the turns are
+            // what multiply the baseline. Priced end to end by IngestionRunCostFloorTests.
+            ["ResumeIngestionAgent"] = 3_165,
             ["MatchAgent"] = 624,
             ["InterviewKitAgent"] = 667,
         };
