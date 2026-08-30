@@ -38,6 +38,7 @@ import RequirementChips from "./RequirementChips";
 import { StaffingStepper } from "./StaffingStepper";
 import { StaffingCandidateCard, StaffingRecommendation } from "./StaffingCandidateCard";
 import { ProposalInbox } from "./ProposalInbox";
+import { ErrorNotice } from "../ErrorNotice";
 
 type DecisionState =
   | { phase: "pending" | "saving" }
@@ -83,11 +84,7 @@ export function ProposalDecisionCard({
       <Typography variant="body2" fontWeight={600} sx={{ mb: 1 }}>
         This proposal awaits your decision
       </Typography>
-      {state.phase === "failed" && (
-        <Typography variant="body2" color="error" sx={{ mb: 1 }}>
-          {state.message}
-        </Typography>
-      )}
+      <ErrorNotice message={state.phase === "failed" ? state.message : null} sx={{ mb: 1 }} />
       <Stack direction="row" spacing={1}>
         <Button
           size="small"
@@ -315,15 +312,7 @@ export function StaffingPanel({
 
         {phase !== "idle" && <StaffingStepper progress={progress} done={phase === "done"} />}
 
-        {error && (
-          <Paper
-            elevation={0}
-            sx={{ p: 1.5, bgcolor: "error.light", color: "error.contrastText", borderRadius: 2 }}
-          >
-            <Typography variant="body2">{error.title}</Typography>
-            {error.detail && <Typography variant="body2">{error.detail}</Typography>}
-          </Paper>
-        )}
+        <ErrorNotice message={error?.title} detail={error?.detail} />
 
         {report && (
           <>

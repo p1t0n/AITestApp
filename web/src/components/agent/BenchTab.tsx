@@ -6,6 +6,7 @@ import { Box, Button, Chip, CircularProgress, Paper, Stack, Typography } from "@
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import { apiErrorMessage, useBenchReport, type BenchReportResponse } from "../../api";
 import { AgentMarkdown } from "./AgentMarkdown";
+import { ErrorNotice } from "../ErrorNotice";
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
@@ -52,14 +53,7 @@ export function BenchPanel() {
           {report.isPending ? "Composing…" : "Generate bench report"}
         </Button>
 
-        {error && (
-          <Paper
-            elevation={0}
-            sx={{ p: 1.5, bgcolor: "error.light", color: "error.contrastText", borderRadius: 2 }}
-          >
-            <Typography variant="body2">{error}</Typography>
-          </Paper>
-        )}
+        <ErrorNotice message={error} />
 
         {result && result.notes.length > 0 && (
           <Paper

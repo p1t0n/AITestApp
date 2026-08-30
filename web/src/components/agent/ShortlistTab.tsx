@@ -32,6 +32,7 @@ import {
   type ShortlistResponse,
 } from "../../api";
 import { PRESET_JDS } from "./presets";
+import { ErrorNotice } from "../ErrorNotice";
 
 function ShortlistCandidateCard({
   candidate,
@@ -263,14 +264,7 @@ export function ShortlistPanel({
           {shortlist.isPending ? "Shortlisting…" : "Build shortlist"}
         </Button>
 
-        {error && (
-          <Paper
-            elevation={0}
-            sx={{ p: 1.5, bgcolor: "error.light", color: "error.contrastText", borderRadius: 2 }}
-          >
-            <Typography variant="body2">{error}</Typography>
-          </Paper>
-        )}
+        <ErrorNotice message={error} />
 
         {result && (
           <>

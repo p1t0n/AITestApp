@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  Alert,
   Button,
   Dialog,
   DialogActions,
@@ -12,6 +11,7 @@ import {
 } from "@mui/material";
 import type { QualificationType, SaveQualification } from "../types";
 import { apiErrorMessage } from "../api";
+import { ErrorNotice } from "../components/ErrorNotice";
 
 const TYPES: QualificationType[] = ["Degree", "Certification"];
 
@@ -89,7 +89,7 @@ export default function QualificationFormDialog({ open, title, initial, onClose,
       <DialogTitle>{title}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
-          {error && <Alert severity="error">{error}</Alert>}
+          <ErrorNotice message={error} />
           <TextField
             select
             label="Type"

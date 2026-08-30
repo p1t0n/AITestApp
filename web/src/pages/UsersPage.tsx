@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  Alert,
   Box,
   Button,
   Chip,
@@ -32,6 +31,7 @@ import {
   type UserStatus,
   type UserSummary,
 } from "../api";
+import { ErrorNotice } from "../components/ErrorNotice";
 
 const capLabel = (v: number | null) => (v === null ? "default" : v.toLocaleString());
 
@@ -69,12 +69,15 @@ export default function UsersPage() {
         the system-wide limit.
       </Typography>
 
-      {isError && <Alert severity="error">{apiErrorMessage(error)}</Alert>}
-      {(updateUser.isError || deleteUser.isError) && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {apiErrorMessage(updateUser.error ?? deleteUser.error)}
-        </Alert>
-      )}
+      <ErrorNotice message={isError ? apiErrorMessage(error) : null} />
+      <ErrorNotice
+        message={
+          updateUser.isError || deleteUser.isError
+            ? apiErrorMessage(updateUser.error ?? deleteUser.error)
+            : null
+        }
+        sx={{ mb: 2 }}
+      />
 
       <Paper variant="outlined">
         <Table size="small">

@@ -1,5 +1,6 @@
 import { Box, CircularProgress, LinearProgress, Stack, Typography } from "@mui/material";
 import { apiErrorMessage, useUsage, type WindowUsage } from "../../api";
+import { ErrorNotice } from "../ErrorNotice";
 
 /** "in 5h" / "in 3d" until the window resets. */
 function formatReset(iso: string): string {
@@ -39,11 +40,7 @@ export function UsagePanel() {
   return (
     <Box sx={{ p: 2, overflowY: "auto" }}>
       {isLoading && <CircularProgress size={24} />}
-      {isError && (
-        <Typography color="error" variant="body2">
-          {apiErrorMessage(error)}
-        </Typography>
-      )}
+      <ErrorNotice message={isError ? apiErrorMessage(error) : null} />
       {data && (
         <Stack spacing={3}>
           <Stack spacing={2}>

@@ -12,6 +12,7 @@ import {
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { apiErrorMessage, useSignin } from "../api";
 import { isPasskeySupported } from "../auth/webauthn";
+import { ErrorNotice } from "../components/ErrorNotice";
 
 export default function SigninPage() {
   const [email, setEmail] = useState("");
@@ -48,7 +49,7 @@ export default function SigninPage() {
             </Alert>
           )}
 
-          {signin.isError && <Alert severity="error">{apiErrorMessage(signin.error)}</Alert>}
+          <ErrorNotice message={signin.isError ? apiErrorMessage(signin.error) : null} />
 
           <TextField
             label="Email (optional)"

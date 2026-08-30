@@ -32,6 +32,7 @@ import {
   useUpdateEmployee,
   type IngestionResponse,
 } from "../../api";
+import { ErrorNotice } from "../ErrorNotice";
 
 /** One proposal's lifecycle. Rejection is local-only: nothing is created, the row just settles. */
 type ProposalState =
@@ -135,11 +136,7 @@ function ProposalRow({ name, employeeId }: { name: string; employeeId: string })
           Reject
         </Button>
       </Stack>
-      {state.kind === "error" && (
-        <Typography variant="caption" color="error">
-          {state.message}
-        </Typography>
-      )}
+      <ErrorNotice message={state.kind === "error" ? state.message : null} />
     </Paper>
   );
 }
@@ -270,14 +267,7 @@ function DraftReview({ result, onDiscarded }: { result: IngestionResponse; onDis
         </Box>
       )}
 
-      {error && (
-        <Paper
-          elevation={0}
-          sx={{ p: 1.5, bgcolor: "error.light", color: "error.contrastText", borderRadius: 2 }}
-        >
-          <Typography variant="body2">{error}</Typography>
-        </Paper>
-      )}
+      <ErrorNotice message={error} />
 
       {promoted ? (
         <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, borderColor: "success.main" }}>
@@ -361,14 +351,7 @@ export function IngestionPanel() {
           {ingest.isPending ? "Staging draft…" : "Stage as draft"}
         </Button>
 
-        {error && (
-          <Paper
-            elevation={0}
-            sx={{ p: 1.5, bgcolor: "error.light", color: "error.contrastText", borderRadius: 2 }}
-          >
-            <Typography variant="body2">{error}</Typography>
-          </Paper>
-        )}
+        <ErrorNotice message={error} />
 
         {result && (
           <DraftReview

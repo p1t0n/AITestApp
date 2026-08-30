@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  Alert,
   Autocomplete,
   Box,
   Button,
@@ -20,6 +19,7 @@ import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import DeleteIcon from "@mui/icons-material/Delete";
 import type { SaveExperience, SkillDto } from "../types";
 import { apiErrorMessage, useSkills } from "../api";
+import { ErrorNotice } from "../components/ErrorNotice";
 
 interface Props {
   open: boolean;
@@ -121,7 +121,7 @@ export default function ExperienceFormDialog({ open, title, initial, onClose, on
       <DialogTitle>{title}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
-          {error && <Alert severity="error">{error}</Alert>}
+          <ErrorNotice message={error} />
           <Stack direction="row" spacing={2}>
             <TextField label="Company" value={form.company} onChange={text("company")} fullWidth />
             <TextField label="Job title" value={form.title} onChange={text("title")} fullWidth />

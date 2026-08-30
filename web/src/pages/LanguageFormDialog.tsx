@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  Alert,
   Button,
   Dialog,
   DialogActions,
@@ -12,6 +11,7 @@ import {
 } from "@mui/material";
 import type { LanguageLevel, SaveSpokenLanguage } from "../types";
 import { apiErrorMessage } from "../api";
+import { ErrorNotice } from "../components/ErrorNotice";
 
 const LEVELS: LanguageLevel[] = ["Basic", "Conversational", "Professional", "Fluent", "Native"];
 
@@ -49,7 +49,7 @@ export default function LanguageFormDialog({ open, title, initial, onClose, onSa
       <DialogTitle>{title}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
-          {error && <Alert severity="error">{error}</Alert>}
+          <ErrorNotice message={error} />
           <TextField
             label="Language"
             value={form.language}
