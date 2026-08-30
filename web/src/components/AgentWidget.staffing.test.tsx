@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import AgentWidget from "./AgentWidget";
+import { selectAgentSurface, currentAgentSurface } from "../test/agentSurface";
 import type { AgentDock } from "./useAgentDock";
 import type {
   StaffingReport,
@@ -176,7 +177,7 @@ async function openStaffingTab() {
       <AgentWidget dock={dock} isNarrow={false} />
     </MemoryRouter>,
   );
-  await user.click(screen.getByRole("tab", { name: "Staffing" }));
+  await selectAgentSurface(user, "Staffing");
   return user;
 }
 
@@ -502,7 +503,7 @@ describe("Staffing tab — report", () => {
 
     await user.click(within(candidateCard(GRACE)).getByRole("button", { name: /open in match/i }));
 
-    expect(screen.getByRole("tab", { name: "Match" })).toHaveAttribute("aria-selected", "true");
+    expect(currentAgentSurface()).toBe("Match");
     expect(screen.getByDisplayValue("Grace Hopper — Compiler Engineer")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Senior React engineer")).toBeInTheDocument();
   });
@@ -513,7 +514,7 @@ describe("Staffing tab — report", () => {
 
     await user.click(within(candidateCard(ADA)).getByRole("button", { name: "Tailor CV" }));
 
-    expect(screen.getByRole("tab", { name: "Tailor CV" })).toHaveAttribute("aria-selected", "true");
+    expect(currentAgentSurface()).toBe("Tailor CV");
     expect(screen.getByDisplayValue("Ada Lovelace — Senior Engineer")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Senior React engineer")).toBeInTheDocument();
   });
@@ -577,7 +578,7 @@ describe("Staffing tab — errors and edge cases", () => {
     const call = await startHangingRun(user);
     expect(call.signal?.aborted).toBe(false);
 
-    await user.click(screen.getByRole("tab", { name: "Usage" }));
+    await user.click(screen.getByRole("button", { name: "Token usage" }));
 
     expect(call.signal?.aborted).toBe(true);
   });

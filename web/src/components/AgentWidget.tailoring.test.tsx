@@ -3,6 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import AgentWidget from "./AgentWidget";
+import { selectAgentSurface } from "../test/agentSurface";
 import type { AgentDock } from "./useAgentDock";
 import type { ApplyRewriteInput, CvTailoringResponse } from "../api";
 
@@ -124,7 +125,7 @@ async function runTailoring(response: CvTailoringResponse) {
       <AgentWidget dock={dock} isNarrow={false} />
     </MemoryRouter>,
   );
-  await user.click(screen.getByRole("tab", { name: "Tailor CV" }));
+  await selectAgentSurface(user, "Tailor CV");
   await user.click(screen.getByLabelText("Employee"));
   await user.click(await screen.findByRole("option", { name: "Ada Lovelace — Senior Engineer" }));
   await user.type(

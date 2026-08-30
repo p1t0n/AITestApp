@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import AgentWidget from "./AgentWidget";
+import { selectAgentSurface } from "../test/agentSurface";
 import type { AgentDock } from "./useAgentDock";
 import type { IngestionResponse } from "../api";
 import type { EmployeeDetail } from "../types";
@@ -99,7 +100,7 @@ async function openIngestTab() {
       <AgentWidget dock={dock} isNarrow={false} />
     </MemoryRouter>,
   );
-  await userEvent.click(screen.getByRole("tab", { name: "Ingest" }));
+  await selectAgentSurface(userEvent, "Resume ingest");
 }
 
 async function stage(text = "some resume text") {

@@ -3,6 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import AgentWidget from "./AgentWidget";
+import { selectAgentSurface, currentAgentSurface } from "../test/agentSurface";
 import type { AgentDock } from "./useAgentDock";
 import type { RosterScanAccepted, RosterScanJob } from "../api";
 
@@ -52,7 +53,7 @@ async function openScanTab() {
       <AgentWidget dock={dock} isNarrow={false} />
     </MemoryRouter>,
   );
-  await user.click(screen.getByRole("tab", { name: "Scan" }));
+  await selectAgentSurface(user, "Roster scan");
   return user;
 }
 
@@ -161,7 +162,7 @@ describe("Roster Scan tab", () => {
 
     await user.click(within(await screen.findByTestId(`scan-row-${ADA}`)).getByRole("button", { name: /open in match/i }));
 
-    expect(screen.getByRole("tab", { name: "Match", selected: true })).toBeInTheDocument();
+    expect(currentAgentSurface()).toBe("Match");
     expect(screen.getByDisplayValue("Kafka engineer JD")).toBeInTheDocument();
   });
 });

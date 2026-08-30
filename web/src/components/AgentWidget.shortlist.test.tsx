@@ -3,6 +3,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import AgentWidget from "./AgentWidget";
+import { selectAgentSurface, currentAgentSurface } from "../test/agentSurface";
 import type { AgentDock } from "./useAgentDock";
 import type { ShortlistResponse } from "../api";
 
@@ -89,7 +90,7 @@ async function openShortlistTab() {
       <AgentWidget dock={dock} isNarrow={false} />
     </MemoryRouter>,
   );
-  await user.click(screen.getByRole("tab", { name: "Shortlist" }));
+  await selectAgentSurface(user, "Shortlist");
   return user;
 }
 
@@ -219,7 +220,7 @@ describe("Shortlist tab", () => {
     await user.click(submitButton());
     await user.click(await screen.findByRole("button", { name: /run full match/i }));
 
-    expect(screen.getByRole("tab", { name: "Match" })).toHaveAttribute("aria-selected", "true");
+    expect(currentAgentSurface()).toBe("Match");
     expect(screen.getByDisplayValue("Ada Lovelace — Senior Engineer")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Senior React engineer")).toBeInTheDocument();
   });
