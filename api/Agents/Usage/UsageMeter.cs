@@ -43,6 +43,10 @@ public sealed class UsageMeter(
                 OutputTokens = reply.OutputTokens,
                 TotalTokens = reply.TotalTokens,
                 LatencyMs = reply.LatencyMs > 0 ? reply.LatencyMs : null,
+                // Why the call cost what it did (P1T-144): 0 iterations means the metering seam
+                // saw nothing (a reply that never reached a model), which is not "one cheap call".
+                Iterations = reply.Iterations > 0 ? reply.Iterations : null,
+                ToolSequence = reply.ToolSequence,
                 TraceId = System.Diagnostics.Activity.Current?.TraceId.ToString(),
                 Step = step,
                 Timestamp = clock.GetUtcNow(),

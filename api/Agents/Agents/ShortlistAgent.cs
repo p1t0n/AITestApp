@@ -98,13 +98,15 @@ public sealed class ShortlistAgent
             [new ChatMessage(ChatRole.System, Instructions), new ChatMessage(ChatRole.User, prompt.ToString())],
             options,
             ct);
-        var (modelId, latencyMs) = metering.Snapshot();
+        var run = metering.Snapshot();
         return new AgentReply(
             response.Text,
             response.Usage?.InputTokenCount ?? 0,
             response.Usage?.OutputTokenCount ?? 0,
             response.Usage?.TotalTokenCount ?? 0,
-            modelId ?? response.ModelId,
-            latencyMs > 0 ? latencyMs : clock.ElapsedMilliseconds);
+            run.ModelId ?? response.ModelId,
+            run.LatencyMs > 0 ? run.LatencyMs : clock.ElapsedMilliseconds,
+            run.Iterations,
+            run.ToolSequence);
     }
 }

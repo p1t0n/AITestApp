@@ -16,8 +16,10 @@ public sealed class MeteringScope : IDisposable
 
     private readonly MeteringScope? _parent;
     private readonly Lock _lock = new();
+    private readonly List<string> _toolCalls = [];
     private string? _modelId;
     private long _latencyMs;
+    private int _iterations;
 
     private MeteringScope(MeteringScope? parent) => _parent = parent;
 
@@ -28,8 +30,9 @@ public sealed class MeteringScope : IDisposable
         return scope;
     }
 
-    /// <summary>Called by <see cref="MeteringChatClient"/> after each chat call.</summary>
-    public static void Report(string? modelId, long latencyMs)
+    /// <summary>Called by <see cref="MeteringChatClient"/> after each chat call. One call is one
+    /// Iteration; <paramref name="toolCalls"/> are the tools that call asked for, in order.</summary>
+    public static void Report(string? modelId, long latencyMs, IReadOnlyList<string>? toolCalls = null)
     {
         var scope = Current.Value;
         if (scope is null)
@@ -41,20 +44,41 @@ public sealed class MeteringScope : IDisposable
         {
             scope._modelId = modelId ?? scope._modelId;
             scope._latencyMs += latencyMs;
+            scope._iterations++;
+            if (toolCalls is { Count: > 0 })
+            {
+                scope._toolCalls.AddRange(toolCalls);
+            }
         }
     }
 
-    /// <summary>The run's totals so far: the last reported model id, summed model latency.</summary>
-    public (string? ModelId, long LatencyMs) Snapshot()
+    /// <summary>The run's totals so far.</summary>
+    public MeteringSnapshot Snapshot()
     {
         lock (_lock)
         {
-            return (_modelId, _latencyMs);
+            return new MeteringSnapshot(
+                _modelId,
+                _latencyMs,
+                _iterations,
+                _toolCalls.Count == 0 ? null : string.Join(',', _toolCalls));
         }
     }
 
     public void Dispose() => Current.Value = _parent;
 }
+
+/// <summary>
+/// What a run cost and why (P1T-144). <see cref="Iterations"/> is the number of model calls the
+/// run made — the Turn Amplification multiplier — and <see cref="ToolSequence"/> the ordered,
+/// comma-separated tool names it asked for. Together they turn "this call cost 146,647 tokens"
+/// into a diagnosable row without anyone attaching a throwaway <c>ActivityListener</c>.
+/// </summary>
+/// <param name="ModelId">The last model id the run's responses reported.</param>
+/// <param name="LatencyMs">Summed model wall-clock time across the run's calls.</param>
+/// <param name="Iterations">Model calls made in the run.</param>
+/// <param name="ToolSequence">Ordered tool names, comma-separated; null when no tool was called.</param>
+public sealed record MeteringSnapshot(string? ModelId, long LatencyMs, int Iterations, string? ToolSequence);
 
 /// <summary>
 /// The chat-client seam of the usage ledger: measures every model call and reports the response's
@@ -68,7 +92,13 @@ public sealed class MeteringChatClient(IChatClient inner) : DelegatingChatClient
     {
         var stopwatch = Stopwatch.StartNew();
         var response = await base.GetResponseAsync(messages, options, cancellationToken);
-        MeteringScope.Report(response.ModelId, stopwatch.ElapsedMilliseconds);
+        // The tools this call ASKED for, read off the response before FunctionInvokingChatClient
+        // runs them — this client sits inside the invocation loop, so it sees every iteration.
+        var toolCalls = response.Messages
+            .SelectMany(m => m.Contents.OfType<FunctionCallContent>())
+            .Select(c => c.Name)
+            .ToList();
+        MeteringScope.Report(response.ModelId, stopwatch.ElapsedMilliseconds, toolCalls);
         return response;
     }
 }

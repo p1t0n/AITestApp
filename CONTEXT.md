@@ -166,3 +166,51 @@ _Avoid_: profile blob, CV summary
 An explicit marker in a report or Handoff Package that a step failed or was skipped and what was
 lost — absence is stated, never papered over.
 _Avoid_: partial failure (as a field name)
+
+### Cost & budgets
+
+**Turn Amplification**:
+The reason a tool-looping agent's cost is not the sum of its payloads: every model call re-sends
+the whole conversation, so a tool result costs its own size times the number of calls that follow
+it. A large result fetched early is the expensive one; the same result fetched last is nearly free.
+_Avoid_: context growth, token bloat
+
+**Baseline Prompt Size**:
+What one model call costs before any tool result — the agent's instructions plus the schemas of
+every tool it is shown. Paid on each iteration, so it is multiplied by Turn Amplification.
+_Avoid_: system prompt size, overhead
+
+**Runtime Budget**:
+The per-run ceiling on cumulative input tokens an agent may spend before it must answer from what
+it already holds, with a Degradation note. A safety net sized well above the expected cost —
+crossing it is an incident, staying under it is unremarkable.
+_Avoid_: token cap, quota (that is the per-user limit, a different thing)
+
+**Cost Floor**:
+A committed per-call token ceiling, sibling to the Cluster Floor: a cost regression fails the
+suite the way an accuracy regression does. Distinct from the Runtime Budget — the budget bounds
+the worst case at runtime, the floor makes drift visible in CI.
+_Avoid_: token budget, performance test
+
+**Ratchet**:
+A committed ceiling that may only ever move down: landed at the currently measured value, then
+tightened by each change that improves it. Lets a floor guard a number that is still wrong,
+without a red main.
+_Avoid_: baseline (overloaded), threshold
+
+**Tool Allowlist**:
+The subset of the MCP read surface one agent identity is shown. Narrows Baseline Prompt Size and
+the choices the model can thrash between. Distinct from MCP scopes, which gate read against write;
+the allowlist gates which read tools.
+_Avoid_: tool filter, tool subset
+
+**Convergence**:
+How few model calls an agent needs to reach its answer. Independent of cost: a converged run can
+still be expensive, and a cheap run can still thrash.
+_Avoid_: efficiency, loop length
+
+**Tool Sequence**:
+The ordered list of tools one agent run actually called, recorded on its usage row next to the
+iteration count. Turns "this call cost 146,647 tokens" into a diagnosable row: the expensive
+payload is named, not guessed at.
+_Avoid_: tool trace, call log (those are the OTel spans, which are in-memory only)

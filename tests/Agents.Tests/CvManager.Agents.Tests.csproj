@@ -30,6 +30,7 @@
          validators so the self-correction loop sees production error shapes. -->
     <ProjectReference Include="..\..\api\Application\CvManager.Application.csproj" />
     <ProjectReference Include="..\..\tools\ExtractionEval.Core\ExtractionEval.Core.csproj" />
+    <ProjectReference Include="..\..\tools\CostFloors.Core\CostFloors.Core.csproj" />
   </ItemGroup>
 
 </Project>

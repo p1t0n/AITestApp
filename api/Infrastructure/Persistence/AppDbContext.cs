@@ -165,6 +165,9 @@ public class AppDbContext : DbContext, IAppDbContext
         {
             e.Property(x => x.AgentName).HasMaxLength(100).IsRequired();
             e.Property(x => x.Model).HasMaxLength(200);
+            // Long enough for a pathological loop's full sequence (the worst run behind P1T-144
+            // called 9 tools); truncating it would defeat the point of recording it.
+            e.Property(x => x.ToolSequence).HasMaxLength(2000);
             // Window aggregation always filters by user + time range.
             e.HasIndex(x => new { x.UserId, x.Timestamp });
             e.HasOne<User>().WithMany()

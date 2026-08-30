@@ -126,14 +126,16 @@ public sealed class BenchReportService(
                 options: null,
                 cancellationToken: ct);
 
-            var (modelId, latencyMs) = metering.Snapshot();
+            var run = metering.Snapshot();
             var reply = new AgentReply(
                 response.Text,
                 response.Usage?.InputTokenCount ?? 0,
                 response.Usage?.OutputTokenCount ?? 0,
                 response.Usage?.TotalTokenCount ?? 0,
-                modelId,
-                latencyMs);
+                run.ModelId,
+                run.LatencyMs,
+                run.Iterations,
+                run.ToolSequence);
 
             return string.IsNullOrWhiteSpace(response.Text)
                 ? (BenchStatsComposer.FallbackAnswer(stats), reply)
