@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AppBar, Box, Button, Container, Toolbar, Typography, useMediaQuery } from "@mui/material";
+import { AppBar, Box, Button, Container, Toolbar, Typography } from "@mui/material";
 import {
   Link as RouterLink,
   Navigate,
@@ -19,7 +19,7 @@ import RecoverPage from "./pages/RecoverPage";
 import UsersPage from "./pages/UsersPage";
 import AgentWidget from "./components/AgentWidget";
 import { ErrorBoundary, PageErrorFallback, WidgetErrorFallback } from "./components/ErrorBoundary";
-import { useAgentDock } from "./components/useAgentDock";
+import { DOCK_PUSH_VAR, useAgentDock } from "./components/useAgentDock";
 import { signOut } from "./api";
 import { useIsAuthenticated } from "./auth/useAuth";
 
@@ -71,22 +71,22 @@ function AuthButton() {
 
 export default function App() {
   const authed = useIsAuthenticated();
+  // The dock stays a controlled component — its state lives here so it survives the widget's own
+  // remounts — but its *layout* no longer does: the shell just makes room for whatever the dock
+  // publishes it is covering. Unset (signed out, widget unmounted) falls back to no padding.
   const dock = useAgentDock();
-  const isNarrow = useMediaQuery("(max-width:600px)");
-
-  // A docked sidebar pushes the whole app left (full-width overlay on narrow screens doesn't push).
-  const pushContent = authed && dock.open && dock.docked && !isNarrow;
 
   return (
     <Box
       sx={{
         minHeight: "100vh",
         bgcolor: "grey.50",
-        paddingRight: pushContent ? `${dock.width}px` : 0,
+        paddingRight: `var(${DOCK_PUSH_VAR}, 0px)`,
         transition: "padding-right 150ms ease",
       }}
     >
-      <AppBar position="static" elevation={0}>
+      {/* The app's own chrome is not part of anything worth printing. */}
+      <AppBar position="static" elevation={0} sx={{ "@media print": { display: "none" } }}>
         <Toolbar>
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
             CV Manager
@@ -132,7 +132,7 @@ export default function App() {
           with it. Panels have a second, inner boundary inside the widget. */}
       {authed && (
         <ErrorBoundary fallback={(error, reset) => <WidgetErrorFallback error={error} reset={reset} />}>
-          <AgentWidget dock={dock} isNarrow={isNarrow} />
+          <AgentWidget dock={dock} />
         </ErrorBoundary>
       )}
     </Box>

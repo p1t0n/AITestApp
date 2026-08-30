@@ -32,6 +32,7 @@ const dock: AgentDock = {
   open: true,
   docked: false,
   width: 420,
+  isNarrow: false,
   toggleOpen: () => {},
   close: () => {},
   setDocked: () => {},
@@ -50,7 +51,7 @@ describe("agent dock error containment (P1T-153)", () => {
     render(
       <MemoryRouter>
         <div>the roster page</div>
-        <AgentWidget dock={dock} isNarrow={false} />
+        <AgentWidget dock={dock} />
       </MemoryRouter>,
     );
 
@@ -68,7 +69,7 @@ describe("agent dock error containment (P1T-153)", () => {
     const user = userEvent.setup();
     render(
       <MemoryRouter>
-        <AgentWidget dock={dock} isNarrow={false} />
+        <AgentWidget dock={dock} />
       </MemoryRouter>,
     );
 

@@ -59,6 +59,7 @@ const dock: AgentDock = {
   open: true,
   docked: false,
   width: 420,
+  isNarrow: false,
   toggleOpen: () => {},
   close: () => {},
   setDocked: () => {},
@@ -69,7 +70,7 @@ async function openMatchTab() {
   const user = userEvent.setup();
   render(
     <MemoryRouter>
-      <AgentWidget dock={dock} isNarrow={false} />
+      <AgentWidget dock={dock} />
     </MemoryRouter>,
   );
   await selectAgentSurface(user, "Match");

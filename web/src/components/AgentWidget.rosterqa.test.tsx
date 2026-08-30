@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import AgentWidget from "./AgentWidget";
-import type { AgentDock } from "./useAgentDock";
+import { DOCK_PUSH_VAR, type AgentDock } from "./useAgentDock";
 import type { RosterQaInput, RosterQaResponse } from "../api";
 
 const askState = {
@@ -30,6 +30,7 @@ const dock: AgentDock = {
   open: true,
   docked: false,
   width: 460,
+  isNarrow: false,
   toggleOpen: () => {},
   close: () => {},
   setDocked: () => {},
@@ -45,7 +46,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   render(
     <MemoryRouter>
-      <AgentWidget dock={dock} isNarrow={false} />
+      <AgentWidget dock={dock} />
     </MemoryRouter>,
   );
 });
@@ -101,5 +102,21 @@ describe("Roster Q&A threading", () => {
       question: "brand new question",
       threadId: undefined,
     });
+  });
+});
+
+describe("dock layout push (P1T-154)", () => {
+  it("publishes the width it covers, so nothing upstream has to know the dock's mode", () => {
+    // The shared render above is a floating bubble: it overlays the app on purpose, pushing nothing.
+    expect(document.documentElement.style.getPropertyValue(DOCK_PUSH_VAR)).toBe("0px");
+
+    cleanup();
+    render(
+      <MemoryRouter>
+        <AgentWidget dock={{ ...dock, docked: true, width: 500 }} />
+      </MemoryRouter>,
+    );
+
+    expect(document.documentElement.style.getPropertyValue(DOCK_PUSH_VAR)).toBe("500px");
   });
 });

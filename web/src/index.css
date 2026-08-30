@@ -1,13 +1,10 @@
+/* The only global stylesheet in the app, and deliberately down to one rule: the print
+   background of `body`, which no component owns. Everything else that used to live here
+   (`.no-print`, `#cv-sheet`, `header`) was styling other people's DOM by string — it now sits
+   in the `sx` of the component that renders the element, so renaming the element and losing
+   its print behaviour are the same edit. See P1T-154. */
 @media print {
-  .no-print,
-  header {
-    display: none !important;
-  }
   body {
     background: #fff !important;
-  }
-  #cv-sheet {
-    box-shadow: none !important;
-    margin: 0 !important;
   }
 }

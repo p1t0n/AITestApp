@@ -46,7 +46,13 @@ export default function CvPage() {
 
   return (
     <Box>
-      <Stack direction="row" justifyContent="space-between" mb={2} className="no-print">
+      {/* Page chrome, not part of the document: printing a CV must not print its own toolbar. */}
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        mb={2}
+        sx={{ "@media print": { display: "none" } }}
+      >
         <Button startIcon={<ArrowBackIcon />} component={RouterLink} to={`/employees/${id}`}>
           Back
         </Button>
@@ -67,7 +73,17 @@ export default function CvPage() {
         </Stack>
       </Stack>
 
-      <Paper sx={{ p: 5, maxWidth: 820, mx: "auto" }} id="cv-sheet">
+      {/* On paper the sheet *is* the page: no elevation shadow, no centring margin. These used to
+          be a global `#cv-sheet` rule; the id now only marks the sheet for the e2e suite. */}
+      <Paper
+        id="cv-sheet"
+        sx={{
+          p: 5,
+          maxWidth: 820,
+          mx: "auto",
+          "@media print": { boxShadow: "none", margin: 0 },
+        }}
+      >
         <Stack direction="row" spacing={3} alignItems="center" mb={3}>
           {cv.photoUrl && <Avatar src={cv.photoUrl} sx={{ width: 80, height: 80 }} />}
           <Box flexGrow={1}>
