@@ -14,7 +14,14 @@ public interface ISkillCatalogService
     Task<CategoryDto> UpdateCategoryAsync(Guid id, SaveCategoryDto dto, CancellationToken ct = default);
     Task DeleteCategoryAsync(Guid id, CancellationToken ct = default);
 
+    /// <summary>The whole catalog in one shot, ordered by rank. The SPA's skill picker renders
+    /// every option at once and no model reads it, so there is nothing here to page.</summary>
     Task<IReadOnlyList<SkillDto>> ListSkillsAsync(CancellationToken ct = default);
+
+    /// <summary>A filtered, paged slice of the catalog (P1T-145) — what the <c>skill_list</c> MCP
+    /// tool serves, so that resolving one skill name costs a row instead of all 79.</summary>
+    Task<SkillPage> SearchSkillsAsync(SkillQuery query, CancellationToken ct = default);
+
     Task<SkillDto> CreateSkillAsync(SaveSkillDto dto, CancellationToken ct = default);
     Task<SkillDto> UpdateSkillAsync(Guid id, SaveSkillDto dto, CancellationToken ct = default);
     Task DeleteSkillAsync(Guid id, CancellationToken ct = default);
@@ -137,11 +144,50 @@ public class SkillCatalogService : ISkillCatalogService
         await _db.SaveChangesAsync(ct);
     }
 
+    /// <summary>Default skills per page for <see cref="SearchSkillsAsync"/>. Sized so the whole
+    /// seeded catalog still arrives in one call: ResumeIngestionAgent loads it with a single
+    /// unfiltered <c>skill_list</c> and matches against what comes back, so a default that silently
+    /// cut the catalog would silently cost it skills.
+    /// <c>SkillCatalogServiceTests.The_default_page_holds_the_whole_seeded_catalog</c> is what
+    /// notices when the catalog outgrows this.</summary>
+    public const int DefaultPageSize = 100;
+
+    /// <summary>Hard cap on a requested page, so no caller can ask for an unbounded result.</summary>
+    public const int MaxPageSize = 200;
+
     public async Task<IReadOnlyList<SkillDto>> ListSkillsAsync(CancellationToken ct = default) =>
-        await _db.Skills.AsNoTracking()
+        await OrderedSkills(nameContains: null).ToListAsync(ct);
+
+    public async Task<SkillPage> SearchSkillsAsync(SkillQuery query, CancellationToken ct = default)
+    {
+        var page = Math.Max(1, query.Page ?? 1);
+        var pageSize = Math.Clamp(query.PageSize ?? DefaultPageSize, 1, MaxPageSize);
+
+        var matches = OrderedSkills(query.NameContains);
+        var total = await matches.CountAsync(ct);
+        var items = await matches.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+
+        return new SkillPage(page, pageSize, total, items);
+    }
+
+    /// <summary>The one skill projection both read paths share, so REST and MCP order and shape
+    /// catalog skills identically. Rank first — the most-used skills are the ones a lookup wants.</summary>
+    private IQueryable<SkillDto> OrderedSkills(string? nameContains)
+    {
+        var skills = _db.Skills.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(nameContains))
+        {
+            // ToLower rather than string.Contains(..., StringComparison): EF Core translates the
+            // former to SQL on both Postgres and the in-memory provider the unit tests run on.
+            var needle = nameContains.Trim().ToLower();
+            skills = skills.Where(s => s.Name.ToLower().Contains(needle));
+        }
+
+        return skills
             .OrderByDescending(s => s.Rank).ThenBy(s => s.Name)
-            .Select(s => new SkillDto(s.Id, s.Name, s.CategoryId, s.Category.Name, s.Rank))
-            .ToListAsync(ct);
+            .Select(s => new SkillDto(s.Id, s.Name, s.CategoryId, s.Category.Name, s.Rank));
+    }
 
     public async Task<SkillDto> CreateSkillAsync(SaveSkillDto dto, CancellationToken ct = default)
     {

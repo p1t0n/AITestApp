@@ -98,18 +98,28 @@ public class CatalogTools
 
     [McpServerTool(Name = "skill_list", ReadOnly = true, Destructive = false),
      Description(
-         "List every catalog skill flat across all categories — id, name, categoryId, " +
-         "categoryName and rank. Use it to look up a skill id (e.g. before employee_skill_add) or " +
-         "to inventory what the catalog tracks ('list all skills'). Do NOT use it for the " +
-         "category hierarchy — category_tree nests skills under their category, category_list " +
+         "List catalog skills flat — id, name, categoryId, categoryName, rank. Pass nameContains " +
+         "to resolve ONE skill id (before employee_skill_add, or to get a skillId to filter a " +
+         "search by); unfiltered it inventories the catalog, one page per call. Do NOT use it for " +
+         "the category hierarchy — category_tree nests skills under their category, category_list " +
          "gives flat categories; do NOT use it for one person's skills, levels or years — " +
-         "employee_get; do NOT use it to add anything — skill_create adds a NEW skill to the " +
-         "catalog, employee_skill_add attaches an EXISTING catalog skill to an employee. Input: " +
-         "none; e.g. {}. Returns the catalog only: no employee data, no proficiency levels."),
+         "employee_get; do NOT use it to add anything — skill_create adds a NEW catalog skill, " +
+         "employee_skill_add attaches an EXISTING one to an employee. Input, all optional: " +
+         "nameContains, page, pageSize; e.g. {\"nameContains\": \"react\"} for a lookup, e.g. {} " +
+         "for the catalog. Carries total, so no match reads differently from a page past the end. " +
+         "Returns the catalog only: no employee data, no proficiency levels."),
      Authorize(Policy = McpScopes.Read)]
-    public static async Task<IReadOnlyList<SkillDto>> ListSkills(
-        ISkillCatalogService catalog, CancellationToken ct)
-        => await catalog.ListSkillsAsync(ct);
+    public static Task<object> ListSkills(
+        ISkillCatalogService catalog,
+        CancellationToken ct,
+        [Description("Case-insensitive substring of the skill name; omit for the whole catalog.")]
+        string? nameContains = null,
+        [Description("1-based page number (default 1).")]
+        int? page = null,
+        [Description("Skills per page (default 100, max 200).")]
+        int? pageSize = null)
+        => McpToolExecutor.RunAsync(
+            () => catalog.SearchSkillsAsync(new SkillQuery(nameContains, page, pageSize), ct));
 
     [McpServerTool(Name = "skill_create", ReadOnly = false, Destructive = false),
      Description(

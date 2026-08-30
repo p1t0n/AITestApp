@@ -46,7 +46,10 @@ public class ToolDescriptionBarTests
             "no employee data"]),
         ("skill_list", [
             "category_tree", "category_list", "employee_get", "skill_create",
-            "employee_skill_add", "e.g. {}", "categoryId"]),
+            "employee_skill_add", "e.g. {}", "categoryId",
+            // P1T-145: the filter is the whole point — a description that stops naming it sends
+            // the model back to fetching all 79 skills to resolve one name.
+            "nameContains", "\"nameContains\": \"react\"", "total"]),
         // The reference implementation the bar was written from (P1T-121) — held to it too.
         ("roster_digest_list", ["roster_semantic_search", "cv_get", "bulk", "e.g. {"]),
 

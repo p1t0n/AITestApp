@@ -29,10 +29,14 @@ public static class CostFloors
     public static readonly IReadOnlyDictionary<string, int> ReadToolResultCeilings =
         new Dictionary<string, int>
         {
-            // 42% of the 160,220-token roster-qa run and the single largest line item: no filter,
-            // no paging, the whole catalog. P1T-145 adds nameContains + paging and ratchets this
-            // down to roughly the handful of rows a lookup actually wants.
-            ["skill_list"] = 3_080,
+            // Was 3,080 — the whole 79-skill catalog, 42% of the 160,220-token roster-qa run and
+            // its single largest line item. P1T-145 gave it a nameContains filter, so this now
+            // measures the call the traced run actually wanted: resolving one skill name. The
+            // unfiltered sweep is ratcheted separately (SkillListUnfilteredPageCeiling) — a
+            // lookup is the hot path and the only one Turn Amplification multiplied nine times.
+            // 87 is nameContains "React" over the seeded catalog: two rows (React, React Native)
+            // plus the page envelope. A 35× cut, and the amplified 67,698 becomes ~780.
+            ["skill_list"] = 87,
 
             // 12.7% of the same run. No paging by design (the roster IS the answer), so the cost
             // is bounded by roster size; the Tool Allowlist (P1T-146) is what keeps it away from
@@ -53,6 +57,15 @@ public static class CostFloors
             // few tokens per seed. Measured 18,248-18,253.
             ["roster_digest_list"] = 18_300,
         };
+
+    /// <summary>
+    /// Ceiling on <c>skill_list</c> called with NO filter — the whole catalog, one default page.
+    /// Split out from <see cref="ReadToolResultCeilings"/> because that entry measures the hot
+    /// path (a single-name lookup) and this one has to stay measured too: resume-ingestion still
+    /// loads the catalog with one unfiltered call, so nobody may quietly let it grow unbounded.
+    /// 3,091 measured over the 79-skill seeded catalog — the 3,080 rows plus the page envelope.
+    /// </summary>
+    public const int SkillListUnfilteredPageCeiling = 3_100;
 
     /// <summary>
     /// Read tools whose result cannot be measured without a model: they embed the query first, so
@@ -89,7 +102,12 @@ public static class CostFloors
             ["roster_digest_list"] = 301,
             ["roster_semantic_search"] = 613,
             ["roster_shortlist_search"] = 635,
-            ["skill_list"] = 176,
+            // RAISED 176 → 308 by P1T-145, the one deliberate re-baseline in this chain. Three
+            // optional parameters and the sentence that teaches the filter cost +132 per
+            // iteration; the filter they buy cuts the result from 3,080 to 87, and that result
+            // is re-sent on every call after it. On the traced run the trade is +1,320 (132 × 10
+            // iterations) against -26,937 (2,993 × 9 re-sends). Down from here, never back up.
+            ["skill_list"] = 308,
             ["style_exemplar_search"] = 689,
 
             // ---- write + destructive surface: resume-ingestion holds mcp:write ----
@@ -157,8 +175,13 @@ public static class CostFloors
     /// <summary>
     /// Ceiling on the WHOLE read surface an <c>mcp:read</c> token is shown — every read tool's
     /// schema text. roster-qa is the only agent still handed all of it; P1T-146 cuts it to 4 of 11.
+    ///
+    /// <para>3,861 → 3,993 with P1T-145's <c>skill_list</c> re-baseline above, and for the same
+    /// reason: the schema half is paid per iteration, the result half is paid per iteration too
+    /// AND is an order of magnitude larger. P1T-146 takes this number down by removing tools, not
+    /// by shortening them.</para>
     /// </summary>
-    public const int ReadToolSurfaceCeiling = 3_861;
+    public const int ReadToolSurfaceCeiling = 3_993;
 
     /// <summary>
     /// Per-agent INSTRUCTION ceilings — the prompt an agent brings itself, before any tool schema
@@ -192,11 +215,13 @@ public static class CostFloors
     public static readonly IReadOnlyDictionary<string, int> BaselinePromptSizeCeilings =
         new Dictionary<string, int>
         {
-            // 416 instructions + all 11 read tool schemas — 3,861 of it is schema the agent
-            // never uses. P1T-146 shows it 4 tools instead, which should land near 2,300.
-            ["RosterQaAgent"] = 4_277,
+            // 416 instructions + all 11 read tool schemas — 3,993 of it is schema the agent
+            // never uses. Carries P1T-145's +132 on skill_list's schema (see ToolSchemaCeilings);
+            // P1T-146 shows it 4 tools instead, which should land near 2,300.
+            ["RosterQaAgent"] = 4_409,
             ["CvTailoringAgent"] = 1_187,
-            ["ResumeIngestionAgent"] = 2_893,
+            // +132 for P1T-145's skill_list schema, which this agent is also shown.
+            ["ResumeIngestionAgent"] = 3_025,
             ["MatchAgent"] = 624,
             ["InterviewKitAgent"] = 667,
         };

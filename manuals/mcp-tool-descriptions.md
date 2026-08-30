@@ -43,6 +43,26 @@ The confusable READ clusters the P1T-112 audit named:
 | search trio | `roster_semantic_search`, `roster_shortlist_search`, `style_exemplar_search` | one free-form question vs a JD's 3–8 requirements vs phrasing exemplars — each names the other two, plus the digest tool for sweeps and the structured reads for exact facts |
 | catalog reads | `category_list`, `category_tree`, `skill_list` | flat ids vs nested hierarchy (whose nodes carry their skills) vs the flat skill list; all three send per-person skills to `employee_get`, and `skill_list` separates `skill_create` (new catalog entry) from `employee_skill_add` (attach existing) |
 
+### The affordance pass 1 could not add: `skill_list`'s filter (P1T-145)
+
+Pass 1 made `skill_list` say *when* to reach for it. It could not make the call cheap, because the
+tool had no filter: resolving one skill name returned all 79 catalog rows, which the P1T-144
+trace then measured at 42% of a 160,220-token roster-qa run. P1T-145 added `nameContains` plus
+`page`/`pageSize`, and the description now leads with the filter and carries two inline examples
+— `{"nameContains": "react"}` for a lookup, `{}` for the catalog — so the cheap call is the one
+the model reads first.
+
+Worth generalising from: **a description can only redirect a model between tools; it cannot make a
+tool cost less.** Every description-pass finding of the form "the model called the right tool and
+it was still expensive" is an affordance ticket, not a wording one. `style_exemplar_search`
+(P1T-136) and the read-before-write pair (P1T-137) were the same shape.
+
+The Tool-Selection Eval was **not** re-run for this change. Its floors were left where they are
+(never loosened to accommodate a change) and the golden set left frozen; the re-baseline folds
+into P1T-148, which re-runs it twice anyway. The prompt to add then is a skill-id lookup — "what
+is the catalog id for React?" — which the pre-P1T-145 tool had no cheap answer to, so the set
+never asked it.
+
 ### What pass 2 rewrote (P1T-129)
 
 The remaining 28 one-liners — the whole write surface — plus `availability_list`, which sits in the

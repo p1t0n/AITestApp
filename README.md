@@ -246,6 +246,7 @@ destructive so clients can gate dangerous calls:
 - **Children:** `language_*`, `availability_*`, `employee_skill_*`, `qualification_*`, `experience_*`,
   `achievement_*`, `experience_skill_*`
 - **Skill catalog:** `category_list/tree/create/update/delete`, `skill_list/create/update/delete`
+  (`skill_list` takes a `nameContains` filter + paging, so resolving one skill id costs a row)
 - **CV:** `cv_get` (assembled data; the PDF render is a Web API endpoint, not an MCP tool)
 - **Semantic search (RAG):** `roster_semantic_search` (query by meaning + hard filters, evidence
   snippets), `roster_shortlist_search` (multi-requirement coverage-ranked candidate retrieval),
