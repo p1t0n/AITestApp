@@ -334,9 +334,12 @@ public class AgentBudgetOptionsTests
 
         options.For("roster-qa").MaxInputTokens.Should().Be(15_000);
         options.For("roster-qa").MaxIterations.Should().Be(6);
-        // Bigger, because a pasted resume is genuinely large input — real work, not waste.
+        // Bigger on both, for different reasons. Tokens: a pasted resume is real input — though
+        // P1T-150 measured it at 3.5% of a reference run, so not the reason it was thought to be.
+        // Iterations: the write surface has one tool per child, so an ordinary two-role resume is
+        // 17 model calls before any self-correction. 8 degraded every run at call 8 of 17.
         options.For("resume-ingestion").MaxInputTokens.Should().Be(40_000);
-        options.For("resume-ingestion").MaxIterations.Should().Be(8);
+        options.For("resume-ingestion").MaxIterations.Should().Be(24);
     }
 
     [Fact]

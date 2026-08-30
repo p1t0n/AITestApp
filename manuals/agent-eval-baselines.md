@@ -155,6 +155,32 @@ The read surface totals **3,991** across 11 tools; the widest single schemas are
 P1T-146 no agent is shown all of it — each identity's Tool Allowlist is declared in
 `CostFloors.AgentToolAllowlists` and configured under `McpAuth:<agent>:Tools`.
 
+### Ingestion Run Cost (P1T-150)
+
+The floors above price one *call*. `Agents.Tests/CostFloors/IngestionRunCostFloorTests` prices a
+whole **run**, for the one agent whose run is long by construction: the real
+`ResumeIngestionAgent` is driven through its real function-calling loop by a scripted fake client
+making exactly the calls a faithful ingestion of the `clean-markdown` eval fixture must make, with
+realistic arguments, and every model call's input is weighed. Ceilings live in
+`tools/CostFloors.Core/IngestionRunCost.cs`.
+
+Only two terms are composed rather than measured — the instruction and tool-schema ceilings above
+— and `skill_list`'s result is the one synthesized payload, held under the ceiling `Mcp.Tests`
+measures against real Postgres so the run can only be priced conservatively.
+
+| Shape | Model calls | Estimated tokens | Baseline Prompt Size | unfiltered `skill_list` | resume | what it wrote |
+|---|---|---|---|---|---|---|
+| serial — one tool call per turn | 17 | **111,638** | 51,425 (46.1%) | 49,008 (43.9%) | 3,893 (3.5%) | 7,312 (6.5%) |
+| batched — one turn per child kind | 7 | **44,001** | 21,175 (48.1%) | 18,378 (41.8%) | 1,603 (3.6%) | 2,845 (6.5%) |
+
+The decomposition closes exactly and is asserted to: every token is either the Baseline Prompt
+Size or a conversation addition times the calls that re-send it.
+
+Read it against the assumption it replaces. Ingestion was thought expensive because a pasted
+resume is large input — the resume is **3.5%**. It is expensive because sixteen writes is sixteen
+iterations, each re-sending a 3,025-token prompt surface and a 3,063-token catalog dump nobody
+filtered. Same two line items as the roster-qa regression, on an agent that was never traced.
+
 ### The one raised Ratchet: `skill_list`'s schema, 176 → 308 (P1T-145)
 
 A Ratchet may only move down, so this is called out rather than buried. Teaching a tool a filter
