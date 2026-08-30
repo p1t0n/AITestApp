@@ -89,7 +89,7 @@ projects because an agent's Baseline Prompt Size is its own instructions (measur
 tokens**, and the gap is not small: the traced run charged 7,522 real input tokens for the
 `skill_list` result that this estimator calls 3,080. GUID-dense JSON tokenizes far worse than
 prose, so real cost runs ~2.4× the estimate on result payloads and close to 1× on descriptions
-(roster-qa's Baseline Prompt Size: 4,277 estimated vs 4,202 real). A Ratchet only needs to be
+(roster-qa's pre-P1T-146 Baseline Prompt Size: 4,277 estimated vs 4,202 real). A Ratchet only needs to be
 stable and proportional; never quote an estimate as a bill.
 
 ### Ratchet, not target
@@ -105,9 +105,10 @@ reason on the issue — never the fix for a red run.
 |---|---|---|
 | Read-tool result size | `Mcp.Tests/CostFloors/ReadToolResultCostFloorTests` | Real Postgres (Testcontainers, pgvector), the first 45 demo-roster employees over the full 79-skill catalog — the roster shape the 2026-08-30 measurement ran on |
 | Per-tool schema size | `Mcp.Tests/CostFloors/ToolSurfaceCostFloorTests` | The MCP tool listing itself: name + description + input schema |
-| Read surface total | same | Sum over the 11 `mcp:read` tools — what roster-qa still pays per iteration |
+| Read surface total | same | Sum over the 11 `mcp:read` tools — the pool every Tool Allowlist is drawn from |
 | Agent instruction size | `Agents.Tests/CostFloors/BaselinePromptSizeFloorTests` | The authored `Instructions` prompt of all 9 prompted agents |
-| Baseline Prompt Size | same | Instructions + the pinned schema size of every tool the agent actually hands the model, driven through the real agent with a fake chat client and the surface its own token would carry |
+| Baseline Prompt Size | same | Instructions + the pinned schema size of every tool the agent actually hands the model, driven through the real agent with a fake chat client and the agent's own Tool Allowlist as the offered surface |
+| Tool Allowlist | `Agents.Tests/AgentToolAllowlistTests` | The shipped `appsettings.json` asserted against `CostFloors.AgentToolAllowlists` — the same declaration the Baseline Prompt Size floor measures against, so config and cost cannot drift apart |
 
 Two coverage guards keep the floors from rotting: a read tool with no result ceiling fails unless
 it is listed in `ModelBackedReadTools` (it embeds a query, so it cannot be measured model-free),
@@ -139,7 +140,7 @@ Baseline Prompt Size:
 
 | Agent | Instructions | Tool schemas | Baseline | Note |
 |---|---|---|---|---|
-| roster-qa | 416 | 3,993 (all 11 read tools) | 4,409 | **P1T-146** shows it 4 tools instead |
+| roster-qa | 416 | 1,460 (4 of 11 read tools) | 1,876 | was 4,409 on all 11 — ratcheted by **P1T-146**; **P1T-148** moves the instructions |
 | resume-ingestion | 523 | 2,502 (6, incl. writes) | 3,025 | the one agent holding `mcp:write` (**P1T-150**) |
 | cv-tailoring | 498 | 689 (`style_exemplar_search`) | 1,187 | `cv_get` is deterministic, not shown to the model |
 | interview-kit | 371 | 296 (`cv_get`) | 667 | |
@@ -149,7 +150,9 @@ Instructions only (no tools reach the model): shortlist 121, bench-report 199, r
 scorer 199, JD-requirement extractor 237.
 
 The read surface totals **3,993** across 11 tools; the widest single schemas are
-`style_exemplar_search` 689, `roster_shortlist_search` 635 and `roster_semantic_search` 613.
+`style_exemplar_search` 689, `roster_shortlist_search` 635 and `roster_semantic_search` 613. Since
+P1T-146 no agent is shown all of it — each identity's Tool Allowlist is declared in
+`CostFloors.AgentToolAllowlists` and configured under `McpAuth:<agent>:Tools`.
 
 ### The one raised Ratchet: `skill_list`'s schema, 176 → 308 (P1T-145)
 

@@ -10,7 +10,7 @@ namespace CvManager.Agents.Mcp;
 /// Registers a per-agent MCP identity: its own client-credentials token provider and MCP tool
 /// source, both keyed by the agent name, bound to the agent's <c>McpAuth:&lt;agent&gt;</c> config
 /// section. Each agent thus authenticates to the MCP server as its own Keycloak client with its
-/// own scope, without sharing a single global identity.
+/// own scope and its own Tool Allowlist, without sharing a single global identity.
 /// </summary>
 public static class McpAuthServiceCollectionExtensions
 {
@@ -28,10 +28,15 @@ public static class McpAuthServiceCollectionExtensions
         });
 
         services.AddKeyedSingleton<IMcpToolSource>(agentKey, (sp, key) =>
-            new McpToolSource(
+        {
+            var options = sp.GetRequiredService<IOptionsMonitor<McpClientAuthOptions>>().Get((string)key!);
+            return new McpToolSource(
+                (string)key!,
                 sp.GetRequiredService<IOptions<McpServerOptions>>(),
                 sp.GetRequiredKeyedService<IAccessTokenProvider>(key),
-                sp.GetRequiredService<ILoggerFactory>()));
+                new AgentToolAllowlist(options.Tools),
+                sp.GetRequiredService<ILoggerFactory>());
+        });
 
         return services;
     }

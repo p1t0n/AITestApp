@@ -47,6 +47,17 @@ public sealed class McpClientAuthOptions
 
     /// <summary>Space-delimited scopes requested for the token.</summary>
     public string Scope { get; set; } = "mcp:read";
+
+    /// <summary>
+    /// The agent's <b>Tool Allowlist</b> (P1T-146): the subset of the tools its scope carries that
+    /// it is actually shown. Empty or absent means "everything the token carries" — narrowing is
+    /// always an explicit act, never a silent side effect of a missing key.
+    ///
+    /// <para>This sits on the identity because that is where it belongs: a scope gates read
+    /// against write, and this gates <i>which</i> read tools. Enforcing it in the client is the
+    /// stand-in — P1T-149 moves it onto the agent's Keycloak identity and the MCP host.</para>
+    /// </summary>
+    public string[] Tools { get; set; } = [];
 }
 
 /// <summary>Where the MCP server lives and which resource (audience) tokens are minted for.</summary>

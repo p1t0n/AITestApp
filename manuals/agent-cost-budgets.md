@@ -1,9 +1,13 @@
 # Agent cost budgets: the roster-qa regression and the floors that should have caught it
 
-> **Status (2026-08-30):** steps 1, 2 and 4 of §4 have landed. P1T-144: the deterministic Cost
+> **Status (2026-08-30):** steps 1-4 of §4 have landed. P1T-144: the deterministic Cost
 > Floors run on every push and the usage ledger records `Iterations` + `ToolSequence`. P1T-145:
-> `skill_list` filters and pages. P1T-147: every agent run is bounded by a Runtime Budget (§3.2). Values and how to
-> re-measure them: `manuals/agent-eval-baselines.md` §4. Steps 2-5 are still open. Measurements below are real —
+> `skill_list` filters and pages. P1T-146: every agent identity carries a Tool Allowlist under
+> `McpAuth:<agent>:Tools`, applied in `McpToolSource` before any agent sees a tool — roster-qa is
+> shown 4 of the 11 read tools and its Baseline Prompt Size ratchet moved 4,409 → **1,876**, so at
+> the traced run's 10 iterations 44,090 re-sent tokens become 18,760. P1T-147: every agent run is
+> bounded by a Runtime Budget (§3.2). Step 5 is still open. Values and how to
+> re-measure them: `manuals/agent-eval-baselines.md` §4. Measurements below are real —
 > taken from the `AgentUsages` ledger and from one live traced run of the roster-qa endpoint on
 > the seeded 45-employee demo roster. Vocabulary lives in `CONTEXT.md` → *Cost & budgets*.
 
@@ -93,7 +97,9 @@ Three findings, none of them the obvious guess:
    `roster_shortlist_search` costs 71. The *structured* tools are the expensive ones — the exact
    opposite of the intuition the tool descriptions are written around.
 3. **26% is pure re-send of the tool surface.** Eleven schemas × ten iterations. The Description
-   Bar work (P1T-128/129) is billed ten times per question.
+   Bar work (P1T-128/129) is billed ten times per question. *Fixed by P1T-146*: roster-qa is now
+   shown the four tools this run actually called, so the same ten iterations re-send 1,744 tokens
+   rather than 4,202 — 17,440 instead of 42,020.
 
 `roster_digest_list` — the first suspect, since a full page is ~16k tokens — is **never called**.
 
@@ -212,6 +218,38 @@ and TDD survives inside each ticket: tighten the ceiling (red), implement (green
 The alternative — landing target values that stay red until the last ticket — cannot be merged
 sequentially, and stacked PRs are off the table.
 
+### 3.5 The Tool Allowlist sits on the identity, not in the agent
+
+Most agents already narrowed their own surface with a `.Where(t => t.Name == ...)` at the point
+they hand tools to the model. That is not the same instrument and it does not do this job:
+
+- It runs *after* the whole surface has been fetched, so it bounds nothing the agent forgets.
+  roster-qa filtered nothing and paid for eleven schemas, ten times over. Nothing in the codebase
+  said that was wrong.
+- It is a per-call decision, not a per-identity one. "Which tools may this agent see" is a
+  capability question, and capability is enforced by the token — the same reason `mcp:read` gates
+  write tools rather than a prompt saying "don't write".
+
+So the allowlist is configured on `McpAuth:<agent>` next to the client id and scope, and applied
+once in `McpToolSource` where the tool list arrives. The in-agent filters stay: the allowlist is
+the outer bound on the identity, the filter is which of those tools *this turn* offers — CV
+Tailoring genuinely shows `cv_get` on turn one and `style_exemplar_search` on turn two.
+
+Two guards, because a narrowing feature's failure mode is silent:
+
+- **An absent list means "everything the token carries."** A forgotten key must not quietly cripple
+  an agent. A test asserts every registered identity nevertheless has one.
+- **An allowlisted tool the server never advertised is logged as a warning.** A typo, or a scope
+  that no longer carries the tool; either way the agent runs narrower than configured and says so.
+  Not a failure — the tools it can still reach are an honest surface, and this is a degrade, not
+  a 500.
+
+`CostFloors.AgentToolAllowlists` is the declaration the Baseline Prompt Size floor measures
+against, and a test asserts the shipped `appsettings.json` matches it. Without that link the
+committed cost ceilings would stop describing the running system the first time someone edited
+config. The right answer is still P1T-149 — per-tool scopes on the Keycloak identity, enforced
+server-side — and this config key is the shape that moves there.
+
 ## 4. The work
 
 Sequential, each landing on its own:
@@ -228,8 +266,12 @@ Sequential, each landing on its own:
    chain: see `manuals/agent-eval-baselines.md` for the trade. The Tool-Selection Eval floors were
    **not** re-baselined — that burns real free-tier quota and the golden set is frozen, so it rides
    along with P1T-148, which re-runs the eval twice anyway.
-3. **Tool Allowlist** (P1T-146). Per-agent read-tool subset in `McpToolSource`; roster-qa gets 4 of 11.
-   Ratchet the Baseline Prompt Size ceiling down.
+3. ~~**Tool Allowlist**~~ (P1T-146) — **landed**. Per-agent tool subset applied in `McpToolSource`,
+   configured as `McpAuth:<agent>:Tools` and declared in `CostFloors.AgentToolAllowlists` (the
+   floor measures against that declaration, and a test asserts the shipped config matches it).
+   roster-qa: 4 of 11, Baseline Prompt Size 4,409 → 1,876. Every other identity got an explicit
+   list too — an absent list still means "everything the token carries", so narrowing is never a
+   side effect of a forgotten key. See §3.5.
 4. **Budget seam** (P1T-147) — **shipped**. §3.2, applied to every agent at
    `ResolveAgentChatClient`. resume-ingestion is covered for free. Budgets are configuration
    (`AgentBudgets` in `api/Agents/appsettings.json`), not constants.
@@ -250,8 +292,9 @@ Sequential, each landing on its own:
 ### Backlog, from measured evidence
 
 - **Server-side per-tool MCP scopes** (P1T-149). The Tool Allowlist belongs on the agent's Keycloak identity
-  (`agent-roster-qa`), enforced server-side, rather than in client config. P1T-146 is the
-  client-side stand-in.
+  (`agent-roster-qa`), enforced server-side, rather than in client config. P1T-146 shipped the
+  client-side stand-in; the config key it introduced (`McpAuth:<agent>:Tools`) is the shape that
+  moves onto the identity.
 - **resume-ingestion's tool choice** (P1T-150). 157,252 tokens in a single recorded call, same loop shape,
   and it holds `mcp:read mcp:write`. Its own investigation.
 

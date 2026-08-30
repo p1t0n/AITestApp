@@ -18,7 +18,8 @@ namespace CvManager.Agents.Tests.CostFloors;
 /// model call costs an agent before a single tool result comes back. Turn Amplification multiplies
 /// it by every iteration, so 4,202 tokens of instructions-plus-schemas became 42,020 (26%) of one
 /// roster-qa run. No model is involved here either: the prompt and the tool list ARE the
-/// measurement.
+/// measurement — and since P1T-146 the tool list is the agent's Tool Allowlist, not the whole
+/// surface its scope carries.
 /// </summary>
 public class BaselinePromptSizeFloorTests(ITestOutputHelper output)
 {
@@ -66,15 +67,13 @@ public class BaselinePromptSizeFloorTests(ITestOutputHelper output)
     [Theory]
     [MemberData(nameof(ToolLoopingAgents))]
     public async Task Baseline_prompt_size_stays_under_its_ratcheted_ceiling(
-        string agentName, bool holdsWriteScope, Func<IChatClient, IMcpToolSource, Task> run)
+        string agentName, string configKey, Func<IChatClient, IMcpToolSource, Task> run)
     {
-        // Exactly the surface the agent's own token would carry — capability is enforced by the
-        // token, so a read-only agent measured against the write surface is measuring fiction,
-        // and resume-ingestion measured against a read-only one would look free. Names only: the
-        // schema sizes come from the Mcp.Tests floor, which is what holds them true.
-        var offered = (holdsWriteScope
-                ? CvManager.CostFloors.CostFloors.WriteScopeTools
-                : CvManager.CostFloors.CostFloors.ReadScopeTools)
+        // Exactly the surface the agent's own identity would hand it: its Tool Allowlist, which
+        // McpToolSource applies before any agent sees a tool (P1T-146). Measuring against the
+        // whole scope surface would be measuring fiction now that no agent is offered it. Names
+        // only: the schema sizes come from the Mcp.Tests floor, which is what holds them true.
+        var offered = CvManager.CostFloors.CostFloors.AgentToolAllowlists[configKey]
             .Select(name => (AITool)AIFunctionFactory.Create(() => "{}", name))
             .ToArray();
         var chat = new FakeChatClient(() => new ChatResponse(new ChatMessage(ChatRole.Assistant, "{}")));
@@ -98,28 +97,28 @@ public class BaselinePromptSizeFloorTests(ITestOutputHelper output)
             $"{agentName} pays this on every iteration, before any tool result");
     }
 
-    public static TheoryData<string, bool, Func<IChatClient, IMcpToolSource, Task>> ToolLoopingAgents() => new()
+    public static TheoryData<string, string, Func<IChatClient, IMcpToolSource, Task>> ToolLoopingAgents() => new()
     {
         {
-            nameof(RosterQaAgent), false,
+            nameof(RosterQaAgent), "roster-qa",
             (chat, tools) => new RosterQaAgent(chat, tools, NullLoggerFactory.Instance).AskAsync("q")
         },
         {
-            nameof(CvTailoringAgent), false,
+            nameof(CvTailoringAgent), "cv-tailoring",
             (chat, tools) => new CvTailoringAgent(chat, tools, NullLoggerFactory.Instance)
                 .TailorAsync(Guid.NewGuid(), "job description")
         },
         {
             // The one agent holding mcp:write, and the one with the worst recorded call (P1T-150).
-            nameof(ResumeIngestionAgent), true,
+            nameof(ResumeIngestionAgent), "resume-ingestion",
             (chat, tools) => new ResumeIngestionAgent(chat, tools, NullLoggerFactory.Instance).IngestAsync("resume")
         },
         {
-            nameof(MatchAgent), false,
+            nameof(MatchAgent), "match",
             (chat, tools) => new MatchAgent(chat, tools, NullLoggerFactory.Instance).AskAsync("q")
         },
         {
-            nameof(InterviewKitAgent), false,
+            nameof(InterviewKitAgent), "interview-kit",
             (chat, tools) => new InterviewKitAgent(chat, tools, NullLoggerFactory.Instance).GenerateAsync("q")
         },
     };
