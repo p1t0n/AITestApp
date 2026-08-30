@@ -108,6 +108,22 @@ without a print dialog or a Chromium process. The SPA's print button stays as th
 alternative.
 _Avoid_: PDF export, server print
 
+### Roster editing
+
+**Child Collection Replace**:
+The write shape of an Experience: its achievements and its skill links travel inside the experience
+payload, and a save replaces both lists wholesale rather than diffing them. So an editor for one is
+a nested-collection form, not three resources — a bullet removed in the form is a bullet gone on
+save, and nothing is written until the save. Contrast the child resources with their own endpoints
+(languages, qualifications, availability, employee skills), each addressed and saved on its own.
+_Avoid_: nested update, cascade save
+
+**Bullet Order**:
+An achievement's position on the CV, carried as `Order` on the wire but never typed by a user: the
+edit form assigns it from the bullet's index in the list at save time. Moving a bullet is the whole
+interaction; the number is a consequence.
+_Avoid_: sort key, priority
+
 ### Testing
 
 **Boundary Test**:

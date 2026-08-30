@@ -12,8 +12,14 @@ import type {
   EmployeeDetail,
   EmployeeSkill,
   EmployeeSummary,
+  Experience,
+  Qualification,
   SaveEmployee,
+  SaveExperience,
+  SaveQualification,
+  SaveSpokenLanguage,
   SkillDto,
+  SpokenLanguage,
 } from "./types";
 import { clearSession, getToken, setSession } from "./auth/session";
 import { performAuthentication, performRegistration } from "./auth/webauthn";
@@ -932,6 +938,99 @@ export function useDeleteAvailability(employeeId: string) {
   return useMutation({
     mutationFn: async (entryId: string) => http.delete(`/availability/${entryId}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["employees", employeeId] }),
+  });
+}
+
+// ---- Languages, qualifications, experiences (P1T-142) ----
+//
+// All three hang off one employee and are only ever read back through that employee's detail
+// projection, so every mutation invalidates ["employees", employeeId] and nothing else — the
+// same rule the skills and availability hooks above follow.
+
+export function useAddLanguage(employeeId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (dto: SaveSpokenLanguage) =>
+      (await http.post<SpokenLanguage>(`/employees/${employeeId}/languages`, dto)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["employees", employeeId] }),
+  });
+}
+
+export function useUpdateLanguage(employeeId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...dto }: SaveSpokenLanguage & { id: string }) =>
+      (await http.put<SpokenLanguage>(`/languages/${id}`, dto)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["employees", employeeId] }),
+  });
+}
+
+export function useDeleteLanguage(employeeId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => http.delete(`/languages/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["employees", employeeId] }),
+  });
+}
+
+export function useAddQualification(employeeId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (dto: SaveQualification) =>
+      (await http.post<Qualification>(`/employees/${employeeId}/qualifications`, dto)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["employees", employeeId] }),
+  });
+}
+
+export function useUpdateQualification(employeeId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...dto }: SaveQualification & { id: string }) =>
+      (await http.put<Qualification>(`/qualifications/${id}`, dto)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["employees", employeeId] }),
+  });
+}
+
+export function useDeleteQualification(employeeId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => http.delete(`/qualifications/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["employees", employeeId] }),
+  });
+}
+
+export function useAddExperience(employeeId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (dto: SaveExperience) =>
+      (await http.post<Experience>(`/employees/${employeeId}/experiences`, dto)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["employees", employeeId] });
+      qc.invalidateQueries({ queryKey: ["employees", employeeId, "cv"] });
+    },
+  });
+}
+
+export function useUpdateExperience(employeeId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...dto }: SaveExperience & { id: string }) =>
+      (await http.put<Experience>(`/experiences/${id}`, dto)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["employees", employeeId] });
+      qc.invalidateQueries({ queryKey: ["employees", employeeId, "cv"] });
+    },
+  });
+}
+
+export function useDeleteExperience(employeeId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => http.delete(`/experiences/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["employees", employeeId] });
+      qc.invalidateQueries({ queryKey: ["employees", employeeId, "cv"] });
+    },
   });
 }
 

@@ -14,33 +14,95 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import DescriptionIcon from "@mui/icons-material/Description";
 import {
   useAddAvailability,
   useAddEmployeeSkill,
+  useAddExperience,
+  useAddLanguage,
+  useAddQualification,
   useDeleteAvailability,
   useDeleteEmployeeSkill,
+  useDeleteExperience,
+  useDeleteLanguage,
+  useDeleteQualification,
   useEmployee,
   useSkills,
   useUpdateEmployee,
+  useUpdateExperience,
+  useUpdateLanguage,
+  useUpdateQualification,
 } from "../api";
-import type { SkillLevel } from "../types";
+import type {
+  Experience,
+  Qualification,
+  SaveExperience,
+  SaveQualification,
+  SaveSpokenLanguage,
+  SkillLevel,
+  SpokenLanguage,
+} from "../types";
 import EmployeeFormDialog from "./EmployeeFormDialog";
+import ExperienceFormDialog from "./ExperienceFormDialog";
+import LanguageFormDialog from "./LanguageFormDialog";
+import QualificationFormDialog from "./QualificationFormDialog";
 
 const LEVELS: SkillLevel[] = ["Beginner", "Intermediate", "Advanced", "Expert"];
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  action,
+  children,
+}: {
+  title: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <Paper sx={{ p: 3, mb: 3 }}>
-      <Typography variant="h6" gutterBottom>
-        {title}
-      </Typography>
+      <Stack direction="row" justifyContent="space-between" alignItems="center">
+        <Typography variant="h6" gutterBottom>
+          {title}
+        </Typography>
+        {action}
+      </Stack>
       <Divider sx={{ mb: 2 }} />
       {children}
     </Paper>
   );
+}
+
+/**
+ * Each child dialog is rendered only while its row is being edited, so mounting is what loads the
+ * form state. The form dialogs seed themselves from `initial` on first render only (the
+ * EmployeeFormDialog pattern), and a dialog kept mounted across two different rows would show the
+ * first row's values for the second.
+ */
+type EditTarget<T> = { id?: string; initial?: Partial<T> } | null;
+
+function toSaveLanguage(l: SpokenLanguage): SaveSpokenLanguage {
+  return { language: l.language, level: l.level };
+}
+
+function toSaveQualification(q: Qualification): SaveQualification {
+  const { id: _id, ...rest } = q;
+  return rest;
+}
+
+function toSaveExperience(x: Experience): SaveExperience {
+  return {
+    company: x.company,
+    title: x.title,
+    location: x.location,
+    startDate: x.startDate,
+    endDate: x.endDate,
+    summary: x.summary,
+    achievements: x.achievements.map((a) => ({ order: a.order, text: a.text })),
+    skillIds: x.skills.map((s) => s.skillId),
+  };
 }
 
 export default function EmployeeDetailPage() {
@@ -52,8 +114,20 @@ export default function EmployeeDetailPage() {
   const delSkill = useDeleteEmployeeSkill(id);
   const addAvail = useAddAvailability(id);
   const delAvail = useDeleteAvailability(id);
+  const addLanguage = useAddLanguage(id);
+  const updateLanguage = useUpdateLanguage(id);
+  const delLanguage = useDeleteLanguage(id);
+  const addQualification = useAddQualification(id);
+  const updateQualification = useUpdateQualification(id);
+  const delQualification = useDeleteQualification(id);
+  const addExperience = useAddExperience(id);
+  const updateExperience = useUpdateExperience(id);
+  const delExperience = useDeleteExperience(id);
 
   const [editOpen, setEditOpen] = useState(false);
+  const [languageEdit, setLanguageEdit] = useState<EditTarget<SaveSpokenLanguage>>(null);
+  const [qualificationEdit, setQualificationEdit] = useState<EditTarget<SaveQualification>>(null);
+  const [experienceEdit, setExperienceEdit] = useState<EditTarget<SaveExperience>>(null);
   const [skillId, setSkillId] = useState("");
   const [level, setLevel] = useState<SkillLevel>("Intermediate");
   const [years, setYears] = useState(1);
@@ -189,16 +263,47 @@ export default function EmployeeDetailPage() {
         </Stack>
       </Section>
 
-      <Section title="Experience">
+      <Section
+        title="Experience"
+        action={
+          <Button
+            startIcon={<AddIcon />}
+            onClick={() => setExperienceEdit({ initial: undefined })}
+          >
+            Add experience
+          </Button>
+        }
+      >
         {e.experiences.length === 0 && <Typography color="text.secondary">No experience recorded.</Typography>}
         {e.experiences.map((x) => (
           <Box key={x.id} mb={2}>
-            <Typography fontWeight={600}>
-              {x.title} · {x.company}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {x.startDate} – {x.endDate ?? "Present"} {x.location ? `· ${x.location}` : ""}
-            </Typography>
+            <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+              <Box>
+                <Typography fontWeight={600}>
+                  {x.title} · {x.company}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {x.startDate} – {x.endDate ?? "Present"} {x.location ? `· ${x.location}` : ""}
+                </Typography>
+              </Box>
+              <Stack direction="row">
+                <IconButton
+                  size="small"
+                  aria-label={`Edit ${x.title} at ${x.company}`}
+                  onClick={() => setExperienceEdit({ id: x.id, initial: toSaveExperience(x) })}
+                >
+                  <EditIcon fontSize="small" />
+                </IconButton>
+                <IconButton
+                  size="small"
+                  color="error"
+                  aria-label={`Delete ${x.title} at ${x.company}`}
+                  onClick={() => delExperience.mutate(x.id)}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </Stack>
+            </Stack>
             {x.summary && <Typography variant="body2">{x.summary}</Typography>}
             <ul style={{ marginTop: 4 }}>
               {x.achievements.map((a) => (
@@ -214,22 +319,61 @@ export default function EmployeeDetailPage() {
         ))}
       </Section>
 
-      <Section title="Qualifications">
+      <Section
+        title="Qualifications"
+        action={
+          <Button
+            startIcon={<AddIcon />}
+            onClick={() => setQualificationEdit({ initial: undefined })}
+          >
+            Add qualification
+          </Button>
+        }
+      >
         {e.qualifications.length === 0 && <Typography color="text.secondary">None.</Typography>}
         {e.qualifications.map((q) => (
-          <Box key={q.id} mb={1}>
-            <Chip size="small" label={q.type} sx={{ mr: 1 }} />
-            <b>{q.name}</b>
-            {q.institution ? ` — ${q.institution}` : ""}
-            {q.issuer ? ` — ${q.issuer}` : ""}
-          </Box>
+          <Stack key={q.id} direction="row" alignItems="center" spacing={1} mb={1}>
+            <Chip size="small" label={q.type} />
+            <Typography>
+              <b>{q.name}</b>
+              {q.institution ? ` — ${q.institution}` : ""}
+              {q.issuer ? ` — ${q.issuer}` : ""}
+            </Typography>
+            <IconButton
+              size="small"
+              aria-label={`Edit ${q.name}`}
+              onClick={() => setQualificationEdit({ id: q.id, initial: toSaveQualification(q) })}
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+            <IconButton
+              size="small"
+              color="error"
+              aria-label={`Delete ${q.name}`}
+              onClick={() => delQualification.mutate(q.id)}
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Stack>
         ))}
       </Section>
 
-      <Section title="Languages">
+      <Section
+        title="Languages"
+        action={
+          <Button startIcon={<AddIcon />} onClick={() => setLanguageEdit({ initial: undefined })}>
+            Add language
+          </Button>
+        }
+      >
         <Stack direction="row" gap={1} flexWrap="wrap">
           {e.spokenLanguages.map((l) => (
-            <Chip key={l.id} label={`${l.language} · ${l.level}`} />
+            <Chip
+              key={l.id}
+              label={`${l.language} · ${l.level}`}
+              onClick={() => setLanguageEdit({ id: l.id, initial: toSaveLanguage(l) })}
+              onDelete={() => delLanguage.mutate(l.id)}
+            />
           ))}
           {e.spokenLanguages.length === 0 && <Typography color="text.secondary">None.</Typography>}
         </Stack>
@@ -251,6 +395,48 @@ export default function EmployeeDetailPage() {
         onClose={() => setEditOpen(false)}
         onSave={(dto) => update.mutateAsync(dto)}
       />
+
+      {languageEdit && (
+        <LanguageFormDialog
+          open
+          title={languageEdit.id ? "Edit language" : "Add language"}
+          initial={languageEdit.initial}
+          onClose={() => setLanguageEdit(null)}
+          onSave={(dto) =>
+            languageEdit.id
+              ? updateLanguage.mutateAsync({ id: languageEdit.id, ...dto })
+              : addLanguage.mutateAsync(dto)
+          }
+        />
+      )}
+
+      {qualificationEdit && (
+        <QualificationFormDialog
+          open
+          title={qualificationEdit.id ? "Edit qualification" : "Add qualification"}
+          initial={qualificationEdit.initial}
+          onClose={() => setQualificationEdit(null)}
+          onSave={(dto) =>
+            qualificationEdit.id
+              ? updateQualification.mutateAsync({ id: qualificationEdit.id, ...dto })
+              : addQualification.mutateAsync(dto)
+          }
+        />
+      )}
+
+      {experienceEdit && (
+        <ExperienceFormDialog
+          open
+          title={experienceEdit.id ? "Edit experience" : "Add experience"}
+          initial={experienceEdit.initial}
+          onClose={() => setExperienceEdit(null)}
+          onSave={(dto) =>
+            experienceEdit.id
+              ? updateExperience.mutateAsync({ id: experienceEdit.id, ...dto })
+              : addExperience.mutateAsync(dto)
+          }
+        />
+      )}
     </Box>
   );
 }
