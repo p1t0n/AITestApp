@@ -88,6 +88,7 @@ const dock: AgentDock = {
   open: true,
   docked: false,
   width: 460,
+  isNarrow: false,
   toggleOpen: () => {},
   close: () => {},
   setDocked: () => {},
@@ -97,7 +98,7 @@ const dock: AgentDock = {
 async function openIngestTab() {
   render(
     <MemoryRouter>
-      <AgentWidget dock={dock} isNarrow={false} />
+      <AgentWidget dock={dock} />
     </MemoryRouter>,
   );
   await selectAgentSurface(userEvent, "Resume ingest");

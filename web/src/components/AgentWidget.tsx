@@ -19,7 +19,7 @@ import CloseFullscreenIcon from "@mui/icons-material/CloseFullscreen";
 import DataUsageIcon from "@mui/icons-material/DataUsage";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
-import type { AgentDock } from "./useAgentDock";
+import { useDockPush, type AgentDock } from "./useAgentDock";
 import { ErrorBoundary, DockErrorFallback } from "./ErrorBoundary";
 import type { AgentJobRequest } from "../api";
 import { RosterChat } from "./agent/RosterQaTab";
@@ -85,9 +85,13 @@ const SURFACE_LABELS: Record<Surface, string> = Object.fromEntries(
  * it. The visible text stays the bare surface label, so the accessible name still contains it. */
 export const SURFACE_PICKER_LABEL = "Agent surface";
 
-export default function AgentWidget({ dock, isNarrow }: { dock: AgentDock; isNarrow: boolean }) {
+export default function AgentWidget({ dock }: { dock: AgentDock }) {
   const [surface, setSurface] = useState<Surface>("roster");
   const [pickerAnchor, setPickerAnchor] = useState<HTMLElement | null>(null);
+
+  // The dock is fixed-position, so it tells the page how much of it is covered rather than taking
+  // part in layout. Nobody upstream needs to know the width, the surface, or the breakpoint.
+  useDockPush(dock);
 
   // The token ledger is status, not a surface: it sits in the panel header next to the dock and
   // close controls, and peeking at it never costs a place in the agent picker.
@@ -122,8 +126,8 @@ export default function AgentWidget({ dock, isNarrow }: { dock: AgentDock; isNar
     window.addEventListener("mouseup", onUp);
   };
 
-  const dockedWide = dock.docked && !isNarrow;
-  const dockedNarrow = dock.docked && isNarrow;
+  const dockedWide = dock.docked && !dock.isNarrow;
+  const dockedNarrow = dock.docked && dock.isNarrow;
 
   const panelSx = !dock.docked
     ? {

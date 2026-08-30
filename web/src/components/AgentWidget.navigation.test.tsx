@@ -46,6 +46,7 @@ const dock: AgentDock = {
   open: true,
   docked: false,
   width: 420,
+  isNarrow: false,
   toggleOpen: () => {},
   close: () => {},
   setDocked: () => {},
@@ -56,7 +57,7 @@ function renderWidget(isNarrow = false, docked = false) {
   const user = userEvent.setup();
   render(
     <MemoryRouter>
-      <AgentWidget dock={{ ...dock, docked }} isNarrow={isNarrow} />
+      <AgentWidget dock={{ ...dock, docked, isNarrow }} />
     </MemoryRouter>,
   );
   return user;
