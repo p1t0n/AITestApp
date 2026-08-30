@@ -145,7 +145,15 @@ defaults to the compose Keycloak. An MCP-capable agent discovers the AS via
 `/.well-known/oauth-protected-resource`, runs the **authorization-code + PKCE** flow against
 Keycloak, and calls tools with `Authorization: Bearer <access-token>`. Tokens are validated
 against Keycloak's JWKS (issuer, audience, signature, lifetime). The server shares the API's
-database. Dynamic Client Registration is enabled on the realm for self-service onboarding.
+database.
+
+**Dynamic Client Registration** is open on the *authenticated* path only: a registration needs an
+initial access token from a realm admin, and anonymous registration is refused (`Trusted Hosts`,
+no trusted host declared). What a self-registered client may hold is capped by the realm rather
+than by trust — `mcp:read` plus the audience mapper, never `mcp:write`, `mcp:admin` or a per-tool
+grant — and Keycloak stamps the OAuth 2.1 baseline onto it at registration time: PKCE `S256`, no
+implicit grant, no password grant, no full scope. Both halves are declared in
+`keycloak/realm-export.json` and documented in `manuals/mcp-dcr-policy.md` (P1T-157).
 
 The MCP server binds `http://localhost:5100` (its launch profile).
 
