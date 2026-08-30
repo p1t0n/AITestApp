@@ -31,6 +31,7 @@ import {
 } from "../../api";
 import { AgentMarkdown } from "./AgentMarkdown";
 import { PRESET_JDS } from "./presets";
+import { ErrorNotice } from "../ErrorNotice";
 
 interface FormResult {
   answer: string;
@@ -109,14 +110,7 @@ function RewriteCard({ employeeId, rewrite }: { employeeId: string; rewrite: Tai
       <Typography variant="body2" fontWeight={600} sx={{ overflowWrap: "anywhere" }}>
         {r.rewritten}
       </Typography>
-      {apply.isError && (
-        <Paper
-          elevation={0}
-          sx={{ mt: 1, p: 1, bgcolor: "error.light", color: "error.contrastText", borderRadius: 1 }}
-        >
-          <Typography variant="body2">{apiErrorMessage(apply.error)}</Typography>
-        </Paper>
-      )}
+      <ErrorNotice message={apply.isError ? apiErrorMessage(apply.error) : null} sx={{ mt: 1 }} />
     </Paper>
   );
 }
@@ -288,14 +282,7 @@ export function AgentJobForm({
                   : "Find matches"}
         </Button>
 
-        {error && (
-          <Paper
-            elevation={0}
-            sx={{ p: 1.5, bgcolor: "error.light", color: "error.contrastText", borderRadius: 2 }}
-          >
-            <Typography variant="body2">{error}</Typography>
-          </Paper>
-        )}
+        <ErrorNotice message={error} />
 
         {result && (
           <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>

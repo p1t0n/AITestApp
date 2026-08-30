@@ -28,6 +28,7 @@ import {
 import RequirementChips from "./RequirementChips";
 import { StaffingCandidateCard, StaffingRecommendation } from "./StaffingCandidateCard";
 import { ProposalDecisionCard } from "./StaffingTab";
+import { ErrorNotice } from "../ErrorNotice";
 
 /** One compact line of run provenance: when, by whom, on what model, at what cost, under which
  * caps — the "authorization state travels as provenance" half of the handoff package. */
@@ -227,11 +228,7 @@ export function ProposalInbox({
       </Button>
       <Collapse in={expanded} unmountOnExit>
         <Stack spacing={1} sx={{ mt: 1 }} divider={<Divider flexItem />}>
-          {error && (
-            <Typography variant="body2" color="error">
-              {error}
-            </Typography>
-          )}
+          <ErrorNotice message={error} />
           {pending.map((p) => (
             <Stack
               key={p.id}

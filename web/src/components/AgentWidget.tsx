@@ -20,6 +20,7 @@ import DataUsageIcon from "@mui/icons-material/DataUsage";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import type { AgentDock } from "./useAgentDock";
+import { ErrorBoundary, DockErrorFallback } from "./ErrorBoundary";
 import type { AgentJobRequest } from "../api";
 import { RosterChat } from "./agent/RosterQaTab";
 import { AgentJobForm } from "./agent/AgentJobTab";
@@ -221,107 +222,114 @@ export default function AgentWidget({ dock, isNarrow }: { dock: AgentDock; isNar
             </Stack>
           </Box>
 
+          {/* Navigation chrome first, and OUTSIDE the boundary below: whatever a panel does, the
+              way out of it has to keep rendering. */}
           {usageOpen ? (
-            <>
-              <Box
-                sx={{
-                  px: 1,
-                  py: 0.75,
-                  borderBottom: 1,
-                  borderColor: "divider",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                }}
-              >
-                <Button size="small" startIcon={<ArrowBackIcon />} onClick={() => setUsageOpen(false)}>
-                  Back to {SURFACE_LABELS[surface]}
-                </Button>
-                <Typography variant="body2" color="text.secondary">
-                  Token usage
-                </Typography>
-              </Box>
-              <UsagePanel key="usage" />
-            </>
+            <Box
+              sx={{
+                px: 1,
+                py: 0.75,
+                borderBottom: 1,
+                borderColor: "divider",
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+              }}
+            >
+              <Button size="small" startIcon={<ArrowBackIcon />} onClick={() => setUsageOpen(false)}>
+                Back to {SURFACE_LABELS[surface]}
+              </Button>
+              <Typography variant="body2" color="text.secondary">
+                Token usage
+              </Typography>
+            </Box>
           ) : (
-            <>
-              <Box sx={{ px: 1, py: 0.75, borderBottom: 1, borderColor: "divider" }}>
-                {/* One control, one label — readable at any dock width, including DOCK_MIN_WIDTH.
-                    A Menu rather than a Select: Select clones `role="option"` onto every child,
-                    which would announce the four group headers as pickable surfaces. */}
-                <Button
-                  fullWidth
-                  color="inherit"
-                  onClick={(e) => setPickerAnchor(e.currentTarget)}
-                  aria-haspopup="menu"
-                  aria-expanded={pickerAnchor ? true : undefined}
-                  aria-label={`${SURFACE_PICKER_LABEL}: ${SURFACE_LABELS[surface]}`}
-                  endIcon={<ArrowDropDownIcon />}
-                  sx={{ justifyContent: "space-between", textTransform: "none", px: 1.5 }}
-                >
-                  {SURFACE_LABELS[surface]}
-                </Button>
-                <Menu
-                  anchorEl={pickerAnchor}
-                  open={!!pickerAnchor}
-                  onClose={() => setPickerAnchor(null)}
-                  MenuListProps={{ dense: true }}
-                  PaperProps={{ sx: { minWidth: pickerAnchor?.offsetWidth } }}
-                >
-                  {SURFACE_GROUPS.flatMap((group) => [
-                    <ListSubheader key={group.category} role="presentation" sx={{ lineHeight: 2.25 }}>
-                      {group.category}
-                    </ListSubheader>,
-                    ...group.surfaces.map((s) => (
-                      <MenuItem
-                        key={s.surface}
-                        selected={s.surface === surface}
-                        onClick={() => {
-                          setPrefill(null);
-                          setSurface(s.surface);
-                          setPickerAnchor(null);
-                        }}
-                      >
-                        {s.label}
-                      </MenuItem>
-                    )),
-                  ])}
-                </Menu>
-              </Box>
-
-              {/* Remount per surface so each keeps its own independent state. The job forms also
-                  remount per prefill so a new drill-in always lands its values. */}
-              {surface === "roster" ? (
-                <RosterChat key="roster" />
-              ) : surface === "ingestion" ? (
-                <IngestionPanel key="ingestion" />
-              ) : surface === "shortlist" ? (
-                <ShortlistPanel
-                  key="shortlist"
-                  onRunMatch={(employeeId, jd) => openPrefilled("match", employeeId, jd)}
-                />
-              ) : surface === "staffing" ? (
-                <StaffingPanel
-                  key="staffing"
-                  onOpenInMatch={(employeeId, jd) => openPrefilled("match", employeeId, jd)}
-                  onTailorCv={(employeeId, jd) => openPrefilled("cv-tailoring", employeeId, jd)}
-                />
-              ) : surface === "roster-scan" ? (
-                <RosterScanPanel
-                  key="roster-scan"
-                  onOpenInMatch={(employeeId, jd) => openPrefilled("match", employeeId, jd)}
-                />
-              ) : surface === "bench" ? (
-                <BenchPanel key="bench" />
-              ) : (
-                <AgentJobForm
-                  key={prefill?.mode === surface ? `${surface}-${prefill.request.employeeId}` : surface}
-                  mode={surface}
-                  initial={prefill?.mode === surface ? prefill.request : undefined}
-                />
-              )}
-            </>
+            <Box sx={{ px: 1, py: 0.75, borderBottom: 1, borderColor: "divider" }}>
+              {/* One control, one label — readable at any dock width, including DOCK_MIN_WIDTH.
+                  A Menu rather than a Select: Select clones `role="option"` onto every child,
+                  which would announce the four group headers as pickable surfaces. */}
+              <Button
+                fullWidth
+                color="inherit"
+                onClick={(e) => setPickerAnchor(e.currentTarget)}
+                aria-haspopup="menu"
+                aria-expanded={pickerAnchor ? true : undefined}
+                aria-label={`${SURFACE_PICKER_LABEL}: ${SURFACE_LABELS[surface]}`}
+                endIcon={<ArrowDropDownIcon />}
+                sx={{ justifyContent: "space-between", textTransform: "none", px: 1.5 }}
+              >
+                {SURFACE_LABELS[surface]}
+              </Button>
+              <Menu
+                anchorEl={pickerAnchor}
+                open={!!pickerAnchor}
+                onClose={() => setPickerAnchor(null)}
+                MenuListProps={{ dense: true }}
+                PaperProps={{ sx: { minWidth: pickerAnchor?.offsetWidth } }}
+              >
+                {SURFACE_GROUPS.flatMap((group) => [
+                  <ListSubheader key={group.category} role="presentation" sx={{ lineHeight: 2.25 }}>
+                    {group.category}
+                  </ListSubheader>,
+                  ...group.surfaces.map((s) => (
+                    <MenuItem
+                      key={s.surface}
+                      selected={s.surface === surface}
+                      onClick={() => {
+                        setPrefill(null);
+                        setSurface(s.surface);
+                        setPickerAnchor(null);
+                      }}
+                    >
+                      {s.label}
+                    </MenuItem>
+                  )),
+                ])}
+              </Menu>
+            </Box>
           )}
+
+          {/* One boundary around the panel body, keyed by what is showing (P1T-153): a panel that
+              throws is contained to the body — the widget header and the navigation above stay
+              live, so picking another surface, or leaving the ledger, is both escape and retry. */}
+          <ErrorBoundary
+            resetKey={usageOpen ? "usage" : surface}
+            fallback={(error, reset) => <DockErrorFallback error={error} reset={reset} />}
+          >
+            {/* Remount per surface so each keeps its own independent state. The job forms also
+                remount per prefill so a new drill-in always lands its values. */}
+            {usageOpen ? (
+              <UsagePanel key="usage" />
+            ) : surface === "roster" ? (
+              <RosterChat key="roster" />
+            ) : surface === "ingestion" ? (
+              <IngestionPanel key="ingestion" />
+            ) : surface === "shortlist" ? (
+              <ShortlistPanel
+                key="shortlist"
+                onRunMatch={(employeeId, jd) => openPrefilled("match", employeeId, jd)}
+              />
+            ) : surface === "staffing" ? (
+              <StaffingPanel
+                key="staffing"
+                onOpenInMatch={(employeeId, jd) => openPrefilled("match", employeeId, jd)}
+                onTailorCv={(employeeId, jd) => openPrefilled("cv-tailoring", employeeId, jd)}
+              />
+            ) : surface === "roster-scan" ? (
+              <RosterScanPanel
+                key="roster-scan"
+                onOpenInMatch={(employeeId, jd) => openPrefilled("match", employeeId, jd)}
+              />
+            ) : surface === "bench" ? (
+              <BenchPanel key="bench" />
+            ) : (
+              <AgentJobForm
+                key={prefill?.mode === surface ? `${surface}-${prefill.request.employeeId}` : surface}
+                mode={surface}
+                initial={prefill?.mode === surface ? prefill.request : undefined}
+              />
+            )}
+          </ErrorBoundary>
         </Paper>
       )}
     </>

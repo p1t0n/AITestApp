@@ -34,6 +34,7 @@ import {
   type RosterScanRequest,
 } from "../../api";
 import { PRESET_JDS } from "./presets";
+import { ErrorNotice } from "../ErrorNotice";
 
 function CandidateRow({
   candidate,
@@ -215,14 +216,7 @@ export function RosterScanPanel({
           Scan the roster
         </Button>
 
-        {error && (
-          <Paper
-            elevation={0}
-            sx={{ p: 1.5, bgcolor: "error.light", color: "error.contrastText", borderRadius: 2 }}
-          >
-            <Typography variant="body2">{error}</Typography>
-          </Paper>
-        )}
+        <ErrorNotice message={error} />
 
         {estimate && (
           <Typography variant="caption" color="text.secondary" data-testid="scan-estimate">
@@ -266,14 +260,7 @@ export function RosterScanPanel({
               </Paper>
             )}
 
-            {data.state === "failed" && data.failureDetail && (
-              <Paper
-                elevation={0}
-                sx={{ p: 1.5, bgcolor: "error.light", color: "error.contrastText", borderRadius: 2 }}
-              >
-                <Typography variant="body2">{data.failureDetail}</Typography>
-              </Paper>
-            )}
+            <ErrorNotice message={data.state === "failed" ? data.failureDetail : null} />
 
             <Stack spacing={0.75}>
               {data.candidates

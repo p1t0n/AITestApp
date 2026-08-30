@@ -36,6 +36,7 @@ import {
   useUpdateSkill,
 } from "../api";
 import type { Category, CategoryNode } from "../types";
+import { ErrorNotice } from "../components/ErrorNotice";
 
 type EditState = { kind: "category" | "skill"; id: string } | null;
 // Adding a new node: a skill or subcategory under `parentId` (a category id),
@@ -373,11 +374,7 @@ export default function CatalogPage() {
         </Button>
       </Stack>
 
-      {error && (
-        <Typography color="error" mb={2}>
-          {error}
-        </Typography>
-      )}
+      <ErrorNotice message={error} sx={{ mb: 2 }} />
 
       <Paper sx={{ p: 3 }}>
         <List dense>

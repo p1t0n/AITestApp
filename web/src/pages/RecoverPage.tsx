@@ -12,6 +12,7 @@ import {
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { apiErrorMessage, useRecover } from "../api";
 import { isPasskeySupported } from "../auth/webauthn";
+import { ErrorNotice } from "../components/ErrorNotice";
 
 export default function RecoverPage() {
   const [email, setEmail] = useState("");
@@ -52,7 +53,7 @@ export default function RecoverPage() {
             </Alert>
           )}
 
-          {recover.isError && <Alert severity="error">{apiErrorMessage(recover.error)}</Alert>}
+          <ErrorNotice message={recover.isError ? apiErrorMessage(recover.error) : null} />
 
           <TextField
             label="Email"

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  Alert,
   Button,
   Dialog,
   DialogActions,
@@ -11,6 +10,7 @@ import {
 } from "@mui/material";
 import type { SaveEmployee } from "../types";
 import { apiErrorMessage } from "../api";
+import { ErrorNotice } from "../components/ErrorNotice";
 
 interface Props {
   open: boolean;
@@ -59,7 +59,7 @@ export default function EmployeeFormDialog({ open, title, initial, onClose, onSa
       <DialogTitle>{title}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
-          {error && <Alert severity="error">{error}</Alert>}
+          <ErrorNotice message={error} />
           <Stack direction="row" spacing={2}>
             <TextField label="First name" value={form.firstName} onChange={field("firstName")} fullWidth />
             <TextField label="Last name" value={form.lastName} onChange={field("lastName")} fullWidth />
