@@ -81,7 +81,8 @@ api/
   Mcp/             MCP server: tools (incl. semantic, shortlist + style-exemplar search), bearer auth, reconcile worker
   Agents/          AI agents service: Roster Q&A, CV Tailoring, Match, Shortlist, the staffing
                    workflow (MAF WorkflowBuilder + SSE) + usage caps
-web/               React SPA (incl. the agent widget)
+web/               React SPA (incl. the agent widget; architecture in
+                   `manuals/spa-architecture.md`)
   e2e/             Playwright browser journeys (passkey ceremonies via a CDP virtual authenticator)
 tools/
   GenerateDemoRoster/  demo dataset generator (one-off, LLM-assisted)

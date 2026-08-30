@@ -132,6 +132,16 @@ edit form assigns it from the bullet's index in the list at save time. Moving a 
 interaction; the number is a consequence.
 _Avoid_: sort key, priority
 
+### SPA data layer
+
+**One Import Site**:
+The rule that every SPA component reaches the backends through exactly one import path
+(`src/api`) and no component knows a URL, a query key, or which of the two hosts serves a call.
+It is a property of the *public face*, not of the file count: `src/api/index.ts` is a barrel over
+eighteen per-domain modules, and the rule holds because components import the barrel. A split that
+made components import `api/agents/shortlist` directly would keep the modules and lose the rule.
+_Avoid_: single api file, api facade
+
 ### Testing
 
 **Boundary Test**:

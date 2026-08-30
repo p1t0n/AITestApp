@@ -1,0 +1,34 @@
+// The data layer's single import site. Every component imports from "…/api" and nothing else —
+// no component knows a URL, a query key, or which of the two backends serves a call.
+//
+// That property is the reason this barrel exists (P1T-151): the modules behind it are split by
+// domain so each one stays readable, while the import path components use is unchanged.
+//
+//   http               the two axios clients, the token interceptor, apiErrorMessage
+//   auth               the three passkey ceremonies + the local session helpers
+//   employees          the roster aggregate: list, detail, CV, PDF, promote
+//   employeeChildren   skills, availability, languages, qualifications, experiences
+//   catalog            the skill-catalog tree
+//   users              user administration and cap overrides
+//   agents/*           one module per agent surface, each DTO beside the hook that returns it
+//
+// Roster domain types stay in src/types.ts; agent contracts live beside their hooks.
+export * from "./http";
+export * from "./auth";
+export * from "./employees";
+export * from "./employeeChildren";
+export * from "./catalog";
+export * from "./users";
+
+export * from "./agents/usage";
+export * from "./agents/shared";
+export * from "./agents/rosterQa";
+export * from "./agents/tailoring";
+export * from "./agents/match";
+export * from "./agents/bench";
+export * from "./agents/interviewKit";
+export * from "./agents/shortlist";
+export * from "./agents/staffing";
+export * from "./agents/proposals";
+export * from "./agents/rosterScan";
+export * from "./agents/ingestion";
