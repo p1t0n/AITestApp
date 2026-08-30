@@ -58,3 +58,50 @@ jobs:
 
       - name: Test
         run: npm test
+
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install SPA dependencies
+        run: npm ci
+        working-directory: web
+
+      - name: Install Chromium
+        # Chromium only: the passkey ceremonies need the CDP virtual authenticator.
+        run: npx playwright install --with-deps chromium
+        working-directory: web
+
+      - name: Build the Web API
+        # The e2e runner starts the API with `dotnet run`; building here keeps that start fast
+        # and surfaces a build break as a build break.
+        run: dotnet build api/Web/CvManager.Web.csproj --configuration Debug
+
+      - name: Run e2e
+        # Owns its stack: a throwaway pgvector container (Docker is preinstalled on the runner),
+        # the Web API, and the SPA.
+        run: npm run test:e2e
+        working-directory: web
+
+      - name: Upload traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: web/test-results/
+          retention-days: 7

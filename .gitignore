@@ -62,6 +62,10 @@ web/dist/
 web/.vite/
 *.local
 
+# Playwright e2e output (traces kept only for failed runs)
+web/test-results/
+web/playwright-report/
+
 # OS
 .DS_Store
 

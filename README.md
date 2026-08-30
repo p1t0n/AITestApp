@@ -82,6 +82,7 @@ api/
   Agents/          AI agents service: Roster Q&A, CV Tailoring, Match, Shortlist, the staffing
                    workflow (MAF WorkflowBuilder + SSE) + usage caps
 web/               React SPA (incl. the agent widget)
+  e2e/             Playwright browser journeys (passkey ceremonies via a CDP virtual authenticator)
 tools/
   GenerateDemoRoster/  demo dataset generator (one-off, LLM-assisted)
   SeedDemoRoster/      demo roster seeder CLI (--count / --wipe)
@@ -267,13 +268,19 @@ so an agent can self-correct.
 ## Tests
 
 ```bash
-dotnet test          # backend: unit + Testcontainers integration (needs Docker)
-cd web && npm test   # frontend: vitest component tests
+dotnet test               # backend: unit + Testcontainers integration (needs Docker)
+cd web && npm test        # frontend: vitest component tests
+cd web && npm run test:e2e  # browser: Playwright journeys (needs Docker; starts its own stack)
 ```
 
 The Web API suite (`tests/Web.Tests`) drives the real host over a throwaway Postgres container: the
 migrations, the dev seed, the authorization gate and the error shapes all run for real. See
 `manuals/web-api-integration-tests.md`.
+
+`npm run test:e2e` drives the SPA in Chromium against its own stack — a throwaway database, the Web
+API, and the SPA on their own ports, so a dev stack and the dev database are untouched. Passkey
+sign-up and sign-in run as real WebAuthn ceremonies against a CDP virtual authenticator. See
+`manuals/playwright-e2e.md`.
 
 Live tests (real embeddings / models) are opt-in: `dotnet test --filter "Category=live"` with
 `GEMINI_API_KEY` set. The retrieval regression gate lives there too, as does the tool-selection
@@ -300,7 +307,5 @@ dotnet ef migrations add <Name> \
 
 ## Not yet built (next increments)
 
-- Playwright e2e (the .NET half — Web API integration tests — shipped; see
-  `manuals/web-api-integration-tests.md`)
 - SPA edit forms for languages / qualifications / experiences (API already supports them)
 - Shortlist coverage-merge ranking evals (requirement-extraction fidelity shipped as ExtractionEval)

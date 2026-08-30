@@ -117,6 +117,12 @@ constraints) are actually observable. Distinct from an Application-layer unit te
 past the boundary by construction.
 _Avoid_: API test, controller test
 
+**Virtual Authenticator**:
+The CDP-installed software passkey that lets a headless browser complete a WebAuthn ceremony with
+no user gesture — the only way an e2e test gets past the sign-in gate. Holds its credentials in the
+browser context, so one test can register and then sign back in with the same passkey.
+_Avoid_: fake passkey, mock authenticator (nothing is mocked — the real ceremony runs)
+
 **Database Truth**:
 Behaviour enforced by Postgres rather than by code — partial unique indexes, cascade deletes,
 date/enum mapping. Invisible to EF InMemory, so it is only ever proven by an integration test
