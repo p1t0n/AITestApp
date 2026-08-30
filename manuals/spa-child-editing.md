@@ -1,9 +1,10 @@
-# SPA editing for languages, qualifications and experiences (P1T-142)
+# SPA editing for the employee's children (P1T-142, P1T-156)
 
 The API has supported these three children since the domain slice. The SPA rendered all three
 read-only: chips and `<ul>`s with no way to add, edit or remove, and `web/src/api.ts` had no client
 function for any of them. Availability and skills had inline add/delete; these did not. This records
-the slice that closes it.
+the slice that closes it — and, below, the second slice (P1T-156) that gave availability and
+employee skills the same treatment.
 
 The gap was not only a missing feature. `ExperiencesController` had no `[ApiController]`, so MVC did
 not infer `[FromBody]` and every JSON `POST`/`PUT` bound an empty DTO and answered 400 — dead from
@@ -23,6 +24,19 @@ web/src/
     EmployeeDetailPage.tsx     Add / Edit / Delete affordances on the three sections
     ChildFormDialogs.test.tsx  11 component tests
   e2e/employee-children.e2e.ts three browser journeys against a real API
+```
+
+P1T-156 added, in the same shape:
+
+```
+web/src/
+  types.ts                        SaveAvailabilityEntry / SaveEmployeeSkill
+  api.ts                          useUpdateAvailability / useUpdateEmployeeSkill
+  pages/
+    AvailabilityFormDialog.tsx    effective-from + capacity
+    EmployeeSkillFormDialog.tsx   catalog link (add only) + level + years
+    ChildFormDialogs.test.tsx     8 more component tests
+  e2e/employee-children.e2e.ts    a fourth journey, over both PUTs
 ```
 
 ## Decisions
@@ -69,12 +83,38 @@ Both layers were broken deliberately once, since a green suite proves nothing on
 * Sending `achievements: []` from the form fails the e2e
   `an experience with bullets and a skill is written, edited, and reaches the CV` — at the CV
   assertion, which is the far end of the path the dead controller used to break.
+* Dropping the locked `skillId` from the employee-skill payload fails
+  `locks the skill on edit and sends the row's own id back`; removing the empty-date guard fails
+  `cannot save without a date, because an empty one fails binding before validation` (P1T-156).
+
+## Availability and employee skills (P1T-156)
+
+The bullet this manual used to carry under *Worth revisiting* — two PUTs with no caller anywhere,
+so correcting a capacity typo meant delete-then-add. Closed by giving both children the shape above,
+which also removed the two inline add rows: one form now builds each payload rather than two.
+
+**The employee-skill picker is disabled on edit, not hidden.** `EmployeeSkillService.UpdateAsync`
+validates `SkillId` and then assigns `Level` and `YearsExperience` only — it never reassigns the
+catalog link. An editable picker would look like it worked and change nothing, which is the worst of
+the three options; hiding the field would leave the dialog ambiguous about which row it is editing.
+A disabled field showing the skill name, with a helper line saying that pointing the row at another
+catalog entry is a remove and an add, is the honest one. The name comes off the row (`EmployeeSkillDto`
+carries it) rather than out of a catalog lookup, so the dialog does not wait on a query for a string
+it was handed.
+
+**Availability's Save is disabled while the date is empty**, which looks like the client-side
+validation this manual rules out and is not. An empty date never reaches FluentValidation: it fails
+`DateOnly` model binding first, and a binding failure answers in a shape `apiErrorMessage` cannot
+turn into a sentence. So the guard is not a duplicated rule — there is no `NotEmpty` rule on
+`EffectiveFrom` to duplicate — it is the same required-field affordance the inline row already had.
+Capacity is left to the server: `InclusiveBetween(0, 100)` comes back as a readable message.
+
+**Both PUTs are now exercised end to end.** A component test proves the payload leaves the form; only
+the e2e proves it binds on the way in, which is the failure mode that killed `ExperiencesController`.
+The fourth journey adds an entry, edits its capacity, adds a skill and raises its level.
 
 ## Worth revisiting
 
-* **Availability and employee skills still have no edit.** `PUT /api/availability/{id}` and
-  `PUT /api/employee-skills/{id}` exist and have no caller; the inline add/delete rows predate this
-  slice and were left alone. Correcting a typo in either means delete-then-add today.
 * **Delete asks nothing.** Removing an experience — bullets and all — happens on one click, matching
   the existing skill/availability chips. `CatalogPage` has a confirm dialog; if a bullet is ever lost
   in anger, that pattern is the answer.

@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AxiosError, AxiosHeaders } from "axios";
+import AvailabilityFormDialog from "./AvailabilityFormDialog";
+import EmployeeSkillFormDialog from "./EmployeeSkillFormDialog";
 import LanguageFormDialog from "./LanguageFormDialog";
 import QualificationFormDialog from "./QualificationFormDialog";
 import ExperienceFormDialog from "./ExperienceFormDialog";
@@ -275,6 +277,147 @@ describe("ExperienceFormDialog", () => {
     await userEvent.click(save());
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Company must not be empty.");
+    expect(onClose).not.toHaveBeenCalled();
+  });
+});
+
+describe("AvailabilityFormDialog", () => {
+  it("saves the step: capacity from a date on", async () => {
+    const onSave = vi.fn().mockResolvedValue({});
+    const onClose = vi.fn();
+    render(
+      <AvailabilityFormDialog open title="Add availability" onClose={onClose} onSave={onSave} />,
+    );
+
+    await userEvent.type(screen.getByLabelText("Effective from"), "2026-04-01");
+    await userEvent.clear(screen.getByLabelText("Capacity %"));
+    await userEvent.type(screen.getByLabelText("Capacity %"), "60");
+    await userEvent.click(save());
+
+    expect(onSave).toHaveBeenCalledWith({ effectiveFrom: "2026-04-01", capacityPercent: 60 });
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("seeds the form from initial so an edit starts from the current entry", () => {
+    render(
+      <AvailabilityFormDialog
+        open
+        title="Edit availability"
+        initial={{ effectiveFrom: "2026-01-15", capacityPercent: 80 }}
+        onClose={() => {}}
+        onSave={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("Effective from")).toHaveValue("2026-01-15");
+    expect(screen.getByLabelText("Capacity %")).toHaveValue(80);
+  });
+
+  it("cannot save without a date, because an empty one fails binding before validation", async () => {
+    const onSave = vi.fn();
+    render(<AvailabilityFormDialog open title="Add availability" onClose={() => {}} onSave={onSave} />);
+
+    expect(save()).toBeDisabled();
+    await userEvent.type(screen.getByLabelText("Effective from"), "2026-04-01");
+    expect(save()).toBeEnabled();
+  });
+
+  it("shows a server validation failure and keeps the dialog open", async () => {
+    const onSave = vi
+      .fn()
+      .mockRejectedValue(validationFailure("Capacity percent must be between 0 and 100."));
+    const onClose = vi.fn();
+    render(
+      <AvailabilityFormDialog
+        open
+        title="Edit availability"
+        initial={{ effectiveFrom: "2026-04-01", capacityPercent: 140 }}
+        onClose={onClose}
+        onSave={onSave}
+      />,
+    );
+
+    await userEvent.click(save());
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Capacity percent must be between 0 and 100.",
+    );
+    expect(onClose).not.toHaveBeenCalled();
+  });
+});
+
+describe("EmployeeSkillFormDialog", () => {
+  it("links a catalog skill with its level and years", async () => {
+    const onSave = vi.fn().mockResolvedValue({});
+    render(<EmployeeSkillFormDialog open title="Add skill" onClose={() => {}} onSave={onSave} />);
+
+    await userEvent.click(screen.getByLabelText("Skill"));
+    await userEvent.click(screen.getByRole("option", { name: "React" }));
+    await userEvent.click(screen.getByLabelText("Level"));
+    await userEvent.click(screen.getByRole("option", { name: "Expert" }));
+    await userEvent.clear(screen.getByLabelText("Years"));
+    await userEvent.type(screen.getByLabelText("Years"), "7");
+    await userEvent.click(save());
+
+    expect(onSave).toHaveBeenCalledWith({
+      skillId: "skill-react",
+      level: "Expert",
+      yearsExperience: 7,
+    });
+  });
+
+  it("cannot save until a catalog skill is picked", () => {
+    render(<EmployeeSkillFormDialog open title="Add skill" onClose={() => {}} onSave={vi.fn()} />);
+
+    expect(save()).toBeDisabled();
+  });
+
+  it("locks the skill on edit and sends the row's own id back", async () => {
+    const onSave = vi.fn().mockResolvedValue({});
+    render(
+      <EmployeeSkillFormDialog
+        open
+        title="Edit skill"
+        initial={{ skillId: "skill-dotnet", level: "Intermediate", yearsExperience: 3 }}
+        lockedSkillName=".NET"
+        onClose={() => {}}
+        onSave={onSave}
+      />,
+    );
+
+    // Disabled, not absent: the row is about this skill, and the API assigns the level and the
+    // years only — an editable picker would look like it worked and change nothing.
+    const skill = screen.getByLabelText("Skill");
+    expect(skill).toHaveValue(".NET");
+    expect(skill).toBeDisabled();
+
+    await userEvent.click(screen.getByLabelText("Level"));
+    await userEvent.click(screen.getByRole("option", { name: "Advanced" }));
+    await userEvent.click(save());
+
+    expect(onSave).toHaveBeenCalledWith({
+      skillId: "skill-dotnet",
+      level: "Advanced",
+      yearsExperience: 3,
+    });
+  });
+
+  it("shows a server validation failure and keeps the dialog open", async () => {
+    const onSave = vi.fn().mockRejectedValue(validationFailure("Employee already has this skill."));
+    const onClose = vi.fn();
+    render(
+      <EmployeeSkillFormDialog
+        open
+        title="Add skill"
+        initial={{ skillId: "skill-react" }}
+        onClose={onClose}
+        onSave={onSave}
+      />,
+    );
+
+    await userEvent.click(save());
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Employee already has this skill.");
     expect(onClose).not.toHaveBeenCalled();
   });
 });

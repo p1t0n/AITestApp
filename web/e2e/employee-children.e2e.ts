@@ -2,7 +2,8 @@ import { expect, test } from "@playwright/test";
 import { addVirtualAuthenticator, signUp, uniqueEmail } from "./passkey";
 
 /**
- * The languages / qualifications / experiences forms (P1T-142).
+ * The languages / qualifications / experiences forms (P1T-142), and availability / employee skills
+ * (P1T-156).
  *
  * These endpoints had no caller in the SPA until this slice, and one of them was dead for its whole
  * life: `ExperiencesController` had no `[ApiController]`, so every JSON POST and PUT bound an empty
@@ -113,6 +114,53 @@ test.describe("employee child editing", () => {
     await page.goto(detailUrl);
     await page.getByRole("button", { name: "Delete BSc Computer Science" }).click();
     await expect(page.getByText("BSc Computer Science")).toBeHidden();
+  });
+
+  test("availability and a skill are added, then edited through the PUTs that had no caller", async ({
+    page,
+  }) => {
+    await createEmployee(page, "Ada", "Lovelace");
+
+    await page.getByRole("button", { name: "Add availability" }).click();
+    const availDialog = page.getByRole("dialog");
+    await availDialog.getByLabel("Effective from").fill("2026-04-01");
+    await availDialog.getByLabel("Capacity %").fill("60");
+    await availDialog.getByRole("button", { name: "Save" }).click();
+    await expect(availDialog).toBeHidden();
+
+    const availRow = page.getByText("from 2026-04-01").locator("..");
+    await expect(availRow).toContainText("60%");
+
+    // The edit is the point of the slice: `PUT /api/availability/{id}` shipped with the domain and
+    // had no caller until now, which is exactly how the dead `ExperiencesController` above survived.
+    await page.getByRole("button", { name: "Edit availability from 2026-04-01" }).click();
+    const availEdit = page.getByRole("dialog");
+    await expect(availEdit.getByLabel("Capacity %")).toHaveValue("60");
+    await availEdit.getByLabel("Capacity %").fill("40");
+    await availEdit.getByRole("button", { name: "Save" }).click();
+    await expect(availEdit).toBeHidden();
+    await expect(availRow).toContainText("40%");
+
+    // The catalog is whatever the dev seed put there, so take the first option.
+    await page.getByRole("button", { name: "Add skill" }).click();
+    const skillDialog = page.getByRole("dialog");
+    await skillDialog.getByLabel("Skill").click();
+    const skillName = (await page.getByRole("option").first().textContent()) ?? "";
+    await page.getByRole("option").first().click();
+    await skillDialog.getByLabel("Years").fill("4");
+    await skillDialog.getByRole("button", { name: "Save" }).click();
+    await expect(skillDialog).toBeHidden();
+    await expect(page.getByText(`${skillName} · Intermediate · 4y`)).toBeVisible();
+
+    await page.getByText(`${skillName} · Intermediate · 4y`).click();
+    const skillEdit = page.getByRole("dialog");
+    // Locked, because `EmployeeSkillService.UpdateAsync` assigns the level and the years only.
+    await expect(skillEdit.getByLabel("Skill")).toBeDisabled();
+    await skillEdit.getByLabel("Level").click();
+    await page.getByRole("option", { name: "Expert" }).click();
+    await skillEdit.getByRole("button", { name: "Save" }).click();
+    await expect(skillEdit).toBeHidden();
+    await expect(page.getByText(`${skillName} · Expert · 4y`)).toBeVisible();
   });
 
   test("a validation failure from the API is shown in the child dialog, not swallowed", async ({
