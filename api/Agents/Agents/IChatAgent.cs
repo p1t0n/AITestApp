@@ -19,7 +19,10 @@ public interface IChatAgent
 /// the real response model id and the summed model wall-clock time across the run's calls.
 /// <see cref="Iterations"/> and <see cref="ToolSequence"/> arrive from the same seam (P1T-144)
 /// and say WHY a run cost what it did — how many model calls it took and which tools it called,
-/// in order.</summary>
+/// in order. <see cref="Degradation"/> arrives from the Runtime Budget (P1T-147) and states, when
+/// set, that the run was cut short of the tool calls it wanted — absence stated, never papered
+/// over. Prose answers also carry the note in <see cref="Text"/>; schema-constrained ones cannot,
+/// so this field is the only record they have.</summary>
 public sealed record AgentReply(
     string Text,
     long InputTokens,
@@ -28,4 +31,5 @@ public sealed record AgentReply(
     string? ModelId = null,
     long LatencyMs = 0,
     int Iterations = 0,
-    string? ToolSequence = null);
+    string? ToolSequence = null,
+    string? Degradation = null);

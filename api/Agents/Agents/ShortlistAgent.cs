@@ -107,6 +107,7 @@ public sealed class ShortlistAgent
             run.ModelId ?? response.ModelId,
             run.LatencyMs > 0 ? run.LatencyMs : clock.ElapsedMilliseconds,
             run.Iterations,
-            run.ToolSequence);
+            run.ToolSequence,
+            run.Degradation);
     }
 }

@@ -84,7 +84,8 @@ public sealed class MatchAgent : IChatAgent
             run.ModelId,
             run.LatencyMs,
             run.Iterations,
-            run.ToolSequence);
+            run.ToolSequence,
+            run.Degradation);
     }
 
     private async Task<AIAgent> GetAgentAsync(CancellationToken ct)

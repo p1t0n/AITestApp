@@ -134,7 +134,8 @@ public sealed class InterviewKitAgent
             run.ModelId,
             run.LatencyMs,
             run.Iterations,
-            run.ToolSequence);
+            run.ToolSequence,
+            run.Degradation);
 
         return new InterviewKitOutcome(reply, questionsText, capture.Cv);
     }

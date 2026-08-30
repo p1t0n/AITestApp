@@ -135,7 +135,8 @@ public sealed class BenchReportService(
                 run.ModelId,
                 run.LatencyMs,
                 run.Iterations,
-                run.ToolSequence);
+                run.ToolSequence,
+                run.Degradation);
 
             return string.IsNullOrWhiteSpace(response.Text)
                 ? (BenchStatsComposer.FallbackAnswer(stats), reply)

@@ -1,7 +1,8 @@
 # Agent cost budgets: the roster-qa regression and the floors that should have caught it
 
-> **Status (2026-08-30):** step 1 of §4 has landed (P1T-144): the deterministic Cost Floors run on
-> every push and the usage ledger records `Iterations` + `ToolSequence`. Values and how to
+> **Status (2026-08-30):** steps 1, 2 and 4 of §4 have landed. P1T-144: the deterministic Cost
+> Floors run on every push and the usage ledger records `Iterations` + `ToolSequence`. P1T-145:
+> `skill_list` filters and pages. P1T-147: every agent run is bounded by a Runtime Budget (§3.2). Values and how to
 > re-measure them: `manuals/agent-eval-baselines.md` §4. Steps 2-5 are still open. Measurements below are real —
 > taken from the `AgentUsages` ledger and from one live traced run of the roster-qa endpoint on
 > the seeded 45-employee demo roster. Vocabulary lives in `CONTEXT.md` → *Cost & budgets*.
@@ -136,21 +137,56 @@ not waste.
 
 ### 3.2 How the budget stops the loop
 
-A token-budget `DelegatingChatClient` placed *inside* the function-invocation loop — the same seam
-`MeteringChatClient` already occupies. It sums input tokens per run; once over budget it clones
-`ChatOptions` with `ToolMode = None` and appends an instruction to answer from what is already in
-hand. The model then writes a real closing answer, which carries a Degradation note.
-
-`FunctionInvokingChatClient.MaximumIterationsPerRequest` is the backstop for the case a token
-ceiling cannot catch: a long loop of individually tiny calls.
-
-Both are reachable without forking: `ChatClientAgentOptions.UseProvidedChatClientAsIs` (Agents.AI
-1.10.0) lets us hand `ChatClientAgent` a pipeline we built, instead of its default decorators.
-Clone `ChatOptions` before mutating — the in-loop precedent is
-`MessageInjectingChatClient.UpdateOptionsForNextIteration`.
+**Shipped (P1T-147)** as `RuntimeBudgetChatClient`, a `DelegatingChatClient` placed *inside* the
+function-invocation loop — the same seam `MeteringChatClient` already occupies, so it observes
+every iteration rather than only a run's first and last call. Before each model call it reads what
+the run has already spent; once over budget it clones `ChatOptions` with `ToolMode = None` and
+appends a Closing Turn instructing the model to answer from what is already in hand. The model
+then writes a real closing answer, which carries a Degradation note.
 
 Rejected: aborting the run and salvaging the last assistant text. It throws away work already
 paid for and produces a worse answer than the model would write itself.
+
+**The run boundary is the `MeteringScope`** every agent already opens around a run (P1T-95). That
+scope is exactly the unit a per-run ceiling must be measured over, and it is ambient, so one
+budget wrapper serves concurrent runs without leaking spend between them. It also means the
+Capture-Verify retry (P1T-130) spends the *same* budget as the first attempt rather than a fresh
+one — which is the wanted behaviour: a run that burned its ceiling without grounding anything
+should not be given a second ceiling to burn.
+
+**The budget hangs off `ResolveAgentChatClient`**, the one place every agent asks for a model. An
+agent cannot opt out of its ceiling, a new agent inherits the default without anyone remembering
+to wire it, and resume-ingestion is covered with no agent-specific code. The wrapper is per-agent
+(budgets differ); the model client under it stays shared.
+
+Two things the seam deliberately does *not* do:
+
+- It stands down when there is nothing to withdraw — no tools on offer, or tools already off. The
+  code-driven agents (match, shortlist, roster-scan) send no tools at all, so a Closing Turn there
+  would be a pointless extra instruction on a call that was never going to loop.
+- It appends the prose note only when the run did not ask for a JSON schema. Appending prose to a
+  schema-constrained response would break the caller's parse, so resume-ingestion and match read
+  the same Degradation off `AgentReply.Degradation` instead.
+
+#### Why both ceilings live in the seam
+
+The iteration ceiling was planned as `FunctionInvokingChatClient.MaximumIterationsPerRequest` and
+is instead a second check in the same client. Two reasons, found while wiring it:
+
+1. Reaching MAF's limit stops the loop mid-flight and can hand back an *unanswered* tool call —
+   the truncation this ticket exists to avoid. The seam's ceiling degrades the same way the token
+   ceiling does: tools withdrawn, real closing answer.
+2. Setting it at all requires `ChatClientAgentOptions.UseProvidedChatClientAsIs`, which drops
+   *every* default decorator, not just function invocation. In Agents.AI 1.10.0 that stack also
+   holds `AIContextProviderChatClient`, `MessageInjectingChatClient` and
+   `NonApprovalRequiredFunctionBypassingChatClient` — all internal types we cannot reconstruct.
+   Trading a working approval bypass for a hard iteration stop, across six agents, is a bad deal.
+
+`ChatClientAgentRunOptions.ChatClientFactory` is not an alternative: it decorates the agent's
+already-built pipeline, so it lands *outside* the loop and sees one call per run.
+
+Clone `ChatOptions` before mutating — the loop reuses the caller's instance, so flipping it in
+place would silently disarm roster-qa's first-call tool forcing well past the current call.
 
 ### 3.3 The floors run without a model
 
@@ -194,7 +230,9 @@ Sequential, each landing on its own:
    along with P1T-148, which re-runs the eval twice anyway.
 3. **Tool Allowlist** (P1T-146). Per-agent read-tool subset in `McpToolSource`; roster-qa gets 4 of 11.
    Ratchet the Baseline Prompt Size ceiling down.
-4. **Budget seam** (P1T-147). §3.2, applied to every agent. resume-ingestion is covered for free.
+4. **Budget seam** (P1T-147) — **shipped**. §3.2, applied to every agent at
+   `ResolveAgentChatClient`. resume-ingestion is covered for free. Budgets are configuration
+   (`AgentBudgets` in `api/Agents/appsettings.json`), not constants.
 5. **Convergence** (P1T-148). Instructions and descriptions so roster-qa answers in ~3 calls rather than 10.
    Cost Floor to 8,000. Last, because it needs the Tool-Selection Eval re-run twice.
 
