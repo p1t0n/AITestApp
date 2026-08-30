@@ -15,6 +15,12 @@ namespace CvManager.Agents.Mcp;
 /// <para>Within that surface the agent's <see cref="AgentToolAllowlist"/> narrows further to the
 /// tools it actually uses (P1T-146). Applied here rather than in each agent so the narrowing is
 /// one declaration per identity and cannot be widened downstream.</para>
+///
+/// <para>Since P1T-149 the server narrows the same set first, off the <c>mcp:tool:*</c> scopes on
+/// the agent's Keycloak client — so in a correctly provisioned realm this filter has nothing left
+/// to remove. It stays because it is not redundant where it matters: against a stale realm import
+/// the narrowing degrades to P1T-146's behaviour instead of vanishing, and the Baseline Prompt
+/// Size floor measures the allowlist with no MCP server standing behind it at all.</para>
 /// </summary>
 public sealed class McpToolSource : IMcpToolSource, IAsyncDisposable
 {

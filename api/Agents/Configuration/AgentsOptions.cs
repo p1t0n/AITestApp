@@ -53,9 +53,13 @@ public sealed class McpClientAuthOptions
     /// it is actually shown. Empty or absent means "everything the token carries" — narrowing is
     /// always an explicit act, never a silent side effect of a missing key.
     ///
-    /// <para>This sits on the identity because that is where it belongs: a scope gates read
-    /// against write, and this gates <i>which</i> read tools. Enforcing it in the client is the
-    /// stand-in — P1T-149 moves it onto the agent's Keycloak identity and the MCP host.</para>
+    /// <para>Since P1T-149 the identity carries this for real: the same set is
+    /// <c>mcp:tool:&lt;name&gt;</c> scopes on the agent's Keycloak client, and the MCP server —
+    /// not this key — is what narrows <c>tools/list</c> and refuses a call outside it. This stays
+    /// as the local echo: it keeps the narrowing working against a stale realm import, and it is
+    /// what the Baseline Prompt Size floor measures, which runs with no MCP server behind it.
+    /// Both are asserted against <c>CostFloors.AgentToolAllowlists</c> so they cannot drift.
+    /// See <c>manuals/mcp-tool-grants.md</c>.</para>
     /// </summary>
     public string[] Tools { get; set; } = [];
 }

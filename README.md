@@ -153,7 +153,8 @@ The MCP server binds `http://localhost:5100` (its launch profile).
 
 AI agents built on the **Microsoft Agent Framework** that *consume* the MCP server (they hold
 a `mcp:read` token from the `agent-roster-qa` Keycloak service-account client, so the MCP server
-shows them read tools only). Needs a free **Gemini** API key (https://aistudio.google.com/apikey). All other dev secrets
+shows them read tools only — and, since that client also carries per-tool `mcp:tool:*` grants,
+only the four read tools Roster Q&A actually uses). Needs a free **Gemini** API key (https://aistudio.google.com/apikey). All other dev secrets
 (the session JWT signing key, the dev Keycloak agent client secrets) ship in
 `appsettings.Development.json` and pair with the committed dev realm — Production refuses to boot
 on any placeholder and takes real values from the environment (`Auth__Jwt__SigningKey`,
@@ -266,6 +267,13 @@ Each tool requires a scope: read-only tools need `mcp:read`, create/update need 
 deletes need `mcp:admin`. The server hides tools the token isn't scoped for and forbids the call.
 Failures return a structured error (`not_found` / `conflict` / `validation` with per-field detail)
 so an agent can self-correct.
+
+A second, finer axis rides on the same claim: an `mcp:tool:<name>` scope grants ONE tool, and a
+token carrying any of them is narrowed to exactly those — `tools/list` advertises only them and a
+call outside them is refused with `forbidden`. Grants only ever narrow what the capability scopes
+already carry, and a token with none is narrowed by nothing, so the interactive client keeps the
+whole surface. Each agent's Keycloak client carries its own grants, which is how `agent-roster-qa`
+is shown 4 tools rather than all 11. See `manuals/mcp-tool-grants.md`.
 
 ## Tests
 
