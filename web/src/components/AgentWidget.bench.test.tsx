@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import AgentWidget from "./AgentWidget";
+import { selectAgentSurface } from "../test/agentSurface";
 import type { AgentDock } from "./useAgentDock";
 import type { BenchReportResponse } from "../api";
 
@@ -46,7 +47,7 @@ async function openBenchTab() {
       <AgentWidget dock={dock} isNarrow={false} />
     </MemoryRouter>,
   );
-  await user.click(screen.getByRole("tab", { name: "Bench" }));
+  await selectAgentSurface(user, "Bench report");
   return user;
 }
 

@@ -245,3 +245,19 @@ The ordered list of tools one agent run actually called, recorded on its usage r
 iteration count. Turns "this call cost 146,647 tokens" into a diagnosable row: the expensive
 payload is named, not guessed at.
 _Avoid_: tool trace, call log (those are the OTel spans, which are in-memory only)
+
+### Agent dock
+
+**Agent Surface**:
+One place in the agent dock where a person does agent work — Roster Q&A, Tailor CV, Match,
+Interview kit, Shortlist, Staffing, Roster scan, Bench report, Resume ingest. Nine of them, and the
+picker names them in full because it shows one label at a time rather than dividing the panel by
+their count. Surfaces are grouped by what they act on (the roster, one person, a role, the system),
+which is the structure the flat tab strip was hiding.
+_Avoid_: tab, mode
+
+**Token Ledger**:
+The Usage view — the user's spend against their caps, plus the per-agent breakdown. Deliberately
+not an Agent Surface: it spends nothing and does nothing, so it lives in the dock header as a peek
+you open and close, not as a place among the things that bill you.
+_Avoid_: usage tab, quota screen

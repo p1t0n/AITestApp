@@ -3,6 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import AgentWidget from "./AgentWidget";
+import { selectAgentSurface } from "../test/agentSurface";
 import type { AgentDock } from "./useAgentDock";
 import type {
   HandoffPackage,
@@ -190,7 +191,7 @@ async function openStaffingTab() {
       <AgentWidget dock={dock} isNarrow={false} />
     </MemoryRouter>,
   );
-  await user.click(screen.getByRole("tab", { name: "Staffing" }));
+  await selectAgentSurface(user, "Staffing");
   return user;
 }
 
