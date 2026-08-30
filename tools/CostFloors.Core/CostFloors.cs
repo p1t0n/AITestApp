@@ -40,7 +40,7 @@ public static class CostFloors
 
             // 12.7% of the same run. No paging by design (the roster IS the answer), so the cost
             // is bounded by roster size; the Tool Allowlist (P1T-146) is what keeps it away from
-            // agents with no business listing everyone.
+            // agents with no business listing everyone — only roster-qa and bench-report see it.
             ["employee_list"] = 2_805,
 
             ["employee_get"] = 2_064,
@@ -174,14 +174,51 @@ public static class CostFloors
 
     /// <summary>
     /// Ceiling on the WHOLE read surface an <c>mcp:read</c> token is shown — every read tool's
-    /// schema text. roster-qa is the only agent still handed all of it; P1T-146 cuts it to 4 of 11.
+    /// schema text. Since P1T-146 no agent is handed all of it, but the number still guards the
+    /// surface itself: it is the pool every Tool Allowlist is drawn from, and the ceiling a new
+    /// unmeasured read tool has to fit inside.
     ///
-    /// <para>3,861 → 3,993 with P1T-145's <c>skill_list</c> re-baseline above, and for the same
-    /// reason: the schema half is paid per iteration, the result half is paid per iteration too
-    /// AND is an order of magnitude larger. P1T-146 takes this number down by removing tools, not
-    /// by shortening them.</para>
+    /// <para>3,861 → 3,993 with P1T-145's <c>skill_list</c> re-baseline above: the schema half is
+    /// paid per iteration. P1T-146 takes what any one agent pays down by removing tools from its
+    /// allowlist, not by shortening the surface.</para>
     /// </summary>
     public const int ReadToolSurfaceCeiling = 3_993;
+
+    /// <summary>
+    /// Each agent's <b>Tool Allowlist</b> (P1T-146), keyed by the agent's <c>McpAuth:&lt;agent&gt;</c>
+    /// config key. THE declaration of what each agent may see: <c>Agents.Tests</c> offers an agent
+    /// exactly this surface when measuring its Baseline Prompt Size, and asserts the shipped
+    /// <c>appsettings.json</c> matches it — so the config and the measured cost cannot drift apart.
+    ///
+    /// <para>Every agent is listed, including the ones that already narrowed themselves in code
+    /// (Match/Interview Kit to <c>cv_get</c>, Tailoring to <c>cv_get</c> +
+    /// <c>style_exemplar_search</c>): the allowlist is the outer bound on the identity, the
+    /// in-agent filter is which of those tools that turn offers. roster-qa is the one that moves
+    /// — 11 tools down to the 4 the traced run provably called.</para>
+    /// </summary>
+    public static readonly IReadOnlyDictionary<string, IReadOnlySet<string>> AgentToolAllowlists =
+        new Dictionary<string, IReadOnlySet<string>>
+        {
+            // The 26% line item. roster_shortlist_search, roster_digest_list, category_list,
+            // category_tree, availability_list and employee_get were paid for ten times and never
+            // called; availability facts come off cv_get, which carries them.
+            ["roster-qa"] = new HashSet<string>
+                { "roster_semantic_search", "skill_list", "employee_list", "cv_get" },
+            ["cv-tailoring"] = new HashSet<string> { "cv_get", "style_exemplar_search" },
+            ["match"] = new HashSet<string> { "cv_get" },
+            ["shortlist"] = new HashSet<string> { "roster_shortlist_search" },
+            ["interview-kit"] = new HashSet<string> { "cv_get" },
+            ["bench-report"] = new HashSet<string> { "employee_list" },
+
+            // The one mcp:write identity. Not skill_create (it proposes catalog additions, humans
+            // approve them) and no Availability tools — resumes do not state capacity.
+            ["resume-ingestion"] = new HashSet<string>
+            {
+                "skill_list", "employee_create_draft", "language_add", "employee_skill_add",
+                "qualification_add", "experience_add",
+            },
+            ["roster-scan"] = new HashSet<string> { "roster_digest_list" },
+        };
 
     /// <summary>
     /// Per-agent INSTRUCTION ceilings — the prompt an agent brings itself, before any tool schema
@@ -207,18 +244,20 @@ public static class CostFloors
     /// agent is actually shown, which is what one model call costs it before a single tool result
     /// comes back — and what Turn Amplification multiplies on every iteration.
     ///
-    /// <para>Only agents that are handed tools appear here. Most already narrow the surface
-    /// themselves (Match and Interview Kit to <c>cv_get</c>, Tailoring to <c>cv_get</c> +
-    /// <c>style_exemplar_search</c>); roster-qa is the outlier that takes all 11, which is the
-    /// 26% line item in the traced run and P1T-146's target.</para>
+    /// <para>Only agents that are handed tools appear here, measured against their
+    /// <see cref="AgentToolAllowlists"/> surface. Most already narrowed themselves in code as well
+    /// (Match and Interview Kit to <c>cv_get</c>, Tailoring to <c>cv_get</c> +
+    /// <c>style_exemplar_search</c>), so P1T-146 left their numbers where they were; roster-qa was
+    /// the outlier taking all 11, and it is the one that moved.</para>
     /// </summary>
     public static readonly IReadOnlyDictionary<string, int> BaselinePromptSizeCeilings =
         new Dictionary<string, int>
         {
-            // 416 instructions + all 11 read tool schemas — 3,993 of it is schema the agent
-            // never uses. Carries P1T-145's +132 on skill_list's schema (see ToolSchemaCeilings);
-            // P1T-146 shows it 4 tools instead, which should land near 2,300.
-            ["RosterQaAgent"] = 4_409,
+            // Was 4,409: 416 instructions + all 11 read tool schemas, 3,993 of it schema the agent
+            // never used. P1T-146's allowlist shows it 4 tools instead. At the traced run's 10
+            // iterations that is 44,090 → 18,760 re-sent tokens. P1T-148 moves it again by
+            // rewriting the instructions for Convergence.
+            ["RosterQaAgent"] = 1_876,
             ["CvTailoringAgent"] = 1_187,
             // +132 for P1T-145's skill_list schema, which this agent is also shown.
             ["ResumeIngestionAgent"] = 3_025,

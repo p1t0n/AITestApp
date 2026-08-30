@@ -15,18 +15,23 @@ namespace CvManager.Agents.Tests;
 /// </summary>
 public class AgentMcpIdentityRegistrationTests
 {
-    private static IServiceProvider BuildProvider(CapturingHandler capture, params (string Key, string ClientId)[] agents)
+    private static IServiceProvider BuildProvider(
+        CapturingHandler capture, params (string Key, string ClientId, string[] Tools)[] agents)
     {
         var settings = new Dictionary<string, string?>
         {
             ["McpServer:BaseUrl"] = "http://localhost:5100",
         };
-        foreach (var (key, clientId) in agents)
+        foreach (var (key, clientId, tools) in agents)
         {
             settings[$"McpAuth:{key}:Authority"] = "http://localhost:8080/realms/cv-manager";
             settings[$"McpAuth:{key}:ClientId"] = clientId;
             settings[$"McpAuth:{key}:ClientSecret"] = $"{clientId}-secret";
             settings[$"McpAuth:{key}:Scope"] = "mcp:read";
+            for (var i = 0; i < tools.Length; i++)
+            {
+                settings[$"McpAuth:{key}:Tools:{i}"] = tools[i];
+            }
         }
 
         var config = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
@@ -36,7 +41,7 @@ public class AgentMcpIdentityRegistrationTests
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IHttpClientFactory>(new SingleHandlerHttpClientFactory(capture));
         services.AddOptions<McpServerOptions>().Bind(config.GetSection(McpServerOptions.Section));
-        foreach (var (key, _) in agents)
+        foreach (var (key, _, _) in agents)
         {
             services.AddAgentMcpIdentity(config, key);
         }
@@ -48,7 +53,7 @@ public class AgentMcpIdentityRegistrationTests
     public async Task Resolves_a_keyed_token_provider_that_authenticates_as_the_configured_client()
     {
         var capture = new CapturingHandler(accessToken: "tok-rqa");
-        var sp = BuildProvider(capture, ("roster-qa", "agent-roster-qa"));
+        var sp = BuildProvider(capture, ("roster-qa", "agent-roster-qa", []));
 
         var provider = sp.GetRequiredKeyedService<IAccessTokenProvider>("roster-qa");
         var token = await provider.GetTokenAsync();
@@ -63,8 +68,8 @@ public class AgentMcpIdentityRegistrationTests
     {
         var capture = new CapturingHandler(accessToken: "tok");
         var sp = BuildProvider(capture,
-            ("roster-qa", "agent-roster-qa"),
-            ("cv-tailoring", "agent-cv-tailoring"));
+            ("roster-qa", "agent-roster-qa", []),
+            ("cv-tailoring", "agent-cv-tailoring", []));
 
         var rosterQa = sp.GetRequiredKeyedService<IAccessTokenProvider>("roster-qa");
         var cvTailoring = sp.GetRequiredKeyedService<IAccessTokenProvider>("cv-tailoring");
@@ -83,8 +88,8 @@ public class AgentMcpIdentityRegistrationTests
     {
         var capture = new CapturingHandler(accessToken: "tok");
         var sp = BuildProvider(capture,
-            ("roster-qa", "agent-roster-qa"),
-            ("cv-tailoring", "agent-cv-tailoring"));
+            ("roster-qa", "agent-roster-qa", []),
+            ("cv-tailoring", "agent-cv-tailoring", []));
 
         var rosterQaTools = sp.GetRequiredKeyedService<IMcpToolSource>("roster-qa");
         var cvTailoringTools = sp.GetRequiredKeyedService<IMcpToolSource>("cv-tailoring");
@@ -92,5 +97,29 @@ public class AgentMcpIdentityRegistrationTests
         rosterQaTools.Should().NotBeNull();
         cvTailoringTools.Should().NotBeNull();
         cvTailoringTools.Should().NotBeSameAs(rosterQaTools);
+    }
+
+    [Fact]
+    public void Each_agents_tool_source_carries_its_own_configured_tool_allowlist()
+    {
+        var capture = new CapturingHandler(accessToken: "tok");
+        var sp = BuildProvider(capture,
+            ("roster-qa", "agent-roster-qa", ["cv_get", "skill_list"]),
+            ("cv-tailoring", "agent-cv-tailoring", ["style_exemplar_search"]));
+
+        sp.GetRequiredKeyedService<IMcpToolSource>("roster-qa").Should().BeOfType<McpToolSource>()
+            .Which.Allowlist.ToolNames.Should().BeEquivalentTo(["cv_get", "skill_list"]);
+        sp.GetRequiredKeyedService<IMcpToolSource>("cv-tailoring").Should().BeOfType<McpToolSource>()
+            .Which.Allowlist.ToolNames.Should().BeEquivalentTo(["style_exemplar_search"]);
+    }
+
+    [Fact]
+    public void An_agent_with_no_configured_tools_keeps_the_whole_surface_its_token_carries()
+    {
+        var capture = new CapturingHandler(accessToken: "tok");
+        var sp = BuildProvider(capture, ("roster-qa", "agent-roster-qa", []));
+
+        sp.GetRequiredKeyedService<IMcpToolSource>("roster-qa").Should().BeOfType<McpToolSource>()
+            .Which.Allowlist.ShowsEverything.Should().BeTrue();
     }
 }
