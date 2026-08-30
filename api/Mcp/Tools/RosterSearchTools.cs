@@ -11,20 +11,20 @@ public class RosterSearchTools
     [McpServerTool(Name = "roster_semantic_search", ReadOnly = true, Destructive = false),
      Description(
          "Find employees by the MEANING of their experience — ONE free-form question searched " +
-         "semantically over their career narratives (professional summaries, role blocks, " +
-         "achievement bullets). Use this for capability questions like 'who has built real-time " +
-         "payments systems' or 'anyone with fintech + team-lead experience', where the answer " +
-         "lives in prose rather than skill tags. It searches for PEOPLE, and only people. Do NOT " +
-         "use it when the ask is about WORDING — phrasing examples, well-written or exemplar " +
-         "bullets, how something is best described — that is style_exemplar_search, which returns " +
-         "anonymized exemplar bullets; do NOT use it for a job description with several must-haves " +
+         "semantically over their career narratives. Use this for capability questions like " +
+         "'who has built real-time payments systems' or 'anyone with fintech + team-lead " +
+         "experience', where the answer lives in prose rather than skill tags. It searches for " +
+         "PEOPLE, and only people. Do NOT use it when the ask is about WORDING — phrasing " +
+         "examples, well-written or exemplar bullets, how something is best described — that is " +
+         "style_exemplar_search; do NOT use it for a job description with several must-haves " +
          "— roster_shortlist_search searches each requirement and ranks coverage-first with " +
          "per-requirement evidence; do NOT use it to sweep every employee — roster_digest_list " +
          "pages the whole roster in digest form; do NOT use it for exact facts (specific skill " +
          "levels, availability dates, contact info) — employee_get and employee_list hold those. " +
-         "Input: query plus optional filters " +
-         "(availableOn, skillIds, location, minYears, topK); e.g. " +
-         "{\"query\": \"led a real-time payments platform migration\", \"topK\": 5}. Returns " +
+         "For a compound question combine its filters — location, skillIds, availableOn, " +
+         "minYears — into ONE call, never a roster sweep filtered by hand. Input: query, those " +
+         "filters, topK; e.g. {\"query\": \"led a payments platform migration\", " +
+         "\"location\": \"London\"}. Returns " +
          "the best-matching employees, each with a relevance score (0-1) and the evidence " +
          "snippets that matched — NOT full CVs (drill into cv_get) and NOT per-requirement " +
          "coverage. Returns an empty list when nothing is relevant."),

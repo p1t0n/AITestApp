@@ -224,6 +224,12 @@ How few model calls an agent needs to reach its answer. Independent of cost: a c
 still be expensive, and a cheap run can still thrash.
 _Avoid_: efficiency, loop length
 
+**Convergent Path**:
+The declared tool sequence a converged run of a named question makes, in order. Committed next to
+the Cost Floors so the whole run can be priced without a model — a longer path is a red test, not
+a bill — and so the shape of a run is reviewable in a diff.
+_Avoid_: happy path, expected trace
+
 **Tool Sequence**:
 The ordered list of tools one agent run actually called, recorded on its usage row next to the
 iteration count. Turns "this call cost 146,647 tokens" into a diagnosable row: the expensive
