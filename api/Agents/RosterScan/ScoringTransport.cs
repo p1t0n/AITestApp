@@ -121,11 +121,11 @@ public sealed class QueuedSyncScoringTransport : IScoringTransport
         };
 
         var call = await CallWithPacingAndRetryAsync(prompt, options, ct);
-        var reply = ToReply(call.Response, call.ModelId, call.LatencyMs);
+        var reply = ToReply(call.Response, call.ModelId, call.LatencyMs, call.Iterations, call.ToolSequence);
         return new ScoredChunk(MapResults(chunk, call.Response.Text), reply);
     }
 
-    private async Task<(ChatResponse Response, string? ModelId, long LatencyMs)> CallWithPacingAndRetryAsync(
+    private async Task<(ChatResponse Response, string? ModelId, long LatencyMs, int Iterations, string? ToolSequence)> CallWithPacingAndRetryAsync(
         string prompt, ChatOptions options, CancellationToken ct)
     {
         for (var attempt = 1; ; attempt++)
@@ -139,8 +139,10 @@ public sealed class QueuedSyncScoringTransport : IScoringTransport
                     [new ChatMessage(ChatRole.System, Instructions), new ChatMessage(ChatRole.User, prompt)],
                     options,
                     ct);
-                var (modelId, latencyMs) = metering.Snapshot();
-                return (response, modelId, latencyMs > 0 ? latencyMs : clock.ElapsedMilliseconds);
+                var run = metering.Snapshot();
+                return (response, run.ModelId,
+                    run.LatencyMs > 0 ? run.LatencyMs : clock.ElapsedMilliseconds,
+                    run.Iterations, run.ToolSequence);
             }
             catch (Exception ex) when (StaffingRetryPolicy.IsRateLimit(ex))
             {
@@ -226,13 +228,16 @@ public sealed class QueuedSyncScoringTransport : IScoringTransport
         }
     }
 
-    private static AgentReply ToReply(ChatResponse response, string? modelId, long latencyMs) => new(
+    private static AgentReply ToReply(
+        ChatResponse response, string? modelId, long latencyMs, int iterations, string? toolSequence) => new(
         response.Text,
         response.Usage?.InputTokenCount ?? 0,
         response.Usage?.OutputTokenCount ?? 0,
         response.Usage?.TotalTokenCount ?? 0,
         modelId ?? response.ModelId,
-        latencyMs);
+        latencyMs,
+        iterations,
+        toolSequence);
 
     internal sealed record ChunkAssessments(
         [property: JsonPropertyName("assessments")] IReadOnlyList<ChunkAssessment?>? Assessments);

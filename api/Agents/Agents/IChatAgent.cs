@@ -16,11 +16,16 @@ public interface IChatAgent
 
 /// <summary>An agent's answer plus the token usage the model reported for the call.
 /// <see cref="ModelId"/> and <see cref="LatencyMs"/> arrive from the metering seam (P1T-95):
-/// the real response model id and the summed model wall-clock time across the run's calls.</summary>
+/// the real response model id and the summed model wall-clock time across the run's calls.
+/// <see cref="Iterations"/> and <see cref="ToolSequence"/> arrive from the same seam (P1T-144)
+/// and say WHY a run cost what it did — how many model calls it took and which tools it called,
+/// in order.</summary>
 public sealed record AgentReply(
     string Text,
     long InputTokens,
     long OutputTokens,
     long TotalTokens,
     string? ModelId = null,
-    long LatencyMs = 0);
+    long LatencyMs = 0,
+    int Iterations = 0,
+    string? ToolSequence = null);

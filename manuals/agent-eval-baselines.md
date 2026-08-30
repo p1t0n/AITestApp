@@ -1,4 +1,4 @@
-# Agent eval baselines (P1T-97)
+# Agent eval baselines (P1T-97) and Cost Floors (P1T-144)
 
 Two live evals guard the model-facing halves of the agent stack, following the retrieval-eval
 precedent (`manuals/retrieval-eval-baseline.md`): committed floors in
@@ -65,3 +65,87 @@ Known variance: the career-changer fixture's teaching role is sometimes not stag
 experience; the LinkedIn fixture's WCAG skill sometimes lands as a proposal instead of the
 catalog match. Both are judgment calls, not honesty failures — the honesty ceilings (zero
 hallucinated skills, zero fabricated emails) held in every observed run.
+
+
+## 4. Cost Floors (P1T-144)
+
+The evals above are live and opt-in, which is exactly why a 27× cost regression shipped green
+through four tickets (`manuals/agent-cost-budgets.md`). The Cost Floors are the other half: they
+run on **every push**, involve **no model at all**, and guard the two things that actually
+regressed — the size of the tool surface agents are shown, and the size of what read tools return.
+
+```bash
+dotnet test tests/Mcp.Tests    --filter "FullyQualifiedName~CostFloors"
+dotnet test tests/Agents.Tests --filter "FullyQualifiedName~CostFloors"
+```
+
+All ceilings live in `tools/CostFloors.Core/CostFloors.cs` — one table, shared by both test
+projects because an agent's Baseline Prompt Size is its own instructions (measurable only in
+`Agents.Tests`) plus the schemas of the tools it is shown (measurable only in `Mcp.Tests`).
+
+### The unit
+
+`TokenEstimate` — four characters per estimated token. These are **estimated tokens, not Gemini
+tokens**, and the gap is not small: the traced run charged 7,522 real input tokens for the
+`skill_list` result that this estimator calls 3,080. GUID-dense JSON tokenizes far worse than
+prose, so real cost runs ~2.4× the estimate on result payloads and close to 1× on descriptions
+(roster-qa's Baseline Prompt Size: 4,277 estimated vs 4,202 real). A Ratchet only needs to be
+stable and proportional; never quote an estimate as a bill.
+
+### Ratchet, not target
+
+Every ceiling is pinned at the value measured on 2026-08-30 and may only ever move **down**. Main
+stays green through the whole chain, and each later ticket lands a visible numeric delta:
+tighten the ceiling (red), implement (green). Raising one is a deliberate re-baseline with a
+reason on the issue — never the fix for a red run.
+
+### What is measured
+
+| Floor | Where | How |
+|---|---|---|
+| Read-tool result size | `Mcp.Tests/CostFloors/ReadToolResultCostFloorTests` | Real Postgres (Testcontainers, pgvector), the first 45 demo-roster employees over the full 79-skill catalog — the roster shape the 2026-08-30 measurement ran on |
+| Per-tool schema size | `Mcp.Tests/CostFloors/ToolSurfaceCostFloorTests` | The MCP tool listing itself: name + description + input schema |
+| Read surface total | same | Sum over the 11 `mcp:read` tools — what roster-qa still pays per iteration |
+| Agent instruction size | `Agents.Tests/CostFloors/BaselinePromptSizeFloorTests` | The authored `Instructions` prompt of all 9 prompted agents |
+| Baseline Prompt Size | same | Instructions + the pinned schema size of every tool the agent actually hands the model, driven through the real agent with a fake chat client and the surface its own token would carry |
+
+Two coverage guards keep the floors from rotting: a read tool with no result ceiling fails unless
+it is listed in `ModelBackedReadTools` (it embeds a query, so it cannot be measured model-free),
+and the `ReadScopeTools` / `WriteScopeTools` declarations are asserted against what the server
+really advertises per scope.
+
+### Measured 2026-08-30 (estimated tokens)
+
+Read-tool results, 45-employee demo roster:
+
+| Tool | Ceiling | Note |
+|---|---|---|
+| `roster_digest_list` | 18,300 | one default page of 50; the only ceiling with slack (see below) |
+| `skill_list` | 3,080 | 42% of the traced roster-qa run — **P1T-145** adds `nameContains` + paging |
+| `category_tree` | 3,379 | |
+| `employee_list` | 2,805 | 12.7% of the same run |
+| `employee_get` | 2,064 | |
+| `cv_get` | 1,643 | |
+| `category_list` | 270 | |
+| `availability_list` | 73 | |
+
+`roster_digest_list` is the one ceiling carrying slack (measured 18,248–18,253). Digests truncate
+at 1,500 **characters** and EF leaves an employee's experience order unspecified, so which
+non-ASCII characters fall inside the cut — and therefore how many `\uXXXX` escapes the JSON
+carries — shifts a few tokens per seed. Every other ceiling is pinned exactly.
+
+Baseline Prompt Size:
+
+| Agent | Instructions | Tool schemas | Baseline | Note |
+|---|---|---|---|---|
+| roster-qa | 416 | 3,861 (all 11 read tools) | 4,277 | **P1T-146** shows it 4 tools instead |
+| resume-ingestion | 523 | 2,370 (6, incl. writes) | 2,893 | the one agent holding `mcp:write` (**P1T-150**) |
+| cv-tailoring | 498 | 689 (`style_exemplar_search`) | 1,187 | `cv_get` is deterministic, not shown to the model |
+| interview-kit | 371 | 296 (`cv_get`) | 667 | |
+| match | 328 | 296 (`cv_get`) | 624 | |
+
+Instructions only (no tools reach the model): shortlist 121, bench-report 199, roster-scan
+scorer 199, JD-requirement extractor 237.
+
+The read surface totals **3,861** across 11 tools; the widest single schemas are
+`style_exemplar_search` 689, `roster_shortlist_search` 635 and `roster_semantic_search` 613.

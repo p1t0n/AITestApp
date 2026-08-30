@@ -32,6 +32,7 @@
     <Project Path="tests/Web.Tests/CvManager.Web.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">
+    <Project Path="tools/CostFloors.Core/CostFloors.Core.csproj" />
     <Project Path="tools/ExtractionEval.Core/ExtractionEval.Core.csproj" />
     <Project Path="tools/ExtractionEval/ExtractionEval.csproj" />
     <Project Path="tools/ToolSelectionEval.Core/ToolSelectionEval.Core.csproj" />

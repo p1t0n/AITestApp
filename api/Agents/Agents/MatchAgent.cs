@@ -75,14 +75,16 @@ public sealed class MatchAgent : IChatAgent
         };
         var response = await agent.RunAsync(question, session, options, ct);
         var usage = response.Usage;
-        var (modelId, latencyMs) = metering.Snapshot();
+        var run = metering.Snapshot();
         return new AgentReply(
             response.Text,
             usage?.InputTokenCount ?? 0,
             usage?.OutputTokenCount ?? 0,
             usage?.TotalTokenCount ?? 0,
-            modelId,
-            latencyMs);
+            run.ModelId,
+            run.LatencyMs,
+            run.Iterations,
+            run.ToolSequence);
     }
 
     private async Task<AIAgent> GetAgentAsync(CancellationToken ct)

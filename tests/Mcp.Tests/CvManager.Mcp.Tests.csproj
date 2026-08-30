@@ -35,6 +35,7 @@
     <ProjectReference Include="..\..\api\Application\CvManager.Application.csproj" />
     <ProjectReference Include="..\..\tools\RetrievalEval.Core\RetrievalEval.Core.csproj" />
     <ProjectReference Include="..\..\tools\ToolSelectionEval.Core\ToolSelectionEval.Core.csproj" />
+    <ProjectReference Include="..\..\tools\CostFloors.Core\CostFloors.Core.csproj" />
   </ItemGroup>
 
 </Project>

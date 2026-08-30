@@ -125,14 +125,16 @@ public sealed class InterviewKitAgent
             _logger.LogWarning(ex, "Interview kit questions turn failed; returning the kit without structured questions.");
         }
 
-        var (modelId, latencyMs) = metering.Snapshot();
+        var run = metering.Snapshot();
         var reply = new AgentReply(
             first.Text,
             (first.Usage?.InputTokenCount ?? 0) + (secondUsage?.InputTokenCount ?? 0),
             (first.Usage?.OutputTokenCount ?? 0) + (secondUsage?.OutputTokenCount ?? 0),
             (first.Usage?.TotalTokenCount ?? 0) + (secondUsage?.TotalTokenCount ?? 0),
-            modelId,
-            latencyMs);
+            run.ModelId,
+            run.LatencyMs,
+            run.Iterations,
+            run.ToolSequence);
 
         return new InterviewKitOutcome(reply, questionsText, capture.Cv);
     }

@@ -57,7 +57,10 @@ public class UsageMeterTests
 
         await meter.RecordAsync(
             Guid.NewGuid(), "staffing",
-            new AgentReply("answer", 10, 5, 15, ModelId: "gemini-2.5-flash-lite", LatencyMs: 1234),
+            new AgentReply(
+                "answer", 10, 5, 15,
+                ModelId: "gemini-2.5-flash-lite", LatencyMs: 1234,
+                Iterations: 10, ToolSequence: "skill_list,cv_get"),
             step: "match");
 
         var row = await db.AgentUsages.SingleAsync();
@@ -65,6 +68,9 @@ public class UsageMeterTests
         row.LatencyMs.Should().Be(1234);
         row.Step.Should().Be("match");
         row.TraceId.Should().Be(activity.TraceId.ToString());
+        // Why the call cost what it did, on the row itself (P1T-144) — no throwaway probe needed.
+        row.Iterations.Should().Be(10);
+        row.ToolSequence.Should().Be("skill_list,cv_get");
     }
 
     [Fact]
@@ -79,6 +85,9 @@ public class UsageMeterTests
         var row = await db.AgentUsages.SingleAsync();
         row.LatencyMs.Should().BeNull();
         row.Step.Should().BeNull();
+        // Zero iterations means the metering seam saw nothing, not "one cheap call".
+        row.Iterations.Should().BeNull();
+        row.ToolSequence.Should().BeNull();
     }
 
     [Fact]

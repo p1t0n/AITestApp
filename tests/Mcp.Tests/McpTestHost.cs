@@ -79,6 +79,39 @@ internal static class McpTestHost
         });
 
     /// <summary>
+    /// Factory over a REAL Postgres (Testcontainers) instead of EF InMemory, for the deterministic
+    /// Cost Floors (P1T-144): a read tool's result size is only meaningful over the real seeded
+    /// roster, through the real queries. Same local test signing key as
+    /// <see cref="CreateFactory"/>; the reconcile worker stays off (it needs an embedding backend).
+    /// </summary>
+    public static WebApplicationFactory<Program> CreateFactoryWithPostgres(string connectionString) =>
+        new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.UseSetting("SearchIndex:Enabled", "false");
+            builder.UseSetting("ConnectionStrings:Default", connectionString);
+
+            builder.ConfigureTestServices(services =>
+            {
+                services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, o =>
+                {
+                    o.Authority = null;
+                    o.MetadataAddress = null!;
+                    o.RequireHttpsMetadata = false;
+                    o.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidIssuer = Issuer,
+                        ValidateAudience = true,
+                        ValidAudience = Resource,
+                        ValidateIssuerSigningKey = true,
+                        IssuerSigningKey = SigningKey,
+                        ValidateLifetime = true,
+                    };
+                });
+            });
+        });
+
+    /// <summary>
     /// Factory for the Keycloak e2e test: swaps the DB to InMemory and points JwtBearer at a real
     /// authorization server (validates the signature against its JWKS), instead of the local test key.
     /// </summary>

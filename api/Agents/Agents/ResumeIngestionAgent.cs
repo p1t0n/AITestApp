@@ -136,14 +136,16 @@ public sealed class ResumeIngestionAgent
         };
         var response = await agent.RunAsync("Resume text:\n\n" + resumeText, session, options, ct);
         var usage = response.Usage;
-        var (modelId, latencyMs) = metering.Snapshot();
+        var run = metering.Snapshot();
         var reply = new AgentReply(
             response.Text,
             usage?.InputTokenCount ?? 0,
             usage?.OutputTokenCount ?? 0,
             usage?.TotalTokenCount ?? 0,
-            modelId,
-            latencyMs);
+            run.ModelId,
+            run.LatencyMs,
+            run.Iterations,
+            run.ToolSequence);
 
         return new ResumeIngestionOutcome(
             reply, capture.EmployeeId, capture.DuplicateWarning, capture.Calls, response.Text);

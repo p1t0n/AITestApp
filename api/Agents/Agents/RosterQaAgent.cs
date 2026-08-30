@@ -121,8 +121,10 @@ public sealed class RosterQaAgent : IChatAgent
             text = capture.Captured ? retry.Text : retry.Text + UngroundedNote;
         }
 
-        var (modelId, latencyMs) = metering.Snapshot();
-        return new AgentReply(text, inputTokens, outputTokens, totalTokens, modelId, latencyMs);
+        var run = metering.Snapshot();
+        return new AgentReply(
+            text, inputTokens, outputTokens, totalTokens,
+            run.ModelId, run.LatencyMs, run.Iterations, run.ToolSequence);
     }
 
     private async Task<AIAgent> GetAgentAsync(CancellationToken ct)

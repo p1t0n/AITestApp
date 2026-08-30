@@ -28,6 +28,16 @@ public class AgentUsage
     /// Aspire dashboard (null on legacy rows or when tracing is off).</summary>
     public string? TraceId { get; set; }
 
+    /// <summary>Model calls the run made — the Turn Amplification multiplier behind the token
+    /// count. A tool-looping agent that answers in 10 iterations pays its prompt 10 times
+    /// (null on rows written before P1T-144).</summary>
+    public int? Iterations { get; set; }
+
+    /// <summary>Ordered, comma-separated names of the tools the run called, e.g.
+    /// "skill_list,cv_get,cv_get". The cheapest possible answer to "why was this call expensive"
+    /// (null on legacy rows, and when the run called no tool).</summary>
+    public string? ToolSequence { get; set; }
+
     /// <summary>Pipeline sub-step attribution (staffing: shortlist/match/narrative); null for
     /// direct agent calls.</summary>
     public string? Step { get; set; }
