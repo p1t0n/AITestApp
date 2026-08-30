@@ -119,7 +119,9 @@ test.describe("employee child editing", () => {
   test("availability and a skill are added, then edited through the PUTs that had no caller", async ({
     page,
   }) => {
-    await createEmployee(page, "Ada", "Lovelace");
+    // Not "Ada Lovelace": `roster.e2e.ts` creates that name and the two suites share one database,
+    // so a duplicate makes its `getByRole("row", { name: /Ada Lovelace/ })` a strict-mode violation.
+    await createEmployee(page, "Katherine", "Johnson");
 
     await page.getByRole("button", { name: "Add availability" }).click();
     const availDialog = page.getByRole("dialog");
