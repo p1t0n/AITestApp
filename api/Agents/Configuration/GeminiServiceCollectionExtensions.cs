@@ -3,6 +3,7 @@ using System.ClientModel.Primitives;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using OpenAI;
 
 namespace CvManager.Agents.Configuration;
@@ -64,7 +65,20 @@ public static class GeminiServiceCollectionExtensions
     }
 
     /// <summary>Resolves the chat client for an agent: its keyed model override if one is
-    /// registered, otherwise the shared default client.</summary>
+    /// registered, otherwise the shared default client — wrapped in that agent's Runtime Budget
+    /// (P1T-147).
+    /// <para>This is the one place every agent asks for a model, which is why the budget hangs
+    /// here: an agent cannot opt out of its ceiling, and a new agent inherits the default without
+    /// anyone remembering to wire it. The wrapper is per-agent (the budget differs); the run state
+    /// it spends against is ambient, so sharing one inner client across agents is safe.</para>
+    /// </summary>
     public static IChatClient ResolveAgentChatClient(this IServiceProvider sp, string agentKey)
-        => sp.GetKeyedService<IChatClient>(agentKey) ?? sp.GetRequiredService<IChatClient>();
+    {
+        var client = sp.GetKeyedService<IChatClient>(agentKey) ?? sp.GetRequiredService<IChatClient>();
+        var budgets = sp.GetService<IOptions<Usage.AgentBudgetOptions>>()?.Value
+                      ?? new Usage.AgentBudgetOptions();
+        return new Usage.RuntimeBudgetChatClient(
+            client, agentKey, budgets.For(agentKey),
+            sp.GetService<ILoggerFactory>()?.CreateLogger<Usage.RuntimeBudgetChatClient>());
+    }
 }

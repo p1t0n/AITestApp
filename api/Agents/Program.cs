@@ -82,6 +82,9 @@ builder.Services.AddSessionJwtAuthentication(builder.Configuration);
 // flows only through MCP; this is the operational usage log.
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddOptions<UsageOptions>().Bind(builder.Configuration.GetSection(UsageOptions.Section));
+// Runtime Budgets: the per-run ceiling every agent's chat client is wrapped in (P1T-147).
+builder.Services.AddOptions<AgentBudgetOptions>()
+    .Bind(builder.Configuration.GetSection(AgentBudgetOptions.Section));
 builder.Services.AddScoped<IUsageMeter, UsageMeter>();
 builder.Services.AddScoped<IUsageService, UsageService>();
 

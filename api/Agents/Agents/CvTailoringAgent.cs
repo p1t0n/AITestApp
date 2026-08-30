@@ -209,7 +209,8 @@ public sealed class CvTailoringAgent
             run.ModelId,
             run.LatencyMs,
             run.Iterations,
-            run.ToolSequence);
+            run.ToolSequence,
+            run.Degradation);
 
         return new TailoringAgentOutcome(
             reply, rewritesText, capture.SelectedAchievementIds ?? [], capture.Exemplars, capture.Cv);

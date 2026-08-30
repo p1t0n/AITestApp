@@ -145,7 +145,8 @@ public sealed class ResumeIngestionAgent
             run.ModelId,
             run.LatencyMs,
             run.Iterations,
-            run.ToolSequence);
+            run.ToolSequence,
+            run.Degradation);
 
         return new ResumeIngestionOutcome(
             reply, capture.EmployeeId, capture.DuplicateWarning, capture.Calls, response.Text);

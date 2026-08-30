@@ -124,7 +124,7 @@ public sealed class RosterQaAgent : IChatAgent
         var run = metering.Snapshot();
         return new AgentReply(
             text, inputTokens, outputTokens, totalTokens,
-            run.ModelId, run.LatencyMs, run.Iterations, run.ToolSequence);
+            run.ModelId, run.LatencyMs, run.Iterations, run.ToolSequence, run.Degradation);
     }
 
     private async Task<AIAgent> GetAgentAsync(CancellationToken ct)

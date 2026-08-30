@@ -181,10 +181,17 @@ every tool it is shown. Paid on each iteration, so it is multiplied by Turn Ampl
 _Avoid_: system prompt size, overhead
 
 **Runtime Budget**:
-The per-run ceiling on cumulative input tokens an agent may spend before it must answer from what
-it already holds, with a Degradation note. A safety net sized well above the expected cost —
+The per-run ceiling — cumulative input tokens *and* model calls — an agent may spend before it must
+answer from what it already holds, with a Degradation note. Two numbers because a token ceiling
+cannot see a long loop of individually tiny calls. A safety net sized well above the expected cost —
 crossing it is an incident, staying under it is unremarkable.
 _Avoid_: token cap, quota (that is the per-user limit, a different thing)
+
+**Closing Turn**:
+What a run gets instead of a truncation once its Runtime Budget is spent: tools are withdrawn
+(`ToolMode = None`) and the model is asked for its answer from the evidence already in hand. The
+work already paid for is kept, and the answer is the model's own rather than a salvaged fragment.
+_Avoid_: abort, cutoff, truncate
 
 **Cost Floor**:
 A committed per-call token ceiling, sibling to the Cluster Floor: a cost regression fails the

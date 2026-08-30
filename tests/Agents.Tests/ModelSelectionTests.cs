@@ -62,7 +62,13 @@ public class ModelSelectionTests
         var a = sp.ResolveAgentChatClient("cv-tailoring");
         var b = sp.ResolveAgentChatClient("match");
 
-        a.Should().BeSameAs(b, "no overrides means everyone shares the one default client");
+        // Each agent gets its own Runtime Budget wrapper (P1T-147) — the budgets differ per agent
+        // — but there is still exactly one model client underneath, which the shared metadata
+        // instance the wrappers forward to proves.
+        a.Should().NotBeSameAs(b);
+        a.GetService(typeof(ChatClientMetadata))
+            .Should().BeSameAs(b.GetService(typeof(ChatClientMetadata)),
+                "no overrides means everyone shares the one default client");
         ModelOf(a).Should().Be("gemini-flash-lite-latest");
     }
 }
