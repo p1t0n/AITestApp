@@ -1,13 +1,14 @@
 # Agent cost budgets: the roster-qa regression and the floors that should have caught it
 
-> **Status (2026-08-30):** steps 1-4 of §4 have landed. P1T-144: the deterministic Cost
+> **Status (2026-08-30):** all five steps of §4 have landed. P1T-144: the deterministic Cost
 > Floors run on every push and the usage ledger records `Iterations` + `ToolSequence`. P1T-145:
 > `skill_list` filters and pages. P1T-146: every agent identity carries a Tool Allowlist under
 > `McpAuth:<agent>:Tools`, applied in `McpToolSource` before any agent sees a tool — roster-qa is
-> shown 4 of the 11 read tools and its Baseline Prompt Size ratchet moved 4,409 → **1,876**, so at
-> the traced run's 10 iterations 44,090 re-sent tokens become 18,760. P1T-147: every agent run is
-> bounded by a Runtime Budget (§3.2). Step 5 is still open. Values and how to
-> re-measure them: `manuals/agent-eval-baselines.md` §4. Measurements below are real —
+> shown 4 of the 11 read tools. P1T-147: every agent run is bounded by a Runtime Budget (§3.2).
+> P1T-148: roster-qa's instructions and `roster_semantic_search`'s description point at the
+> Convergent Path, and a Convergence floor prices the whole reference run model-free (§6) —
+> **6,993**, inside the 8,000 target. The Tool-Selection Eval re-baseline is still owed. Values
+> and how to re-measure them: `manuals/agent-eval-baselines.md` §4. Measurements below are real —
 > taken from the `AgentUsages` ledger and from one live traced run of the roster-qa endpoint on
 > the seeded 45-employee demo roster. Vocabulary lives in `CONTEXT.md` → *Cost & budgets*.
 
@@ -275,8 +276,12 @@ Sequential, each landing on its own:
 4. **Budget seam** (P1T-147) — **shipped**. §3.2, applied to every agent at
    `ResolveAgentChatClient`. resume-ingestion is covered for free. Budgets are configuration
    (`AgentBudgets` in `api/Agents/appsettings.json`), not constants.
-5. **Convergence** (P1T-148). Instructions and descriptions so roster-qa answers in ~3 calls rather than 10.
-   Cost Floor to 8,000. Last, because it needs the Tool-Selection Eval re-run twice.
+5. ~~**Convergence**~~ (P1T-148) — **landed**, except the two live re-runs. Instructions and
+   descriptions now point at the Convergent Path, and §6's floor prices the whole run at **6,993**
+   (1,873 × 3 calls + 87 × 2 + 1,200), inside the 8,000 target. The real-token 8,000 Cost Floor is
+   committed as a live ceiling (`RosterQaConvergenceLiveFloorTests`, `Category=live`) rather than a
+   deterministic one, because a real-token number cannot be measured without a model. The
+   Tool-Selection Eval re-baseline is still owed.
 
 ### Two things worth saying out loud
 
@@ -314,3 +319,71 @@ The `orchestrate_tools` span carries the run total.
 Note that the Aspire dashboard (`docker-compose.yml`, port 18888) receives these spans but holds
 them in memory only — the 2026-08-30 traces were already gone by the time this was investigated,
 which is the argument for P1T-144's ledger columns.
+
+## 6. Convergence: pricing a run, not a call (P1T-148)
+
+§1.4 decomposed the 160,220 tokens into payloads, and P1T-144–147 walk each payload down. But the
+traced run's real defect is not in any one payload — it is that nine tool calls were made to reach
+an answer two would have carried:
+
+> three near-identical `roster_semantic_search` calls, a whole-roster `employee_list`, three
+> speculative `cv_get`s, and a `roster_shortlist_search` fired *after* it already had the answer.
+
+Every one of those payloads was inside its ceiling. A Runtime Budget truncates that run; it does
+not fix it. So Convergence needs its own instrument.
+
+### The Convergent Path
+
+The tool sequence a converged run of a named question makes, declared in
+`tools/CostFloors.Core/CostFloors.cs` and priced by `ConvergentRunCost`. For the reference
+question — *"who knows react and lives in London"*:
+
+```
+skill_list("react") → roster_semantic_search(query, skillIds, location: "London") → answer
+```
+
+Three model calls. `RosterQaConvergentRunIterationCeiling` is ratcheted at 4; the traced run was 10.
+
+`ConvergentRunCost` is Turn Amplification made arithmetic: a path of n tools is n+1 model calls,
+each re-sending the Baseline Prompt Size plus every result already in hand, so the i-th result is
+paid once for every call after it. Nothing is measured afresh — the baseline comes from the
+`Agents.Tests` floor, the structured results from the `Mcp.Tests` floor against real Postgres, and
+only the search results are pinned estimates (`ModelBackedReadToolResultEstimates`, read off §1.4's
+73–1,183 range and pinned high). **So this ceiling tightens on its own as the others ratchet.**
+
+| term | size | ×calls after | total |
+|---|---|---|---|
+| Baseline Prompt Size | 4,274 | ×3 | 12,822 |
+| `skill_list` result | 3,080 | ×2 | 6,160 |
+| `roster_semantic_search` result | 1,200 | ×1 | 1,200 |
+| | | | **20,182** |
+
+Ratcheted at 20,182 — today's price, and not a number to quote. The gap to §3.1's 6,500 is not
+Convergence's: the path is already the short one, and both remaining terms belong to the tickets
+ahead of it. With P1T-145's `skill_list` (≈87) and P1T-146's Baseline Prompt Size (≈1,744) the same
+path prices at **≈6,600**, which is §3.1's projection reproduced from the other direction.
+
+### What changed to get there
+
+The filters already existed — `roster_semantic_search` takes `location`, `skillIds`, `availableOn`
+and `minYears`. The model used none of them and rebuilt the location predicate by hand out of
+`employee_list` and three `cv_get`s. The affordance was there; nothing pointed at it.
+
+- **roster-qa's instructions** gained a Convergence rule ("aim to answer in two tool calls, never
+  exceed four; once a result answers the question, answer and stop"), filter-first search, an
+  explicit ban on rebuilding a filter from `employee_list` + `cv_get` and on re-running a search
+  reworded, and "an empty result set is also an answer". Paid for out of the old prose: **416 → 415**
+  estimated tokens.
+- **`roster_semantic_search`'s description** now states the filters as the primary path for a
+  compound question rather than listing them as an afterthought, funded by cutting elaboration that
+  described other tools' return shapes: **613 → 611**, read surface 3,861 → 3,859.
+
+### Still owed
+
+The live confirmations, both of which need a Gemini key and free-tier quota:
+
+- `RosterQaConvergenceLiveFloorTests` (`Category=live`) — the reference question at ≤4 real model
+  calls and ≤8,000 real Gemini tokens. Note the unit: real tokens, roughly 2.4× `TokenEstimate` on
+  GUID-dense payloads, so it is not comparable to the 20,182 above.
+- The Tool-Selection Eval re-baseline, which the description change requires and which P1T-145
+  deferred into this ticket.

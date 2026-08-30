@@ -100,7 +100,9 @@ public static class CostFloors
             ["employee_get"] = 357,
             ["employee_list"] = 243,
             ["roster_digest_list"] = 301,
-            ["roster_semantic_search"] = 613,
+            // P1T-148 made its filters read as the primary path for a compound question and
+            // paid for the words by cutting elaboration — a ratchet down, not a trade.
+            ["roster_semantic_search"] = 611,
             ["roster_shortlist_search"] = 635,
             // RAISED 176 → 308 by P1T-145, the one deliberate re-baseline in this chain. Three
             // optional parameters and the sentence that teaches the filter cost +132 per
@@ -182,7 +184,7 @@ public static class CostFloors
     /// paid per iteration. P1T-146 takes what any one agent pays down by removing tools from its
     /// allowlist, not by shortening the surface.</para>
     /// </summary>
-    public const int ReadToolSurfaceCeiling = 3_993;
+    public const int ReadToolSurfaceCeiling = 3_991;
 
     /// <summary>
     /// Each agent's <b>Tool Allowlist</b> (P1T-146), keyed by the agent's <c>McpAuth:&lt;agent&gt;</c>
@@ -228,7 +230,9 @@ public static class CostFloors
     public static readonly IReadOnlyDictionary<string, int> AgentInstructionCeilings =
         new Dictionary<string, int>
         {
-            ["RosterQaAgent"] = 416,
+            // P1T-148 rewrote this for Convergence — filter-first search, stop once a result
+            // answers — and paid for the new rules out of the old prose rather than growing.
+            ["RosterQaAgent"] = 415,
             ["CvTailoringAgent"] = 498,
             ["ResumeIngestionAgent"] = 523,
             ["MatchAgent"] = 328,
@@ -254,10 +258,10 @@ public static class CostFloors
         new Dictionary<string, int>
         {
             // Was 4,409: 416 instructions + all 11 read tool schemas, 3,993 of it schema the agent
-            // never used. P1T-146's allowlist shows it 4 tools instead. At the traced run's 10
-            // iterations that is 44,090 → 18,760 re-sent tokens. P1T-148 moves it again by
-            // rewriting the instructions for Convergence.
-            ["RosterQaAgent"] = 1_876,
+            // never used. P1T-146's allowlist shows it 4 tools instead; P1T-148 then rewrote the
+            // instructions for Convergence (416 → 415) and trimmed roster_semantic_search's
+            // schema (613 → 611), which is the last 3 tokens off it.
+            ["RosterQaAgent"] = 1_873,
             ["CvTailoringAgent"] = 1_187,
             // +132 for P1T-145's skill_list schema, which this agent is also shown.
             ["ResumeIngestionAgent"] = 3_025,
@@ -270,6 +274,90 @@ public static class CostFloors
     /// from a second measurement — that floor is what holds those values true.</summary>
     public static int BaselinePromptSize(int instructionTokens, IEnumerable<string> toolNames) =>
         instructionTokens + toolNames.Sum(t => ToolSchemaCeilings.GetValueOrDefault(t));
+
+    /// <summary>
+    /// Pinned RESULT sizes for the read tools that embed their query and so have no deterministic
+    /// floor (<see cref="ModelBackedReadTools"/>). Read off the traced run in
+    /// <c>manuals/agent-cost-budgets.md</c> §1.4, which charged 73–1,183 tokens across three
+    /// semantic searches and 71 for a shortlist search. Each is pinned above what was observed
+    /// (<c>style_exemplar_search</c> above its sibling searches, having never been traced), so the
+    /// Convergent Run price errs high rather than flattering itself.
+    ///
+    /// <para>These are estimates, not floors: nothing asserts them, because asserting them would
+    /// need a model. They are here so <see cref="ConvergentRunCost"/> can price a path that runs
+    /// through a search tool at all, and they are the CHEAP term in that sum — the structured
+    /// results and the re-sent tool surface dominate it.</para>
+    /// </summary>
+    public static readonly IReadOnlyDictionary<string, int> ModelBackedReadToolResultEstimates =
+        new Dictionary<string, int>
+        {
+            ["roster_semantic_search"] = 1_200,
+            ["roster_shortlist_search"] = 200,
+            ["style_exemplar_search"] = 400,
+        };
+
+    /// <summary>
+    /// The CONVERGENT PATH for roster-qa's reference question, *"who knows react and lives in
+    /// London"* — the tool sequence a converged run makes, in order (P1T-148). Look the skill id
+    /// up, then ask ONE filtered semantic search, then answer.
+    ///
+    /// <para>The traced run took nine tool calls to reach the same answer: three near-identical
+    /// semantic searches, a whole-roster <c>employee_list</c>, three speculative <c>cv_get</c>s
+    /// and a <c>roster_shortlist_search</c> fired after it already had the answer. That is a
+    /// Convergence defect, not a payload one — a Runtime Budget truncates it, it does not fix it.
+    /// The instructions and <c>roster_semantic_search</c>'s description are what point at this
+    /// path; this declaration is what prices it.</para>
+    /// </summary>
+    public static readonly IReadOnlyList<string> RosterQaConvergentPath =
+        ["skill_list", "roster_semantic_search"];
+
+    /// <summary>
+    /// Ceiling on the model calls the reference question may take. A tool path of length n costs
+    /// n+1 model calls — the closing one that answers is an iteration too. Ratcheted at 4; the
+    /// Convergent Path above is 3, and the traced run was 10.
+    /// </summary>
+    public const int RosterQaConvergentRunIterationCeiling = 4;
+
+    /// <summary>
+    /// Ceiling on what the whole reference question costs along its Convergent Path, priced by
+    /// <see cref="ConvergentRunCost"/>. **Target: 8,000** (`manuals/agent-cost-budgets.md` §3.1).
+    ///
+    /// <para>Ratcheted at 6,993 — today's price on <c>main</c>, now that the two payloads it is
+    /// composed from have landed: P1T-145 took <c>skill_list</c>'s result to 87 and P1T-146 took
+    /// roster-qa's Baseline Prompt Size to 1,873, so 20,182 became 1,873×3 + 87×2 + 1,200. That
+    /// reproduces §3.1's 6,500 projection from the other direction and puts the run inside its
+    /// 8,000 target. Because this is composed from <see cref="BaselinePromptSizeCeilings"/> and
+    /// <see cref="ReadToolResultCeilings"/> rather than pinned independently, it keeps tightening
+    /// on its own as those ratchet — the remaining term worth moving is the baseline, which is
+    /// re-sent on all three calls.</para>
+    /// </summary>
+    public const int RosterQaConvergentRunCeiling = 6_993;
+
+    /// <summary>
+    /// Prices one agent run along a declared tool path, model-free — Turn Amplification made
+    /// arithmetic. A path of n tools is n+1 model calls; each call re-sends the Baseline Prompt
+    /// Size plus every result already in hand, so the i-th tool's result is paid once for every
+    /// call that follows it. A large result fetched first is the expensive one.
+    ///
+    /// <para>Every term comes from a Ratchet that something else already holds true — the
+    /// baseline from <c>Agents.Tests</c>, the structured results from <c>Mcp.Tests</c> against
+    /// real Postgres — except the search results, which are
+    /// <see cref="ModelBackedReadToolResultEstimates"/>. So this is a composition of measurements,
+    /// not a fresh measurement, and it moves the moment any of them does.</para>
+    /// </summary>
+    public static int ConvergentRunCost(string agent, IReadOnlyList<string> toolPath) =>
+        BaselinePromptSizeCeilings[agent] * (toolPath.Count + 1)
+        + toolPath.Select((tool, i) => ResultSize(tool) * (toolPath.Count - i)).Sum();
+
+    /// <summary>What one tool result costs: its measured ceiling, or its pinned estimate when the
+    /// tool embeds a query and cannot be measured without a model.</summary>
+    public static int ResultSize(string tool) =>
+        ReadToolResultCeilings.TryGetValue(tool, out var measured)
+            ? measured
+            : ModelBackedReadToolResultEstimates.TryGetValue(tool, out var estimated)
+                ? estimated
+                : throw new KeyNotFoundException(
+                    $"{tool} has neither a measured result ceiling nor a pinned estimate.");
 }
 
 /// <summary>The canonical serialization of a tool as the model is offered it — the unit every

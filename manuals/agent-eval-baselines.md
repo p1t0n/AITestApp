@@ -109,6 +109,7 @@ reason on the issue — never the fix for a red run.
 | Agent instruction size | `Agents.Tests/CostFloors/BaselinePromptSizeFloorTests` | The authored `Instructions` prompt of all 9 prompted agents |
 | Baseline Prompt Size | same | Instructions + the pinned schema size of every tool the agent actually hands the model, driven through the real agent with a fake chat client and the agent's own Tool Allowlist as the offered surface |
 | Tool Allowlist | `Agents.Tests/AgentToolAllowlistTests` | The shipped `appsettings.json` asserted against `CostFloors.AgentToolAllowlists` — the same declaration the Baseline Prompt Size floor measures against, so config and cost cannot drift apart |
+| Convergent run | `Agents.Tests/CostFloors/ConvergenceCostFloorTests` | The whole reference question priced along its declared Convergent Path — Baseline Prompt Size × model calls plus each result × the calls that follow it (P1T-148, `manuals/agent-cost-budgets.md` §6) |
 
 Two coverage guards keep the floors from rotting: a read tool with no result ceiling fails unless
 it is listed in `ModelBackedReadTools` (it embeds a query, so it cannot be measured model-free),
@@ -140,7 +141,7 @@ Baseline Prompt Size:
 
 | Agent | Instructions | Tool schemas | Baseline | Note |
 |---|---|---|---|---|
-| roster-qa | 416 | 1,460 (4 of 11 read tools) | 1,876 | was 4,409 on all 11 — ratcheted by **P1T-146**; **P1T-148** moves the instructions |
+| roster-qa | 415 | 1,458 (4 of 11 read tools) | 1,873 | was 4,409 on all 11 — ratcheted by **P1T-146**, then **P1T-148**'s instruction and description rewrites |
 | resume-ingestion | 523 | 2,502 (6, incl. writes) | 3,025 | the one agent holding `mcp:write` (**P1T-150**) |
 | cv-tailoring | 498 | 689 (`style_exemplar_search`) | 1,187 | `cv_get` is deterministic, not shown to the model |
 | interview-kit | 371 | 296 (`cv_get`) | 667 | |
@@ -149,8 +150,8 @@ Baseline Prompt Size:
 Instructions only (no tools reach the model): shortlist 121, bench-report 199, roster-scan
 scorer 199, JD-requirement extractor 237.
 
-The read surface totals **3,993** across 11 tools; the widest single schemas are
-`style_exemplar_search` 689, `roster_shortlist_search` 635 and `roster_semantic_search` 613. Since
+The read surface totals **3,991** across 11 tools; the widest single schemas are
+`style_exemplar_search` 689, `roster_shortlist_search` 635 and `roster_semantic_search` 611. Since
 P1T-146 no agent is shown all of it — each identity's Tool Allowlist is declared in
 `CostFloors.AgentToolAllowlists` and configured under `McpAuth:<agent>:Tools`.
 
@@ -166,3 +167,21 @@ It is bought back many times over. On the traced run the schema half would have 
 are cheap relative to result tokens**, because a result is both large and re-sent, so an
 affordance that shrinks results is worth paying description for. The reverse trade — a longer
 description that does not change what comes back — is not.
+
+### Convergent run (P1T-148)
+
+The reference question *"who knows react and lives in London"* prices at **6,993** along
+`skill_list` → `roster_semantic_search` → answer: 1,873 × 3 model calls, plus 87 × 2 and 1,200 × 1
+for the results each following call re-sends. Its iteration ratchet is **4** model calls; the
+traced run took 10. This ceiling is composed from the two tables above rather than pinned
+independently, so it tightens whenever they do — re-read it off the test output, never re-derive
+it by hand:
+
+```bash
+dotnet test tests/Agents.Tests --filter "FullyQualifiedName~ConvergenceCostFloorTests"
+```
+
+The real-token half of the same floor — ≤4 model calls at ≤8,000 **Gemini** tokens — is
+`RosterQaConvergenceLiveFloorTests`, opt-in behind `Category=live` because it needs a key and a
+running MCP server + Keycloak. Estimated and real tokens are different units (≈2.4× apart on
+GUID-dense payloads); never compare the two ceilings.
