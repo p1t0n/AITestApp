@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-query";
 import type {
   Achievement,
+  AvailabilityEntry,
   Category,
   CategoryNode,
   Cv,
@@ -14,7 +15,9 @@ import type {
   EmployeeSummary,
   Experience,
   Qualification,
+  SaveAvailabilityEntry,
   SaveEmployee,
+  SaveEmployeeSkill,
   SaveExperience,
   SaveQualification,
   SaveSpokenLanguage,
@@ -907,8 +910,22 @@ export function useDeleteEmployee() {
 export function useAddEmployeeSkill(employeeId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (dto: { skillId: string; level: string; yearsExperience: number }) =>
+    mutationFn: async (dto: SaveEmployeeSkill) =>
       (await http.post<EmployeeSkill>(`/employees/${employeeId}/skills`, dto)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["employees", employeeId] }),
+  });
+}
+
+/**
+ * The level and the years, never the catalog link (P1T-156): `EmployeeSkillService.UpdateAsync`
+ * validates `skillId` and then assigns only `Level` and `YearsExperience`. The id still rides along
+ * so the payload is the one shape the API documents, and the form does not offer to change it.
+ */
+export function useUpdateEmployeeSkill(employeeId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...dto }: SaveEmployeeSkill & { id: string }) =>
+      (await http.put<EmployeeSkill>(`/employee-skills/${id}`, dto)).data,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["employees", employeeId] }),
   });
 }
@@ -927,8 +944,17 @@ export function useDeleteEmployeeSkill(employeeId: string) {
 export function useAddAvailability(employeeId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (dto: { effectiveFrom: string; capacityPercent: number }) =>
-      (await http.post(`/employees/${employeeId}/availability`, dto)).data,
+    mutationFn: async (dto: SaveAvailabilityEntry) =>
+      (await http.post<AvailabilityEntry>(`/employees/${employeeId}/availability`, dto)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["employees", employeeId] }),
+  });
+}
+
+export function useUpdateAvailability(employeeId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...dto }: SaveAvailabilityEntry & { id: string }) =>
+      (await http.put<AvailabilityEntry>(`/availability/${id}`, dto)).data,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["employees", employeeId] }),
   });
 }

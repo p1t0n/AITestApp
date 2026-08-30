@@ -8,10 +8,8 @@ import {
   Divider,
   Grid,
   IconButton,
-  MenuItem,
   Paper,
   Stack,
-  TextField,
   Typography,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
@@ -30,27 +28,31 @@ import {
   useDeleteLanguage,
   useDeleteQualification,
   useEmployee,
-  useSkills,
+  useUpdateAvailability,
   useUpdateEmployee,
+  useUpdateEmployeeSkill,
   useUpdateExperience,
   useUpdateLanguage,
   useUpdateQualification,
 } from "../api";
 import type {
+  AvailabilityEntry,
+  EmployeeSkill,
   Experience,
   Qualification,
+  SaveAvailabilityEntry,
+  SaveEmployeeSkill,
   SaveExperience,
   SaveQualification,
   SaveSpokenLanguage,
-  SkillLevel,
   SpokenLanguage,
 } from "../types";
+import AvailabilityFormDialog from "./AvailabilityFormDialog";
 import EmployeeFormDialog from "./EmployeeFormDialog";
+import EmployeeSkillFormDialog from "./EmployeeSkillFormDialog";
 import ExperienceFormDialog from "./ExperienceFormDialog";
 import LanguageFormDialog from "./LanguageFormDialog";
 import QualificationFormDialog from "./QualificationFormDialog";
-
-const LEVELS: SkillLevel[] = ["Beginner", "Intermediate", "Advanced", "Expert"];
 
 function Section({
   title,
@@ -83,8 +85,23 @@ function Section({
  */
 type EditTarget<T> = { id?: string; initial?: Partial<T> } | null;
 
+/**
+ * The skill row carries one thing the payload does not: the catalog name to show while the picker
+ * is locked. `EmployeeSkillDto` has it, `SaveEmployeeSkill` does not, and looking it back up in the
+ * catalog would mean the dialog waits on a query for a name the row already knows.
+ */
+type SkillEditTarget = (EditTarget<SaveEmployeeSkill> & { skillName?: string }) | null;
+
 function toSaveLanguage(l: SpokenLanguage): SaveSpokenLanguage {
   return { language: l.language, level: l.level };
+}
+
+function toSaveAvailability(a: AvailabilityEntry): SaveAvailabilityEntry {
+  return { effectiveFrom: a.effectiveFrom, capacityPercent: a.capacityPercent };
+}
+
+function toSaveEmployeeSkill(s: EmployeeSkill): SaveEmployeeSkill {
+  return { skillId: s.skillId, level: s.level, yearsExperience: s.yearsExperience };
 }
 
 function toSaveQualification(q: Qualification): SaveQualification {
@@ -108,11 +125,12 @@ function toSaveExperience(x: Experience): SaveExperience {
 export default function EmployeeDetailPage() {
   const { id = "" } = useParams();
   const { data: e, isLoading } = useEmployee(id);
-  const { data: catalogSkills } = useSkills();
   const update = useUpdateEmployee(id);
   const addSkill = useAddEmployeeSkill(id);
+  const updateSkill = useUpdateEmployeeSkill(id);
   const delSkill = useDeleteEmployeeSkill(id);
   const addAvail = useAddAvailability(id);
+  const updateAvail = useUpdateAvailability(id);
   const delAvail = useDeleteAvailability(id);
   const addLanguage = useAddLanguage(id);
   const updateLanguage = useUpdateLanguage(id);
@@ -128,11 +146,8 @@ export default function EmployeeDetailPage() {
   const [languageEdit, setLanguageEdit] = useState<EditTarget<SaveSpokenLanguage>>(null);
   const [qualificationEdit, setQualificationEdit] = useState<EditTarget<SaveQualification>>(null);
   const [experienceEdit, setExperienceEdit] = useState<EditTarget<SaveExperience>>(null);
-  const [skillId, setSkillId] = useState("");
-  const [level, setLevel] = useState<SkillLevel>("Intermediate");
-  const [years, setYears] = useState(1);
-  const [effectiveFrom, setEffectiveFrom] = useState("");
-  const [capacity, setCapacity] = useState(100);
+  const [availabilityEdit, setAvailabilityEdit] = useState<EditTarget<SaveAvailabilityEntry>>(null);
+  const [skillEdit, setSkillEdit] = useState<SkillEditTarget>(null);
 
   if (isLoading || !e) return <CircularProgress />;
 
@@ -170,96 +185,60 @@ export default function EmployeeDetailPage() {
         </Grid>
       </Section>
 
-      <Section title="Availability schedule">
-        <Stack spacing={1} mb={2}>
+      <Section
+        title="Availability schedule"
+        action={
+          <Button startIcon={<AddIcon />} onClick={() => setAvailabilityEdit({ initial: undefined })}>
+            Add availability
+          </Button>
+        }
+      >
+        <Stack spacing={1}>
           {e.availabilityEntries.length === 0 && <Typography color="text.secondary">No entries.</Typography>}
           {e.availabilityEntries.map((a) => (
             <Stack key={a.id} direction="row" alignItems="center" spacing={2}>
               <Chip label={`${a.capacityPercent}%`} size="small" />
               <Typography>from {a.effectiveFrom}</Typography>
-              <IconButton size="small" color="error" onClick={() => delAvail.mutate(a.id)}>
+              <IconButton
+                size="small"
+                aria-label={`Edit availability from ${a.effectiveFrom}`}
+                onClick={() => setAvailabilityEdit({ id: a.id, initial: toSaveAvailability(a) })}
+              >
+                <EditIcon fontSize="small" />
+              </IconButton>
+              <IconButton
+                size="small"
+                color="error"
+                aria-label={`Delete availability from ${a.effectiveFrom}`}
+                onClick={() => delAvail.mutate(a.id)}
+              >
                 <DeleteIcon fontSize="small" />
               </IconButton>
             </Stack>
           ))}
         </Stack>
-        <Stack direction="row" spacing={2} alignItems="center">
-          <TextField
-            type="date"
-            label="Effective from"
-            InputLabelProps={{ shrink: true }}
-            value={effectiveFrom}
-            onChange={(ev) => setEffectiveFrom(ev.target.value)}
-          />
-          <TextField
-            type="number"
-            label="Capacity %"
-            value={capacity}
-            onChange={(ev) => setCapacity(Number(ev.target.value))}
-            sx={{ width: 120 }}
-          />
-          <Button
-            disabled={!effectiveFrom}
-            onClick={() => addAvail.mutate({ effectiveFrom, capacityPercent: capacity })}
-          >
-            Add
-          </Button>
-        </Stack>
       </Section>
 
-      <Section title="Skills">
-        <Stack direction="row" flexWrap="wrap" gap={1} mb={2}>
+      <Section
+        title="Skills"
+        action={
+          <Button startIcon={<AddIcon />} onClick={() => setSkillEdit({ initial: undefined })}>
+            Add skill
+          </Button>
+        }
+      >
+        <Stack direction="row" flexWrap="wrap" gap={1}>
           {e.skills.map((s) => (
             <Chip
               key={s.id}
               label={`${s.skillName} · ${s.level} · ${s.yearsExperience}y`}
+              onClick={() =>
+                setSkillEdit({ id: s.id, initial: toSaveEmployeeSkill(s), skillName: s.skillName })
+              }
               onDelete={() => delSkill.mutate(s.id)}
             />
           ))}
           {e.skills.length === 0 && <Typography color="text.secondary">No skills.</Typography>}
-        </Stack>
-        <Stack direction="row" spacing={2} alignItems="center">
-          <TextField
-            select
-            label="Skill"
-            value={skillId}
-            onChange={(ev) => setSkillId(ev.target.value)}
-            sx={{ minWidth: 200 }}
-          >
-            {catalogSkills?.map((s) => (
-              <MenuItem key={s.id} value={s.id}>
-                {s.name}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            select
-            label="Level"
-            value={level}
-            onChange={(ev) => setLevel(ev.target.value as SkillLevel)}
-            sx={{ minWidth: 140 }}
-          >
-            {LEVELS.map((l) => (
-              <MenuItem key={l} value={l}>
-                {l}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            type="number"
-            label="Years"
-            value={years}
-            onChange={(ev) => setYears(Number(ev.target.value))}
-            sx={{ width: 100 }}
-          />
-          <Button
-            disabled={!skillId}
-            onClick={() =>
-              addSkill.mutate({ skillId, level, yearsExperience: years }, { onSuccess: () => setSkillId("") })
-            }
-          >
-            Add
-          </Button>
         </Stack>
       </Section>
 
@@ -420,6 +399,35 @@ export default function EmployeeDetailPage() {
             qualificationEdit.id
               ? updateQualification.mutateAsync({ id: qualificationEdit.id, ...dto })
               : addQualification.mutateAsync(dto)
+          }
+        />
+      )}
+
+      {availabilityEdit && (
+        <AvailabilityFormDialog
+          open
+          title={availabilityEdit.id ? "Edit availability" : "Add availability"}
+          initial={availabilityEdit.initial}
+          onClose={() => setAvailabilityEdit(null)}
+          onSave={(dto) =>
+            availabilityEdit.id
+              ? updateAvail.mutateAsync({ id: availabilityEdit.id, ...dto })
+              : addAvail.mutateAsync(dto)
+          }
+        />
+      )}
+
+      {skillEdit && (
+        <EmployeeSkillFormDialog
+          open
+          title={skillEdit.id ? "Edit skill" : "Add skill"}
+          initial={skillEdit.initial}
+          lockedSkillName={skillEdit.skillName}
+          onClose={() => setSkillEdit(null)}
+          onSave={(dto) =>
+            skillEdit.id
+              ? updateSkill.mutateAsync({ id: skillEdit.id, ...dto })
+              : addSkill.mutateAsync(dto)
           }
         />
       )}

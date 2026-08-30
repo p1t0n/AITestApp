@@ -100,6 +100,22 @@ export interface SaveSpokenLanguage {
   level: LanguageLevel;
 }
 
+/** Availability is a step function over time: an entry sets the capacity from `effectiveFrom` on. */
+export interface SaveAvailabilityEntry {
+  effectiveFrom: string; // ISO date
+  capacityPercent: number;
+}
+
+/**
+ * `skillId` is read on add only. `PUT /api/employee-skills/{id}` writes the level and the years and
+ * never reassigns the catalog link, so moving a skill to another catalog row is a delete and an add.
+ */
+export interface SaveEmployeeSkill {
+  skillId: string;
+  level: SkillLevel;
+  yearsExperience: number;
+}
+
 export interface SaveQualification {
   type: QualificationType;
   name: string;

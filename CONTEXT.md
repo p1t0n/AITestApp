@@ -118,6 +118,14 @@ save, and nothing is written until the save. Contrast the child resources with t
 (languages, qualifications, availability, employee skills), each addressed and saved on its own.
 _Avoid_: nested update, cascade save
 
+**Fixed Catalog Link**:
+The `SkillId` on an employee-skill row: set when the row is added and never reassigned afterwards.
+`PUT /api/employee-skills/{id}` validates it and then writes the level and the years only, so
+pointing a row at a different catalog skill is a remove and an add. The edit form shows the skill
+disabled rather than editable — a control that appears to work and changes nothing is worse than one
+that plainly cannot.
+_Avoid_: immutable skill, read-only field
+
 **Bullet Order**:
 An achievement's position on the CV, carried as `Order` on the wire but never typed by a user: the
 edit form assigns it from the bullet's index in the list at save time. Moving a bullet is the whole
