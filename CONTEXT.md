@@ -246,6 +246,13 @@ iteration count. Turns "this call cost 146,647 tokens" into a diagnosable row: t
 payload is named, not guessed at.
 _Avoid_: tool trace, call log (those are the OTel spans, which are in-memory only)
 
+**Structural Path Length**:
+How many tool calls a task takes because of the shape of the tool surface, before the model does
+anything wrong. Ingestion writes one child per call, so an ordinary two-role resume is sixteen
+calls with no thrash in it at all. The counterpart to Convergence: Convergence is calls the model
+could have avoided, this is calls it could not. A Runtime Budget set below it degrades every run.
+_Avoid_: iteration count, loop length (those are what a run did, not what it needed)
+
 ### Agent dock
 
 **Agent Surface**:
@@ -261,3 +268,4 @@ The Usage view — the user's spend against their caps, plus the per-agent break
 not an Agent Surface: it spends nothing and does nothing, so it lives in the dock header as a peek
 you open and close, not as a place among the things that bill you.
 _Avoid_: usage tab, quota screen
+

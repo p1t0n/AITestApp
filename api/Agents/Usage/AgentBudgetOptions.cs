@@ -21,12 +21,26 @@ public sealed class AgentBudgetOptions
     /// <summary>Per-agent overrides, keyed by the agent name used at
     /// <c>ResolveAgentChatClient</c> (e.g. <c>roster-qa</c>). Configuration binding merges into
     /// these seeded rows, so a config file may override one number without restating the rest.
-    /// <para>resume-ingestion gets more than the default because a pasted resume is genuinely
-    /// large input — real work, not waste.</para></summary>
+    /// <para>resume-ingestion gets more input tokens than the default, and far more iterations:
+    /// the write surface has one tool per child, so its run is long by construction. See
+    /// <c>IngestionRunCost</c> and <c>manuals/agent-cost-budgets.md</c> §7 (P1T-150).</para></summary>
     public Dictionary<string, AgentBudget> Agents { get; set; } = new()
     {
         ["roster-qa"] = new AgentBudget { MaxInputTokens = 15_000, MaxIterations = 6 },
-        ["resume-ingestion"] = new AgentBudget { MaxInputTokens = 40_000, MaxIterations = 8 },
+
+        // P1T-150 measured a faithful ingestion of the EASIEST eval fixture at 17 model calls,
+        // before a single self-correction — 8 was below the agent's own structural path length,
+        // so every ordinary resume degraded at call 8 of 17 for a reason that had nothing to do
+        // with cost. 24 clears the reference path with headroom for the ~2 retries per item the
+        // instructions allow.
+        //
+        // MaxInputTokens deliberately stays at 40,000. It is NOT generous: the per-user cap is
+        // 50,000 tokens a day (`Usage:DefaultDailyTokens`) and it is enforced before a request,
+        // not during one, so this is the only thing bounding a single run — and one resume must
+        // not cost a user their day. The reference run does not fit inside it, and that is a
+        // statement about the agent's shape rather than about this number: 46% of it is the
+        // Baseline Prompt Size re-sent 17 times and 44% is one unfiltered skill_list result.
+        ["resume-ingestion"] = new AgentBudget { MaxInputTokens = 40_000, MaxIterations = 24 },
     };
 
     /// <summary>The budget for an agent: its own row, else <see cref="Default"/>.</summary>

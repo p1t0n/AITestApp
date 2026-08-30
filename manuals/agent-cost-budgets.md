@@ -8,9 +8,11 @@
 > P1T-148: roster-qa's instructions and `roster_semantic_search`'s description point at the
 > Convergent Path, and a Convergence floor prices the whole reference run model-free (§6) —
 > **6,993**, inside the 8,000 target. The Tool-Selection Eval re-baseline is still owed. Values
-> and how to re-measure them: `manuals/agent-eval-baselines.md` §4. Measurements below are real —
+> and how to re-measure them: `manuals/agent-eval-baselines.md` §4. P1T-150: resume-ingestion's
+> 157,252-token call is decomposed and its iteration ceiling fixed (§7). Measurements below are real —
 > taken from the `AgentUsages` ledger and from one live traced run of the roster-qa endpoint on
-> the seeded 45-employee demo roster. Vocabulary lives in `CONTEXT.md` → *Cost & budgets*.
+> the seeded 45-employee demo roster; §6's are measured model-free in CI. Vocabulary lives in
+> `CONTEXT.md` → *Cost & budgets*.
 
 `roster-qa` answers "who knows react and lives in London" for **160,220 input tokens**. The
 per-user daily cap is 50,000. One question is 3× a user's whole day.
@@ -136,11 +138,13 @@ which is the 2026-08-02 profile restored.
 | agent | Runtime Budget | max iterations | Cost Floor |
 |---|---|---|---|
 | roster-qa | 15,000 | 6 | 8,000 |
-| resume-ingestion | 40,000 | 8 | 25,000 |
+| resume-ingestion | 40,000 | 24 | §6.1 |
 | default (unlisted) | 20,000 | 6 | — |
 
 resume-ingestion gets more because a pasted resume is genuinely large input. That is real work,
-not waste.
+not waste — *and it turned out to be 3.5% of a measured run, so it is not why this agent is
+expensive; see §6.* Its iteration ceiling was 8 until P1T-150 measured a faithful ingestion at 17
+model calls and found the ceiling sitting under the work itself (§6.3).
 
 ### 3.2 How the budget stops the loop
 
@@ -300,8 +304,7 @@ Sequential, each landing on its own:
   (`agent-roster-qa`), enforced server-side, rather than in client config. P1T-146 shipped the
   client-side stand-in; the config key it introduced (`McpAuth:<agent>:Tools`) is the shape that
   moves onto the identity.
-- **resume-ingestion's tool choice** (P1T-150). 157,252 tokens in a single recorded call, same loop shape,
-  and it holds `mcp:read mcp:write`. Its own investigation.
+- **resume-ingestion's tool choice** (P1T-150) — *done, §7*. It was not a tool-choice problem.
 
 ## 5. Reproducing the measurement
 
@@ -387,3 +390,113 @@ The live confirmations, both of which need a Gemini key and free-tier quota:
   GUID-dense payloads, so it is not comparable to the 20,182 above.
 - The Tool-Selection Eval re-baseline, which the description change requires and which P1T-145
   deferred into this ticket.
+
+## 7. resume-ingestion: 157,252 tokens, and none of the guesses were right (P1T-150)
+
+The ledger's second-worst row — **155,668 input / 1,584 output, 13.8s**, one call — had never been
+traced. This section is that trace, except it is not a trace: no model was involved, and it runs on
+every push as `Agents.Tests/CostFloors/IngestionRunCostFloorTests`. The real agent is driven
+through its real function-calling loop by a scripted fake client making exactly the tool calls a
+faithful ingestion must make, and every model call's input is weighed.
+
+### 7.1 The reference ingestion
+
+The `clean-markdown` ingestion-eval fixture: well-structured, every skill already in the catalog,
+nothing to self-correct. Deliberately the **easiest** fixture, so what follows is a floor under an
+ingestion rather than a worst case.
+
+Its ground truth is 8 catalog skills, 3 languages, 1 qualification, 2 roles. The write surface has
+one tool per child, so a faithful ingestion is `skill_list` + `employee_create_draft` + 14 child
+adds = **16 tool calls, 17 model calls**, and there is no shorter path. That is asserted against
+the fixture rather than declared, so editing the fixture fails loudly instead of quietly
+re-baselining everything below it.
+
+| # | tool called after this call | adds | × re-sends | total |
+|---|---|---|---|---|
+| 1 | `skill_list` | 229 | 17 | 3,893 |
+| 2 | `employee_create_draft` | 3,063 | 16 | **49,008** |
+| 3–5 | `language_add` ×3 | 126, 39, 38 | 15, 14, 13 | 3,012 |
+| 6–13 | `employee_skill_add` ×8 | 39–54 | 12…5 | 3,674 |
+| 14 | `qualification_add` | 54 | 4 | 216 |
+| 15–16 | `experience_add` ×2 | 64, 167 | 3, 2 | 526 |
+| 17 | — (closing report) | 166 | 1 | 166 |
+
+**111,638 estimated tokens**, and the decomposition closes exactly — the floor asserts that it
+does, because a decomposition that stops closing means something is being re-sent unaccounted:
+
+| what | share |
+|---|---|
+| Baseline Prompt Size (523 instructions + 6 tool schemas) × 17 calls | 51,425 — 46.1% |
+| one unfiltered `skill_list` result, fetched on turn 1, re-sent 16 times | 49,008 — 43.9% |
+| the resume itself | 3,893 — 3.5% |
+| everything the agent actually wrote — 14 child adds, arguments and acknowledgements | 7,312 — 6.5% |
+
+### 7.2 Three findings, and the ticket's own premise was one of the casualties
+
+1. **The resume is 3.5%.** This ticket was opened on the assumption that ingestion is expensive
+   because a pasted resume is genuinely large input — the same sentence that justified its
+   40,000-token budget in §3.1. On an ordinary resume that is simply false. The bill is the loop,
+   not the document.
+2. **Unfiltered `skill_list` is 43.9%** — the largest single line item, exactly as it was 42% of
+   the roster-qa run. But there it was the model's choice and P1T-145's `nameContains` fixed it.
+   Here it is **step 1 of the agent's own instructions**: *"Call skill_list once to load the skill
+   catalog."* The affordance that fixed roster-qa exists and this agent is told not to use it.
+3. **The run is long by construction, and nothing recognised that.** Sixteen writes is sixteen
+   iterations because the surface has one tool per child. No thrash, no retries, no speculative
+   reads — the shape roster-qa was guilty of. This run does nothing wrong and still costs 111,638.
+
+`roster_digest_list`, `employee_list` and `cv_get` are never called; the agent already narrows
+itself to six tools and uses all six.
+
+### 7.3 The budget decision
+
+**`MaxInputTokens` stays at 40,000.** It is not generous. The per-user cap is 50,000 tokens a day
+(`Usage:DefaultDailyTokens`) and it is enforced *before* a request rather than during one — which
+is how a 155,668-token call was recorded under a 50,000 cap in the first place. The Runtime Budget
+is therefore the only thing bounding a single run, and one resume must not cost a user their day.
+The reference run does not fit inside 40,000; that is a statement about the agent's shape, not
+about this number.
+
+**`MaxIterations` goes 8 → 24.** Eight was below the agent's own structural path length, so every
+ordinary resume degraded at call 8 of 17 for a reason that had nothing to do with cost. An
+iteration ceiling is the backstop for a long loop of individually tiny calls (§3.2); when it sits
+under the work itself it stops being a backstop and becomes the primary failure mode. 24 clears the
+reference path with headroom for the ~2 retries per item the instructions allow. The token ceiling
+is the one that should bind, and now it is.
+
+This is a real raise, not a re-baseline of a Ratchet — a Runtime Budget is a production ceiling,
+not a CI floor, and the two move for different reasons (§3.1).
+
+Worth stating plainly: degrading here is less bad than it sounds. The target is a **draft** behind
+the approval gate, the run service composes its counts from captured tool results rather than model
+prose, and the Degradation is read off `AgentReply.Degradation` because the closing report is
+schema-constrained. A truncated ingestion is an incomplete draft, honestly reported, awaiting a
+human. It is still wasted work, which is why the ceiling had to move.
+
+### 7.4 Tool Allowlist: nothing to remove
+
+Scope item 3 asked for an allowlist once the needed tools were known from evidence. The evidence
+says it is already exact. `ResumeIngestionAgent.ToolNames` narrows the `mcp:read mcp:write` surface
+to six tools and the reference path calls all six, so its 3,025-token Baseline Prompt Size is the
+floor for the work rather than slack — asserted, so a seventh tool cannot appear unnoticed.
+
+What remains is enforcement, not selection: P1T-146's `McpToolSource` seam is client-side config
+this agent could stop applying, and P1T-149 moves that onto the Keycloak identity. P1T-146 has
+landed, and `McpAuth:resume-ingestion:Tools` mirrors `ToolNames` — `AgentToolAllowlistTests`
+asserts the shipped config against `CostFloors.AgentToolAllowlists`, so the two cannot drift.
+
+### 7.5 What is still open
+
+Nothing above makes the run cheaper — it measures it and stops it truncating. Two levers, both
+priced by the same floor:
+
+- **Batch the children.** Issuing all adds of one kind as parallel tool calls in a single turn is
+  the identical writes in the identical order, and the floor measures it at **44,001 over 7 calls
+  — 61% off**, with no change to what is written. On a write loop the turn boundary is the lever,
+  because iteration count multiplies both dominant terms at once.
+- **Stop dumping the catalog.** Resolving each extracted skill through P1T-145's `nameContains`
+  trades a 3,063-token result re-sent every turn for a handful of ~87-token lookups. Cheaper on
+  tokens, but it buys them with iterations, so it is only clearly worth it *after* batching.
+
+Both are instruction rewrites whose effect depends on what a model actually does, so both need a
+live confirmation this ticket could not run — the same shape as P1T-148. That is **P1T-155**.
