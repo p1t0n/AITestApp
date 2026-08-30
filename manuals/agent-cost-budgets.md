@@ -86,7 +86,8 @@ Three findings, none of them the obvious guess:
 1. **`skill_list` is 42% of the bill.** The model was *right* to call it — the question says
    "react", and it wanted the skill id to filter `roster_semantic_search`. The defect is in the
    tool: `skill_list` takes no filter and no page, and dumps the whole catalog. Every other list
-   tool on this surface pages. This one is the anomaly.
+   tool on this surface pages. This one is the anomaly. *(Fixed in P1T-145: the same lookup is now
+   two rows, an estimated 87 tokens against 3,080.)*
 2. **The semantic tools are nearly free.** `roster_semantic_search` results cost 73–1,183 tokens;
    `roster_shortlist_search` costs 71. The *structured* tools are the expensive ones — the exact
    opposite of the intuition the tool descriptions are written around.
@@ -183,9 +184,14 @@ Sequential, each landing on its own:
    result size (`Mcp.Tests`, `Agents.Tests`), landed as Ratchets at today's values.
    `Iterations` + `ToolSequence` columns on `AgentUsage`, so the ledger says *why* a call was
    expensive without anyone writing a throwaway probe.
-2. **`skill_list` filter + paging** (P1T-145). A `nameContains` filter and paging, mirroring the rest of the
-   list surface. Ratchet its ceiling down; re-baseline the Tool-Selection Eval floors, because the
-   description changes.
+2. **`skill_list` filter + paging** (P1T-145) — *shipped*. `nameContains` (case-insensitive
+   substring) plus `page`/`pageSize`, mirroring the rest of the list surface. Result ceiling
+   ratcheted 3,080 → **87** for the lookup the traced run wanted (`nameContains: "React"` matches
+   React and React Native), with the unfiltered sweep ratcheted separately at 3,100 so it stays
+   measured. The schema ceiling was **raised** 176 → 308, the one deliberate re-baseline in this
+   chain: see `manuals/agent-eval-baselines.md` for the trade. The Tool-Selection Eval floors were
+   **not** re-baselined — that burns real free-tier quota and the golden set is frozen, so it rides
+   along with P1T-148, which re-runs the eval twice anyway.
 3. **Tool Allowlist** (P1T-146). Per-agent read-tool subset in `McpToolSource`; roster-qa gets 4 of 11.
    Ratchet the Baseline Prompt Size ceiling down.
 4. **Budget seam** (P1T-147). §3.2, applied to every agent. resume-ingestion is covered for free.
@@ -197,8 +203,11 @@ Sequential, each landing on its own:
 - **P1T-144–147 bound the cost; P1T-148 is what restores 5–8k.** The duplicate semantic searches
   and speculative `cv_get`s are a Convergence problem. If P1T-148 is dropped, the honest target
   is "15,000, capped" — not 6,500.
-- **P1T-145 and P1T-148 both burn free-tier quota** re-baselining the Tool-Selection Eval, which is
-  the same budget this work exists to protect. P1T-148 pays it twice.
+- **The Tool-Selection Eval re-baseline burns free-tier quota** — the same budget this work
+  exists to protect. P1T-145 therefore did not pay it: its floors were left untouched (never
+  loosened) and the frozen golden set left frozen, so the re-run folds into P1T-148, which pays
+  it twice regardless. The prompt worth adding at that point is a skill-id *lookup* ("what is the
+  catalog id for React?"), which the pre-P1T-145 tool had no cheap answer to.
 
 ### Backlog, from measured evidence
 

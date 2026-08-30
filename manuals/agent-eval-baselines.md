@@ -121,7 +121,8 @@ Read-tool results, 45-employee demo roster:
 | Tool | Ceiling | Note |
 |---|---|---|
 | `roster_digest_list` | 18,300 | one default page of 50; the only ceiling with slack (see below) |
-| `skill_list` | 3,080 | 42% of the traced roster-qa run — **P1T-145** adds `nameContains` + paging |
+| `skill_list` (`nameContains: "React"`) | 87 | was 3,080 and 42% of the traced roster-qa run; **P1T-145** ratcheted it onto the lookup that run wanted |
+| `skill_list` (unfiltered) | 3,100 | the sweep half, ratcheted separately as `SkillListUnfilteredPageCeiling` |
 | `category_tree` | 3,379 | |
 | `employee_list` | 2,805 | 12.7% of the same run |
 | `employee_get` | 2,064 | |
@@ -138,8 +139,8 @@ Baseline Prompt Size:
 
 | Agent | Instructions | Tool schemas | Baseline | Note |
 |---|---|---|---|---|
-| roster-qa | 416 | 3,861 (all 11 read tools) | 4,277 | **P1T-146** shows it 4 tools instead |
-| resume-ingestion | 523 | 2,370 (6, incl. writes) | 2,893 | the one agent holding `mcp:write` (**P1T-150**) |
+| roster-qa | 416 | 3,993 (all 11 read tools) | 4,409 | **P1T-146** shows it 4 tools instead |
+| resume-ingestion | 523 | 2,502 (6, incl. writes) | 3,025 | the one agent holding `mcp:write` (**P1T-150**) |
 | cv-tailoring | 498 | 689 (`style_exemplar_search`) | 1,187 | `cv_get` is deterministic, not shown to the model |
 | interview-kit | 371 | 296 (`cv_get`) | 667 | |
 | match | 328 | 296 (`cv_get`) | 624 | |
@@ -147,5 +148,18 @@ Baseline Prompt Size:
 Instructions only (no tools reach the model): shortlist 121, bench-report 199, roster-scan
 scorer 199, JD-requirement extractor 237.
 
-The read surface totals **3,861** across 11 tools; the widest single schemas are
+The read surface totals **3,993** across 11 tools; the widest single schemas are
 `style_exemplar_search` 689, `roster_shortlist_search` 635 and `roster_semantic_search` 613.
+
+### The one raised Ratchet: `skill_list`'s schema, 176 → 308 (P1T-145)
+
+A Ratchet may only move down, so this is called out rather than buried. Teaching a tool a filter
+is not free: three optional parameters and the sentence that explains them cost **+132 estimated
+tokens per iteration**, and the read-surface total moved 3,861 → 3,993 with them.
+
+It is bought back many times over. On the traced run the schema half would have cost +1,320
+(132 × 10 iterations) and the result half saves 26,937 (2,993 × 9 re-sends) — the payload that was
+42% of the bill drops to two rows. The general lesson for the rest of this chain: **schema tokens
+are cheap relative to result tokens**, because a result is both large and re-sent, so an
+affordance that shrinks results is worth paying description for. The reverse trade — a longer
+description that does not change what comes back — is not.

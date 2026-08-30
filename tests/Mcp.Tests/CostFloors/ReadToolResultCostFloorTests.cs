@@ -63,7 +63,10 @@ public sealed class ReadToolResultCostFloorTests(ITestOutputHelper output) : IAs
 
         var calls = new (string Tool, Dictionary<string, object?> Args)[]
         {
-            ("skill_list", []),
+            // The call the traced run actually wanted: resolve "react" to a catalog skill id
+            // before filtering a search by it. Before P1T-145 there was no way to ask for less
+            // than all 79 skills, and that answer was re-sent on nine following model calls.
+            ("skill_list", new() { ["nameContains"] = "React" }),
             ("employee_list", []),
             ("category_list", []),
             ("category_tree", []),
@@ -84,6 +87,32 @@ public sealed class ReadToolResultCostFloorTests(ITestOutputHelper output) : IAs
                 CvManager.CostFloors.CostFloors.ReadToolResultCeilings[tool],
                 $"{tool}'s result is re-sent on every model call that follows it");
         }
+    }
+
+    /// <summary>
+    /// The filtered lookup above is the hot path, but the unfiltered sweep still exists and
+    /// resume-ingestion still uses it — so it stays measured rather than becoming the unwatched
+    /// half of the tool. This is also the guard on the page default: it is sized to hold the whole
+    /// seeded catalog, and if the catalog outgrows it this ceiling is what says so.
+    /// </summary>
+    [Fact]
+    public async Task Skill_list_without_a_filter_returns_one_bounded_page()
+    {
+        await using var client = await McpTestHost.ConnectAsync(_factory, McpTestHost.MintToken(McpTestHost.ReadScope));
+
+        var result = await client.CallToolAsync("skill_list", new Dictionary<string, object?>());
+        var text = McpTestHost.Text(result);
+        var tokens = TokenEstimate.Of(text);
+        output.WriteLine($"skill_list (unfiltered) {tokens,6} tokens");
+
+        tokens.Should().BeLessThanOrEqualTo(CvManager.CostFloors.CostFloors.SkillListUnfilteredPageCeiling);
+
+        // One page, and the whole catalog fits in it: ResumeIngestionAgent loads the catalog with
+        // a single unfiltered call and matches resume skills against what comes back.
+        var page = JsonDocument.Parse(text).RootElement;
+        page.GetProperty("total").GetInt32().Should()
+            .BeLessThanOrEqualTo(page.GetProperty("items").GetArrayLength(),
+                "the default page must still hold the whole catalog");
     }
 
     [Fact]

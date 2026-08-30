@@ -177,4 +177,92 @@ public class SkillCatalogServiceTests
         updated.Rank.Should().Be(7);
         (await db.Skills.FindAsync(skill.Id))!.Rank.Should().Be(7);
     }
+
+    // ---- P1T-145: filtering and paging the catalog ------------------------------------------
+
+    private static async Task<SkillCatalogService> WithSkills(AppDbContext db, params string[] names)
+    {
+        var cat = await AddCategory(db, "Frontend");
+        db.Skills.AddRange(names.Select(n => new Skill { Id = Guid.NewGuid(), Name = n, CategoryId = cat.Id }));
+        await db.SaveChangesAsync();
+        return new SkillCatalogService(db, new SaveCategoryValidator(), new SaveSkillValidator());
+    }
+
+    [Fact]
+    public async Task NameContains_matches_a_case_insensitive_substring()
+    {
+        await using var db = NewDb();
+        var svc = await WithSkills(db, "React", "React Native", "Vue", "Angular");
+
+        var page = await svc.SearchSkillsAsync(new SkillQuery(NameContains: "reAct"));
+
+        page.Items.Select(s => s.Name).Should().BeEquivalentTo("React", "React Native");
+        page.Total.Should().Be(2, "total counts the matches, not the catalog");
+    }
+
+    [Fact]
+    public async Task NameContains_that_matches_nothing_returns_an_empty_page_not_the_catalog()
+    {
+        await using var db = NewDb();
+        var svc = await WithSkills(db, "React", "Vue");
+
+        var page = await svc.SearchSkillsAsync(new SkillQuery(NameContains: "cobol"));
+
+        page.Items.Should().BeEmpty();
+        page.Total.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task A_blank_filter_is_treated_as_no_filter()
+    {
+        await using var db = NewDb();
+        var svc = await WithSkills(db, "React", "Vue");
+
+        (await svc.SearchSkillsAsync(new SkillQuery(NameContains: "   "))).Total.Should().Be(2);
+        (await svc.SearchSkillsAsync(new SkillQuery())).Total.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Paging_walks_the_matches_in_rank_order_and_reports_the_full_total()
+    {
+        await using var db = NewDb();
+        var svc = await WithSkills(db, "Aaa", "Bbb", "Ccc", "Ddd", "Eee");
+
+        var first = await svc.SearchSkillsAsync(new SkillQuery(Page: 1, PageSize: 2));
+        var second = await svc.SearchSkillsAsync(new SkillQuery(Page: 2, PageSize: 2));
+        var past = await svc.SearchSkillsAsync(new SkillQuery(Page: 9, PageSize: 2));
+
+        first.Items.Select(s => s.Name).Should().ContainInOrder("Aaa", "Bbb");
+        second.Items.Select(s => s.Name).Should().ContainInOrder("Ccc", "Ddd");
+        past.Items.Should().BeEmpty("a page past the end is empty, not an error");
+        new[] { first, second, past }.Should().OnlyContain(p => p.Total == 5);
+    }
+
+    [Fact]
+    public async Task Page_and_pageSize_are_clamped_rather_than_rejected()
+    {
+        await using var db = NewDb();
+        var svc = await WithSkills(db, "Aaa", "Bbb");
+
+        // A model that guesses 0 or a negative gets the first page, not a validation error to
+        // burn a retry on; an oversized request is capped instead of returning the whole table.
+        var clamped = await svc.SearchSkillsAsync(new SkillQuery(Page: 0, PageSize: 0));
+        clamped.Page.Should().Be(1);
+        clamped.PageSize.Should().Be(1);
+
+        var capped = await svc.SearchSkillsAsync(new SkillQuery(PageSize: 10_000));
+        capped.PageSize.Should().Be(SkillCatalogService.MaxPageSize);
+    }
+
+    [Fact]
+    public async Task The_default_page_holds_the_whole_seeded_catalog()
+    {
+        // ResumeIngestionAgent's step 1 is a single unfiltered skill_list, and it matches resume
+        // skills against exactly what comes back. The committed dataset carries 79 skills; if it
+        // ever outgrows the default page, that agent starts silently missing skills — so this,
+        // not a production incident, is what says the default needs raising.
+        var catalogSkills = DemoRosterSeeder.LoadCommittedDataset().Skills.Count;
+
+        catalogSkills.Should().BeLessThanOrEqualTo(SkillCatalogService.DefaultPageSize);
+    }
 }
