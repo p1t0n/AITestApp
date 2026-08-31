@@ -79,8 +79,8 @@ export default function UsersPage() {
         sx={{ mb: 2 }}
       />
 
-      <Paper variant="outlined">
-        <Table size="small">
+      <Paper>
+        <Table>
           <TableHead>
             <TableRow>
               <TableCell>Email</TableCell>
@@ -103,7 +103,6 @@ export default function UsersPage() {
                 <TableCell>{u.email}</TableCell>
                 <TableCell>
                   <Chip
-                    size="small"
                     label={u.status}
                     color={u.status === "Active" ? "success" : "default"}
                     variant={u.status === "Active" ? "filled" : "outlined"}
@@ -114,16 +113,16 @@ export default function UsersPage() {
                 <TableCell align="right">{capLabel(u.weeklyTokenCap)}</TableCell>
                 <TableCell align="right">{capLabel(u.monthlyTokenCap)}</TableCell>
                 <TableCell align="right">
-                  <Button size="small" onClick={() => toggleStatus(u)} disabled={updateUser.isPending}>
+                  <Button onClick={() => toggleStatus(u)} disabled={updateUser.isPending}>
                     {u.status === "Active" ? "Deactivate" : "Activate"}
                   </Button>
                   <Tooltip title="Edit">
-                    <IconButton size="small" onClick={() => setEditing(u)}>
+                    <IconButton onClick={() => setEditing(u)}>
                       <EditIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Delete">
-                    <IconButton size="small" color="error" onClick={() => remove(u)}>
+                    <IconButton color="error" onClick={() => remove(u)}>
                       <DeleteIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>

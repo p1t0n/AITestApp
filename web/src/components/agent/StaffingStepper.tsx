@@ -53,7 +53,7 @@ export function StaffingStepper({ progress, done }: { progress: StaffingProgress
       ? `Matching (${progress.matchCompleted}/${progress.matchTotal})`
       : "Matching";
   return (
-    <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }} data-testid="staffing-stepper">
+    <Paper sx={{ p: 1.5 }} data-testid="staffing-stepper">
       <Stack spacing={0.75}>
         <StaffingStepRow id="shortlist" label="Shortlisting" state={progress.shortlist} />
         <StaffingStepRow id="match" label={matchLabel} state={progress.match}>

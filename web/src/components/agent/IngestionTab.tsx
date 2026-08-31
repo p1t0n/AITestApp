@@ -97,13 +97,12 @@ function ProposalRow({ name, employeeId }: { name: string; employeeId: string })
   }
 
   return (
-    <Paper variant="outlined" sx={{ p: 1 }} data-testid={`proposal-${name}`}>
+    <Paper sx={{ p: 1 }} data-testid={`proposal-${name}`}>
       <Typography variant="body2" fontWeight={600}>
         {name}
       </Typography>
       <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
         <Autocomplete
-          size="small"
           sx={{ minWidth: 180 }}
           options={skillOptions}
           value={mapTo}
@@ -112,12 +111,11 @@ function ProposalRow({ name, employeeId }: { name: string; employeeId: string })
           isOptionEqualToValue={(o, v) => o.id === v.id}
           renderInput={(params) => <TextField {...params} label="Existing skill" />}
         />
-        <Button size="small" disabled={!mapTo || busy} onClick={() => void mapToExisting()}>
+        <Button disabled={!mapTo || busy} onClick={() => void mapToExisting()}>
           Map to existing
         </Button>
         <TextField
           select
-          size="small"
           label="Category"
           value={categoryId}
           onChange={(e) => setCategoryId(e.target.value)}
@@ -129,10 +127,10 @@ function ProposalRow({ name, employeeId }: { name: string; employeeId: string })
             </MenuItem>
           ))}
         </TextField>
-        <Button size="small" disabled={!categoryId || busy} onClick={() => void addAsNew()}>
+        <Button disabled={!categoryId || busy} onClick={() => void addAsNew()}>
           Add as new
         </Button>
-        <Button size="small" color="inherit" disabled={busy} onClick={() => setState({ kind: "rejected" })}>
+        <Button color="inherit" disabled={busy} onClick={() => setState({ kind: "rejected" })}>
           Reject
         </Button>
       </Stack>
@@ -188,13 +186,12 @@ function DraftReview({ result, onDiscarded }: { result: IngestionResponse; onDis
 
   return (
     <Stack spacing={1.5} data-testid="ingestion-review">
-      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+      <Paper sx={{ p: 1.5 }}>
         <Stack direction="row" alignItems="center" spacing={1}>
           <Typography variant="subtitle2">
             {e.firstName} {e.lastName}
           </Typography>
           <Chip
-            size="small"
             label={e.status}
             color={promoted ? "success" : "warning"}
             data-testid="draft-status-chip"
@@ -213,8 +210,8 @@ function DraftReview({ result, onDiscarded }: { result: IngestionResponse; onDis
 
       {result.duplicateWarning && (
         <Paper
-          elevation={0}
-          sx={{ p: 1.5, bgcolor: "warning.light", color: "warning.contrastText", borderRadius: 2 }}
+          variant="well"
+          sx={{ p: 1.5, bgcolor: "warning.light", color: "warning.contrastText" }}
           data-testid="ingestion-dupe-warning"
         >
           <Stack direction="row" spacing={1} alignItems="center">
@@ -226,8 +223,8 @@ function DraftReview({ result, onDiscarded }: { result: IngestionResponse; onDis
 
       {result.notes.length > 0 && (
         <Paper
-          elevation={0}
-          sx={{ p: 1.5, bgcolor: "warning.light", color: "warning.contrastText", borderRadius: 2 }}
+          variant="well"
+          sx={{ p: 1.5, bgcolor: "warning.light", color: "warning.contrastText" }}
           data-testid="ingestion-notes"
         >
           <Typography variant="body2" fontWeight={600}>
@@ -248,7 +245,7 @@ function DraftReview({ result, onDiscarded }: { result: IngestionResponse; onDis
           </Typography>
           <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
             {e.skills.map((s) => (
-              <Chip key={s.id} size="small" label={s.skillName} />
+              <Chip key={s.id} label={s.skillName} />
             ))}
           </Stack>
         </Box>
@@ -270,7 +267,7 @@ function DraftReview({ result, onDiscarded }: { result: IngestionResponse; onDis
       <ErrorNotice message={error} />
 
       {promoted ? (
-        <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, borderColor: "success.main" }}>
+        <Paper sx={{ p: 1.5, borderColor: "success.main" }}>
           <Typography variant="body2">
             Promoted.{" "}
             <Link component={RouterLink} to={`/employees/${e.id}`}>
@@ -282,7 +279,6 @@ function DraftReview({ result, onDiscarded }: { result: IngestionResponse; onDis
         <Stack direction="row" spacing={1} alignItems="center">
           {needsEmail && (
             <TextField
-              size="small"
               label="Email (required to promote)"
               value={email}
               onChange={(ev) => setEmail(ev.target.value)}
@@ -332,7 +328,6 @@ export function IngestionPanel() {
           </Typography>
           <TextField
             fullWidth
-            size="small"
             multiline
             minRows={6}
             maxRows={14}

@@ -32,7 +32,7 @@ export function StaffingCandidateCard({
   const c = candidate;
   const hasMatchDetails = c.match.status === "completed" && !!c.match.answer;
   return (
-    <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }} data-testid={`staffing-candidate-${c.employeeId}`}>
+    <Paper sx={{ p: 1.5 }} data-testid={`staffing-candidate-${c.employeeId}`}>
       <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
         <Box sx={{ minWidth: 0 }}>
           <Link
@@ -49,11 +49,10 @@ export function StaffingCandidateCard({
         </Box>
         <Stack direction="row" spacing={0.5} flexShrink={0} flexWrap="wrap" useFlexGap justifyContent="flex-end">
           <Tooltip title="Similarity score">
-            <Chip size="small" variant="outlined" label={c.shortlist.score.toFixed(2)} />
+            <Chip variant="outlined" label={c.shortlist.score.toFixed(2)} />
           </Tooltip>
           <Tooltip title="Requirements matched">
             <Chip
-              size="small"
               color={c.shortlist.coverage.matched === c.shortlist.coverage.total ? "success" : "default"}
               label={`${c.shortlist.coverage.matched}/${c.shortlist.coverage.total}`}
             />
@@ -61,7 +60,6 @@ export function StaffingCandidateCard({
           {c.match.status === "completed" && c.match.band && c.match.score != null && (
             <Tooltip title="Match verdict">
               <Chip
-                size="small"
                 color="primary"
                 label={`${c.match.band} · ${c.match.score}`}
                 data-testid="staffing-band-chip"
@@ -70,11 +68,11 @@ export function StaffingCandidateCard({
           )}
           {c.match.status === "failed" && (
             <Tooltip title={c.match.error ?? "The match run failed."}>
-              <Chip size="small" color="error" label="Match failed" />
+              <Chip color="error" label="Match failed" />
             </Tooltip>
           )}
           {c.match.status === "skipped" && (
-            <Chip size="small" variant="outlined" label="Match skipped" sx={{ color: "text.secondary" }} />
+            <Chip variant="outlined" label="Match skipped" sx={{ color: "text.secondary" }} />
           )}
         </Stack>
       </Stack>
@@ -85,7 +83,6 @@ export function StaffingCandidateCard({
 
       <Stack direction="row" flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }} columnGap={0.5}>
         <Button
-          size="small"
           onClick={() => setShowEvidence((v) => !v)}
           endIcon={showEvidence ? <ExpandLessIcon /> : <ExpandMoreIcon />}
         >
@@ -93,7 +90,6 @@ export function StaffingCandidateCard({
         </Button>
         {hasMatchDetails && (
           <Button
-            size="small"
             onClick={() => setShowMatch((v) => !v)}
             endIcon={showMatch ? <ExpandLessIcon /> : <ExpandMoreIcon />}
           >
@@ -101,10 +97,10 @@ export function StaffingCandidateCard({
           </Button>
         )}
         <Box sx={{ flex: 1 }} />
-        <Button size="small" onClick={() => onOpenInMatch(c.employeeId)}>
+        <Button onClick={() => onOpenInMatch(c.employeeId)}>
           Open in Match
         </Button>
-        <Button size="small" onClick={() => onTailorCv(c.employeeId)}>
+        <Button onClick={() => onTailorCv(c.employeeId)}>
           Tailor CV
         </Button>
       </Stack>
@@ -149,8 +145,7 @@ export function StaffingRecommendation({ report }: { report: StaffingReport }) {
     : null;
   return (
     <Paper
-      variant="outlined"
-      sx={{ p: 1.5, borderRadius: 2, borderColor: rec ? "primary.main" : "divider" }}
+      sx={{ p: 1.5, borderColor: rec ? "primary.main" : "divider" }}
       data-testid="staffing-recommendation"
     >
       <Typography variant="caption" color="text.secondary">

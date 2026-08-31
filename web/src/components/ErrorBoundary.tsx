@@ -89,7 +89,7 @@ export function DockErrorFallback({ error, reset }: { error: Error; reset: () =>
         <Typography variant="body2" color="text.secondary">
           {error.message}
         </Typography>
-        <Button size="small" variant="outlined" onClick={reset}>
+        <Button variant="outlined" onClick={reset}>
           Try again
         </Button>
       </Stack>
@@ -104,13 +104,14 @@ export function DockErrorFallback({ error, reset }: { error: Error; reset: () =>
 export function WidgetErrorFallback({ reset }: { error: Error; reset: () => void }) {
   return (
     <Paper
+      variant="elevation"
       elevation={8}
       role="alert"
       sx={{ position: "fixed", bottom: 24, right: 24, zIndex: 1300, p: 2, maxWidth: 320 }}
     >
       <Stack spacing={1} alignItems="flex-start">
         <Typography variant="body2">The agents assistant stopped working.</Typography>
-        <Button size="small" onClick={reset}>
+        <Button onClick={reset}>
           Reload it
         </Button>
       </Stack>

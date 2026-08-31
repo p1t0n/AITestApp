@@ -30,7 +30,7 @@ export default function SigninPage() {
 
   return (
     <Box sx={{ display: "flex", justifyContent: "center", pt: 6 }}>
-      <Paper elevation={2} sx={{ p: 4, width: "100%", maxWidth: 440 }}>
+      <Paper sx={{ p: 4, width: "100%", maxWidth: 440 }}>
         <Stack spacing={3} component="form" onSubmit={handleSubmit}>
           <Box>
             <Typography variant="h5" gutterBottom>

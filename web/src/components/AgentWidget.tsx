@@ -137,7 +137,10 @@ export default function AgentWidget({ dock }: { dock: AgentDock }) {
         maxWidth: "calc(100vw - 48px)",
         height: 620,
         maxHeight: "calc(100vh - 140px)",
-        borderRadius: 3,
+        // 12px. `sx` multiplies by `theme.shape.borderRadius`, which the token layer moved 4 → 8,
+        // so the `3` this used to be is now 24px — the same doubling the Papers' `borderRadius: 2`
+        // had, and those just dropped the entry because 8px *is* the theme's radius.
+        borderRadius: 1.5,
       }
     : dockedNarrow
       ? { inset: 0, width: "100vw", height: "100vh", borderRadius: 0 }
@@ -158,6 +161,7 @@ export default function AgentWidget({ dock }: { dock: AgentDock }) {
 
       {dock.open && (
         <Paper
+          variant="elevation"
           elevation={dockedWide ? 4 : 8}
           square={dock.docked}
           sx={{
@@ -194,7 +198,6 @@ export default function AgentWidget({ dock }: { dock: AgentDock }) {
               <Stack direction="row" alignItems="center">
                 <Tooltip title="Token usage">
                   <IconButton
-                    size="small"
                     aria-label="Token usage"
                     aria-pressed={usageOpen}
                     onClick={() => {
@@ -208,7 +211,6 @@ export default function AgentWidget({ dock }: { dock: AgentDock }) {
                 </Tooltip>
                 <Tooltip title={dock.docked ? "Float" : "Dock to side"}>
                   <IconButton
-                    size="small"
                     onClick={() => dock.setDocked(!dock.docked)}
                     sx={{ color: "inherit" }}
                   >
@@ -219,7 +221,7 @@ export default function AgentWidget({ dock }: { dock: AgentDock }) {
                     )}
                   </IconButton>
                 </Tooltip>
-                <IconButton size="small" onClick={dock.close} sx={{ color: "inherit" }}>
+                <IconButton onClick={dock.close} sx={{ color: "inherit" }}>
                   <CloseIcon fontSize="small" />
                 </IconButton>
               </Stack>
@@ -240,7 +242,7 @@ export default function AgentWidget({ dock }: { dock: AgentDock }) {
                 gap: 1,
               }}
             >
-              <Button size="small" startIcon={<ArrowBackIcon />} onClick={() => setUsageOpen(false)}>
+              <Button startIcon={<ArrowBackIcon />} onClick={() => setUsageOpen(false)}>
                 Back to {SURFACE_LABELS[surface]}
               </Button>
               <Typography variant="body2" color="text.secondary">
@@ -268,7 +270,6 @@ export default function AgentWidget({ dock }: { dock: AgentDock }) {
                 anchorEl={pickerAnchor}
                 open={!!pickerAnchor}
                 onClose={() => setPickerAnchor(null)}
-                MenuListProps={{ dense: true }}
                 PaperProps={{ sx: { minWidth: pickerAnchor?.offsetWidth } }}
               >
                 {SURFACE_GROUPS.flatMap((group) => [

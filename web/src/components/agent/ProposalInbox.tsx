@@ -71,8 +71,8 @@ function PackageView({
 
       {pkg.degradations.length > 0 && (
         <Paper
-          elevation={0}
-          sx={{ p: 1.5, bgcolor: "warning.light", color: "warning.contrastText", borderRadius: 2 }}
+          variant="well"
+          sx={{ p: 1.5, bgcolor: "warning.light", color: "warning.contrastText" }}
           data-testid="proposal-degradations"
         >
           <Typography variant="body2" fontWeight={600}>
@@ -123,8 +123,8 @@ function SnapshotOnlyView({
   return (
     <>
       <Paper
-        elevation={0}
-        sx={{ p: 1.5, bgcolor: "action.hover", borderRadius: 2 }}
+        variant="well"
+        sx={{ p: 1.5 }}
         data-testid="proposal-no-package"
       >
         <Typography variant="body2">
@@ -135,7 +135,7 @@ function SnapshotOnlyView({
         <ProposalDecisionCard proposalId={detail.id} onDecided={onDecided} />
       )}
       {detail.candidates.map((c) => (
-        <Paper key={c.employeeId} variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+        <Paper key={c.employeeId} sx={{ p: 1.5 }}>
           <Typography variant="subtitle2" fontWeight={700}>
             #{c.rank} {c.name} — {c.title}
           </Typography>
@@ -190,10 +190,10 @@ export function ProposalInbox({
 
   if (detail) {
     return (
-      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }} data-testid="proposal-drill-in">
+      <Paper sx={{ p: 1.5 }} data-testid="proposal-drill-in">
         <Stack spacing={1.5}>
           <Stack direction="row" alignItems="center" spacing={1}>
-            <Button size="small" startIcon={<ArrowBackIcon />} onClick={closeDetail}>
+            <Button startIcon={<ArrowBackIcon />} onClick={closeDetail}>
               Inbox
             </Button>
             <Typography variant="caption" color="text.secondary" noWrap sx={{ flex: 1 }}>
@@ -217,9 +217,8 @@ export function ProposalInbox({
   }
 
   return (
-    <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }} data-testid="proposal-inbox">
+    <Paper sx={{ p: 1.5 }} data-testid="proposal-inbox">
       <Button
-        size="small"
         startIcon={<InboxIcon />}
         endIcon={expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
         onClick={() => setExpanded((v) => !v)}
@@ -247,7 +246,6 @@ export function ProposalInbox({
                 </Typography>
               </Box>
               <Button
-                size="small"
                 variant="outlined"
                 disabled={loadingId === p.id}
                 startIcon={loadingId === p.id ? <CircularProgress size={14} /> : undefined}

@@ -7,6 +7,7 @@
 import { createTheme } from "@mui/material/styles";
 import type { Theme } from "@mui/material/styles";
 import { baselineStyles } from "./baseline";
+import { componentOverrides } from "./components";
 import { tokens } from "./tokens";
 import type { ThemeModeTokens } from "./tokens";
 import type { ThemeMode } from "./mode";
@@ -31,6 +32,19 @@ declare module "@mui/material/styles" {
   }
   interface PaletteOptions {
     surface: AppSurfacePalette;
+  }
+}
+
+/**
+ * The one component variant this app adds to MUI's own. A `well` Paper carries its own fill — a
+ * message bubble, a degradation note, a read-only block inside a panel — so it wants neither the
+ * hairline of `outlined` nor the (nonexistent) shadow of `elevation`. Declared through MUI's
+ * variant mechanism rather than as a third naming system: a component still writes `variant=`, and
+ * the style lives in `./components.ts` with everything else. See `manuals/spa-design-system.md` §3.
+ */
+declare module "@mui/material/Paper" {
+  interface PaperPropsVariantOverrides {
+    well: true;
   }
 }
 
@@ -99,6 +113,7 @@ function build(mode: ThemeMode, t: ThemeModeTokens): Theme {
     typography: typography(),
     components: {
       MuiCssBaseline: { styleOverrides: baselineStyles(mode, t) },
+      ...componentOverrides(t),
     },
   });
 }

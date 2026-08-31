@@ -178,7 +178,6 @@ export default function ExperienceFormDialog({ open, title, initial, onClose, on
               />
               <IconButton
                 aria-label={`Move bullet ${i + 1} up`}
-                size="small"
                 disabled={i === 0}
                 onClick={() => moveBullet(i, -1)}
               >
@@ -186,7 +185,6 @@ export default function ExperienceFormDialog({ open, title, initial, onClose, on
               </IconButton>
               <IconButton
                 aria-label={`Move bullet ${i + 1} down`}
-                size="small"
                 disabled={i === form.achievements.length - 1}
                 onClick={() => moveBullet(i, 1)}
               >
@@ -194,7 +192,6 @@ export default function ExperienceFormDialog({ open, title, initial, onClose, on
               </IconButton>
               <IconButton
                 aria-label={`Remove bullet ${i + 1}`}
-                size="small"
                 color="error"
                 onClick={() => removeBullet(i)}
               >

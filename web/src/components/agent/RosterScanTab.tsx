@@ -45,7 +45,7 @@ function CandidateRow({
 }) {
   const c = candidate;
   return (
-    <Paper variant="outlined" sx={{ p: 1, borderRadius: 2 }} data-testid={`scan-row-${c.employeeId}`}>
+    <Paper sx={{ p: 1 }} data-testid={`scan-row-${c.employeeId}`}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
         <Box sx={{ minWidth: 0 }}>
           <Link component={RouterLink} to={`/employees/${c.employeeId}`} variant="body2" fontWeight={600}>
@@ -57,15 +57,15 @@ function CandidateRow({
         </Box>
         <Stack direction="row" spacing={0.5} alignItems="center" flexShrink={0}>
           {c.status === "scored" && c.scorable === false ? (
-            <Chip size="small" variant="outlined" label="Not scorable" sx={{ color: "text.secondary" }} />
+            <Chip variant="outlined" label="Not scorable" sx={{ color: "text.secondary" }} />
           ) : c.status === "scored" ? (
-            <Chip size="small" color="primary" label={`${c.band ?? "?"}${c.score != null ? ` · ${c.score}` : ""}`} />
+            <Chip color="primary" label={`${c.band ?? "?"}${c.score != null ? ` · ${c.score}` : ""}`} />
           ) : c.status === "failed" ? (
-            <Chip size="small" color="error" label="Failed" />
+            <Chip color="error" label="Failed" />
           ) : (
-            <Chip size="small" variant="outlined" label="Pending" />
+            <Chip variant="outlined" label="Pending" />
           )}
-          <Button size="small" onClick={() => onRunMatch(c.employeeId)}>
+          <Button onClick={() => onRunMatch(c.employeeId)}>
             Open in Match
           </Button>
         </Stack>
@@ -145,7 +145,6 @@ export function RosterScanPanel({
               <Chip
                 key={p.label}
                 label={p.label}
-                size="small"
                 variant="outlined"
                 onClick={() => setJobDescription(p.text)}
               />
@@ -153,7 +152,6 @@ export function RosterScanPanel({
           </Stack>
           <TextField
             fullWidth
-            size="small"
             multiline
             minRows={3}
             maxRows={8}
@@ -165,7 +163,6 @@ export function RosterScanPanel({
 
         <Box>
           <Button
-            size="small"
             startIcon={<FilterListIcon />}
             endIcon={showFilters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
             onClick={() => setShowFilters((v) => !v)}
@@ -175,7 +172,6 @@ export function RosterScanPanel({
           <Collapse in={showFilters} unmountOnExit>
             <Stack spacing={1.5} sx={{ mt: 1 }}>
               <TextField
-                size="small"
                 type="date"
                 label="Available on"
                 InputLabelProps={{ shrink: true }}
@@ -184,20 +180,17 @@ export function RosterScanPanel({
               />
               <Autocomplete
                 multiple
-                size="small"
                 options={skillOptions}
                 value={selectedSkills}
                 onChange={(_, v) => setSkillIds(v.map((o) => o.id))}
                 renderInput={(params) => <TextField {...params} label="Skills" />}
               />
               <TextField
-                size="small"
                 label="Location"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
               />
               <TextField
-                size="small"
                 type="number"
                 label="Min years"
                 value={minYears}
@@ -248,7 +241,7 @@ export function RosterScanPanel({
             </Box>
 
             {data.state === "paused" && (
-              <Paper elevation={0} sx={{ p: 1.5, bgcolor: "warning.light", borderRadius: 2 }} data-testid="scan-paused">
+              <Paper variant="well" sx={{ p: 1.5, bgcolor: "warning.light" }} data-testid="scan-paused">
                 <Stack direction="row" spacing={1} alignItems="center">
                   <PauseCircleOutlineIcon fontSize="small" />
                   <Typography variant="body2">
