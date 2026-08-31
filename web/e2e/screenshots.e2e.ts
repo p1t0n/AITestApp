@@ -13,7 +13,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { addVirtualAuthenticator, signUp, uniqueEmail } from "./passkey";
 
 const CAPTURE = process.env.E2E_SHOTS === "1";
@@ -25,6 +25,28 @@ const OUT = path.resolve("..", "docs", "design-system-shots");
 async function shoot(page: Page, mode: string, name: string) {
   fs.mkdirSync(path.join(OUT, mode), { recursive: true });
   await page.screenshot({ path: path.join(OUT, mode, `${name}.png`), fullPage: true });
+}
+
+/**
+ * Wait for a moving thing to stop moving before shooting it.
+ *
+ * Every animated surface in this app lands inside the theme's 150ms motion ceiling, which is short
+ * enough that an immediate capture looks like a settled frame and is not one: the first run of
+ * P1T-161's two new states produced a "collapsed" rail 220px wide and a drawer halfway in from the
+ * left. Same trap P1T-164 hit reading `box-shadow` an instant after a media switch — an
+ * interpolation is indistinguishable from a broken rule. Two identical geometry reads is the
+ * cheapest honest answer, and it needs no timeout to tune.
+ */
+async function settled(locator: Locator): Promise<void> {
+  let previous = "";
+  await expect
+    .poll(async () => {
+      const current = JSON.stringify(await locator.boundingBox());
+      const stable = current === previous;
+      previous = current;
+      return stable;
+    })
+    .toBe(true);
 }
 
 /**
@@ -105,7 +127,28 @@ for (const mode of ["light", "dark"] as const) {
       // it to read as a dock rather than as a panel.
       await page.goto("/");
       await page.getByRole("button", { name: "Open the agents assistant" }).click();
+      // The picker, not the dock/float control: the dock opens floating here, so `Float` does not
+      // exist yet and `boundingBox` would auto-wait for an element that never arrives.
+      await settled(page.getByRole("button", { name: /^Agent surface: / }));
       await shoot(page, mode, "7-dock-open");
+
+      // The shell's two extra states, from P1T-161. Both are the rail rather than a page, so they
+      // are shot over the roster: a rail with nothing beside it says nothing about the layout.
+      await page.goto("/");
+      await expect(page.getByRole("button", { name: "New CV" })).toBeVisible();
+      await page.getByRole("button", { name: "Collapse the navigation rail" }).click();
+      const expand = page.getByRole("button", { name: "Expand the navigation rail" });
+      await expect(expand).toBeVisible();
+      await settled(expand);
+      await shoot(page, mode, "8-rail-collapsed");
+      await page.getByRole("button", { name: "Expand the navigation rail" }).click();
+
+      await page.setViewportSize({ width: 720, height: 900 });
+      await page.getByRole("button", { name: "Open the navigation" }).click();
+      const catalogLink = page.getByRole("link", { name: "Skill Catalog" });
+      await expect(catalogLink).toBeVisible();
+      await settled(catalogLink);
+      await shoot(page, mode, "9-mobile-drawer");
     });
   });
 }

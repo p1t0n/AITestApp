@@ -306,6 +306,19 @@ with the user. What is stored is the override, so "no value" means "still follow
 than "unknown".
 _Avoid_: dark mode setting, appearance profile
 
+**App Rail**:
+The app's left edge: the three places, the theme control, who is signed in, and the way out.
+Collapsible to icons, a temporary drawer below `md`, and gone from a printed page. Like the Agent
+Dock it publishes how much of the viewport it covers and takes no part in layout — the shell makes
+room for whatever an edge says it is covering.
+_Avoid_: sidebar, nav bar, drawer
+
+**Content Floor**:
+The narrowest the routed content between the two pushing edges is allowed to get. It is what
+decides which edge yields: the rail gives up its labels rather than let the dock squeeze the
+content past the floor, so the layout at any width is a stated rule rather than an accident.
+_Avoid_: min width, breakpoint
+
 **Design Token**:
 A value the look is made of — a surface, a text colour, the accent, a radius — declared once and
 then expressed through the UI library's own vocabulary. A component names the *role* it wants, never

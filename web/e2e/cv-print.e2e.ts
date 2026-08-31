@@ -71,7 +71,14 @@ test.describe("CV print artifact", () => {
     const heading = (await page
       .getByRole("heading", { name: "Dorothy Vaughan" })
       .elementHandle())!;
-    const appBar = (await page.locator("header").elementHandle())!;
+    // The signed-in chrome is the rail now, not a `<header>` — P1T-161 replaced the `AppBar`, and
+    // the print rule sits on the rail's Drawer root rather than on the `<nav>` inside it, so an
+    // ancestor is what has to be measured. Reached from the nav's accessible name for the same
+    // reason the toolbar below is reached from the Back link: names are frozen, classes are not.
+    const rail = (await page
+      .getByRole("navigation", { name: "Main" })
+      .locator('xpath=ancestor::*[contains(@class,"MuiDrawer-root")][1]')
+      .elementHandle())!;
     const printButton = (await page
       .getByRole("button", { name: "Print", exact: true })
       .elementHandle())!;
@@ -105,8 +112,9 @@ test.describe("CV print artifact", () => {
     expect(await css(body, "background-color")).toBe(LIGHT.paper);
 
     // The chrome is not part of the document, and Chromium agrees at print media — the P1T-154
-    // `sx` print rules winning against MUI's own defaults, watched rather than read off a string.
-    expect(await css(appBar, "display")).toBe("none");
+    // `sx` print rules (now the rail's own `hideInPrint`) winning against MUI's defaults, watched
+    // rather than read off a string.
+    expect(await css(rail, "display")).toBe("none");
     expect(await css(toolbar, "display")).toBe("none");
 
     // The sheet's elevation shadow is *polled*, and that is a finding rather than a flake workaround.
@@ -129,7 +137,7 @@ test.describe("CV print artifact", () => {
 
     // Back on screen the chrome returns. A print rule that had leaked to screen would have passed
     // every assertion above while breaking the page it was meant to leave alone.
-    expect(await css(appBar, "display")).not.toBe("none");
+    expect(await css(rail, "display")).not.toBe("none");
     expect(await css(toolbar, "display")).not.toBe("none");
     expect(await printButton.boundingBox()).not.toBeNull();
   });

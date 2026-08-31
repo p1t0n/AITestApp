@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { getToken, subscribe } from "./session";
+import { getEmail, getToken, subscribe } from "./session";
 
 /**
  * Reactive auth state. Re-renders subscribers whenever the session token changes (sign-in,
@@ -11,5 +11,17 @@ export function useIsAuthenticated(): boolean {
     subscribe,
     () => getToken() !== null,
     () => false,
+  );
+}
+
+/**
+ * The signed-in user's email, reactively — `null` when signed out, and also `null` for a session
+ * that predates the app storing it. Every caller therefore has to render the absence.
+ */
+export function useSessionEmail(): string | null {
+  return useSyncExternalStore(
+    subscribe,
+    getEmail,
+    () => null,
   );
 }

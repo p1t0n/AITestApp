@@ -83,9 +83,28 @@ export function subscribe(listener: () => void): () => void {
 }
 
 /**
- * The Theme Mode in force, reactively. The *control* that calls {@link setMode} ships with the
- * left rail in P1T-161; this is the mechanism underneath it.
+ * The Theme Mode in force, reactively. The *control* that calls {@link setMode} is the rail's
+ * theme menu (P1T-161); this is the mechanism underneath it.
  */
 export function useThemeMode(): ThemeMode {
   return useSyncExternalStore(subscribe, getMode, () => "light");
+}
+
+/**
+ * What the *control* shows as chosen, which is not the same question as {@link getMode}: "System"
+ * is a third state, and the difference between it and whichever mode the OS currently asks for is
+ * invisible to `getMode` by design.
+ *
+ * A two-state toggle would pin an override on first use and never let go of it, which would make
+ * {@link followSystemMode} unreachable — a control that cannot get back to the default it shipped
+ * with. Hence three choices in the menu and this snapshot behind them.
+ */
+export type ThemeModeChoice = ThemeMode | "system";
+
+export function getModeChoice(): ThemeModeChoice {
+  return getModeOverride() ?? "system";
+}
+
+export function useThemeModeChoice(): ThemeModeChoice {
+  return useSyncExternalStore(subscribe, getModeChoice, () => "system");
 }
