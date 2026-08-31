@@ -34,7 +34,6 @@ export default function RequirementChips({
           ? extraction.requirements.map((r) => (
               <Tooltip key={r.text} title={chipTooltip(r)}>
                 <Chip
-                  size="small"
                   label={chipLabel(r)}
                   color={r.priority === "MustHave" ? "primary" : "default"}
                   variant={r.priority === "NiceToHave" ? "outlined" : "filled"}
@@ -42,7 +41,7 @@ export default function RequirementChips({
                 />
               </Tooltip>
             ))
-          : requirements.map((r) => <Chip key={r} label={r} size="small" />)}
+          : requirements.map((r) => <Chip key={r} label={r} />)}
       </Stack>
       {extraction && extraction.ambiguities.length > 0 && (
         <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>

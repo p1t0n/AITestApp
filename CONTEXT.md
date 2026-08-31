@@ -318,6 +318,27 @@ Depth is a step on the ramp plus a hairline, not a shadow — a shadow separates
 near-black page.
 _Avoid_: elevation, z-layer, background shades
 
+**Well**:
+The third step of the Surface Ramp, as a thing a component can ask for: a panel-inside-a-panel that
+carries its own fill — a message bubble, a degradation note. A named Paper variant rather than three
+`sx` declarations repeated, because it is neither outlined (a hairline on a coloured fill reads as a
+defect) nor elevated (there is no elevation to speak of).
+_Avoid_: card, tinted box, inner panel
+
+**Overlay Shadow**:
+The one shadow in the design system, and the only thing allowed to carry one: a surface that
+genuinely floats over another — a menu, a dialog, an autocomplete popup, the undocked agent panel.
+Everything merely *next to* something else separates with a hairline. Stated as a token per Theme
+Mode, because a near-black page cannot be shadowed the way a light one can.
+_Avoid_: elevation 8, drop shadow, box shadow
+
+**Override Policy**:
+The rule that decides where a look is written: needed twice, it belongs in the theme's component
+overrides; needed once and about position or spacing, it stays in the component's own `sx`. What
+keeps "the app's style" a thing that can be changed in one place instead of a convention 150 `sx`
+blocks are each half-following.
+_Avoid_: theme customisation, styling convention
+
 ### Agent dock
 
 **Agent Surface**:

@@ -33,7 +33,11 @@ suite run never collides with a dev stack on the default ports.
 
 The theme is a token layer in `src/theme/` (P1T-159): `tokens.ts` declares the values once,
 `index.ts` builds `lightTheme` and `darkTheme` from them, `baseline.ts` holds the accessibility
-floors, and `mode.ts` decides which theme is in force. Components read **MUI palette keys**
+floors, `components.ts` holds the component overrides (P1T-160) and `mode.ts` decides which theme is
+in force. The split between the last two is the one worth knowing: `baseline.ts` is what has no
+component to hang off (the focus ring, the scrollbar, `::selection`), `components.ts` is everything
+that does — and per the **Override Policy**, a look needed twice belongs there rather than in a third
+`sx`. The `sx` blocks that remain are spacing and layout. Components read **MUI palette keys**
 (`background.default`, `surface.raised`, `divider`, `text.secondary`) and never import a token —
 that is the point of the layer, not an oversight: one vocabulary, so dark mode costs a component
 nothing. Reasoning and the full look rules are in `manuals/spa-design-system.md`.

@@ -71,7 +71,6 @@ export default function EmployeesPage() {
                 <TableCell>{e.location ?? "—"}</TableCell>
                 <TableCell>
                   <Chip
-                    size="small"
                     label={`${e.currentCapacityPercent}%`}
                     color={capacityColor(e.currentCapacityPercent)}
                   />

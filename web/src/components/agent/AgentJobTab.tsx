@@ -65,7 +65,7 @@ function RewriteCard({ employeeId, rewrite }: { employeeId: string; rewrite: Tai
   const apply = useApplyRewrite();
   const r = rewrite;
   return (
-    <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }} data-testid={`rewrite-card-${r.achievementId}`}>
+    <Paper sx={{ p: 1.5 }} data-testid={`rewrite-card-${r.achievementId}`}>
       <Typography variant="caption" color="text.secondary">
         Before
       </Typography>
@@ -86,7 +86,6 @@ function RewriteCard({ employeeId, rewrite }: { employeeId: string; rewrite: Tai
             </Stack>
           ) : (
             <Button
-              size="small"
               disabled={apply.isPending}
               startIcon={
                 apply.isPending ? <CircularProgress size={14} color="inherit" /> : undefined
@@ -98,7 +97,6 @@ function RewriteCard({ employeeId, rewrite }: { employeeId: string; rewrite: Tai
           )}
           <Tooltip title="Copy rewritten bullet">
             <IconButton
-              size="small"
               aria-label="Copy rewritten bullet"
               onClick={() => void navigator.clipboard.writeText(r.rewritten)}
             >
@@ -217,7 +215,6 @@ export function AgentJobForm({
     <Box sx={{ flex: 1, overflowY: "auto", p: 1.5 }}>
       <Stack spacing={1.5}>
         <Autocomplete
-          size="small"
           options={options}
           value={selected}
           onChange={(_, v) => setEmployeeId(v?.id ?? null)}
@@ -243,7 +240,6 @@ export function AgentJobForm({
               <Chip
                 key={p.label}
                 label={p.label}
-                size="small"
                 variant="outlined"
                 onClick={() => setJobDescription(p.text)}
               />
@@ -251,7 +247,6 @@ export function AgentJobForm({
           </Stack>
           <TextField
             fullWidth
-            size="small"
             multiline
             minRows={3}
             maxRows={8}
@@ -285,13 +280,13 @@ export function AgentJobForm({
         <ErrorNotice message={error} />
 
         {result && (
-          <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+          <Paper sx={{ p: 1.5 }}>
             <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.5 }}>
               <Typography variant="caption" color="text.secondary">
                 {(result.latencyMs / 1000).toFixed(1)}s
               </Typography>
               <Tooltip title="Copy answer">
-                <IconButton size="small" onClick={() => void copy()} aria-label="Copy answer">
+                <IconButton onClick={() => void copy()} aria-label="Copy answer">
                   <ContentCopyIcon fontSize="small" />
                 </IconButton>
               </Tooltip>
@@ -319,7 +314,7 @@ function JdMatchResults({ response }: { response: JdMatchResponse }) {
     <Box>
       <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
         {response.requirements.map((r) => (
-          <Chip key={r} label={r} size="small" />
+          <Chip key={r} label={r} />
         ))}
       </Stack>
       {response.results.length === 0 ? (
@@ -340,7 +335,7 @@ function JdMatchResults({ response }: { response: JdMatchResponse }) {
 function JdMatchCard({ result }: { result: JdMatchResult }) {
   const [open, setOpen] = useState(false);
   return (
-    <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }} data-testid={`jd-match-${result.employeeId}`}>
+    <Paper sx={{ p: 1.5 }} data-testid={`jd-match-${result.employeeId}`}>
       <Stack direction="row" alignItems="center" justifyContent="space-between">
         <Box>
           <Typography variant="body2" fontWeight={600}>
@@ -351,11 +346,10 @@ function JdMatchCard({ result }: { result: JdMatchResult }) {
           </Typography>
         </Box>
         {result.status === "failed" ? (
-          <Chip label="Match failed" size="small" color="warning" />
+          <Chip label="Match failed" color="warning" />
         ) : (
           <Chip
             label={result.score != null ? `${result.score}/100 · ${result.band ?? "?"}` : (result.band ?? "n/a")}
-            size="small"
             color={result.band === "Strong" ? "success" : "default"}
           />
         )}
@@ -367,7 +361,7 @@ function JdMatchCard({ result }: { result: JdMatchResult }) {
       )}
       {result.answer && (
         <>
-          <Button size="small" onClick={() => setOpen((v) => !v)}>
+          <Button onClick={() => setOpen((v) => !v)}>
             {open ? "Hide analysis" : "Show analysis"}
           </Button>
           {open && <AgentMarkdown text={result.answer} />}
@@ -387,7 +381,7 @@ function InterviewQuestions({ questions }: { questions: InterviewQuestion[] }) {
       </Typography>
       <Stack spacing={1}>
         {questions.map((q, i) => (
-          <Paper key={i} variant="outlined" sx={{ p: 1.5, borderRadius: 2 }} data-testid={`interview-question-${i}`}>
+          <Paper key={i} sx={{ p: 1.5 }} data-testid={`interview-question-${i}`}>
             <Typography variant="body2" fontWeight={600} sx={{ overflowWrap: "anywhere" }}>
               {i + 1}. {q.question}
             </Typography>

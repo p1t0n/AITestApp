@@ -1,10 +1,10 @@
 # SPA design system
 
-> **Status (2026-08-31):** **slices 1 and 6 built** — P1T-159 (§2, §3's type/accent rules, §8) and
-> P1T-164 (§7, taken out of order; see §11). Slices 2–5 are still the agreed target, not the code.
-> Tracked as **P1T-158** with six children, P1T-159 … P1T-164, plus P1T-165 deferred. Each section
-> names the slice that makes it true. Update the status line as slices land — a rule here that no
-> code enforces is a lie, not a plan.
+> **Status (2026-08-31):** **slices 1, 2 and 6 built** — P1T-159 (§2, §3's type/accent rules, §8),
+> P1T-160 (§3's override policy and the density pass) and P1T-164 (§7, taken out of order; see §11).
+> Slices 3–5 are still the agreed target, not the code. Tracked as **P1T-158** with six children,
+> P1T-159 … P1T-164, plus P1T-165 deferred. Each section names the slice that makes it true. Update
+> the status line as slices land — a rule here that no code enforces is a lie, not a plan.
 
 The goal in one sentence: a dense, dark-first product UI — hairline borders instead of shadows,
 accent reserved for the primary action and the focus ring, compact rows — with light mode as an
@@ -94,8 +94,62 @@ the dock's surface picker is a grouped `Menu` (P1T-152).
 
 **Built in slice 1:** the accent (`#2453D4` light / `#5B8CFF` dark), the three-step ramp, radius 8,
 Inter, and the type scale — body copy at 14px, headings well short of MUI's defaults (`h1` is 6rem
-out of the box), `textTransform: "none"` on buttons. **Not** built: `size: "small"` defaults and the
-table density, which are component overrides and therefore slice 2.
+out of the box), `textTransform: "none"` on buttons.
+
+**Built in slice 2 (P1T-160):** `src/theme/components.ts`, wired into both themes, plus the sweep
+that removed every prop it now defaults — **168 props out of 22 files** (109 `size="small"`, 19
+`variant="outlined"` on a Paper, 27 `borderRadius: 2`, 12 explicit `elevation`s and one
+`MenuListProps={{ dense: true }}`), against 15 props added, all of them declared *exceptions*. And
+**no test edits** for the second slice running. Six things the plan had not priced:
+
+- **`variant: "outlined"` as a Paper default is not the same rule as "borders separate".** Eleven
+  Papers in this app are *fills* — a roster-qa bubble, a degradation note, a read-only block — and a
+  hairline on a coloured fill reads as a defect, not as separation. They are `variant="well"` now: a
+  named variant through MUI's own `variants` API, so the flat-fill look lives in the theme instead of
+  in an eleventh copy of `{ p, bgcolor, borderRadius }`. Neither `outlined` (wrong) nor `elevation`
+  (a lie — and on dark mode that variant also paints MUI's white overlay gradient). The word is
+  already the project's: `CONTEXT.md`'s Surface Ramp has called the third step a well since P1T-159.
+  Three of those sites were faking a well with `bgcolor: "action.hover"`, an *interaction* wash, and
+  now say nothing at all.
+- **The exceptions had to be declared, and the print path is why.** With the default flipped, the
+  CV sheet would have grown a hairline — and a border *prints*, unlike a background colour, so a
+  frozen client-facing document would have gone out with a thin box drawn around the page. The sheet
+  says `variant="elevation" elevation={1}` and is otherwise untouched (§7, §9). The floating agent
+  panel and the widget's error toast say the same thing for the on-screen reason: they overlap
+  content, and a border cannot say "above".
+- **The only shadow in the system is a token, `overlayShadow`.** Dialog, Menu and the Autocomplete
+  popup carry it and nothing else does — asserted by walking the whole theme and requiring every
+  `boxShadow` it declares to be either that token or `none`, which is the rule as a test rather than
+  as a paragraph. Dark mode needs a deeper, wider shadow than light: a near-black page cannot be
+  shadowed by a darker black.
+- **`sx: { borderRadius: 2 }` silently doubled when slice 1 moved `shape.borderRadius` 4 → 8.**
+  `sx` multiplies. Fifteen dock and page Papers had been rendering 16px corners since slice 1
+  merged, and the undocked agent panel's `borderRadius: 3` was rendering 24px. The Papers dropped
+  the entry (8px *is* the theme's radius now); the panel is `1.5`, which is the 12px it always
+  meant. Nothing in the plan or the tests would have caught this — it is the shape half of the same
+  trap slice 1 hit with colour.
+- **Accent-on-`contained`-only is a real behaviour change, not a repaint.** MUI paints `outlined`
+  and `text` buttons accent-blue, which is how an accent stops meaning anything: Cancel, Edit, Add
+  skill and Deactivate were all as loud as Save. They are neutral chrome now, keyed per colour
+  (`outlinedPrimary` / `textPrimary`) so that `color="error"` still looks destructive — a blanket
+  `outlined` override would have flattened the delete buttons to grey too.
+- **`surface.outline` finally has a consumer, which means inputs only now meet 1.4.11.** Slice 1
+  shipped the token with nothing pointing at it and said so; `MuiOutlinedInput.notchedOutline` is
+  it. MUI's own default is `rgba(255,255,255,0.23)`, about 2.1:1. Hover moves to `text.secondary`
+  and focus to the 2px accent, so rest → hover → focus is a progression; MUI's own hover jumps
+  straight to `text.primary`, which makes hover louder than focus.
+
+`MuiAlert`'s standard variants are re-tuned rather than inherited, and this is where the token layer
+bit back: MUI computes a standard alert's colours as `lighten(palette[severity].light, 0.9)`, and in
+this palette `light` is a saturated mid-*step* (§2 — `error.light` is a fill white reads on), so the
+formula lands on a colour nobody chose. Each severity is now a 14% wash of its own `main` with a 40%
+edge, the icon in the role colour and the *message* left at `text.primary`. Contrast is asserted
+against the **composite** — the wash resolved over each of the three surfaces, in both modes — since
+that is what a person actually sees; a tint's own contrast is meaningless.
+
+There is deliberately no `MuiAppBar` restyle beyond `border: 0`, which only stops it inheriting the
+outlined default as a box around the whole bar. P1T-161 replaces it with the rail, and restyling a
+component days before deleting it is work with a half-life.
 
 *Slices 1–2 — P1T-159, P1T-160.*
 
@@ -200,7 +254,7 @@ Sequential PRs off `main`, each merged before the next branches — no stacked b
 change no DOM structure at all, so the test suites stay untouched until slice 3.
 
 1. ~~**P1T-159**~~ — tokens, both themes, Inter, `CssBaseline` floors — repaint only; the four colour sites are fixed here. **Shipped**, with zero edits to existing tests: 189 unit tests and the 11 Playwright specs stayed green untouched, which was the whole claim of a repaint
-2. **P1T-160** — component overrides and the density pass
+2. ~~**P1T-160**~~ — component overrides and the density pass — **shipped**: `src/theme/components.ts`, 168 redundant props swept out of 22 files, 45 new assertions, and again zero edits to existing tests (189 unit + 11 Playwright specs green untouched)
 3. **P1T-161** — the rail, its CSS var, the mobile drawer, the persisted theme toggle
 4. **P1T-162** — `PageHeader` and its adoption across the five pages, incl. per-page width
 5. **P1T-163** — dock chrome refresh

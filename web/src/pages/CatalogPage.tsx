@@ -196,10 +196,10 @@ export default function CatalogPage() {
 
   const editActions = (
     <>
-      <IconButton edge="end" size="small" onClick={saveEdit} aria-label="save">
+      <IconButton edge="end" onClick={saveEdit} aria-label="save">
         <CheckIcon fontSize="small" />
       </IconButton>
-      <IconButton edge="end" size="small" onClick={() => setEditing(null)} aria-label="cancel">
+      <IconButton edge="end" onClick={() => setEditing(null)} aria-label="cancel">
         <CloseIcon fontSize="small" />
       </IconButton>
     </>
@@ -210,17 +210,16 @@ export default function CatalogPage() {
       sx={{ pl: 2 + depth * 2, py: 0.5 }}
       secondaryAction={
         <>
-          <IconButton edge="end" size="small" onClick={saveAdd} aria-label="save">
+          <IconButton edge="end" onClick={saveAdd} aria-label="save">
             <CheckIcon fontSize="small" />
           </IconButton>
-          <IconButton edge="end" size="small" onClick={() => setAdding(null)} aria-label="cancel">
+          <IconButton edge="end" onClick={() => setAdding(null)} aria-label="cancel">
             <CloseIcon fontSize="small" />
           </IconButton>
         </>
       }
     >
       <TextField
-        size="small"
         autoFocus
         label={label}
         value={addName}
@@ -244,7 +243,7 @@ export default function CatalogPage() {
           isEditing ? (
             editActions
           ) : (
-            <IconButton edge="end" size="small" onClick={() => setConfirm({ kind: "skill", id, name })} aria-label="delete skill">
+            <IconButton edge="end" onClick={() => setConfirm({ kind: "skill", id, name })} aria-label="delete skill">
               <DeleteIcon fontSize="small" />
             </IconButton>
           )
@@ -252,10 +251,9 @@ export default function CatalogPage() {
       >
         {isEditing ? (
           <Stack direction="row" spacing={1} sx={{ flex: 1, pr: 8 }}>
-            <TextField size="small" label="Name" value={draftName} onChange={(e) => setDraftName(e.target.value)} />
+            <TextField label="Name" value={draftName} onChange={(e) => setDraftName(e.target.value)} />
             <TextField
               select
-              size="small"
               label="Category"
               value={draftParent}
               onChange={(e) => setDraftParent(e.target.value)}
@@ -297,13 +295,12 @@ export default function CatalogPage() {
               <>
                 <IconButton
                   edge="end"
-                  size="small"
                   onClick={(e) => setMenu({ anchor: e.currentTarget, categoryId: node.id })}
                   aria-label="add to category"
                 >
                   <AddIcon fontSize="small" />
                 </IconButton>
-                <IconButton edge="end" size="small" onClick={() => setConfirm({ kind: "category", id: node.id, name: node.name })} aria-label="delete category">
+                <IconButton edge="end" onClick={() => setConfirm({ kind: "category", id: node.id, name: node.name })} aria-label="delete category">
                   <DeleteIcon fontSize="small" />
                 </IconButton>
               </>
@@ -312,10 +309,9 @@ export default function CatalogPage() {
         >
           {isEditing ? (
             <Stack direction="row" spacing={1} sx={{ flex: 1, pr: 8 }}>
-              <TextField size="small" label="Name" value={draftName} onChange={(e) => setDraftName(e.target.value)} />
+              <TextField label="Name" value={draftName} onChange={(e) => setDraftName(e.target.value)} />
               <TextField
                 select
-                size="small"
                 label="Parent"
                 value={draftParent}
                 onChange={(e) => setDraftParent(e.target.value)}
@@ -332,7 +328,7 @@ export default function CatalogPage() {
           ) : (
             <Stack direction="row" alignItems="center" spacing={0.5}>
               {hasContent ? (
-                <IconButton size="small" onClick={() => toggleCollapse(node.id)} aria-label="toggle">
+                <IconButton onClick={() => toggleCollapse(node.id)} aria-label="toggle">
                   {isCollapsed ? <ChevronRightIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
                 </IconButton>
               ) : (

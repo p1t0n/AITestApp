@@ -10,7 +10,7 @@ import { ErrorNotice } from "../ErrorNotice";
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
-    <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, flex: 1, minWidth: 110 }}>
+    <Paper sx={{ p: 1.5, flex: 1, minWidth: 110 }}>
       <Typography variant="h6">{value}</Typography>
       <Typography variant="caption" color="text.secondary">
         {label}
@@ -57,8 +57,8 @@ export function BenchPanel() {
 
         {result && result.notes.length > 0 && (
           <Paper
-            elevation={0}
-            sx={{ p: 1.5, bgcolor: "warning.light", color: "warning.contrastText", borderRadius: 2 }}
+            variant="well"
+            sx={{ p: 1.5, bgcolor: "warning.light", color: "warning.contrastText" }}
             data-testid="bench-notes"
           >
             {result.notes.map((n, i) => (
@@ -80,7 +80,7 @@ export function BenchPanel() {
             </Stack>
 
             {stats.proposals && (
-              <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }} data-testid="bench-proposals">
+              <Paper sx={{ p: 1.5 }} data-testid="bench-proposals">
                 <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
                   Demand (staffing proposals)
                 </Typography>
@@ -91,7 +91,7 @@ export function BenchPanel() {
                 {stats.proposals.frequentCandidates.length > 0 && (
                   <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
                     {stats.proposals.frequentCandidates.map((c) => (
-                      <Chip key={c.name} label={`${c.name} ×${c.count}`} size="small" />
+                      <Chip key={c.name} label={`${c.name} ×${c.count}`} />
                     ))}
                   </Stack>
                 )}
@@ -101,7 +101,7 @@ export function BenchPanel() {
         )}
 
         {result && (
-          <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+          <Paper sx={{ p: 1.5 }}>
             <AgentMarkdown text={result.answer} />
           </Paper>
         )}

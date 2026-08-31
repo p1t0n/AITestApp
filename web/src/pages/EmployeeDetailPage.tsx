@@ -197,17 +197,15 @@ export default function EmployeeDetailPage() {
           {e.availabilityEntries.length === 0 && <Typography color="text.secondary">No entries.</Typography>}
           {e.availabilityEntries.map((a) => (
             <Stack key={a.id} direction="row" alignItems="center" spacing={2}>
-              <Chip label={`${a.capacityPercent}%`} size="small" />
+              <Chip label={`${a.capacityPercent}%`} />
               <Typography>from {a.effectiveFrom}</Typography>
               <IconButton
-                size="small"
                 aria-label={`Edit availability from ${a.effectiveFrom}`}
                 onClick={() => setAvailabilityEdit({ id: a.id, initial: toSaveAvailability(a) })}
               >
                 <EditIcon fontSize="small" />
               </IconButton>
               <IconButton
-                size="small"
                 color="error"
                 aria-label={`Delete availability from ${a.effectiveFrom}`}
                 onClick={() => delAvail.mutate(a.id)}
@@ -267,14 +265,12 @@ export default function EmployeeDetailPage() {
               </Box>
               <Stack direction="row">
                 <IconButton
-                  size="small"
                   aria-label={`Edit ${x.title} at ${x.company}`}
                   onClick={() => setExperienceEdit({ id: x.id, initial: toSaveExperience(x) })}
                 >
                   <EditIcon fontSize="small" />
                 </IconButton>
                 <IconButton
-                  size="small"
                   color="error"
                   aria-label={`Delete ${x.title} at ${x.company}`}
                   onClick={() => delExperience.mutate(x.id)}
@@ -291,7 +287,7 @@ export default function EmployeeDetailPage() {
             </ul>
             <Stack direction="row" gap={0.5} flexWrap="wrap">
               {x.skills.map((s) => (
-                <Chip key={s.id} size="small" variant="outlined" label={s.skillName} />
+                <Chip key={s.id} variant="outlined" label={s.skillName} />
               ))}
             </Stack>
           </Box>
@@ -312,21 +308,19 @@ export default function EmployeeDetailPage() {
         {e.qualifications.length === 0 && <Typography color="text.secondary">None.</Typography>}
         {e.qualifications.map((q) => (
           <Stack key={q.id} direction="row" alignItems="center" spacing={1} mb={1}>
-            <Chip size="small" label={q.type} />
+            <Chip label={q.type} />
             <Typography>
               <b>{q.name}</b>
               {q.institution ? ` — ${q.institution}` : ""}
               {q.issuer ? ` — ${q.issuer}` : ""}
             </Typography>
             <IconButton
-              size="small"
               aria-label={`Edit ${q.name}`}
               onClick={() => setQualificationEdit({ id: q.id, initial: toSaveQualification(q) })}
             >
               <EditIcon fontSize="small" />
             </IconButton>
             <IconButton
-              size="small"
               color="error"
               aria-label={`Delete ${q.name}`}
               onClick={() => delQualification.mutate(q.id)}

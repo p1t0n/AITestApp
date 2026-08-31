@@ -44,7 +44,7 @@ function ShortlistCandidateCard({
   const [showEvidence, setShowEvidence] = useState(false);
   const c = candidate;
   return (
-    <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+    <Paper sx={{ p: 1.5 }}>
       <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
         <Box sx={{ minWidth: 0 }}>
           <Link
@@ -61,11 +61,10 @@ function ShortlistCandidateCard({
         </Box>
         <Stack direction="row" spacing={0.5} flexShrink={0}>
           <Tooltip title="Similarity score">
-            <Chip size="small" variant="outlined" label={c.score.toFixed(2)} />
+            <Chip variant="outlined" label={c.score.toFixed(2)} />
           </Tooltip>
           <Tooltip title="Requirements matched">
             <Chip
-              size="small"
               color={c.coverage.matched === c.coverage.total ? "success" : "default"}
               label={`${c.coverage.matched}/${c.coverage.total}`}
             />
@@ -79,13 +78,12 @@ function ShortlistCandidateCard({
 
       <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.5 }}>
         <Button
-          size="small"
           onClick={() => setShowEvidence((v) => !v)}
           endIcon={showEvidence ? <ExpandLessIcon /> : <ExpandMoreIcon />}
         >
           Evidence
         </Button>
-        <Button size="small" onClick={() => onRunMatch(c.employeeId)}>
+        <Button onClick={() => onRunMatch(c.employeeId)}>
           Run full Match
         </Button>
       </Stack>
@@ -174,7 +172,6 @@ export function ShortlistPanel({
               <Chip
                 key={p.label}
                 label={p.label}
-                size="small"
                 variant="outlined"
                 onClick={() => setJobDescription(p.text)}
               />
@@ -182,7 +179,6 @@ export function ShortlistPanel({
           </Stack>
           <TextField
             fullWidth
-            size="small"
             multiline
             minRows={3}
             maxRows={8}
@@ -194,7 +190,6 @@ export function ShortlistPanel({
 
         <Box>
           <Button
-            size="small"
             startIcon={<FilterListIcon />}
             endIcon={showFilters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
             onClick={() => setShowFilters((v) => !v)}
@@ -204,7 +199,6 @@ export function ShortlistPanel({
           <Collapse in={showFilters} unmountOnExit>
             <Stack spacing={1.5} sx={{ mt: 1 }}>
               <TextField
-                size="small"
                 type="date"
                 label="Available on"
                 InputLabelProps={{ shrink: true }}
@@ -213,7 +207,6 @@ export function ShortlistPanel({
               />
               <Autocomplete
                 multiple
-                size="small"
                 options={skillOptions}
                 value={selectedSkills}
                 onChange={(_, v) => setSkillIds(v.map((o) => o.id))}
@@ -224,7 +217,6 @@ export function ShortlistPanel({
                 )}
               />
               <TextField
-                size="small"
                 label="Location"
                 placeholder="Any location"
                 value={location}
@@ -232,7 +224,6 @@ export function ShortlistPanel({
               />
               <Stack direction="row" spacing={1.5}>
                 <TextField
-                  size="small"
                   type="number"
                   label="Min years"
                   inputProps={{ min: 0 }}
@@ -240,7 +231,6 @@ export function ShortlistPanel({
                   onChange={(e) => setMinYears(e.target.value)}
                 />
                 <TextField
-                  size="small"
                   type="number"
                   label="Top K"
                   placeholder="Server default"

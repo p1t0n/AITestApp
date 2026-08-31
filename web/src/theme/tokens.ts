@@ -52,6 +52,13 @@ export interface ModeTokens {
    * chosen floor of 1.4:1 (ours, not the standard's) against all three surfaces, tested.
    */
   divider: string;
+  /**
+   * The one shadow in the system. Separation is a hairline border everywhere *except* a surface
+   * that genuinely floats over another — a menu, a dialog, an autocomplete popup, the undocked
+   * agent panel. Those cannot be separated by a border, because a border does not say "above".
+   * Anything that is merely *next to* something else gets `divider`, not this.
+   */
+  overlayShadow: string;
   primary: ColorRole;
   error: ColorRole;
   warning: ColorRole;
@@ -92,6 +99,9 @@ const dark: ModeTokens = {
     disabled: "#616C79",
   },
   divider: "#3A4451",
+  // Near-black cannot be shadowed by a darker black, so dark mode's overlay shadow is deep and
+  // wide rather than tight — it reads as depth-of-field, not as a drop shadow.
+  overlayShadow: "0 12px 32px rgba(0, 0, 0, 0.64)",
   // A brighter blue than light mode's: the accent has to carry 3:1 as a focus ring against a
   // near-black page, and a deep blue cannot. Its label is ink, not white — white on this blue is
   // 3.2:1, which is the trap `#2e5bff` fell into on dark.
@@ -130,6 +140,7 @@ const light: ModeTokens = {
     disabled: "#98A1AE",
   },
   divider: "#C5CBD4",
+  overlayShadow: "0 12px 28px rgba(16, 20, 24, 0.16)",
   // Deeper and calmer than the `#2e5bff` this replaces, which was loud in light mode and unusable
   // in dark. White reads on it at 6.4:1, so the primary button keeps a white label.
   primary: { main: "#2453D4", light: "#5B82E8", dark: "#1A3EA3", contrastText: "#FFFFFF" },

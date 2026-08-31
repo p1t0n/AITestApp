@@ -94,6 +94,8 @@ export default function CvPage() {
         {/* On paper the sheet *is* the page: no elevation shadow, no centring margin. These used to
             be a global `#cv-sheet` rule; the id now only marks the sheet for the e2e suite. */}
         <Paper
+          variant="elevation"
+          elevation={1}
           id="cv-sheet"
           sx={{
             p: 5,
@@ -134,7 +136,7 @@ export default function CvPage() {
                   </Typography>
                   <Stack direction="row" gap={0.5} flexWrap="wrap">
                     {g.skills.map((s) => (
-                      <Chip key={s.id} size="small" label={`${s.skillName} (${s.level})`} />
+                      <Chip key={s.id} label={`${s.skillName} (${s.level})`} />
                     ))}
                   </Stack>
                 </Box>
@@ -196,7 +198,7 @@ export default function CvPage() {
             <CvSection title="Languages">
               <Stack direction="row" gap={0.5} flexWrap="wrap">
                 {cv.languages.map((l) => (
-                  <Chip key={l.id} size="small" variant="outlined" label={`${l.language} (${l.level})`} />
+                  <Chip key={l.id} variant="outlined" label={`${l.language} (${l.level})`} />
                 ))}
               </Stack>
             </CvSection>

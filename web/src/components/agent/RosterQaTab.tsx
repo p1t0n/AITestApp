@@ -16,14 +16,13 @@ function Bubble({ message }: { message: Message }) {
   return (
     <Box sx={{ display: "flex", justifyContent: isUser ? "flex-end" : "flex-start" }}>
       <Paper
-        elevation={0}
+        variant="well"
         sx={{
           px: 1.5,
           py: 1,
           maxWidth: "85%",
           bgcolor: isUser ? "primary.main" : isError ? "error.light" : "surface.raised",
           color: isUser ? "primary.contrastText" : isError ? "error.contrastText" : "text.primary",
-          borderRadius: 2,
         }}
       >
         {isUser ? (
@@ -97,7 +96,7 @@ export function RosterChat() {
 
       {messages.length > 0 && (
         <Box sx={{ px: 1.5, pb: 0.5 }}>
-          <Button size="small" onClick={newConversation} disabled={ask.isPending}>
+          <Button onClick={newConversation} disabled={ask.isPending}>
             New conversation
           </Button>
         </Box>
@@ -107,7 +106,6 @@ export function RosterChat() {
         <Stack direction="row" spacing={1} alignItems="flex-end">
           <TextField
             fullWidth
-            size="small"
             multiline
             maxRows={4}
             placeholder="Ask about the roster…"

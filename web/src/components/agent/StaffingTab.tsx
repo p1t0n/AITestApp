@@ -71,7 +71,7 @@ export function ProposalDecisionCard({
 
   if (state.phase === "decided") {
     return (
-      <Paper elevation={0} sx={{ p: 1.5, bgcolor: "action.hover", borderRadius: 2 }} data-testid="proposal-decided">
+      <Paper variant="well" sx={{ p: 1.5 }} data-testid="proposal-decided">
         <Typography variant="body2" fontWeight={600}>
           Proposal {state.status}
         </Typography>
@@ -80,14 +80,13 @@ export function ProposalDecisionCard({
   }
 
   return (
-    <Paper elevation={0} sx={{ p: 1.5, bgcolor: "action.hover", borderRadius: 2 }} data-testid="proposal-decision">
+    <Paper variant="well" sx={{ p: 1.5 }} data-testid="proposal-decision">
       <Typography variant="body2" fontWeight={600} sx={{ mb: 1 }}>
         This proposal awaits your decision
       </Typography>
       <ErrorNotice message={state.phase === "failed" ? state.message : null} sx={{ mb: 1 }} />
       <Stack direction="row" spacing={1}>
         <Button
-          size="small"
           variant="contained"
           disabled={state.phase === "saving"}
           onClick={() => void decide("approved")}
@@ -95,7 +94,6 @@ export function ProposalDecisionCard({
           Approve
         </Button>
         <Button
-          size="small"
           variant="outlined"
           color="inherit"
           disabled={state.phase === "saving"}
@@ -216,7 +214,6 @@ export function StaffingPanel({
               <Chip
                 key={p.label}
                 label={p.label}
-                size="small"
                 variant="outlined"
                 onClick={() => setJobDescription(p.text)}
               />
@@ -224,7 +221,6 @@ export function StaffingPanel({
           </Stack>
           <TextField
             fullWidth
-            size="small"
             multiline
             minRows={3}
             maxRows={8}
@@ -236,7 +232,6 @@ export function StaffingPanel({
 
         <Box>
           <Button
-            size="small"
             startIcon={<FilterListIcon />}
             endIcon={showFilters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
             onClick={() => setShowFilters((v) => !v)}
@@ -246,7 +241,6 @@ export function StaffingPanel({
           <Collapse in={showFilters} unmountOnExit>
             <Stack spacing={1.5} sx={{ mt: 1 }}>
               <TextField
-                size="small"
                 type="date"
                 label="Available on"
                 InputLabelProps={{ shrink: true }}
@@ -255,7 +249,6 @@ export function StaffingPanel({
               />
               <Autocomplete
                 multiple
-                size="small"
                 options={skillOptions}
                 value={selectedSkills}
                 onChange={(_, v) => setSkillIds(v.map((o) => o.id))}
@@ -266,14 +259,12 @@ export function StaffingPanel({
                 )}
               />
               <TextField
-                size="small"
                 label="Location"
                 placeholder="Any location"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
               />
               <TextField
-                size="small"
                 type="number"
                 label="Min years"
                 inputProps={{ min: 0 }}
@@ -286,7 +277,6 @@ export function StaffingPanel({
 
         <TextField
           select
-          size="small"
           label="Candidates to match"
           value={matchTop}
           onChange={(e) => setMatchTop(e.target.value)}
@@ -318,8 +308,8 @@ export function StaffingPanel({
           <>
             {report.degraded && (
               <Paper
-                elevation={0}
-                sx={{ p: 1.5, bgcolor: "warning.light", color: "warning.contrastText", borderRadius: 2 }}
+                variant="well"
+                sx={{ p: 1.5, bgcolor: "warning.light", color: "warning.contrastText" }}
                 data-testid="staffing-degraded"
               >
                 <Typography variant="body2" fontWeight={600}>
