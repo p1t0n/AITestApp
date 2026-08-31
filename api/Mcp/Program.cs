@@ -9,6 +9,7 @@ using CvManager.Infrastructure;
 using CvManager.Infrastructure.Embeddings;
 using CvManager.Infrastructure.Search;
 using CvManager.Mcp;
+using CvManager.Mcp.Auth;
 using CvManager.Mcp.Search;
 using CvManager.Mcp.Tools;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -94,6 +95,9 @@ builder.Services
     .AddMcpServer()
     .WithHttpTransport()
     .AddAuthorizationFilters()
+    // Per-tool grants on top of the capability scopes (P1T-149): a token carrying
+    // mcp:tool:<name> scopes is advertised — and may call — only those tools.
+    .AddToolGrantFilters()
     .WithTools<EmployeeTools>(toolSerializerOptions)
     .WithTools<LanguageTools>(toolSerializerOptions)
     .WithTools<AvailabilityTools>(toolSerializerOptions)

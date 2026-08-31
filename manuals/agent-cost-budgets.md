@@ -252,8 +252,14 @@ Two guards, because a narrowing feature's failure mode is silent:
 `CostFloors.AgentToolAllowlists` is the declaration the Baseline Prompt Size floor measures
 against, and a test asserts the shipped `appsettings.json` matches it. Without that link the
 committed cost ceilings would stop describing the running system the first time someone edited
-config. The right answer is still P1T-149 — per-tool scopes on the Keycloak identity, enforced
-server-side — and this config key is the shape that moves there.
+config.
+
+**Since P1T-149 the identity carries it for real** (`manuals/mcp-tool-grants.md`): the same set is
+`mcp:tool:<name>` scopes on the agent's Keycloak client, and the MCP server — not the client —
+narrows `tools/list` and refuses `tools/call` outside them. The config key above stays as the
+local echo, still asserted against the same declaration, and a second test asserts the realm
+against it too. So this section's cost argument is unchanged and its "wrong place" argument is
+now answered in the right place.
 
 ## 4. The work
 
@@ -300,10 +306,13 @@ Sequential, each landing on its own:
 
 ### Backlog, from measured evidence
 
-- **Server-side per-tool MCP scopes** (P1T-149). The Tool Allowlist belongs on the agent's Keycloak identity
-  (`agent-roster-qa`), enforced server-side, rather than in client config. P1T-146 shipped the
-  client-side stand-in; the config key it introduced (`McpAuth:<agent>:Tools`) is the shape that
-  moves onto the identity.
+- ~~**Server-side per-tool MCP scopes**~~ (P1T-149) — *shipped*, recorded in
+  `manuals/mcp-tool-grants.md`. Each agent's Keycloak client carries `mcp:tool:<name>` scopes and
+  the MCP server narrows `tools/list` to them and refuses `tools/call` outside them. No cost
+  ceiling moves — the model is shown exactly the tools it was shown before, because the grants are
+  copied from the allowlists. What it buys is that the narrowing is now a boundary rather than a
+  convention: before, an agent's token was still entitled to every read tool it had filtered out
+  of its own list. §3.5's closing sentence is now true.
 - **resume-ingestion's tool choice** (P1T-150) — *done, §7*. It was not a tool-choice problem.
 
 ## 5. Reproducing the measurement

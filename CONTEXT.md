@@ -226,8 +226,17 @@ _Avoid_: baseline (overloaded), threshold
 **Tool Allowlist**:
 The subset of the MCP read surface one agent identity is shown. Narrows Baseline Prompt Size and
 the choices the model can thrash between. Distinct from MCP scopes, which gate read against write;
-the allowlist gates which read tools.
+the allowlist gates which read tools. Declared once in `CostFloors.AgentToolAllowlists`; the agent
+config and the Keycloak realm are both asserted against that declaration.
 _Avoid_: tool filter, tool subset
+
+**Tool Grant**:
+The Tool Allowlist as the token carries it: an `mcp:tool:<name>` scope on the agent's Keycloak
+client, enforced by the MCP server at `tools/list` and `tools/call`. The boundary the allowlist
+only described — a client can decline to show itself a tool, but only a grant can stop it calling
+one. Grants compose with the capability scopes and only ever narrow them; a token carrying no
+grant is narrowed by nothing.
+_Avoid_: per-tool scope (says the mechanism, not the rule), tool permission
 
 **Convergence**:
 How few model calls an agent needs to reach its answer. Independent of cost: a converged run can

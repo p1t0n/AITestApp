@@ -109,6 +109,7 @@ reason on the issue — never the fix for a red run.
 | Agent instruction size | `Agents.Tests/CostFloors/BaselinePromptSizeFloorTests` | The authored `Instructions` prompt of all 9 prompted agents |
 | Baseline Prompt Size | same | Instructions + the pinned schema size of every tool the agent actually hands the model, driven through the real agent with a fake chat client and the agent's own Tool Allowlist as the offered surface |
 | Tool Allowlist | `Agents.Tests/AgentToolAllowlistTests` | The shipped `appsettings.json` asserted against `CostFloors.AgentToolAllowlists` — the same declaration the Baseline Prompt Size floor measures against, so config and cost cannot drift apart |
+| Tool Grants | `Mcp.Tests/KeycloakToolGrantTests` | The shipped `keycloak/realm-export.json` asserted against the same declaration (P1T-149): the `mcp:tool:*` scopes on each agent client are the boundary the server enforces, so the measured surface and the entitled one are one set. Deterministic — the realm export is JSON on disk, no Keycloak needed |
 | Convergent run | `Agents.Tests/CostFloors/ConvergenceCostFloorTests` | The whole reference question priced along its declared Convergent Path — Baseline Prompt Size × model calls plus each result × the calls that follow it (P1T-148, `manuals/agent-cost-budgets.md` §6) |
 
 Two coverage guards keep the floors from rotting: a read tool with no result ceiling fails unless

@@ -50,6 +50,114 @@
         "include.in.token.scope": "true",
         "display.on.consent.screen": "true"
       }
+    },
+    {
+      "name": "mcp:tool:cv_get",
+      "description": "Grants the cv_get MCP tool.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    },
+    {
+      "name": "mcp:tool:employee_create_draft",
+      "description": "Grants the employee_create_draft MCP tool.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    },
+    {
+      "name": "mcp:tool:employee_list",
+      "description": "Grants the employee_list MCP tool.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    },
+    {
+      "name": "mcp:tool:employee_skill_add",
+      "description": "Grants the employee_skill_add MCP tool.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    },
+    {
+      "name": "mcp:tool:experience_add",
+      "description": "Grants the experience_add MCP tool.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    },
+    {
+      "name": "mcp:tool:language_add",
+      "description": "Grants the language_add MCP tool.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    },
+    {
+      "name": "mcp:tool:qualification_add",
+      "description": "Grants the qualification_add MCP tool.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    },
+    {
+      "name": "mcp:tool:roster_digest_list",
+      "description": "Grants the roster_digest_list MCP tool.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    },
+    {
+      "name": "mcp:tool:roster_semantic_search",
+      "description": "Grants the roster_semantic_search MCP tool.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    },
+    {
+      "name": "mcp:tool:roster_shortlist_search",
+      "description": "Grants the roster_shortlist_search MCP tool.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    },
+    {
+      "name": "mcp:tool:skill_list",
+      "description": "Grants the skill_list MCP tool.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    },
+    {
+      "name": "mcp:tool:style_exemplar_search",
+      "description": "Grants the style_exemplar_search MCP tool.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
     }
   ],
   "clients": [
@@ -106,7 +214,11 @@
       "directAccessGrantsEnabled": false,
       "defaultClientScopes": [
         "mcp-audience",
-        "mcp:read"
+        "mcp:read",
+        "mcp:tool:cv_get",
+        "mcp:tool:employee_list",
+        "mcp:tool:roster_semantic_search",
+        "mcp:tool:skill_list"
       ]
     },
     {
@@ -120,7 +232,9 @@
       "directAccessGrantsEnabled": false,
       "defaultClientScopes": [
         "mcp-audience",
-        "mcp:read"
+        "mcp:read",
+        "mcp:tool:cv_get",
+        "mcp:tool:style_exemplar_search"
       ]
     },
     {
@@ -134,7 +248,8 @@
       "directAccessGrantsEnabled": false,
       "defaultClientScopes": [
         "mcp-audience",
-        "mcp:read"
+        "mcp:read",
+        "mcp:tool:cv_get"
       ]
     },
     {
@@ -148,7 +263,8 @@
       "directAccessGrantsEnabled": false,
       "defaultClientScopes": [
         "mcp-audience",
-        "mcp:read"
+        "mcp:read",
+        "mcp:tool:roster_shortlist_search"
       ]
     },
     {
@@ -162,7 +278,8 @@
       "directAccessGrantsEnabled": false,
       "defaultClientScopes": [
         "mcp-audience",
-        "mcp:read"
+        "mcp:read",
+        "mcp:tool:cv_get"
       ]
     },
     {
@@ -176,7 +293,8 @@
       "directAccessGrantsEnabled": false,
       "defaultClientScopes": [
         "mcp-audience",
-        "mcp:read"
+        "mcp:read",
+        "mcp:tool:employee_list"
       ]
     },
     {
@@ -191,7 +309,13 @@
       "defaultClientScopes": [
         "mcp-audience",
         "mcp:read",
-        "mcp:write"
+        "mcp:write",
+        "mcp:tool:employee_create_draft",
+        "mcp:tool:employee_skill_add",
+        "mcp:tool:experience_add",
+        "mcp:tool:language_add",
+        "mcp:tool:qualification_add",
+        "mcp:tool:skill_list"
       ]
     },
     {
@@ -205,7 +329,8 @@
       "directAccessGrantsEnabled": false,
       "defaultClientScopes": [
         "mcp-audience",
-        "mcp:read"
+        "mcp:read",
+        "mcp:tool:roster_digest_list"
       ]
     }
   ]

@@ -197,6 +197,11 @@ public static class CostFloors
     /// exactly this surface when measuring its Baseline Prompt Size, and asserts the shipped
     /// <c>appsettings.json</c> matches it — so the config and the measured cost cannot drift apart.
     ///
+    /// <para>Since P1T-149 the Keycloak realm is chained to this declaration too: the same set is
+    /// <c>mcp:tool:&lt;name&gt;</c> scopes on each agent client, asserted by
+    /// <c>Mcp.Tests/KeycloakToolGrantTests</c>. So the surface that is MEASURED here, the one the
+    /// client filters to, and the one the token is actually ENTITLED to are provably one set.</para>
+    ///
     /// <para>Every agent is listed, including the ones that already narrowed themselves in code
     /// (Match/Interview Kit to <c>cv_get</c>, Tailoring to <c>cv_get</c> +
     /// <c>style_exemplar_search</c>): the allowlist is the outer bound on the identity, the
