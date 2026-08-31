@@ -231,7 +231,41 @@ remaining column reads wrong once a rail eats 240px and a dock can eat more: tab
 catalog, users) go full-bleed to a ~1440px cap; forms, the auth pages and the CV sheet stay capped.
 `PageHeader` takes the width as a prop so the choice is visible at the top of each page.
 
-*Slice 4 — P1T-162.*
+*Slice 4 — P1T-162, **built**. `web/src/components/PageHeader.tsx`, adopted by all five pages;
+`App.tsx` no longer has a container. Two named widths — `wide` 1440 for the three tables, `content`
+1000 for the profile and the CV page — and the auth pages, which already cap themselves at 440px,
+took over their own gutters. Five things the plan had not priced:*
+
+- **The body comes through the header, and that is a design decision rather than a convenience.**
+  A header capped at one width above a body capped at another is a defect nobody would notice for
+  months, and two props at the top of a page is exactly how you get one. `PageHeader` takes the
+  page body as `children`, so the two are physically incapable of disagreeing. `PageContainer` is
+  exported without the strip for the one caller that needs the box and no heading — the routed-area
+  error fallback, which renders *instead of* a page and would otherwise sit flush against the rail.
+- **A sticky header needs a third published property, not a second guess.** Below `md` the rail is a
+  drawer behind a slim sticky bar, and a header pinned at `top: 0` would sit under it. The rail now
+  publishes `--app-rail-top-inset` alongside `--app-rail-push` (§4's contract, third instance): the
+  header reads one property with a `0px` fallback and knows nothing about the rail's breakpoint or
+  the height of a dense `Toolbar`. Free of charge, because `isNarrow` was already on the rail's
+  interface — so the existing suite's `AppRail` factory needed no edit.
+- **"Pinned" is measured, not inferred from `scrollY`.** A zero-height sentinel stays at the strip's
+  place in the flow and the two tops are compared; the border therefore appears at the moment the
+  strip actually stops moving, whatever the inset currently is. `scrollY > 0` would have lit the
+  border while the header was still travelling. The border is always 1px and transparent until
+  pinned, so gaining it moves nothing down.
+- **One flat row, because two print specs walk *up* from a locator.** The first cut stacked a
+  labelled `Back` button above the title, which put the page's actions level with the gap between
+  the two lines — visible in the first CV-page capture, invisible in the diff. It also nested the
+  title inside a second `Stack`, and `cv-print.e2e.ts` and `CvPage.print.test.tsx` both reach the
+  print-hidden element as "the nearest `MuiStack` ancestor" of a control. Back is an icon on the
+  title's line now, so the strip's outermost element is the answer for every control in it — which
+  is what `cv-print.e2e.ts` predicted it would need to be when it wrote that locator for P1T-162.
+- **`MuiIconButton` defaults to `action.active`, which this palette resolves to flat white.** Making
+  Back an icon silently repainted it: louder than the title beside it, and not a colour anybody
+  chose. Caught by `CvSheet.lightLock.test.tsx`, which asserts the chrome resolves the *app's*
+  `text.primary` — a spec written for the light-lock, catching a regression in the strip above it.
+  `color="inherit"` is the fix, and it is slice 2's accent rule restated: accent on the primary
+  action, neutral chrome everywhere else.
 
 ## 6. The dock
 
@@ -309,20 +343,30 @@ change no DOM structure at all, so the test suites stay untouched until slice 3.
 1. ~~**P1T-159**~~ — tokens, both themes, Inter, `CssBaseline` floors — repaint only; the four colour sites are fixed here. **Shipped**, with zero edits to existing tests: 189 unit tests and the 11 Playwright specs stayed green untouched, which was the whole claim of a repaint
 2. ~~**P1T-160**~~ — component overrides and the density pass — **shipped**: `src/theme/components.ts`, 168 redundant props swept out of 22 files, 45 new assertions, and again zero edits to existing tests (189 unit + 11 Playwright specs green untouched)
 3. ~~**P1T-161**~~ — the rail, its CSS var, the mobile drawer, the persisted theme toggle. **Shipped**, with one test edit (a mock gaining an export) and no assertion rewritten: the frozen accessible names survived the `AppBar`'s removal, which is what §9's table exists to buy
-4. **P1T-162** — `PageHeader` and its adoption across the five pages, incl. per-page width
+4. ~~**P1T-162**~~ — `PageHeader` and its adoption across the five pages, incl. per-page width. **Shipped**, again with no existing assertion rewritten: 270 → 284 unit tests and 18 → 23 Playwright specs, all additive. The three `getByRole("heading", { name })` locators the e2e suite already had went on passing against a real `<h1>`, which is what §9's table exists to buy
 5. **P1T-163** — dock chrome refresh
 6. ~~**P1T-164**~~ — `CvPage` light-lock. **Shipped, and shipped second** rather than sixth — §11 is why. Also zero edits to existing tests: 189 → 195 unit tests, all six new
 7. **P1T-165** (later) — ⌘K palette — it hangs off the shell and needs a search-endpoint story of its own
 
 Each slice ends with Playwright screenshots in light and dark of: roster, employee detail, catalog,
-users, sign-in, dock open, CV page — plus, from slice 3, the rail collapsed and the mobile drawer. Screenshots land in `docs/` (gitignored); this record and
-`manuals/spa-architecture.md` are what gets committed.
+users, sign-in, dock open, CV page — plus, from slice 3, the rail collapsed and the mobile drawer,
+and from slice 4 the roster scrolled with its header pinned. Screenshots land in `docs/`
+(gitignored); this record and `manuals/spa-architecture.md` are what gets committed.
 
 One fix to the capture landed in slice 2: `/catalog` and `/users` were shot with no wait, so the
 light catalog image from slice 1 (and the first slice-2 pass) is a spinner on an empty page — a
 screenshot of nothing, in the one place a screenshot is the deliverable. Both now wait for their
 loading state to clear, which means slice 1's `5-catalog` cannot be compared against and the
 before/after for that surface starts at slice 2.
+
+Slice 4 added the one shot that needs the capture to *make* its own conditions: a pinned header has
+nothing to stick to unless the roster is longer than the viewport, and the shared database's length
+is not something to depend on. The capture seeds seven filler rows per mode (a different seven each,
+since both modes run against one database and dark runs second), then sizes the viewport off
+`document.scrollHeight` rather than a literal — a hard-coded height that scrolled in dark did not
+scroll in light, which is how the first run of it failed. It is also the one shot that is *not*
+`fullPage`: photographing the whole document unpins the strip, leaving the only thing the image
+exists to show out of it.
 
 The capture is `web/e2e/screenshots.e2e.ts`, run with `npm run shots` — committed rather than
 rebuilt from this paragraph six times, on the same reasoning as the repo's gate harnesses

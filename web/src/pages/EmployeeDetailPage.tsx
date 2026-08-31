@@ -47,6 +47,7 @@ import type {
   SaveSpokenLanguage,
   SpokenLanguage,
 } from "../types";
+import PageHeader, { PageContainer } from "../components/PageHeader";
 import AvailabilityFormDialog from "./AvailabilityFormDialog";
 import EmployeeFormDialog from "./EmployeeFormDialog";
 import EmployeeSkillFormDialog from "./EmployeeSkillFormDialog";
@@ -149,18 +150,23 @@ export default function EmployeeDetailPage() {
   const [availabilityEdit, setAvailabilityEdit] = useState<EditTarget<SaveAvailabilityEntry>>(null);
   const [skillEdit, setSkillEdit] = useState<SkillEditTarget>(null);
 
-  if (isLoading || !e) return <CircularProgress />;
+  // Early return, like the roster: the e2e capture waits for the person's name to appear before it
+  // shoots, and a header rendered over an empty profile would satisfy that wait too early.
+  if (isLoading || !e)
+    return (
+      <PageContainer width="content">
+        <CircularProgress />
+      </PageContainer>
+    );
 
   return (
-    <Box>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-        <Box>
-          <Typography variant="h4">
-            {e.firstName} {e.lastName}
-          </Typography>
-          <Typography color="text.secondary">{e.title}</Typography>
-        </Box>
-        <Stack direction="row" spacing={1}>
+    <PageHeader
+      title={`${e.firstName} ${e.lastName}`}
+      subtitle={e.title}
+      // A profile, read top to bottom in two columns — not a table. It stays capped.
+      width="content"
+      actions={
+        <>
           <Button startIcon={<EditIcon />} onClick={() => setEditOpen(true)}>
             Edit
           </Button>
@@ -172,9 +178,9 @@ export default function EmployeeDetailPage() {
           >
             View CV
           </Button>
-        </Stack>
-      </Stack>
-
+        </>
+      }
+    >
       <Section title="Profile">
         <Grid container spacing={1}>
           <Grid item xs={6}><b>Email:</b> {e.email}</Grid>
@@ -439,6 +445,6 @@ export default function EmployeeDetailPage() {
           }
         />
       )}
-    </Box>
+    </PageHeader>
   );
 }

@@ -37,6 +37,7 @@ import {
 } from "../api";
 import type { Category, CategoryNode } from "../types";
 import { ErrorNotice } from "../components/ErrorNotice";
+import PageHeader from "../components/PageHeader";
 
 type EditState = { kind: "category" | "skill"; id: string } | null;
 // Adding a new node: a skill or subcategory under `parentId` (a category id),
@@ -358,9 +359,12 @@ export default function CatalogPage() {
   };
 
   return (
-    <Box>
-      <Stack direction="row" alignItems="center" justifyContent="space-between" mb={3}>
-        <Typography variant="h4">Skill Catalog</Typography>
+    <PageHeader
+      title="Skill Catalog"
+      // A tree of categories and skills, indented: a table by another shape, and the deeper the
+      // nesting the more width the leaf rows want.
+      width="wide"
+      actions={
         <Button
           variant="contained"
           startIcon={<AddIcon />}
@@ -368,8 +372,8 @@ export default function CatalogPage() {
         >
           Add category
         </Button>
-      </Stack>
-
+      }
+    >
       <ErrorNotice message={error} sx={{ mb: 2 }} />
 
       <Paper sx={{ p: 3 }}>
@@ -415,6 +419,6 @@ export default function CatalogPage() {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </PageHeader>
   );
 }

@@ -28,8 +28,11 @@ export default function SigninPage() {
     signin.mutate({ email: email.trim() || undefined }, { onSuccess: () => navigate("/") });
   };
 
+  // The auth pages cap themselves — 440px of form, centred — which is why they never needed the
+  // shell's container and do not miss it (P1T-162). The gutters are theirs now rather than `App`'s,
+  // so the card does not touch the edges of a phone.
   return (
-    <Box sx={{ display: "flex", justifyContent: "center", pt: 6 }}>
+    <Box sx={{ display: "flex", justifyContent: "center", px: { xs: 2, sm: 3 }, pt: 6, pb: 6 }}>
       <Paper sx={{ p: 4, width: "100%", maxWidth: 440 }}>
         <Stack spacing={3} component="form" onSubmit={handleSubmit}>
           <Box>

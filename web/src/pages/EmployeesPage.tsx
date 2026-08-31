@@ -1,24 +1,22 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Box,
   Button,
   Chip,
   CircularProgress,
   IconButton,
   Paper,
-  Stack,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableRow,
-  Typography,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DescriptionIcon from "@mui/icons-material/Description";
 import { useCreateEmployee, useDeleteEmployee, useEmployees } from "../api";
+import PageHeader, { PageContainer } from "../components/PageHeader";
 import EmployeeFormDialog from "./EmployeeFormDialog";
 
 function capacityColor(pct: number): "success" | "warning" | "default" {
@@ -34,17 +32,27 @@ export default function EmployeesPage() {
   const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  if (isLoading) return <CircularProgress />;
+  // Deliberately still an early return rather than a spinner *under* the header: the e2e capture
+  // waits for `New CV` to decide the roster has arrived, and a header that renders while the table
+  // is empty would hand it a screenshot of a spinner (`manuals/spa-design-system.md` §10).
+  if (isLoading)
+    return (
+      <PageContainer width="wide">
+        <CircularProgress />
+      </PageContainer>
+    );
 
   return (
-    <Box>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">CVs</Typography>
+    <PageHeader
+      title="CVs"
+      // The roster is nine columns wide at its widest and reads better the more of them fit.
+      width="wide"
+      actions={
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => setDialogOpen(true)}>
           New CV
         </Button>
-      </Stack>
-
+      }
+    >
       <Paper>
         <Table>
           <TableHead>
@@ -101,6 +109,6 @@ export default function EmployeesPage() {
         onClose={() => setDialogOpen(false)}
         onSave={(dto) => create.mutateAsync(dto)}
       />
-    </Box>
+    </PageHeader>
   );
 }

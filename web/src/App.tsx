@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AppBar, Box, Button, Container, Toolbar, Typography } from "@mui/material";
+import { AppBar, Box, Button, Toolbar, Typography } from "@mui/material";
 import {
   Link as RouterLink,
   Navigate,
@@ -19,6 +19,7 @@ import UsersPage from "./pages/UsersPage";
 import AgentWidget from "./components/AgentWidget";
 import AppRailNav, { BRAND } from "./components/AppRail";
 import { ErrorBoundary, PageErrorFallback, WidgetErrorFallback } from "./components/ErrorBoundary";
+import { PageContainer } from "./components/PageHeader";
 import { DOCK_PUSH_VAR, dockPushWidth, useAgentDock } from "./components/useAgentDock";
 import { RAIL_PUSH_VAR, useAppRail } from "./components/useAppRail";
 import { useIsAuthenticated } from "./auth/useAuth";
@@ -33,13 +34,21 @@ function RequireAuth() {
  * The routed area under its own error boundary: a render throw inside a page shows a fallback with
  * a way back instead of a white screen. Keyed by the path, so navigating away clears the error and
  * the next route renders normally.
+ *
+ * The fallback carries its own `PageContainer`, because it renders *instead of* a page — and since
+ * P1T-162 the page is what owns the width. Without it a failed catalog would put its `Paper` flush
+ * against the rail.
  */
 function RoutedArea({ children }: { children: ReactNode }) {
   const location = useLocation();
   return (
     <ErrorBoundary
       resetKey={location.pathname}
-      fallback={(error, reset) => <PageErrorFallback error={error} reset={reset} />}
+      fallback={(error, reset) => (
+        <PageContainer width="content">
+          <PageErrorFallback error={error} reset={reset} />
+        </PageContainer>
+      )}
     >
       {children}
     </ErrorBoundary>
@@ -92,25 +101,27 @@ export default function App() {
     >
       {authed ? <AppRailNav rail={rail} /> : <PublicTopBar />}
 
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <RoutedArea>
-          <Routes>
-            {/* Public auth pages */}
-            <Route path="/signin" element={<SigninPage />} />
-            <Route path="/signup" element={<SignupPage />} />
-            <Route path="/recover" element={<RecoverPage />} />
+      {/* No container here any more. Width is a per-page decision now — the roster wants every
+          column it can get, a sign-in form wants 440px — and `maxWidth="lg"` centred inside
+          whatever the two edges leave over could not be right for both (P1T-162,
+          `manuals/spa-design-system.md` §5). Each page states its own width through `PageHeader`. */}
+      <RoutedArea>
+        <Routes>
+          {/* Public auth pages */}
+          <Route path="/signin" element={<SigninPage />} />
+          <Route path="/signup" element={<SignupPage />} />
+          <Route path="/recover" element={<RecoverPage />} />
 
-            {/* Everything else requires authentication */}
-            <Route element={<RequireAuth />}>
-              <Route path="/" element={<EmployeesPage />} />
-              <Route path="/employees/:id" element={<EmployeeDetailPage />} />
-              <Route path="/employees/:id/cv" element={<CvPage />} />
-              <Route path="/catalog" element={<CatalogPage />} />
-              <Route path="/users" element={<UsersPage />} />
-            </Route>
-          </Routes>
-        </RoutedArea>
-      </Container>
+          {/* Everything else requires authentication */}
+          <Route element={<RequireAuth />}>
+            <Route path="/" element={<EmployeesPage />} />
+            <Route path="/employees/:id" element={<EmployeeDetailPage />} />
+            <Route path="/employees/:id/cv" element={<CvPage />} />
+            <Route path="/catalog" element={<CatalogPage />} />
+            <Route path="/users" element={<UsersPage />} />
+          </Route>
+        </Routes>
+      </RoutedArea>
 
       {/* The widget sits under its own boundary: the assistant crashing must not take the roster
           with it. Panels have a second, inner boundary inside the widget. */}
