@@ -410,9 +410,27 @@ colours. They are trivial to put in the foundation and expensive to retrofit acr
 
 ## 9. What must not move
 
+**Verified at the end of the chain, and now held by code** (P1T-158's closing pass). The freeze was
+checked against `f10d27b`, the commit before slice 1 merged: across six DOM-changing children
+**nothing was removed** — every hook and every frozen accessible name came through — and one hook
+was added, slice 3's `rail-user`. The accessible names were already enforced, densely, by both
+suites (`AppRail.test.tsx`, `e2e/shell.e2e.ts`, `e2e/page-header.e2e.ts`). The hooks were not: they
+were held by this table, which is the one thing the status line says a rule must never be. They are
+now held by `web/src/frozenHooks.test.ts`, which reads the inventory out of the app's own source and
+fails on a rename or a silent addition.
+
+Writing that check found two things the table had wrong, both now fixed above. **The count was 25
+and the grip is 39** — the table counted only string literals and missed 13 *templated* hooks
+(`proposal-row-${p.id}` and its twelve siblings), which are exactly as renameable and had been named
+nowhere. All 13 predate the chain and survived it byte-for-byte, by luck rather than by a net. And
+**four of the 39 were referenced by no test anywhere** — `error-notice`, `matched-icon`,
+`staffing-stepper`, `staffing-evidence-*` — so for those four the first row's own reasoning did not
+hold: renaming one was not a silent test deletion, because there was nothing to delete. It is true
+now.
+
 | Frozen | Why |
 |---|---|
-| 25 `data-testid` hooks | The unit suite's grip on the DOM; renaming one is a silent test deletion |
+| 39 `data-testid` hooks — 26 literal + 13 templated | The unit suite's grip on the DOM; renaming one is a silent test deletion. Held by `src/frozenHooks.test.ts`, which holds the *names*; that a hook is still on the right element is held by the suite that queries it |
 | Accessible names `Sign out`, `CVs`, `Sign in` | The e2e suite asserts by role + name (`e2e/auth.e2e.ts`) |
 | The dock's push contract (`DOCK_PUSH_VAR`) | The rail copies it; changing it breaks both edges at once |
 | Accessible name `Open the agents assistant` | The dock's own entry point, asserted by the e2e suite and the screenshot pass |
