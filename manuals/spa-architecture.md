@@ -29,9 +29,23 @@ suite run never collides with a dev stack on the default ports.
 ## 2. The shell
 
 `main.tsx` mounts four providers and nothing else: `QueryClientProvider` (with
-`refetchOnWindowFocus: false`), MUI `ThemeProvider` + `CssBaseline`, and `BrowserRouter`. The theme
-is four lines — light mode, one primary colour. There is no design-token layer; components reach
-for MUI's palette keys (`grey.50`, `primary.contrastText`, `divider`) directly.
+`refetchOnWindowFocus: false`), MUI `ThemeProvider` + `CssBaseline`, and `BrowserRouter`.
+
+The theme is a token layer in `src/theme/` (P1T-159): `tokens.ts` declares the values once,
+`index.ts` builds `lightTheme` and `darkTheme` from them, `baseline.ts` holds the accessibility
+floors, and `mode.ts` decides which theme is in force. Components read **MUI palette keys**
+(`background.default`, `surface.raised`, `divider`, `text.secondary`) and never import a token —
+that is the point of the layer, not an oversight: one vocabulary, so dark mode costs a component
+nothing. Reasoning and the full look rules are in `manuals/spa-design-system.md`.
+
+The only palette role this app adds is `surface`, module-augmented with `raised` (the third surface
+step, which MUI has no name for) and `outline` (a control's own boundary, which has to clear 3:1
+where `divider` deliberately does not). `background.default` / `background.paper` are *not*
+re-exposed under `surface` — a second name for the same colour is what this layer exists to avoid.
+
+> **Still scheduled to change (P1T-158).** The left rail replacing this `AppBar`, the `PageHeader`,
+> the component overrides and the CV-sheet light-lock are slices 2–6 and are not built. This section
+> describes the shell as it stands until slice 3 lands.
 
 `App.tsx` is the whole chrome: an `AppBar` with three nav buttons, a `Container maxWidth="lg"`, the
 route table, and the agent dock. It is 112 lines and holds no data.
@@ -42,11 +56,19 @@ the app rather than covering it. The dock is `position: fixed` and does not part
 so this padding is the only thing that makes room for it. `App` therefore owns the dock's state
 hook (`useAgentDock`) and passes it down — the dock cannot own its own width.
 
-## 3. Auth and session — the only global state
+## 3. Auth and session — global state without a Context
 
-There is no React Context anywhere in this app. The single piece of cross-cutting state is the
-session token, and it lives in `localStorage` with a hand-rolled subscription
-(`src/auth/session.ts`):
+There is no React Context anywhere in this app. Two pieces of state cross-cut it, and both use the
+same shape: the session token (`src/auth/session.ts`, below) and the Theme Mode
+(`src/theme/mode.ts`, P1T-159). The second was written by copying the first on purpose — one
+pattern to learn, and the pattern is `localStorage` + a `Set` of listeners + `useSyncExternalStore`.
+
+The Theme Mode store differs in exactly one way, and it is a difference in the *question*, not the
+mechanism: storage holds an **override**, not the answer. `getMode()` is the override if there is
+one, else `prefers-color-scheme`, so `subscribe` has a third source to listen to — the OS media
+query — and the absence of a stored value is a meaningful state rather than a missing one.
+
+The session token:
 
 - `localStorage` is the source of truth, because the axios interceptor reads it synchronously and
   is not a React consumer.

@@ -80,7 +80,7 @@ export default function App() {
     <Box
       sx={{
         minHeight: "100vh",
-        bgcolor: "grey.50",
+        bgcolor: "background.default",
         paddingRight: `var(${DOCK_PUSH_VAR}, 0px)`,
         transition: "padding-right 150ms ease",
       }}

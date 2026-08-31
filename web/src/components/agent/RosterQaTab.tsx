@@ -21,7 +21,7 @@ function Bubble({ message }: { message: Message }) {
           px: 1.5,
           py: 1,
           maxWidth: "85%",
-          bgcolor: isUser ? "primary.main" : isError ? "error.light" : "grey.100",
+          bgcolor: isUser ? "primary.main" : isError ? "error.light" : "surface.raised",
           color: isUser ? "primary.contrastText" : isError ? "error.contrastText" : "text.primary",
           borderRadius: 2,
         }}
