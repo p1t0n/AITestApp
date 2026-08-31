@@ -47,20 +47,42 @@ step, which MUI has no name for) and `outline` (a control's own boundary, which 
 where `divider` deliberately does not). `background.default` / `background.paper` are *not*
 re-exposed under `surface` — a second name for the same colour is what this layer exists to avoid.
 
-> **Still scheduled to change (P1T-158).** The left rail replacing this `AppBar`, the `PageHeader`
-> and the component overrides are slices 2–5 and are not built. This section describes the shell as it
-> stands until slice 3 lands. The CV-sheet light-lock (§9) was slice 6 and **is** built — it was pulled
-> ahead of the rest because slice 1 made dark mode reachable by default and left a client-facing
-> document exposed; `manuals/spa-design-system.md` §11 records why and what it cost.
+> **Still scheduled to change (P1T-158).** The `PageHeader` and per-page width (slice 4) and the
+> dock chrome refresh (slice 5) are not built. This section describes the shell as it stands after
+> slice 3. The CV-sheet light-lock (§9) was slice 6 and **is** built — it was pulled ahead of the
+> rest because slice 1 made dark mode reachable by default and left a client-facing document
+> exposed; `manuals/spa-design-system.md` §11 records why and what it cost.
 
-`App.tsx` is the whole chrome: an `AppBar` with three nav buttons, a `Container maxWidth="lg"`, the
-route table, and the agent dock. It is 112 lines and holds no data.
+`App.tsx` is the whole chrome: the rail (or, signed out, a slim public top bar), a
+`Container maxWidth="lg"`, the route table, and the agent dock. It holds no data.
 
-**The layout coupling worth knowing about:** when the dock is open *and* docked *and* the viewport
-is wide, `App` applies `paddingRight: dock.width` to the root `Box` so the docked sidebar pushes
-the app rather than covering it. The dock is `position: fixed` and does not participate in layout,
-so this padding is the only thing that makes room for it. `App` therefore owns the dock's state
-hook (`useAgentDock`) and passes it down — the dock cannot own its own width.
+### Two edges that push
+
+The shell has two `position: fixed` edges — the rail on the left (`components/AppRail.tsx` +
+`useAppRail.ts`, P1T-161) and the agent dock on the right (`useAgentDock.ts`, P1T-154) — and it
+treats them identically:
+
+**Each edge publishes how much of the viewport it is covering as a CSS custom property, and the root
+`Box` pads by both.** `--app-rail-push` and `--agent-dock-push`, each read as
+`var(…, 0px)`. Neither edge participates in layout, and the shell knows neither one's state, width,
+or breakpoint. The property is written by the *component*, not the hook, so it exists exactly as
+long as there is an edge to make room for: the auth pages render no rail and signing out unmounts
+the dock, and in both cases the `0px` fallback closes the gap with no condition anywhere.
+
+Both gutters are also zeroed under `@media print`, because neither edge prints and an un-zeroed
+240px gutter would shift every printed artifact — including a client's CV — to the right.
+
+**The one thing that does know about both edges is the squeeze rule**, and it lives in `App` because
+`App` is the only place with both hooks. Both edges push, so on a narrow-ish viewport the middle
+column is what pays. `railSqueezeQuery(dockPush)` turns the numbers into one media query — the rail
+gives up its labels (240 → 64px) the moment an expanded rail would take the routed content below
+`RAIL_CONTENT_FLOOR` (720px). At 1280px with a 420px dock the rail is forced collapsed and the
+content gets 796px; at 1440px both fit and it stays expanded. That is why the content is legible at
+either width: a rule, not luck. `dockPushWidth(dock)` is exported from the dock's own module so the
+expression for "what the dock covers" still exists in exactly one place.
+
+State is persisted where a person would expect it to be: the rail's collapse and the dock's
+mode/width survive a reload; the mobile drawer's open state and the dock's `open` do not.
 
 ## 3. Auth and session — global state without a Context
 

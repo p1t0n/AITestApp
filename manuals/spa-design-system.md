@@ -1,8 +1,8 @@
 # SPA design system
 
-> **Status (2026-08-31):** **slices 1, 2 and 6 built** — P1T-159 (§2, §3's type/accent rules, §8),
-> P1T-160 (§3's override policy and the density pass) and P1T-164 (§7, taken out of order; see §11).
-> Slices 3–5 are still the agreed target, not the code. Tracked as **P1T-158** with six children,
+> **Status (2026-08-31):** **slices 1, 2, 3 and 6 built** — P1T-159 (§2, §3's type/accent rules,
+> §8), P1T-160 (§3's override policy and the density pass), P1T-161 (§4, the shell) and P1T-164 (§7,
+> taken out of order; see §11). Slices 4 and 5 are still the agreed target, not the code. Tracked as **P1T-158** with six children,
 > P1T-159 … P1T-164, plus P1T-165 deferred. Each section names the slice that makes it true. Update
 > the status line as slices land — a rule here that no code enforces is a lie, not a plan.
 
@@ -148,8 +148,10 @@ against the **composite** — the wash resolved over each of the three surfaces,
 that is what a person actually sees; a tint's own contrast is meaningless.
 
 There is deliberately no `MuiAppBar` restyle beyond `border: 0`, which only stops it inheriting the
-outlined default as a box around the whole bar. P1T-161 replaces it with the rail, and restyling a
-component days before deleting it is work with a half-life.
+outlined default as a box around the whole bar. That was written expecting P1T-161 to delete the
+component — restyling one days before deleting it is work with a half-life. Slice 3 kept it after
+all, in two narrower roles: the signed-out public top bar and the mobile drawer's trigger bar
+(§4). `border: 0` is still the whole override, and both survivors are print-hidden.
 
 *Slices 1–2 — P1T-159, P1T-160.*
 
@@ -166,7 +168,57 @@ makes room for both edges by the same mechanism: **the shell makes room for what
 publishes it is covering, and neither edge participates in layout.** That symmetry is the point —
 the dock's existing push contract is not modified, it is copied.
 
-*Slice 3 — P1T-161.*
+*Slice 3 — P1T-161.* **Built**, and the first slice to change DOM. Four things the plan had not
+priced.
+
+**The squeeze between the two edges is one media query, and it belongs to the shell.** Both edges
+push, so the middle column is what pays on a narrow-ish viewport, and left alone it can be squeezed
+to nothing. The rule is a declared **Content Floor** of 720px: `railSqueezeQuery(dockPush)` forces
+the rail to 64px the moment an expanded rail would take the routed content below it. At 1280px with
+a 420px dock the rail yields and the content gets 796px; at 1440px both fit. Expressed as a *query*
+rather than a `window.innerWidth` read, so the answer is subscribed to and re-decides itself when
+the dock is resized. It lives in `App` because `App` is the only place holding both hooks — the rail
+does not learn about the dock, and `dockPushWidth(dock)` is exported from the dock's own module so
+the expression for "what the dock covers" still exists once. While squeezed the collapse control is
+**disabled with a reason** rather than left as a silent no-op: a control that looks like it worked
+and changed nothing is the same defect as the editable-looking skill picker P1T-156 refused to ship.
+
+**A print gutter is not the same rule as a hidden rail.** Hiding the rail in print was in the
+ticket; zeroing the *padding* it published was not. `paddingLeft: var(--app-rail-push)` survives the
+media switch on its own, so an un-zeroed gutter would have shifted every printed artifact — a
+client's CV included — 240px right, with the rail itself invisible and nothing on screen to explain
+it. `@media print` zeroes both gutters on the root, which also closes the same hole the dock had had
+since P1T-154 for anyone printing with the dock docked open.
+
+**The theme control has three states because the mechanism has three.** A two-state flip would pin
+an override on first click and could never hand the default back, making `followSystemMode` — and
+with it the whole "no value means still following the OS" design of `mode.ts` — unreachable dead
+code. So: a menu of Light / Dark / System, and `useThemeModeChoice` as the snapshot behind it,
+because "System" and "whichever mode the OS currently asks for" are different answers that `getMode`
+deliberately cannot tell apart.
+
+**The 150ms motion ceiling is long enough to lie to a test.** Slice 1's lesson was that an override
+can emit perfect CSS and render nothing; this slice's is that a *correct* rule reads as a broken one
+if you read it mid-transition. The first run of `e2e/shell.e2e.ts` measured 83.38px for a 240px rail
+and the first screenshot pass captured a "collapsed" rail 220px wide and a drawer halfway in from
+the left — the same trap P1T-164 hit on `MuiPaper`'s `box-shadow`, and it now has a shape: every
+geometry read in the e2e spec polls, and the capture waits for two identical `boundingBox` reads
+before it shoots. Worth generalising: nothing in this app should be measured or photographed
+without first establishing that it has stopped moving.
+
+Verified in a real browser rather than in jsdom, because every question here is about what the
+cascade resolved to: seven Playwright checks in `e2e/shell.e2e.ts` — the published width against the
+computed padding, collapse across a reload, 1280 vs 1440 with the dock docked, the drawer covering
+nothing below `md`, both gutters gone under print media, the Theme Mode across a reload *and* a
+second tab, and the focus ring on a rail item **tabbed to** rather than `.focus()`ed (`:focus-visible`
+is a heuristic on how focus arrived, so a programmatic focus renders no ring and would have failed
+for the wrong reason). Thirty new unit tests; **one existing test edited** — `App.errors.test.tsx`'s
+`./auth/useAuth` mock gained `useSessionEmail`, because the rail shows who is signed in and the
+module now exports a second hook. The session's email is stored beside its token: the server had
+been returning it from all three ceremonies and the value was simply being dropped.
+
+Left alone on purpose: `Container maxWidth="lg"` centred in the remaining column, which now reads
+wrong at some widths. Per-page width is slice 4's job and is not worth doing twice.
 
 ## 5. Page headers and width
 
@@ -245,6 +297,7 @@ colours. They are trivial to put in the foundation and expensive to retrofit acr
 | 25 `data-testid` hooks | The unit suite's grip on the DOM; renaming one is a silent test deletion |
 | Accessible names `Sign out`, `CVs`, `Sign in` | The e2e suite asserts by role + name (`e2e/auth.e2e.ts`) |
 | The dock's push contract (`DOCK_PUSH_VAR`) | The rail copies it; changing it breaks both edges at once |
+| Accessible name `Open the agents assistant` | The dock's own entry point, asserted by the e2e suite and the screenshot pass |
 | The CV sheet's visual design | Client-facing artifact — §7 |
 | Agent Surface IA | Settled by P1T-152; a re-skin is not the place to reopen it |
 
@@ -255,14 +308,14 @@ change no DOM structure at all, so the test suites stay untouched until slice 3.
 
 1. ~~**P1T-159**~~ — tokens, both themes, Inter, `CssBaseline` floors — repaint only; the four colour sites are fixed here. **Shipped**, with zero edits to existing tests: 189 unit tests and the 11 Playwright specs stayed green untouched, which was the whole claim of a repaint
 2. ~~**P1T-160**~~ — component overrides and the density pass — **shipped**: `src/theme/components.ts`, 168 redundant props swept out of 22 files, 45 new assertions, and again zero edits to existing tests (189 unit + 11 Playwright specs green untouched)
-3. **P1T-161** — the rail, its CSS var, the mobile drawer, the persisted theme toggle
+3. ~~**P1T-161**~~ — the rail, its CSS var, the mobile drawer, the persisted theme toggle. **Shipped**, with one test edit (a mock gaining an export) and no assertion rewritten: the frozen accessible names survived the `AppBar`'s removal, which is what §9's table exists to buy
 4. **P1T-162** — `PageHeader` and its adoption across the five pages, incl. per-page width
 5. **P1T-163** — dock chrome refresh
 6. ~~**P1T-164**~~ — `CvPage` light-lock. **Shipped, and shipped second** rather than sixth — §11 is why. Also zero edits to existing tests: 189 → 195 unit tests, all six new
 7. **P1T-165** (later) — ⌘K palette — it hangs off the shell and needs a search-endpoint story of its own
 
 Each slice ends with Playwright screenshots in light and dark of: roster, employee detail, catalog,
-users, sign-in, dock open, CV page. Screenshots land in `docs/` (gitignored); this record and
+users, sign-in, dock open, CV page — plus, from slice 3, the rail collapsed and the mobile drawer. Screenshots land in `docs/` (gitignored); this record and
 `manuals/spa-architecture.md` are what gets committed.
 
 One fix to the capture landed in slice 2: `/catalog` and `/users` were shot with no wait, so the

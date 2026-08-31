@@ -7,7 +7,6 @@ import {
   Route,
   Routes,
   useLocation,
-  useNavigate,
 } from "react-router-dom";
 import EmployeesPage from "./pages/EmployeesPage";
 import EmployeeDetailPage from "./pages/EmployeeDetailPage";
@@ -18,9 +17,10 @@ import SigninPage from "./pages/SigninPage";
 import RecoverPage from "./pages/RecoverPage";
 import UsersPage from "./pages/UsersPage";
 import AgentWidget from "./components/AgentWidget";
+import AppRailNav, { BRAND } from "./components/AppRail";
 import { ErrorBoundary, PageErrorFallback, WidgetErrorFallback } from "./components/ErrorBoundary";
-import { DOCK_PUSH_VAR, useAgentDock } from "./components/useAgentDock";
-import { signOut } from "./api";
+import { DOCK_PUSH_VAR, dockPushWidth, useAgentDock } from "./components/useAgentDock";
+import { RAIL_PUSH_VAR, useAppRail } from "./components/useAppRail";
 import { useIsAuthenticated } from "./auth/useAuth";
 
 /** Guards the protected area: renders children when signed in, else bounces to sign-in. */
@@ -46,67 +46,51 @@ function RoutedArea({ children }: { children: ReactNode }) {
   );
 }
 
-function AuthButton() {
-  const authed = useIsAuthenticated();
-  const navigate = useNavigate();
-  if (authed) {
-    return (
-      <Button
-        color="inherit"
-        onClick={() => {
-          signOut();
-          navigate("/signin");
-        }}
-      >
-        Sign out
-      </Button>
-    );
-  }
+/**
+ * The chrome a signed-out visitor gets. The rail is a signed-in surface — there is nothing on it to
+ * navigate to yet — so the auth pages keep a slim bar with the brand and the way in. `Sign in` is a
+ * frozen accessible name (`manuals/spa-design-system.md` §9), which is why it survives the rewrite.
+ */
+function PublicTopBar() {
   return (
-    <Button color="inherit" component={RouterLink} to="/signin">
-      Sign in
-    </Button>
+    <AppBar position="sticky" elevation={0} color="default" sx={{ "@media print": { display: "none" } }}>
+      <Toolbar variant="dense">
+        <Typography variant="subtitle1" noWrap sx={{ flexGrow: 1 }}>
+          {BRAND}
+        </Typography>
+        <Button color="inherit" component={RouterLink} to="/signin">
+          Sign in
+        </Button>
+      </Toolbar>
+    </AppBar>
   );
 }
 
 export default function App() {
   const authed = useIsAuthenticated();
-  // The dock stays a controlled component — its state lives here so it survives the widget's own
-  // remounts — but its *layout* no longer does: the shell just makes room for whatever the dock
-  // publishes it is covering. Unset (signed out, widget unmounted) falls back to no padding.
+  // Two edges, one contract. Both are `position: fixed`, both publish how much of the viewport they
+  // are covering, and the root Box below pads by both — it knows neither one's state, neither one's
+  // breakpoint, and neither one's width. Unset (no rail on the auth pages, no dock while signed
+  // out) falls back to no padding on its own.
   const dock = useAgentDock();
+  // The one place that knows about both edges, which is why the rail's squeeze rule lives here:
+  // the rail gives up its labels rather than let the dock squeeze the content below its floor.
+  const rail = useAppRail(dockPushWidth(dock));
 
   return (
     <Box
       sx={{
         minHeight: "100vh",
         bgcolor: "background.default",
+        paddingLeft: `var(${RAIL_PUSH_VAR}, 0px)`,
         paddingRight: `var(${DOCK_PUSH_VAR}, 0px)`,
-        transition: "padding-right 150ms ease",
+        transition: "padding 150ms ease",
+        // Neither edge prints, so neither edge may leave a gutter on the page. Without this the
+        // rail's 240px would shift every printed artifact — including a client's CV — to the right.
+        "@media print": { paddingLeft: 0, paddingRight: 0 },
       }}
     >
-      {/* The app's own chrome is not part of anything worth printing. */}
-      <AppBar position="static" elevation={0} sx={{ "@media print": { display: "none" } }}>
-        <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            CV Manager
-          </Typography>
-          {authed && (
-            <>
-              <Button color="inherit" component={RouterLink} to="/">
-                CVs
-              </Button>
-              <Button color="inherit" component={RouterLink} to="/catalog">
-                Skill Catalog
-              </Button>
-              <Button color="inherit" component={RouterLink} to="/users">
-                Users
-              </Button>
-            </>
-          )}
-          <AuthButton />
-        </Toolbar>
-      </AppBar>
+      {authed ? <AppRailNav rail={rail} /> : <PublicTopBar />}
 
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <RoutedArea>

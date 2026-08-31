@@ -4,7 +4,12 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import App from "./App";
 
-vi.mock("./auth/useAuth", () => ({ useIsAuthenticated: () => true }));
+// The shell is signed in, and the rail's user block reads the session email — a session with no
+// email is the honest default for a test that never ran a ceremony (P1T-161).
+vi.mock("./auth/useAuth", () => ({
+  useIsAuthenticated: () => true,
+  useSessionEmail: () => null,
+}));
 
 // The catalog page throws on render; the roster page is a stand-in so recovery is observable
 // without reaching the network.

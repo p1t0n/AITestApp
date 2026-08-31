@@ -66,14 +66,26 @@ export function useAgentDock(): AgentDock {
 }
 
 /**
+ * How much of the viewport the dock is covering right now.
+ *
+ * A docked sidebar pushes the app left. A floating bubble and a narrow full-width overlay both sit
+ * over the app on purpose, so they cover nothing as far as layout is concerned.
+ *
+ * Exported because one other thing needs the answer and must not re-derive it: the rail's squeeze
+ * rule (`railSqueezeQuery`) is a function of what the *other* edge is covering. The shell is the
+ * only place that knows about both edges, and this keeps the expression itself in one file.
+ */
+export function dockPushWidth(dock: AgentDock): number {
+  return dock.open && dock.docked && !dock.isNarrow ? dock.width : 0;
+}
+
+/**
  * Publishes {@link DOCK_PUSH_VAR} for as long as the dock is mounted. Called by the dock, so the
  * property exists exactly while there is a dock to make room for: unmounting it (signing out)
  * removes the property and every container's `var(…, 0px)` fallback closes the gap on its own.
  */
 export function useDockPush(dock: AgentDock): void {
-  // A docked sidebar pushes the app left. A floating bubble and a narrow full-width overlay both
-  // sit over the app on purpose, so they push nothing.
-  const push = dock.open && dock.docked && !dock.isNarrow ? dock.width : 0;
+  const push = dockPushWidth(dock);
 
   useEffect(() => {
     const root = document.documentElement;
