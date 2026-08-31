@@ -299,6 +299,15 @@ provider only re-themes what names a palette role — the light text colour reac
 set on the sheet element itself, which everything inside then inherits.
 _Avoid_: print theme, light override, forced light mode
 
+**Print Cascade**:
+What a browser actually resolves at print media, as distinct from the `@media print` rules the app
+emits. The distinction is the point: an emitted declaration can be attached to the right element and
+still lose, so "the rule is there" and "the rule wins" are separate claims with separate evidence —
+jsdom can only ever support the first. Anything claimed about a printed artifact is settled by
+driving a real browser at the print media, and a rule is only correct if it also stays *out* of the
+screen cascade.
+_Avoid_: print styles, print CSS, media query
+
 **Theme Mode**:
 Light or dark, defaulting to the operating system's preference until a person overrides it. A
 display preference of the browser, never of the account — it is not roster data and does not travel

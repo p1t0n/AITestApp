@@ -190,6 +190,16 @@ client's CV included — 240px right, with the rail itself invisible and nothing
 it. `@media print` zeroes both gutters on the root, which also closes the same hole the dock had had
 since P1T-154 for anyone printing with the dock docked open.
 
+**Zeroing the dock's gutter was only half of the dock's print hole (P1T-166).** The gutter rule fixed
+where the content sat; it said nothing about the dock itself, which is `position: fixed` and therefore
+painted *over* the page rather than laid out in it. The dock had no print rule at all, so with the
+gutter closed the printed page was correctly positioned and still had a robot bubble in its corner —
+and a docked panel would have ruled its `borderLeft` down the paper, because §3's exception rule cuts
+both ways: a border prints where the surface colour behind it does not. Both surfaces now carry the
+rail's own `hideInPrint`, colocated in `AgentWidget.tsx`. The general lesson is that "does the app
+still lay out correctly under print media" and "is this element on the paper" are separate questions,
+and P1T-161 answered only the first.
+
 **The theme control has three states because the mechanism has three.** A two-state flip would pin
 an override on first click and could never hand the default back, making `followSystemMode` — and
 with it the whole "no value means still following the OS" design of `mode.ts` — unreachable dead
@@ -274,6 +284,11 @@ that shows itself on hover, message bubbles retuned for dark. Its information ar
 change: the grouped picker and the nine Agent Surfaces are P1T-152's shape and stay.
 
 *Slice 5 — P1T-163.*
+
+One thing already landed here out of sequence: the dock's `hideInPrint`, from P1T-166. Slice 5 restyles
+both of these surfaces and must carry that rule forward — it is not decoration, it is what keeps the
+assistant off a client's printed CV, and `AgentWidget.print.test.tsx` plus `e2e/print.e2e.ts` will say
+so if a rewrite drops it.
 
 ## 7. The CV sheet is frozen, and always light
 
@@ -396,8 +411,9 @@ position, because the queue was ordered before that defect existed. Slice 1 was 
 first — every other child needs its token layer — and the right response to a risk a slice opens is to
 re-order what follows it, not to hold the slice.
 
-**Two things a real browser found that no emitted-CSS check could.** Both in `web/e2e/cv-print.e2e.ts`,
-and both the same lesson as slice 1's focus ring:
+**Three things a real browser found that no emitted-CSS check could.** The first two in
+`web/e2e/cv-print.e2e.ts`, the third in `web/e2e/print.e2e.ts`, and all three the same lesson as
+slice 1's focus ring:
 
 - `display` does not inherit, so the Print button computes its own `flex` at print media while being
   entirely unrendered — its ancestor carries the rule. "Is the rule on this element" and "is this
@@ -407,3 +423,11 @@ and both the same lesson as slice 1's focus ring:
   away over the 150ms ceiling rather than dropping it. Read instantly, the shadow is a mid-transition
   interpolation — neither the elevation value nor `none`. A real print paints after layout settles, so
   paper is unaffected; an instant assertion would have been asserting on an interpolation.
+- **An element can be the subject of more than one `@media print` block, and one here is** (P1T-166).
+  `MuiFab` ships its own print rule — `print-color-adjust: exact`, MUI insisting the bubble keep its
+  background colour on paper — so the dock's bubble emits two print blocks against the same generated
+  class. The emitted-CSS reader took the *first* match and answered MUI's, which is a reader that
+  cannot see a component's own rule wherever a MUI default got there first. `printBlockFor` now
+  concatenates every matching block (`src/test/printCss.ts`). Worth stating plainly: the jsdom layer
+  still cannot say which of the two declarations wins — that this one does was settled by watching
+  Chromium, and the fact that MUI's default pulls in the *opposite* direction is why it needed to be.

@@ -4,6 +4,7 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import CvPage from "./CvPage";
 import type { Cv } from "../types";
+import { printBlockFor } from "../test/printCss";
 
 // The print rules used to live in `web/src/index.css`, keyed by `#cv-sheet` and `.no-print` —
 // strings CvPage owns but never declared, so renaming either would have broken the printed CV
@@ -31,38 +32,6 @@ vi.mock("../api", () => ({
   useCv: () => ({ data: cv, isLoading: false }),
   useDownloadCvPdf: () => ({ mutate: vi.fn(), isPending: false }),
 }));
-
-/** Everything emotion + CssBaseline have injected into the document so far. */
-function emittedCss(): string {
-  return Array.from(document.querySelectorAll("style"))
-    .map((s) => s.textContent ?? "")
-    .join("\n")
-    .replace(/\s+/g, "");
-}
-
-/** The `@media print{…}` blocks of the emitted CSS, brace-matched so nested rules stay whole. */
-function printBlocks(): string[] {
-  const css = emittedCss();
-  const blocks: string[] = [];
-  const opener = /@mediaprint\{/g;
-  let match: RegExpExecArray | null;
-  while ((match = opener.exec(css)) !== null) {
-    let depth = 1;
-    let i = match.index + match[0].length;
-    for (; i < css.length && depth > 0; i++) {
-      if (css[i] === "{") depth++;
-      else if (css[i] === "}") depth--;
-    }
-    blocks.push(css.slice(match.index, i));
-  }
-  return blocks;
-}
-
-/** The print block carrying this element's own generated class, if it has one. */
-function printBlockFor(el: Element): string | undefined {
-  const classes = Array.from(el.classList).filter((c) => c.startsWith("css-"));
-  return printBlocks().find((b) => classes.some((c) => b.includes(`.${c}`)));
-}
 
 beforeEach(() => {
   render(
