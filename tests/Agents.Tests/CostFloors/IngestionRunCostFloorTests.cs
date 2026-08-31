@@ -102,19 +102,14 @@ public class IngestionRunCostFloorTests(ITestOutputHelper output)
     private static IReadOnlyList<IReadOnlyList<string>> SerialTurns() =>
         IngestionRunCost.ReferenceIngestionPath.Select(t => (IReadOnlyList<string>)[t]).ToList();
 
-    /// <summary>Batched: the same calls in the same order, but every add of one kind issued as
-    /// parallel tool calls in a single turn. Only the turn boundaries move.</summary>
-    private static IReadOnlyList<IReadOnlyList<string>> BatchedTurns()
-    {
-        var path = IngestionRunCost.ReferenceIngestionPath;
-        return
-        [
-            ["skill_list"],
-            ["employee_create_draft"],
-            .. new[] { "language_add", "employee_skill_add", "qualification_add", "experience_add" }
-                .Select(kind => (IReadOnlyList<string>)path.Where(t => t == kind).ToList()),
-        ];
-    }
+    /// <summary>Batched: the same calls in the same order, but every call of one kind issued as
+    /// parallel tool calls in a single turn — the shape the agent's Batching rule declares. Only
+    /// the turn boundaries move.</summary>
+    private static IReadOnlyList<IReadOnlyList<string>> BatchedTurns() =>
+        IngestionRunCost.ReferenceIngestionTurns
+            .Select(kind => (IReadOnlyList<string>)
+                IngestionRunCost.ReferenceIngestionPath.Where(t => t == kind).ToList())
+            .ToList();
 
     // ---- the floors ----------------------------------------------------------------------
 
@@ -127,7 +122,10 @@ public class IngestionRunCostFloorTests(ITestOutputHelper output)
         var truth = Reference.Truth;
         IReadOnlyList<string> required =
         [
-            "skill_list",
+            // One filtered lookup per skill name the resume states — including the ones that turn
+            // out to have no catalog entry, since the lookup is how the agent finds that out.
+            // P1T-155 traded the single unfiltered dump for these.
+            .. truth.Skills.Select(_ => "skill_list"),
             "employee_create_draft",
             .. truth.Languages.Select(_ => "language_add"),
             .. truth.Skills.Where(s => s.InCatalog).Select(_ => "employee_skill_add"),
@@ -135,20 +133,37 @@ public class IngestionRunCostFloorTests(ITestOutputHelper output)
             .. truth.Experiences.Select(_ => "experience_add"),
         ];
 
+        using var _ = new AssertionScope();
         IngestionRunCost.ReferenceIngestionPath.Should().Equal(required);
+
+        // The declared turns are a grouping OF the path, not a second opinion about it: every
+        // call lands in exactly one turn and no turn invents a call.
+        BatchedTurns().SelectMany(t => t).Should().BeEquivalentTo(IngestionRunCost.ReferenceIngestionPath);
+        IngestionRunCost.ReferenceIngestionTurns.Should().OnlyHaveUniqueItems()
+            .And.BeSubsetOf(IngestionRunCost.ReferenceIngestionPath);
         IngestionRunCost.BatchedIterations.Should().Be(
-            BatchedTurns().Count + 1, "the batched shape is one turn per child kind plus the closing turn");
+            BatchedTurns().Count + 1, "the batched shape is one turn per kind plus the closing turn");
     }
 
     [Fact]
-    public void The_harness_never_prices_the_catalog_above_what_the_real_tool_costs()
+    public void The_harness_prices_a_skill_lookup_the_way_the_real_tool_does()
     {
         // Everything else here is the real agent; skill_list's result is the one payload this
-        // harness has to synthesize, since measuring it needs Postgres. Holding it under the
-        // Ratchet Mcp.Tests measures there means the run price below can only be conservative.
-        TokenEstimate.Of(CatalogPage).Should().BeLessThanOrEqualTo(
-            CvManager.CostFloors.CostFloors.SkillListUnfilteredPageCeiling,
-            "the synthetic catalog page stands in for the real unfiltered one");
+        // harness has to synthesize, since measuring it needs Postgres. Held AT the Ratchet
+        // Mcp.Tests measures there rather than merely under it: the argument for the filtered
+        // lookup is that it is ~35× smaller than the dump, and a stand-in that quietly shrank
+        // below the real thing would be proving that argument with its own thumb on the scale.
+        var lookup = TokenEstimate.Of(LookupPage);
+        var ceiling = CvManager.CostFloors.CostFloors.ReadToolResultCeilings["skill_list"];
+
+        using var _ = new AssertionScope();
+        lookup.Should().BeLessThanOrEqualTo(ceiling, "the stand-in may not exceed the real lookup");
+        lookup.Should().BeGreaterThan(
+            ceiling * 3 / 4, "nor may it flatter the run by being materially cheaper than one");
+
+        output.WriteLine($"skill_list lookup stand-in: {lookup} estimated tokens (ratchet {ceiling}); " +
+                         $"the unfiltered dump P1T-155 removed was " +
+                         $"{CvManager.CostFloors.CostFloors.SkillListUnfilteredPageCeiling}");
     }
 
     [Fact]
@@ -170,25 +185,33 @@ public class IngestionRunCostFloorTests(ITestOutputHelper output)
         measured.Total.Should().BeLessThanOrEqualTo(
             IngestionRunCost.SerialRunCeiling,
             "the serial shape is what the 157,252-token call was, and this is its model-free price");
-        measured.ResumeReSend.Should().BeLessThanOrEqualTo(
-            IngestionRunCost.SerialResumeReSendCeiling,
-            "the resume is in the conversation from turn one, so every call re-sends it");
+
+        // Not an aside: on the shape the Batching rule prevents, the Baseline Prompt Size is
+        // almost three quarters of the bill. Nothing about the resume, the catalog or what the
+        // agent writes is left to fix here — only the turn count, which is the rule's whole job.
+        measured.Baseline.Should().BeGreaterThan(
+            measured.Total * 2 / 3, "a serial write loop is mostly its own prompt, re-sent");
     }
 
     [Fact]
-    public async Task Batching_the_children_prices_the_same_writes_far_lower()
+    public async Task The_declared_shape_prices_the_same_writes_far_lower()
     {
         var measured = await MeasureAsync(BatchedTurns());
-        Report("BATCHED — one turn per child kind", measured);
+        Report("BATCHED — one turn per kind (the declared shape)", measured);
 
         using var _ = new AssertionScope();
         measured.Turns.Should().HaveCount(IngestionRunCost.BatchedIterations);
         measured.Total.Should().BeLessThanOrEqualTo(IngestionRunCost.BatchedRunCeiling);
+        measured.ResumeReSend.Should().BeLessThanOrEqualTo(
+            IngestionRunCost.ResumeReSendCeiling,
+            "the resume is in the conversation from turn one, so every call re-sends it");
 
-        // The point of measuring both: identical writes, identical results, a third of the turns.
+        // The point of measuring both: identical writes, identical results, a third of the turns
+        // and under a third of the bill. This is the assertion that would catch the Batching rule
+        // being dropped from the instructions while the ceilings above stayed green.
         var serial = await MeasureAsync(SerialTurns());
         measured.Total.Should().BeLessThan(
-            serial.Total / 2, "turn boundaries alone are worth more than half the bill on a write loop");
+            serial.Total / 3, "turn boundaries alone are worth two thirds of the bill on a write loop");
     }
 
     [Fact]
@@ -199,13 +222,27 @@ public class IngestionRunCostFloorTests(ITestOutputHelper output)
         // on the one agent holding mcp:write, a truncated run leaves a half-populated DRAFT
         // persisted behind it. The ceiling has to clear the shape the agent actually has.
         var budget = new AgentBudgetOptions().For(IngestionRunCost.AgentKey);
-        var measured = await MeasureAsync(SerialTurns());
+        var batched = await MeasureAsync(BatchedTurns());
+        var serial = await MeasureAsync(SerialTurns());
 
         using var _ = new AssertionScope();
+
+        // The declared shape has to clear the ceiling with room to spare, not squeak under it:
+        // every retry the instructions allow is another turn, and a run that can afford none of
+        // them is one validation error away from an incomplete draft.
+        budget.MaxIterations.Should().BeGreaterThan(
+            IngestionRunCost.BatchedIterations * 2,
+            $"a declared ingestion of the {IngestionRunCost.ReferenceResumeId} fixture is " +
+            $"{IngestionRunCost.BatchedIterations} model calls and the instructions allow ~2 " +
+            "retries per item");
+
+        // And it still has to clear the shape the rule prevents, because nothing structurally
+        // forces batching: a model that ignores the rule must degrade on TOKENS, where the run is
+        // genuinely expensive, rather than on iterations, where it is merely long. P1T-150 shipped
+        // 24 for exactly this reason, when 8 was truncating every ordinary resume at call 8 of 17.
         budget.MaxIterations.Should().BeGreaterThanOrEqualTo(
             IngestionRunCost.SerialIterations,
-            $"a faithful ingestion of the {IngestionRunCost.ReferenceResumeId} fixture is " +
-            $"{IngestionRunCost.SerialIterations} model calls, and it is the EASY fixture");
+            "the iteration ceiling is a backstop for tiny calls, not the primary failure mode");
 
         // The other half of the decision, and the reason the token ceiling was NOT raised to
         // match: the per-user daily cap is enforced before a request rather than during one, so a
@@ -216,7 +253,9 @@ public class IngestionRunCostFloorTests(ITestOutputHelper output)
 
         output.WriteLine(
             $"budget: {budget.MaxIterations} iterations / {budget.MaxInputTokens} input tokens; " +
-            $"reference serial run: {measured.Turns.Count} iterations / {measured.Total} estimated tokens");
+            $"declared run: {batched.Turns.Count} iterations / {batched.Total} estimated tokens; " +
+            $"serial run: {serial.Turns.Count} iterations / {serial.Total} estimated tokens " +
+            "(estimated ≠ real; only the live floor can compare either to MaxInputTokens)");
     }
 
     [Fact]
@@ -256,7 +295,7 @@ public class IngestionRunCostFloorTests(ITestOutputHelper output)
             $"= Baseline Prompt Size {measured.Baseline} ({Share(measured.Baseline, measured)}) " +
             $"+ conversation {conversation} ({Share(conversation, measured)}), of which the resume " +
             $"itself is {measured.ResumeReSend} ({Share(measured.ResumeReSend, measured)}) and the " +
-            $"unfiltered skill_list catalog is {measured.Amplified(measured.Turns[1])} " +
+            $"skill_list results are {measured.Amplified(measured.Turns[1])} " +
             $"({Share(measured.Amplified(measured.Turns[1]), measured)}).");
     }
 
@@ -265,10 +304,10 @@ public class IngestionRunCostFloorTests(ITestOutputHelper output)
     // ---- the fake MCP surface ------------------------------------------------------------
 
     /// <summary>The six tools the agent narrows itself to, each returning what the MCP layer
-    /// really returns: an acknowledgement for the writes, one unfiltered page for the catalog.</summary>
+    /// really returns: an acknowledgement for the writes, one filtered page for a skill lookup.</summary>
     private static AITool[] Tools() =>
     [
-        AIFunctionFactory.Create(() => CatalogPage, "skill_list"),
+        AIFunctionFactory.Create(() => LookupPage, "skill_list"),
         AIFunctionFactory.Create(
             () => $$"""{"employee":{"id":"{{DraftId}}","firstName":"Torvald","lastName":"Emberwright"},"duplicateWarning":null}""",
             "employee_create_draft"),
@@ -278,27 +317,30 @@ public class IngestionRunCostFloorTests(ITestOutputHelper output)
     ];
 
     /// <summary>
-    /// One unfiltered <c>skill_list</c> page in the real <c>SkillPage</c>/<c>SkillDto</c> shape,
-    /// over a catalog the size of the seeded one. Sized to sit under
-    /// <see cref="CvManager.CostFloors.CostFloors.SkillListUnfilteredPageCeiling"/> — the Ratchet
-    /// <c>Mcp.Tests</c> measures against real Postgres — so this harness can never price the run
-    /// higher than the tool really costs.
+    /// One FILTERED <c>skill_list</c> page in the real <c>SkillPage</c>/<c>SkillDto</c> shape —
+    /// what a <c>nameContains</c> lookup returns since P1T-155 stopped this agent dumping the
+    /// catalog. Two rows, because the Ratchet it is held under was measured on <c>"React"</c>,
+    /// which matches React and React Native: the lookup that costs the most is the one that hits
+    /// twice, and a floor may not flatter itself with the single-row case.
+    ///
+    /// <para>Sized to sit under <see cref="CvManager.CostFloors.CostFloors.ReadToolResultCeilings"/>'s
+    /// <c>skill_list</c> entry — the Ratchet <c>Mcp.Tests</c> measures against real Postgres — so
+    /// this harness can never price the run lower than the tool really costs.</para>
     /// </summary>
-    private static readonly string CatalogPage = BuildCatalogPage();
+    private static readonly string LookupPage = BuildLookupPage();
 
-    private static string BuildCatalogPage()
+    private static string BuildLookupPage()
     {
-        var names = Fixtures.Catalog.OrderBy(n => n, StringComparer.Ordinal).ToList();
-        var items = Enumerable.Range(0, 79)
-            .Select(i => new
+        var items = new[] { "React", "React Native" }
+            .Select((name, i) => new
             {
                 id = Deterministic(i, 0xA1),
-                name = names[i % names.Count],
-                categoryId = Deterministic(i % 9, 0xC2),
-                categoryName = $"Category {i % 9}",
-                rank = i % 5,
+                name,
+                categoryId = Deterministic(i, 0xC2),
+                categoryName = "Frontend",
+                rank = i,
             });
-        return JsonSerializer.Serialize(new { page = 1, pageSize = 100, total = 79, items });
+        return JsonSerializer.Serialize(new { page = 1, pageSize = 100, total = 2, items });
     }
 
     private static Guid Deterministic(int seed, byte salt)
@@ -317,9 +359,17 @@ public class IngestionRunCostFloorTests(ITestOutputHelper output)
     /// the reference fixture's ground truth so the bullets, dates and ids are the real weight and
     /// not a placeholder.
     /// </summary>
+    /// <summary>The reference fixture's eight skill names, reduced to the shortest distinctive
+    /// word the instructions ask for. Real terms, so the argument half of the lookup is weighed at
+    /// its real size rather than at a placeholder's.</summary>
+    private static readonly string[] LookupTerms =
+        ["c#", "asp.net core", "entity framework", "postgres", "redis", "docker", "kubernetes", "ci/cd"];
+
     private static Dictionary<string, object?> ArgumentsFor(string tool, int nth) => tool switch
     {
-        "skill_list" => [],
+        // A lookup, not a dump: the shortest distinctive word of one extracted skill name, which
+        // is what step 1 of the agent's procedure now asks for.
+        "skill_list" => new() { ["nameContains"] = LookupTerms[(nth - 1) % LookupTerms.Length] },
         "employee_create_draft" => new()
         {
             ["dto"] = new

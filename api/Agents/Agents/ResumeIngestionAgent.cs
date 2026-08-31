@@ -37,8 +37,10 @@ public sealed class ResumeIngestionAgent
     private const string CreateDraftTool = "employee_create_draft";
 
     /// <summary>The narrowed tool surface: the draft create, the four child adds, and the catalog
-    /// listing the model needs for skill matching. Nothing else — notably not skill_create (the
-    /// agent proposes catalog additions, humans approve them) and no Availability tools.</summary>
+    /// lookup the model resolves skill ids through. Nothing else — notably not skill_create (the
+    /// agent proposes catalog additions, humans approve them) and no Availability tools.
+    /// <para>P1T-150 proved this set is already exact — the reference ingestion calls all six —
+    /// so its Baseline Prompt Size is the floor for the work rather than slack.</para></summary>
     private static readonly string[] ToolNames =
     [
         CreateDraftTool,
@@ -61,14 +63,21 @@ public sealed class ResumeIngestionAgent
           month or year. Never invent precision beyond that. A current role has a null endDate.
         - Never touch availability/capacity — resumes do not state it.
 
+        Batching — ONE turn per kind of call, never one per child. Calls that do not need each
+        other's results go out together as parallel tool calls in a single turn; only wait for a
+        result you are about to pass as an argument. Every turn re-sends the whole conversation,
+        so ten calls over ten turns cost ten times what the same ten cost in one.
+
         Procedure:
-        1. Call skill_list once to load the skill catalog.
+        1. All in ONE turn, skill_list per skill name in the resume, nameContains = the shortest
+           distinctive word of it ("ReactJS" → "react", "Entity Framework Core" → "entity
+           framework"). NEVER unfiltered: the whole catalog would then re-cost you every later
+           turn. No match → retry that one once, shorter; still none means no catalog entry.
         2. Call employee_create_draft with the person's root fields (firstName, lastName, title,
            email — empty string if the resume has none — phone, location, summary).
-        3. Using the returned employee id, add children:
+        3. Using the returned employee id, add children — each kind as ONE batched turn:
            - language_add for each spoken language (level: Basic|Conversational|Professional|Fluent|Native).
-           - employee_skill_add for each skill that matches a catalog entry — match by meaning,
-             not just exact spelling (e.g. "ReactJS" matches "React"). Use the catalog skillId.
+           - employee_skill_add for each skill step 1 resolved, using the skillId it returned.
              Level (Beginner|Intermediate|Advanced|Expert) and yearsExperience only as evidenced.
            - qualification_add for each degree/certification (type: Degree|Certification).
            - experience_add for each role: company, title, dates, summary, achievements (verbatim-
@@ -76,8 +85,8 @@ public sealed class ResumeIngestionAgent
         4. If a tool returns a validation error, read its fields, fix the arguments, and retry —
            at most 2 retries for the same item, then skip it and move on.
         5. If employee_create_draft itself still fails after 2 retries, STOP — do not add children.
-        6. Skills with no catalog match (even by meaning) are NOT added and NOT created — collect
-           their names as proposals for human review.
+        6. Skills step 1 could not resolve are NOT added and NOT created — collect their names as
+           proposals for human review.
 
         When done, finish with the structured report: proposals = the unmatched skill names from
         step 6 (empty when all matched); aborted = true with a short abortReason only when step 5

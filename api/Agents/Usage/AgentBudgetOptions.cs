@@ -29,17 +29,24 @@ public sealed class AgentBudgetOptions
         ["roster-qa"] = new AgentBudget { MaxInputTokens = 15_000, MaxIterations = 6 },
 
         // P1T-150 measured a faithful ingestion of the EASIEST eval fixture at 17 model calls,
-        // before a single self-correction — 8 was below the agent's own structural path length,
+        // before a single self-correction — 8 was below the agent's own Structural Path Length,
         // so every ordinary resume degraded at call 8 of 17 for a reason that had nothing to do
-        // with cost. 24 clears the reference path with headroom for the ~2 retries per item the
-        // instructions allow.
+        // with cost. 24 clears it.
+        //
+        // P1T-155 then changed the shape underneath these numbers and deliberately left both
+        // where they are. The declared run is now 7 model calls (Turn Batching: every call that
+        // does not need another's result goes out in one turn), so 24 is no longer the ceiling an
+        // ordinary run approaches — it is the backstop for a run that ignores the Batching rule,
+        // which is 24 calls exactly. Lowering it toward 7 would truncate a partially-batched run
+        // for being long rather than for being expensive, and the token ceiling is the one that
+        // should bind: a serial run is 103,865 estimated tokens, a batched one 31,247.
         //
         // MaxInputTokens deliberately stays at 40,000. It is NOT generous: the per-user cap is
         // 50,000 tokens a day (`Usage:DefaultDailyTokens`) and it is enforced before a request,
         // not during one, so this is the only thing bounding a single run — and one resume must
-        // not cost a user their day. The reference run does not fit inside it, and that is a
-        // statement about the agent's shape rather than about this number: 46% of it is the
-        // Baseline Prompt Size re-sent 17 times and 44% is one unfiltered skill_list result.
+        // not cost a user their day. Whether the declared run now fits inside it is a question
+        // about REAL tokens that the estimated floors cannot answer; that is what
+        // IngestionConvergenceLiveFloorTests is for.
         ["resume-ingestion"] = new AgentBudget { MaxInputTokens = 40_000, MaxIterations = 24 },
     };
 

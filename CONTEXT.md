@@ -248,10 +248,21 @@ _Avoid_: tool trace, call log (those are the OTel spans, which are in-memory onl
 
 **Structural Path Length**:
 How many tool calls a task takes because of the shape of the tool surface, before the model does
-anything wrong. Ingestion writes one child per call, so an ordinary two-role resume is sixteen
+anything wrong. Ingestion writes one child per call, so an ordinary two-role resume is twenty-three
 calls with no thrash in it at all. The counterpart to Convergence: Convergence is calls the model
-could have avoided, this is calls it could not. A Runtime Budget set below it degrades every run.
+could have avoided, this is calls it could not. Not the same as a run's cost — see Turn Batching,
+which pays the same twenty-three calls over seven turns.
 _Avoid_: iteration count, loop length (those are what a run did, not what it needed)
+
+**Turn Batching**:
+Issuing every tool call that does not need another's result together, as parallel calls in one
+turn. What makes Structural Path Length survivable: Turn Amplification multiplies TURNS, not calls,
+so on a write loop the turn boundary is the lever and the call count is nearly free. The reference
+ingestion is twenty-three calls either way — one per turn costs 103,865 estimated tokens, batched
+by kind costs 31,247. It is why P1T-155 could make a path eight calls LONGER (one filtered
+`skill_list` lookup per skill in place of one catalog dump) and 72% cheaper at the same time.
+_Avoid_: parallel tool calls (that is the mechanism), bulk endpoint (no such thing here — the
+writes are unchanged, only their turn boundaries move)
 
 ### Agent dock
 

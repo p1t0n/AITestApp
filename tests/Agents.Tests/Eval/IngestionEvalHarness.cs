@@ -42,9 +42,16 @@ public static class IngestionEvalTools
             .ToList();
         var catalogById = catalog.ToDictionary(c => c.Id, c => c.Name);
 
+        // Honours nameContains the way SkillCatalogService.OrderedSkills does (case-insensitive
+        // substring, trimmed), because since P1T-155 the agent's step 1 resolves one skill name
+        // per call rather than loading the catalog. A fake that ignored the filter would hand back
+        // the whole catalog and quietly score a run the production tool could not produce.
         var skillList = AIFunctionFactory.Create(
-            () => JsonSerializer.Serialize(
-                catalog.Select(c => new { id = c.Id, name = c.Name, categoryId = Guid.Empty, categoryName = "Eval" }),
+            (string? nameContains) => JsonSerializer.Serialize(
+                catalog
+                    .Where(c => string.IsNullOrWhiteSpace(nameContains)
+                                || c.Name.Contains(nameContains.Trim(), StringComparison.OrdinalIgnoreCase))
+                    .Select(c => new { id = c.Id, name = c.Name, categoryId = Guid.Empty, categoryName = "Eval" }),
                 Json),
             "skill_list");
 
