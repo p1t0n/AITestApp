@@ -129,6 +129,17 @@ export default function AgentWidget({ dock }: { dock: AgentDock }) {
   const dockedWide = dock.docked && !dock.isNarrow;
   const dockedNarrow = dock.docked && dock.isNarrow;
 
+  // The assistant is the operator's tool, not part of any document they print — the same reasoning
+  // the rail applies to itself (`AppRail.tsx`). It had no print rule until P1T-166 watched Chromium
+  // resolve the cascade: both of these are `position: fixed`, so they are painted *over* the page
+  // rather than laid out in it, and the bubble was landing in the bottom-right corner of the first
+  // sheet of every printed artifact in this app — a robot icon on a client's CV. The docked panel
+  // is the worse of the two for a reason P1T-160 introduced: print drops background colours but
+  // keeps borders, so its `borderLeft` would rule a hairline down the page even where the surface
+  // colour vanished. Colocated in the `sx` of whoever renders the element (P1T-154), so removing
+  // the surface and removing its print behaviour stay the same edit.
+  const hideInPrint = { "@media print": { display: "none" } } as const;
+
   const panelSx = !dock.docked
     ? {
         bottom: 96,
@@ -153,7 +164,7 @@ export default function AgentWidget({ dock }: { dock: AgentDock }) {
           color="primary"
           aria-label="Open the agents assistant"
           onClick={dock.toggleOpen}
-          sx={{ position: "fixed", bottom: 24, right: 24, zIndex: 1300 }}
+          sx={{ position: "fixed", bottom: 24, right: 24, zIndex: 1300, ...hideInPrint }}
         >
           <SmartToyIcon />
         </Fab>
@@ -171,6 +182,9 @@ export default function AgentWidget({ dock }: { dock: AgentDock }) {
             zIndex: 1300,
             overflow: "hidden",
             ...panelSx,
+            // Last, and it has to be: this element declares `display: flex` above, and a media
+            // query carries no extra specificity — only source order separates the two.
+            ...hideInPrint,
           }}
         >
           {dockedWide && (

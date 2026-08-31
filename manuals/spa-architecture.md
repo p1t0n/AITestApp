@@ -304,9 +304,13 @@ replaces both lists wholesale. The form is a nested-collection editor, not three
 `CvPage` renders the assembled CV into a `Paper` with `id="cv-sheet"`, and offers two exits:
 
 - **Print** — `window.print()`. The print styling is **colocated**, not global (P1T-154): the sheet
-  flattens itself (`boxShadow: "none"`, `margin: 0`) and the page toolbar and the `AppBar` each hide
-  themselves, all in their own `sx`. `index.css` is down to one rule — `body`'s print background,
-  which no component owns. The `#cv-sheet` id survives only as the e2e suite's locator.
+  flattens itself (`boxShadow: "none"`, `margin: 0`) and every piece of chrome hides itself, all in
+  its own `sx` — the page toolbar, the rail and its mobile bar (`AppRail.tsx`), the signed-out top bar
+  (`App.tsx`), and the agent dock in both of its shapes (`AgentWidget.tsx`, added by P1T-166). The
+  root element additionally zeroes the two gutters the rail and the dock publish, since a `fixed`
+  edge that is no longer painted still leaves its padding behind. `index.css` is down to one rule —
+  `body`'s print background, which no component owns. The `#cv-sheet` id survives only as the e2e
+  suite's locator.
 - **Download PDF** — `useDownloadCvPdf` fetches a blob from the server-side QuestPDF renderer and
   saves it, parsing the filename out of `content-disposition`.
 
@@ -324,6 +328,18 @@ provider: MUI's root sets `color: text.primary` as well as `background.paper`, w
 the eight `<Typography>`s in the sheet that name no palette key. Held by
 `CvSheet.lightLock.test.tsx` (resolved colour in a dark app) and `e2e/cv-print.e2e.ts` (the same claim
 in a real Chromium at print media, where jsdom cannot go).
+
+**Print is verified at two layers on purpose, and only one of them is load-bearing (P1T-166).**
+`src/test/printCss.ts` reads the CSS a component *emits* and checks the `@media print` block carries
+the element's own generated class — cheap, and it runs in the default `npm test`, so deleting a print
+rule is red without a database or a browser. What it cannot answer is whether the declaration *wins*:
+jsdom implements no cascade and never re-evaluates a media query, so an emitted rule that loses a
+specificity tie reads exactly like one that takes. `e2e/print.e2e.ts` and `e2e/cv-print.e2e.ts` answer
+that under `page.emulateMedia({ media: "print" })`, where Chromium recomputes the cascade for real,
+and each of them also reads back at screen media — a rule that leaked out of `@media print` would
+otherwise satisfy every print assertion while breaking the page it was meant to leave alone. The
+division of labour matters because the e2e layer is the one that finds things: it is what caught the
+dock having no print rule at all.
 
 ## 10. Error handling
 
@@ -400,8 +416,14 @@ P1T-153 (error boundary + shared error surface), P1T-154 (colocation cleanups).
   No boundary, so a render throw is a white page.
 - ~~**`index.css` knows `#cv-sheet`**~~ (P1T-154) — **shipped**. The print rules moved into the `sx` of
   whoever renders the element (§9); the one global rule left is `body`'s print background. Whether
-  those colocated rules actually *win* in a browser was the open half, and it is now answered for this
-  page by `e2e/cv-print.e2e.ts` — for the rest of the app it is P1T-166.
+  those colocated rules actually *win* in a browser was the open half: answered for the CV page by
+  `e2e/cv-print.e2e.ts`, and now for the rest of the app by `e2e/print.e2e.ts` (P1T-166). Nothing is
+  left open here. It was worth doing rather than assumed — the rail's rules, the mobile drawer's and
+  the signed-out bar's all won on the first run, and the **agent dock turned out to have no print rule
+  at all**, so its bubble was printing in the corner of every artifact this app produces, a client's
+  CV included. `MuiFab` even ships its own `@media print` block insisting the bubble keep its
+  background colour (`print-color-adjust: exact`), which is the opposite of what was wanted and is
+  what a first-match reader of the emitted CSS had been reporting as the dock's rule.
 - ~~**Type placement is split by accident**~~ (P1T-151) — **shipped**. Roster domain types stay in
   `types.ts`; each agent contract now sits in its own agent module beside the hook that returns it.
 - **The dock's width lives in `App`** (P1T-154). `useAgentDock` is hoisted because the root element needs the
