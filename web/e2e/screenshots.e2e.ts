@@ -87,10 +87,18 @@ for (const mode of ["light", "dark"] as const) {
       await expect(page.getByRole("heading", { name: fullName })).toBeVisible();
       await shoot(page, mode, "4-cv-page");
 
+      // Both of these load their content *after* the frame renders, and neither had a wait: the
+      // light catalog capture in slice 1 and slice 2 is a spinner on an empty page, which is a
+      // screenshot of nothing. Asserting the loading state is gone rather than naming seeded rows
+      // keeps the capture independent of what the e2e database happens to hold.
       await page.goto("/catalog");
+      await expect(page.getByRole("heading", { name: "Skill Catalog" })).toBeVisible();
+      await expect(page.getByRole("progressbar")).toHaveCount(0);
       await shoot(page, mode, "5-catalog");
 
       await page.goto("/users");
+      await expect(page.getByRole("heading", { name: "Users" })).toBeVisible();
+      await expect(page.getByText("Loading…")).toHaveCount(0);
       await shoot(page, mode, "6-users");
 
       // The dock last, over the roster: it is the app's signature surface and needs a page under

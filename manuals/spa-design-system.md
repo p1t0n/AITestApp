@@ -265,6 +265,12 @@ Each slice ends with Playwright screenshots in light and dark of: roster, employ
 users, sign-in, dock open, CV page. Screenshots land in `docs/` (gitignored); this record and
 `manuals/spa-architecture.md` are what gets committed.
 
+One fix to the capture landed in slice 2: `/catalog` and `/users` were shot with no wait, so the
+light catalog image from slice 1 (and the first slice-2 pass) is a spinner on an empty page — a
+screenshot of nothing, in the one place a screenshot is the deliverable. Both now wait for their
+loading state to clear, which means slice 1's `5-catalog` cannot be compared against and the
+before/after for that surface starts at slice 2.
+
 The capture is `web/e2e/screenshots.e2e.ts`, run with `npm run shots` — committed rather than
 rebuilt from this paragraph six times, on the same reasoning as the repo's gate harnesses
 (`CloudflareWorkersAiGateTests`, `CompatEndpointProbeTests`). It is skipped in the default e2e run,
