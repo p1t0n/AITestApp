@@ -49,7 +49,8 @@ Application layer directly.
   Web/             controllers, Swagger, DI wiring
   Mcp/             MCP server: tools, OAuth (JWT) auth, scope policies, error mapping
 /web               React SPA (Vite)
-/keycloak          realm-export.json (OAuth realm: clients, scopes, audience mapper)
+/keycloak          realm-export.json (OAuth realm: clients, scopes, audience mapper,
+                   client-registration policy, OAuth 2.1 client profile)
 /tests
   Application.Tests  Application unit tests (xUnit + FluentValidation)
   Mcp.Tests          MCP integration tests (in-process client) + Keycloak e2e
@@ -120,6 +121,10 @@ One table with a `Type` enum (`Degree` | `Certification`) and nullable fields pe
 - **OAuth 2.1**: the MCP server is a Resource Server (validates JWTs, serves
   `/.well-known/oauth-protected-resource`); Keycloak is the Authorization Server (PKCE,
   Dynamic Client Registration). Per-tool scopes — `mcp:read` / `mcp:write` / `mcp:admin`.
+  Registration is initial-access-token gated (anonymous is refused) and capped at `mcp:read`
+  plus the audience mapper, so a client cannot register its way to write capability; the
+  OAuth 2.1 baseline is stamped onto it at registration rather than remembered per client
+  (`manuals/mcp-dcr-policy.md`).
 - **Seed data**: a seeded skill catalog + 3–5 sample employees with complete data.
 - **CV rendering**: React-only live view; renders **all** sections in a fixed, sensible
   order (full dump). Export via browser print → PDF for now.
@@ -211,4 +216,4 @@ The Agents service exposes REST endpoints; a SPA chat/action UI is deferred.
 - AI-tailored CVs: select relevant skills/experience for a target role.
 - Web API integration + Playwright e2e test layers.
 - Auth for the Web API (JWT or ASP.NET Identity).
-- MCP auth hardening: external IdP, tighter Dynamic Client Registration policy.
+- MCP auth hardening: external IdP. (The tighter DCR policy shipped — see above.)

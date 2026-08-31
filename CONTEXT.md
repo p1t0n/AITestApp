@@ -289,3 +289,19 @@ not an Agent Surface: it spends nothing and does nothing, so it lives in the doc
 you open and close, not as a place among the things that bill you.
 _Avoid_: usage tab, quota screen
 
+### Client registration
+
+**Registration Ceiling**:
+The set of client scopes a dynamically registered MCP client may hold — `mcp:read` plus the
+audience mapper, and nothing above it. Declared on the realm's Allowed Client Scopes policy, so a
+client cannot register its way to write capability. Distinct from a Tool Allowlist, which narrows
+what an already-entitled identity is *shown*; the ceiling bounds what an identity may be
+*entitled to* in the first place.
+_Avoid_: registration allowlist, DCR scopes
+
+**Stamped Rule**:
+A client policy executor that runs with `auto-configure` and writes its rule onto the client
+record at registration, instead of checking it at request time. Holds afterwards without a runtime
+policy — which is what keeps the OAuth 2.1 baseline off the realm's own imported clients, whose
+grants a runtime rule would break.
+_Avoid_: augment, auto-config
