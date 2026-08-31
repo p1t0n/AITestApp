@@ -273,6 +273,43 @@ by kind costs 31,247. It is why P1T-155 could make a path eight calls LONGER (on
 _Avoid_: parallel tool calls (that is the mechanism), bulk endpoint (no such thing here — the
 writes are unchanged, only their turn boundaries move)
 
+### App shell
+
+**Rail**:
+The shell's left navigation edge — the app's own places (CVs, Skill Catalog, Users) plus the
+session block. One of two edges that can cover the page; like the agent dock it publishes the width
+it is covering and the shell makes room, so neither edge participates in layout.
+_Avoid_: sidebar, nav bar, drawer
+
+**Page Header**:
+The one strip at the top of a routed page carrying its title, its way back, and its primary
+actions. A page owns its contents; it does not own its heading.
+_Avoid_: page title, toolbar
+
+**CV Sheet**:
+The rendered page of a CV Projection as a person sees it before printing. A client-facing artifact,
+so it looks the same for every user regardless of theme — what is on screen is what prints.
+_Avoid_: CV preview, print view
+
+**Theme Mode**:
+Light or dark, defaulting to the operating system's preference until a person overrides it. A
+display preference of the browser, never of the account — it is not roster data and does not travel
+with the user. What is stored is the override, so "no value" means "still following the OS" rather
+than "unknown".
+_Avoid_: dark mode setting, appearance profile
+
+**Design Token**:
+A value the look is made of — a surface, a text colour, the accent, a radius — declared once and
+then expressed through the UI library's own vocabulary. A component names the *role* it wants, never
+the token: that is what makes a second Theme Mode cost a component nothing.
+_Avoid_: theme variable, CSS var, palette entry
+
+**Surface Ramp**:
+The three steps anything can be drawn on: the page, a panel on it, and a well inside that panel.
+Depth is a step on the ramp plus a hairline, not a shadow — a shadow separates nothing on a
+near-black page.
+_Avoid_: elevation, z-layer, background shades
+
 ### Agent dock
 
 **Agent Surface**:

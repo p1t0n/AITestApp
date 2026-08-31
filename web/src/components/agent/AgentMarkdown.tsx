@@ -25,7 +25,7 @@ export function AgentMarkdown({ text }: { text: string }) {
         "& h1, & h2, & h3": { fontSize: "1rem", fontWeight: 700, mt: 1.5, mb: 0.5 },
         "& table": { borderCollapse: "collapse", width: "100%", my: 1 },
         "& th, & td": { border: 1, borderColor: "divider", px: 0.75, py: 0.25, textAlign: "left" },
-        "& code": { bgcolor: "grey.100", px: 0.5, borderRadius: 0.5 },
+        "& code": { bgcolor: "surface.raised", px: 0.5, borderRadius: 0.5 },
       }}
     >
       <ReactMarkdown
