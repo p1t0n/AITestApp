@@ -10,9 +10,10 @@
 // **Contrast against composites.** The overrides introduce colour pairings the token layer could
 // not have checked, because they are computed: an `Alert`'s panel is 14% of a semantic role over
 // whichever of the three surfaces it lands on. `tokens.contrast.test.ts` asserts the tokens; this
-// asserts what the overrides make out of them. The WCAG helper is copied rather than imported —
-// importing a `*.test.ts` module would re-register its 34 assertions inside this file's suite, and
-// this slice's claim is that no existing test needed touching.
+// asserts what the overrides make out of them. The WCAG helpers were copied into this file rather
+// than imported, because importing a `*.test.ts` module re-registers its assertions inside this
+// file's suite; P1T-163 needed them a third time and moved them to `src/test/contrast.ts`, which is
+// a plain module with no suite to leak. Nothing about the assertions below changed.
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import {
@@ -34,44 +35,7 @@ import type { Theme } from "@mui/material/styles";
 import { darkTheme, lightTheme } from "./index";
 import { tokens } from "./tokens";
 import type { ThemeModeTokens } from "./tokens";
-
-/** `#RRGGBB` → the `rgb(r, g, b)` form jsdom and every browser report computed colours in. */
-function rgb(hex: string): string {
-  const h = hex.replace("#", "");
-  const [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
-  return `rgb(${r}, ${g}, ${b})`;
-}
-
-function channel(value: number): number {
-  const c = value / 255;
-  return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-}
-
-function luminance(hex: string): number {
-  const h = hex.replace("#", "");
-  const [r, g, b] = [0, 2, 4].map((i) => channel(parseInt(h.slice(i, i + 2), 16)));
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-/** WCAG contrast ratio, 1:1 … 21:1. */
-function contrastRatio(a: string, b: string): number {
-  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-  return (hi + 0.05) / (lo + 0.05);
-}
-
-/**
- * What a person actually sees when `fg` is drawn at `alpha` over `bg` — the composite an alpha
- * tint resolves to. Contrast is a property of that composite, never of the tint on its own.
- */
-function over(fg: string, alpha: number, bg: string): string {
-  const parse = (hex: string) => [0, 2, 4].map((i) => parseInt(hex.replace("#", "").slice(i, i + 2), 16));
-  const [fr, fg_, fb] = parse(fg);
-  const [br, bg_, bb] = parse(bg);
-  const mix = (f: number, b: number) => Math.round(f * alpha + b * (1 - alpha));
-  return `#${[mix(fr, br), mix(fg_, bg_), mix(fb, bb)]
-    .map((v) => v.toString(16).padStart(2, "0"))
-    .join("")}`;
-}
+import { contrastRatio, over, rgb } from "../test/contrast";
 
 const modes: [string, Theme, ThemeModeTokens][] = [
   ["light", lightTheme, tokens.modes.light],

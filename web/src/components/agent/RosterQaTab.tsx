@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Box, Button, IconButton, Paper, Stack, TextField, Typography } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
+import SmartToyOutlinedIcon from "@mui/icons-material/SmartToyOutlined";
 import { apiErrorMessage, useRosterQa } from "../../api";
 import { AgentMarkdown } from "./AgentMarkdown";
 
@@ -10,6 +11,27 @@ interface Message {
   text: string;
 }
 
+/**
+ * One turn in the conversation.
+ *
+ * The three fills are the three things a reader has to tell apart at a glance, and P1T-163 tuned
+ * them for dark rather than leaving them as whatever the palette happened to make of the old
+ * hardcoded values:
+ *
+ * * **the person** — the accent as a *wash* (`action.selected`) with the accent as its edge, not
+ *   as a solid `primary.main` slab. A filled accent bubble is the loudest thing on a dark panel and
+ *   the design record reserves the accent for the primary action and the focus ring
+ *   (`manuals/spa-design-system.md` §3); the wash still says "this one is yours" without competing
+ *   with the Send button two inches below it.
+ * * **the agent** — the raised step of the surface ramp, which is exactly what a `well` is.
+ * * **an error** — left alone on purpose. It fills with `error.light` and labels itself with
+ *   `error.contrastText`, the app's only such pairing, which is why `tokens.contrast.test.ts`
+ *   asserts that one extra pair; and P1T-153 already decided this bubble keeps a bubble's look
+ *   rather than becoming an `ErrorNotice`, because it is a turn in a conversation, not a banner.
+ *
+ * The square corner marks the speaker's side — the one piece of shape in the panel that carries
+ * meaning, so alignment is not the only thing distinguishing two washes of similar weight.
+ */
 function Bubble({ message }: { message: Message }) {
   const isUser = message.role === "user";
   const isError = message.role === "error";
@@ -21,12 +43,16 @@ function Bubble({ message }: { message: Message }) {
           px: 1.5,
           py: 1,
           maxWidth: "85%",
-          bgcolor: isUser ? "primary.main" : isError ? "error.light" : "surface.raised",
-          color: isUser ? "primary.contrastText" : isError ? "error.contrastText" : "text.primary",
+          minWidth: 0,
+          bgcolor: isUser ? "action.selected" : isError ? "error.light" : "surface.raised",
+          color: isError ? "error.contrastText" : "text.primary",
+          ...(isUser && { border: 1, borderColor: "primary.main" }),
+          borderRadius: 1.5,
+          ...(isUser ? { borderBottomRightRadius: 4 } : { borderBottomLeftRadius: 4 }),
         }}
       >
         {isUser ? (
-          <Box sx={{ whiteSpace: "pre-wrap" }}>{message.text}</Box>
+          <Box sx={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{message.text}</Box>
         ) : (
           <AgentMarkdown text={message.text} />
         )}
@@ -83,9 +109,20 @@ export function RosterChat() {
       <Box ref={scrollRef} sx={{ flex: 1, overflowY: "auto", p: 1.5 }}>
         <Stack spacing={1}>
           {messages.length === 0 && (
-            <Typography variant="body2" color="text.secondary" sx={{ p: 1 }}>
-              e.g. "Who knows React and is available this summer?" Follow-ups keep the context.
-            </Typography>
+            // An empty transcript is the first thing anybody sees in this app's signature surface,
+            // and it was one grey sentence hugging the top-left corner. Same words — they are the
+            // useful part — centred with the surface's own icon above them, so the panel reads as
+            // waiting rather than as failed to load.
+            <Stack
+              alignItems="center"
+              spacing={1}
+              sx={{ px: 2, py: 5, color: "text.secondary", textAlign: "center" }}
+            >
+              <SmartToyOutlinedIcon sx={{ fontSize: 32, color: "text.disabled" }} />
+              <Typography variant="body2">
+                e.g. "Who knows React and is available this summer?" Follow-ups keep the context.
+              </Typography>
+            </Stack>
           )}
           {messages.map((m, i) => (
             <Bubble key={i} message={m} />

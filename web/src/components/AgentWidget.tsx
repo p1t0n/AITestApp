@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   Box,
   Button,
+  Divider,
   Fab,
   IconButton,
   ListSubheader,
@@ -19,7 +20,7 @@ import CloseFullscreenIcon from "@mui/icons-material/CloseFullscreen";
 import DataUsageIcon from "@mui/icons-material/DataUsage";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
-import { useDockPush, type AgentDock } from "./useAgentDock";
+import { DOCK_MIN_WIDTH, maxDockWidth, useDockPush, type AgentDock } from "./useAgentDock";
 import { ErrorBoundary, DockErrorFallback } from "./ErrorBoundary";
 import type { AgentJobRequest } from "../api";
 import { RosterChat } from "./agent/RosterQaTab";
@@ -85,6 +86,18 @@ const SURFACE_LABELS: Record<Surface, string> = Object.fromEntries(
  * it. The visible text stays the bare surface label, so the accessible name still contains it. */
 export const SURFACE_PICKER_LABEL = "Agent surface";
 
+/**
+ * The resize handle's accessible name. It is a real control now rather than a bare `col-resize`
+ * strip, so it needs a name, a value, and keys — see {@link RESIZE_STEP}.
+ */
+export const RESIZE_HANDLE_LABEL = "Resize the agents dock";
+
+/**
+ * How much one arrow key moves the dock's edge, and ×4 with Shift. Small enough to place the edge
+ * precisely, large enough that crossing a 400px range is a held key rather than a hundred presses.
+ */
+export const RESIZE_STEP = 24;
+
 export default function AgentWidget({ dock }: { dock: AgentDock }) {
   const [surface, setSurface] = useState<Surface>("roster");
   const [pickerAnchor, setPickerAnchor] = useState<HTMLElement | null>(null);
@@ -124,6 +137,24 @@ export default function AgentWidget({ dock }: { dock: AgentDock }) {
     document.body.style.userSelect = "none";
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
+  };
+
+  // The same edge, from the keyboard. Until P1T-163 the handle was a mouse-only affordance with no
+  // visible existence at all: a 6px strip whose entire declaration was `cursor: col-resize`, so a
+  // person who does not hover — or does not use a mouse — had no way to know the dock resizes, and
+  // no way to do it. The window-splitter pattern gives it a name, a value and arrow keys; the
+  // clamping stays in the hook, so both input paths land on exactly the same rule.
+  //
+  // Left grows and right shrinks because the dock is anchored to the *right* edge: the key moves
+  // the handle, not the width, which is what a person watching the edge expects.
+  const onResizeKey = (e: React.KeyboardEvent) => {
+    const step = e.shiftKey ? RESIZE_STEP * 4 : RESIZE_STEP;
+    if (e.key === "ArrowLeft") dock.setWidth(dock.width + step);
+    else if (e.key === "ArrowRight") dock.setWidth(dock.width - step);
+    else if (e.key === "Home") dock.setWidth(DOCK_MIN_WIDTH);
+    else if (e.key === "End") dock.setWidth(maxDockWidth());
+    else return;
+    e.preventDefault();
   };
 
   const dockedWide = dock.docked && !dock.isNarrow;
@@ -189,27 +220,81 @@ export default function AgentWidget({ dock }: { dock: AgentDock }) {
         >
           {dockedWide && (
             <Box
+              // The ARIA window-splitter pattern: a focusable `separator` carries a value, so a
+              // screen reader announces the dock's width and the arrow keys have somewhere to
+              // report to. `tabIndex` is what makes it discoverable without a mouse at all.
+              role="separator"
+              aria-orientation="vertical"
+              aria-label={RESIZE_HANDLE_LABEL}
+              aria-valuenow={Math.round(dock.width)}
+              aria-valuemin={DOCK_MIN_WIDTH}
+              aria-valuemax={Math.round(maxDockWidth())}
+              tabIndex={0}
               onMouseDown={startResize}
+              onKeyDown={onResizeKey}
               sx={{
                 position: "absolute",
                 left: 0,
                 top: 0,
                 bottom: 0,
-                width: 6,
+                width: 10,
                 cursor: "col-resize",
-                zIndex: 1,
-                "&:hover": { bgcolor: "primary.light" },
+                zIndex: 2,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                // The affordance itself: a grip that is *always* drawn — a hairline in `divider`,
+                // the same line the panel's own edge uses — and that grows and takes the accent on
+                // hover or keyboard focus. The old strip painted `primary.light` across its whole
+                // width on hover and nothing at rest, which is a hover-only affordance: invisible
+                // until you have already found it. The focus ring comes from the baseline's
+                // `html *:focus-visible` and is deliberately not overridden here.
+                "&::after": {
+                  content: '""',
+                  width: 2,
+                  height: 28,
+                  borderRadius: 1,
+                  bgcolor: "divider",
+                  transition: (t) =>
+                    t.transitions.create(["background-color", "height"], { duration: t.transitions.duration.short }),
+                },
+                "&:hover::after, &:focus-visible::after": { bgcolor: "primary.main", height: 72 },
               }}
             />
           )}
 
-          <Box sx={{ px: 2, py: 1.5, bgcolor: "primary.main", color: "primary.contrastText" }}>
-            <Stack direction="row" alignItems="center" justifyContent="space-between">
-              <Stack direction="row" alignItems="center" spacing={1}>
-                <SmartToyIcon fontSize="small" />
-                <Typography variant="subtitle1">Agents</Typography>
-              </Stack>
-              <Stack direction="row" alignItems="center">
+          {/* One bar, two rows: what the panel *is* on top, where it is *pointed* underneath.
+              Before P1T-163 these were an accent-blue slab and a separate bordered strip, which is
+              what made the dock read as bolted on — the app's accent appears on the primary action
+              and the focus ring and essentially nowhere else (`manuals/spa-design-system.md` §3),
+              and a solid accent header is the largest possible violation of that rule. It is the
+              raised step of the surface ramp now, with one hairline under the pair rather than a
+              rule between them, so the two rows are visibly one piece of chrome.
+
+              Navigation chrome is inside this bar and OUTSIDE the boundary below: whatever a panel
+              does, the way out of it has to keep rendering. */}
+          <Box
+            sx={{
+              flexShrink: 0,
+              bgcolor: "surface.raised",
+              borderBottom: 1,
+              borderColor: "divider",
+            }}
+          >
+            <Stack
+              direction="row"
+              alignItems="center"
+              spacing={1}
+              sx={{ flexWrap: "nowrap", pl: 1.5, pr: 0.5, py: 0.5, minHeight: 40 }}
+            >
+              <SmartToyIcon fontSize="small" sx={{ color: "text.secondary", flexShrink: 0 }} />
+              {/* `noWrap` + `minWidth: 0` is what holds the "does not wrap or clip at 360px"
+                  claim: the title is the only elastic thing in the row, so it gives up its width
+                  to the controls instead of pushing them onto a second line. */}
+              <Typography variant="subtitle2" noWrap sx={{ flex: 1, minWidth: 0 }}>
+                Agents
+              </Typography>
+              <Stack direction="row" alignItems="center" sx={{ flexShrink: 0 }}>
                 <Tooltip title="Token usage">
                   <IconButton
                     aria-label="Token usage"
@@ -218,15 +303,22 @@ export default function AgentWidget({ dock }: { dock: AgentDock }) {
                       setPrefill(null);
                       setUsageOpen((o) => !o);
                     }}
-                    sx={{ color: "inherit" }}
+                    // `color="inherit"` rather than MUI's `action.active`, which this palette
+                    // resolves to flat white in dark mode — louder than the title beside it and a
+                    // colour nobody chose (the trap P1T-162 hit on the CV page's Back button).
+                    color={usageOpen ? "primary" : "inherit"}
                   >
                     <DataUsageIcon fontSize="small" />
                   </IconButton>
                 </Tooltip>
+                {/* The ledger is a peek at state; the two beside it are window controls. One
+                    hairline says so, which is cheaper than a gap nobody reads as grouping. */}
+                <Divider orientation="vertical" flexItem sx={{ mx: 0.5, my: 0.75 }} />
                 <Tooltip title={dock.docked ? "Float" : "Dock to side"}>
                   <IconButton
+                    aria-label={dock.docked ? "Float" : "Dock to side"}
+                    color="inherit"
                     onClick={() => dock.setDocked(!dock.docked)}
-                    sx={{ color: "inherit" }}
                   >
                     {dock.docked ? (
                       <CloseFullscreenIcon fontSize="small" />
@@ -235,78 +327,84 @@ export default function AgentWidget({ dock }: { dock: AgentDock }) {
                     )}
                   </IconButton>
                 </Tooltip>
-                <IconButton onClick={dock.close} sx={{ color: "inherit" }}>
-                  <CloseIcon fontSize="small" />
-                </IconButton>
+                {/* Named at last: an icon-only button with only a Tooltip-less icon in it has no
+                    accessible name at all, so the dock's own close control was unreachable by
+                    name — the one control in this header that every other one implies. */}
+                <Tooltip title="Close">
+                  <IconButton aria-label="Close the agents assistant" color="inherit" onClick={dock.close}>
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
               </Stack>
             </Stack>
-          </Box>
 
-          {/* Navigation chrome first, and OUTSIDE the boundary below: whatever a panel does, the
-              way out of it has to keep rendering. */}
-          {usageOpen ? (
-            <Box
-              sx={{
-                px: 1,
-                py: 0.75,
-                borderBottom: 1,
-                borderColor: "divider",
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-              }}
-            >
-              <Button startIcon={<ArrowBackIcon />} onClick={() => setUsageOpen(false)}>
-                Back to {SURFACE_LABELS[surface]}
-              </Button>
-              <Typography variant="body2" color="text.secondary">
-                Token usage
-              </Typography>
-            </Box>
-          ) : (
-            <Box sx={{ px: 1, py: 0.75, borderBottom: 1, borderColor: "divider" }}>
-              {/* One control, one label — readable at any dock width, including DOCK_MIN_WIDTH.
-                  A Menu rather than a Select: Select clones `role="option"` onto every child,
-                  which would announce the four group headers as pickable surfaces. */}
-              <Button
-                fullWidth
-                color="inherit"
-                onClick={(e) => setPickerAnchor(e.currentTarget)}
-                aria-haspopup="menu"
-                aria-expanded={pickerAnchor ? true : undefined}
-                aria-label={`${SURFACE_PICKER_LABEL}: ${SURFACE_LABELS[surface]}`}
-                endIcon={<ArrowDropDownIcon />}
-                sx={{ justifyContent: "space-between", textTransform: "none", px: 1.5 }}
-              >
-                {SURFACE_LABELS[surface]}
-              </Button>
-              <Menu
-                anchorEl={pickerAnchor}
-                open={!!pickerAnchor}
-                onClose={() => setPickerAnchor(null)}
-                PaperProps={{ sx: { minWidth: pickerAnchor?.offsetWidth } }}
-              >
-                {SURFACE_GROUPS.flatMap((group) => [
-                  <ListSubheader key={group.category} role="presentation" sx={{ lineHeight: 2.25 }}>
-                    {group.category}
-                  </ListSubheader>,
-                  ...group.surfaces.map((s) => (
-                    <MenuItem
-                      key={s.surface}
-                      selected={s.surface === surface}
-                      onClick={() => {
-                        setPrefill(null);
-                        setSurface(s.surface);
-                        setPickerAnchor(null);
-                      }}
-                    >
-                      {s.label}
-                    </MenuItem>
-                  )),
-                ])}
-              </Menu>
-            </Box>
-          )}
+            {usageOpen ? (
+              <Box sx={{ px: 1, pb: 0.75, display: "flex", alignItems: "center", gap: 1 }}>
+                <Button startIcon={<ArrowBackIcon />} onClick={() => setUsageOpen(false)}>
+                  Back to {SURFACE_LABELS[surface]}
+                </Button>
+                <Typography variant="body2" color="text.secondary" noWrap>
+                  Token usage
+                </Typography>
+              </Box>
+            ) : (
+              <Box sx={{ px: 1, pb: 0.75 }}>
+                {/* One control, one label — readable at any dock width, including DOCK_MIN_WIDTH.
+                    A Menu rather than a Select: Select clones `role="option"` onto every child,
+                    which would announce the four group headers as pickable surfaces. */}
+                <Button
+                  fullWidth
+                  color="inherit"
+                  onClick={(e) => setPickerAnchor(e.currentTarget)}
+                  aria-haspopup="menu"
+                  aria-expanded={pickerAnchor ? true : undefined}
+                  aria-label={`${SURFACE_PICKER_LABEL}: ${SURFACE_LABELS[surface]}`}
+                  endIcon={<ArrowDropDownIcon />}
+                  // A bordered control rather than a bare text button: it is the panel's one
+                  // navigation control and it now sits on the raised step, where a borderless
+                  // label reads as a heading rather than as something to press.
+                  sx={{
+                    justifyContent: "space-between",
+                    textTransform: "none",
+                    px: 1.5,
+                    bgcolor: "background.paper",
+                    border: 1,
+                    borderColor: "divider",
+                    "&:hover": { bgcolor: "background.paper", borderColor: "surface.outline" },
+                  }}
+                >
+                  <Box component="span" sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {SURFACE_LABELS[surface]}
+                  </Box>
+                </Button>
+                <Menu
+                  anchorEl={pickerAnchor}
+                  open={!!pickerAnchor}
+                  onClose={() => setPickerAnchor(null)}
+                  PaperProps={{ sx: { minWidth: pickerAnchor?.offsetWidth } }}
+                >
+                  {SURFACE_GROUPS.flatMap((group) => [
+                    <ListSubheader key={group.category} role="presentation" sx={{ lineHeight: 2.25 }}>
+                      {group.category}
+                    </ListSubheader>,
+                    ...group.surfaces.map((s) => (
+                      <MenuItem
+                        key={s.surface}
+                        selected={s.surface === surface}
+                        onClick={() => {
+                          setPrefill(null);
+                          setSurface(s.surface);
+                          setPickerAnchor(null);
+                        }}
+                      >
+                        {s.label}
+                      </MenuItem>
+                    )),
+                  ])}
+                </Menu>
+              </Box>
+            )}
+          </Box>
 
           {/* One boundary around the panel body, keyed by what is showing (P1T-153): a panel that
               throws is contained to the body — the widget header and the navigation above stay
