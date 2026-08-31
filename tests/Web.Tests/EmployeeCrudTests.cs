@@ -195,4 +195,31 @@ public class EmployeeCrudTests(WebApiFactory factory)
         (await _client.PostAsync($"/api/employees/{employee.Id}/promote", null))
             .StatusCode.Should().Be(HttpStatusCode.OK);
     }
+
+    /// <summary>
+    /// The roster list is unpaged, and two features in the SPA depend on it being so: the roster
+    /// table filters and sorts client-side, and the ⌘K Command Palette searches people by filtering
+    /// the same cached response (P1T-165). "The palette searches the whole roster" is true only for
+    /// as long as one request returns the whole roster, so it is asserted here rather than assumed
+    /// in a comment — the day this endpoint starts paging, this test fails and both surfaces need a
+    /// server-side search instead.
+    /// </summary>
+    [Fact]
+    public async Task Roster_list_returns_every_active_employee_in_one_response()
+    {
+        // Comfortably past any default page size a paging library would introduce.
+        var created = new List<Guid>();
+        for (var i = 0; i < 25; i++)
+        {
+            var employee = await _client.CreateEmployeeAsync(ApiClientExtensions.NewEmployee(
+                firstName: "Unpaged", lastName: $"Roster{i:D2}"));
+            created.Add(employee.Id);
+        }
+
+        var roster = await _client.GetFromJsonAsync<List<EmployeeSummaryDto>>(
+            "/api/employees", WebApiFactory.Json);
+
+        roster!.Select(e => e.Id).Should().Contain(created,
+            "the palette and the roster table both read this one response as the whole roster");
+    }
 }

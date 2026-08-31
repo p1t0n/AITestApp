@@ -31,6 +31,7 @@ import { RosterScanPanel } from "./agent/RosterScanTab";
 import { BenchPanel } from "./agent/BenchTab";
 import { IngestionPanel } from "./agent/IngestionTab";
 import { UsagePanel } from "./agent/UsageTab";
+import { useAgentSurfaceRequest } from "./agent/surfaceRequest";
 
 /** One agent surface. Usage is deliberately absent — it is the token ledger, not an agent. */
 type Surface =
@@ -50,7 +51,7 @@ type Surface =
 // in agent count, which is what has to hold when the eleventh agent lands — it joins a group and
 // nothing else moves. The groups are the categories the flat list was hiding: these were never
 // ten peers.
-const SURFACE_GROUPS: { category: string; surfaces: { surface: Surface; label: string }[] }[] = [
+export const SURFACE_GROUPS: { category: string; surfaces: { surface: Surface; label: string }[] }[] = [
   {
     category: "Ask about the roster",
     surfaces: [{ surface: "roster", label: "Roster Q&A" }],
@@ -123,6 +124,17 @@ export default function AgentWidget({ dock }: { dock: AgentDock }) {
     setUsageOpen(false);
     setSurface(target);
   }
+
+  // The ⌘K palette jumps straight to a surface (P1T-165). It arrives as a name rather than as a
+  // `Surface`, so an unrecognised one is ignored here — the channel carries the message and this is
+  // the only place that knows the vocabulary. Treated exactly like any other navigation: a stale
+  // prefill and an open ledger both get out of the way first.
+  useAgentSurfaceRequest((name) => {
+    if (!(name in SURFACE_LABELS)) return;
+    setPrefill(null);
+    setUsageOpen(false);
+    setSurface(name as Surface);
+  });
 
   // Drag the left edge of the docked sidebar to resize. Width is viewport-minus-cursor, clamped by
   // the hook. Disabled on narrow screens (full-width overlay, no resize).

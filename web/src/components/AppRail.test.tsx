@@ -11,6 +11,12 @@ import {
   useAppRail,
   type AppRail,
 } from "./useAppRail";
+import {
+  PALETTE_TRIGGER_LABEL,
+  closeCommandPalette,
+  isCommandPaletteOpen,
+  paletteHotkeyHint,
+} from "./useCommandPalette";
 import { lightTheme } from "../theme";
 import { getModeOverride } from "../theme/mode";
 import { getToken, setSession } from "../auth/session";
@@ -102,6 +108,42 @@ describe("the rail, expanded", () => {
     await user.click(screen.getByRole("button", { name: "Sign out" }));
 
     expect(getToken()).toBeNull();
+  });
+});
+
+describe("the rail's palette trigger (P1T-165)", () => {
+  it("opens the palette, and shows the shortcut that does the same thing", async () => {
+    const user = userEvent.setup();
+    renderRail(railWith());
+
+    const trigger = screen.getByRole("button", { name: PALETTE_TRIGGER_LABEL });
+    // The hint is decoration for a row that already carries its own name, so it must not be part
+    // of it — `Search ⌘K` would be a third accessible name to keep in step with the e2e suite.
+    expect(trigger).toHaveTextContent(paletteHotkeyHint());
+    expect(trigger).toHaveAccessibleName(PALETTE_TRIGGER_LABEL);
+
+    await user.click(trigger);
+    expect(isCommandPaletteOpen()).toBe(true);
+    closeCommandPalette();
+  });
+
+  it("keeps its name with the labels gone, and drops the hint with them", () => {
+    renderRail(railWith({ collapsed: true, width: RAIL_COLLAPSED_WIDTH }));
+
+    const trigger = screen.getByRole("button", { name: PALETTE_TRIGGER_LABEL });
+    expect(trigger).toBeInTheDocument();
+    expect(trigger).not.toHaveTextContent(paletteHotkeyHint());
+  });
+
+  it("closes the mobile drawer on its way, like every other row that leaves", async () => {
+    const user = userEvent.setup();
+    const closeDrawer = vi.fn();
+    renderRail(railWith({ isNarrow: true, drawerOpen: true, width: 0, closeDrawer }));
+
+    await user.click(screen.getByRole("button", { name: PALETTE_TRIGGER_LABEL }));
+
+    expect(closeDrawer).toHaveBeenCalledOnce();
+    closeCommandPalette();
   });
 });
 

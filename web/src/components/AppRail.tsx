@@ -25,6 +25,7 @@ import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
 import LightModeOutlinedIcon from "@mui/icons-material/LightModeOutlined";
 import LogoutIcon from "@mui/icons-material/Logout";
 import MenuIcon from "@mui/icons-material/Menu";
+import SearchIcon from "@mui/icons-material/Search";
 import SettingsBrightnessOutlinedIcon from "@mui/icons-material/SettingsBrightnessOutlined";
 import { visuallyHidden } from "@mui/utils";
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
@@ -36,6 +37,11 @@ import {
   useThemeModeChoice,
   type ThemeModeChoice,
 } from "../theme/mode";
+import {
+  PALETTE_TRIGGER_LABEL,
+  openCommandPalette,
+  paletteHotkeyHint,
+} from "./useCommandPalette";
 import { RAIL_COLLAPSED_WIDTH, RAIL_WIDTH, useRailPush, type AppRail } from "./useAppRail";
 
 /** The product name. Frozen: `App.errors.test.tsx` reads it to prove the shell survived a page throw. */
@@ -45,8 +51,11 @@ export const BRAND = "CV Manager";
  * The three places. Accessible names are frozen (`manuals/spa-design-system.md` §9) — the e2e and
  * unit suites both assert `link` by name, and a collapsed rail shows no text at all, which is why
  * every item carries an explicit `aria-label` in both states rather than relying on its label node.
+ *
+ * Exported because the ⌘K palette offers the same three destinations (P1T-165) and a second list of
+ * them would be a place to forget the fourth.
  */
-const NAV: { label: string; to: string; icon: ReactNode }[] = [
+export const NAV: { label: string; to: string; icon: ReactNode }[] = [
   { label: "CVs", to: "/", icon: <ArticleOutlinedIcon /> },
   { label: "Skill Catalog", to: "/catalog", icon: <AccountTreeOutlinedIcon /> },
   { label: "Users", to: "/users", icon: <GroupOutlinedIcon /> },
@@ -71,6 +80,8 @@ interface RailRowProps {
   label: string;
   collapsed: boolean;
   icon: ReactNode;
+  /** A trailing note on an expanded row — a keyboard shortcut, and nothing else so far. */
+  hint?: ReactNode;
   selected?: boolean;
   component?: ElementType;
   to?: string;
@@ -78,7 +89,7 @@ interface RailRowProps {
   onClick?: (event: MouseEvent<HTMLElement>) => void;
 }
 
-function RailRow({ label, collapsed, icon, ...rest }: RailRowProps) {
+function RailRow({ label, collapsed, icon, hint, ...rest }: RailRowProps) {
   return (
     <Tooltip
       title={label}
@@ -109,6 +120,13 @@ function RailRow({ label, collapsed, icon, ...rest }: RailRowProps) {
             primary={label}
             primaryTypographyProps={{ variant: "body2", noWrap: true, fontWeight: 500 }}
           />
+        )}
+        {/* The hint is decoration for the row it sits on — the row already carries the name and the
+            action — so it is hidden from the a11y tree rather than read out after every label. */}
+        {!collapsed && hint && (
+          <Typography aria-hidden variant="caption" sx={{ color: "text.secondary", ml: 1 }}>
+            {hint}
+          </Typography>
         )}
       </ListItemButton>
     </Tooltip>
@@ -206,6 +224,23 @@ function RailContents({ rail, onNavigate }: { rail: AppRail; onNavigate?: () => 
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%", overflowX: "hidden" }}>
       <Brand collapsed={collapsed} />
       <Divider />
+
+      {/* The palette's visible half (P1T-165). A shortcut nobody is told about is a shortcut nobody
+          has, so the rail advertises it — and the row works as a button for anyone who would rather
+          not learn one. The palette itself is mounted beside the dock, not here: it must open with
+          this rail closed, which below `md` it usually is. */}
+      <List sx={{ pt: 1, pb: 0 }}>
+        <RailRow
+          label={PALETTE_TRIGGER_LABEL}
+          collapsed={collapsed}
+          icon={<SearchIcon />}
+          hint={paletteHotkeyHint()}
+          onClick={() => {
+            onNavigate?.();
+            openCommandPalette();
+          }}
+        />
+      </List>
 
       <List component="nav" aria-label="Main" sx={{ py: 1 }}>
         {NAV.map((item) => (
