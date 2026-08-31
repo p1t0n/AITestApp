@@ -1,9 +1,10 @@
 # SPA design system
 
-> **Status (2026-08-31):** **slice 1 built** (P1T-159 — §2, §3's type/accent rules, §8). Slices 2–6
-> are still the agreed target, not the code. Tracked as **P1T-158** with six children, P1T-159 …
-> P1T-164, plus P1T-165 deferred. Each section names the slice that makes it true. Update the
-> status line as slices land — a rule here that no code enforces is a lie, not a plan.
+> **Status (2026-08-31):** **slices 1 and 6 built** — P1T-159 (§2, §3's type/accent rules, §8) and
+> P1T-164 (§7, taken out of order; see §11). Slices 2–5 are still the agreed target, not the code.
+> Tracked as **P1T-158** with six children, P1T-159 … P1T-164, plus P1T-165 deferred. Each section
+> names the slice that makes it true. Update the status line as slices land — a rule here that no
+> code enforces is a lie, not a plan.
 
 The goal in one sentence: a dense, dark-first product UI — hairline borders instead of shadows,
 accent reserved for the primary action and the focus ring, compact rows — with light mode as an
@@ -144,7 +145,17 @@ dark-mode `Paper` would print — or preview — as something no client should s
 one line at one boundary; the alternative is a growing pile of `@media print` colour overrides that
 must be kept exhaustive forever. What you see is what prints, for every user, in either mode.
 
-*Slice 6 — P1T-164.*
+**What carries it, and it is not the provider.** MUI's `Paper` root sets `color: text.primary`
+alongside `background.paper`, so the eight `<Typography>`s in the sheet that name no colour — and the
+`<li>` markers — inherit the light one from the sheet element itself. A nested provider *alone* only
+re-themes what reads a palette key; everything else would have gone on inheriting `body`'s near-white
+`#E6EDF3` and produced a white-on-white sheet, which is worse than the dark one it replaced because it
+is invisible rather than merely wrong. The provider is the boundary; `Paper` is the mechanism.
+
+*Slice 6 — P1T-164, **built**. Held by `web/src/pages/CvSheet.lightLock.test.tsx` (six assertions on
+resolved colour, in a dark app) and `web/e2e/cv-print.e2e.ts` (the same claim in a real Chromium at
+print media). The server-side PDF path is untouched and was checked rather than assumed:
+`CvPdfRenderer` is a pure function of `CvDto` with QuestPDF's own colours and never loads the SPA.*
 
 ## 8. Floors that are cheaper now than later
 
@@ -193,7 +204,7 @@ change no DOM structure at all, so the test suites stay untouched until slice 3.
 3. **P1T-161** — the rail, its CSS var, the mobile drawer, the persisted theme toggle
 4. **P1T-162** — `PageHeader` and its adoption across the five pages, incl. per-page width
 5. **P1T-163** — dock chrome refresh
-6. **P1T-164** — `CvPage` light-lock
+6. ~~**P1T-164**~~ — `CvPage` light-lock. **Shipped, and shipped second** rather than sixth — §11 is why. Also zero edits to existing tests: 189 → 195 unit tests, all six new
 7. **P1T-165** (later) — ⌘K palette — it hangs off the shell and needs a search-endpoint story of its own
 
 Each slice ends with Playwright screenshots in light and dark of: roster, employee detail, catalog,
@@ -208,15 +219,34 @@ because a screenshot is an artifact and not an assertion, but it stays inside th
 sets `prefers-color-scheme` — so the capture exercises the real default path in `mode.ts` rather
 than a pinned override.
 
-## 11. Live risk between slice 1 and slice 6
+## 11. The live risk that reordered the chain — closed
 
-Slice 1 makes dark mode **reachable by default** — an operator whose OS is dark gets it on the next
-reload, with no toggle needed. §7's light-lock is slice 6. Until P1T-164 lands, a dark-OS operator
-printing a CV gets a bad artifact, and worse than the obvious way: browsers drop background colours
-from print unless the user enables background graphics, but they keep `color`, so the sheet prints
-near-white text on white paper rather than white-on-dark. Confirmed in the slice-1 screenshots —
-`docs/design-system-shots/dark/4-cv-page.png` is a dark sheet.
+Slice 1 made dark mode **reachable by default**: an operator whose OS is dark got it on the next
+reload, with no toggle needed. §7's light-lock was scheduled sixth. For the window between the two, a
+dark-OS operator printing a CV got a bad artifact, and worse than the obvious way — browsers drop
+background colours from print unless the user enables background graphics, but they keep `color`, so
+the sheet printed near-white text on white paper rather than white-on-dark. Confirmed in the slice-1
+screenshots: `docs/design-system-shots/dark/4-cv-page.png` is a dark sheet.
 
-This is a property of the agreed order, not a defect in slice 1, and it is recorded here rather
-than silently absorbed: **P1T-164 is the one child of this chain that is now urgent rather than
-merely next.**
+That was a property of the agreed order, not a defect in slice 1. **Resolved by moving the light-lock
+to second** (P1T-164, merged directly after P1T-159) rather than by absorbing five slices of exposure
+on a client-facing document. It cost nothing to reorder: the light-lock adds one `ThemeProvider` at
+one boundary, touches no colour token, and restructures no DOM that children 2–5 rewrite. Children 2
+–5 keep their own order and their stated dependencies.
+
+**The rule this leaves behind.** A slice that makes a *defect* reachable by default outranks backlog
+position, because the queue was ordered before that defect existed. Slice 1 was still correct to ship
+first — every other child needs its token layer — and the right response to a risk a slice opens is to
+re-order what follows it, not to hold the slice.
+
+**Two things a real browser found that no emitted-CSS check could.** Both in `web/e2e/cv-print.e2e.ts`,
+and both the same lesson as slice 1's focus ring:
+
+- `display` does not inherit, so the Print button computes its own `flex` at print media while being
+  entirely unrendered — its ancestor carries the rule. "Is the rule on this element" and "is this
+  element on the paper" are different questions; only a layout engine answers the second, which is why
+  that assertion is on the button's bounding box.
+- `MuiPaper` transitions `box-shadow`, so switching to print media *animates* the sheet's elevation
+  away over the 150ms ceiling rather than dropping it. Read instantly, the shadow is a mid-transition
+  interpolation — neither the elevation value nor `none`. A real print paints after layout settles, so
+  paper is unaffected; an instant assertion would have been asserting on an interpolation.

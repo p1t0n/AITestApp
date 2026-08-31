@@ -8,12 +8,14 @@ import {
   Divider,
   Paper,
   Stack,
+  ThemeProvider,
   Typography,
 } from "@mui/material";
 import PrintIcon from "@mui/icons-material/Print";
 import DownloadIcon from "@mui/icons-material/Download";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useCv, useDownloadCvPdf } from "../api";
+import { lightTheme } from "../theme";
 import type { Qualification } from "../types";
 
 function CvSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -73,117 +75,134 @@ export default function CvPage() {
         </Stack>
       </Stack>
 
-      {/* On paper the sheet *is* the page: no elevation shadow, no centring margin. These used to
-          be a global `#cv-sheet` rule; the id now only marks the sheet for the e2e suite. */}
-      <Paper
-        id="cv-sheet"
-        sx={{
-          p: 5,
-          maxWidth: 820,
-          mx: "auto",
-          "@media print": { boxShadow: "none", margin: 0 },
-        }}
-      >
-        <Stack direction="row" spacing={3} alignItems="center" mb={3}>
-          {cv.photoUrl && <Avatar src={cv.photoUrl} sx={{ width: 80, height: 80 }} />}
-          <Box flexGrow={1}>
-            <Typography variant="h4">{cv.fullName}</Typography>
-            <Typography variant="h6" color="text.secondary">
-              {cv.title}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {[cv.email, cv.phone, cv.location].filter(Boolean).join("  ·  ")}
-            </Typography>
-          </Box>
-          <Chip
-            color={cv.availability.currentCapacityPercent >= 100 ? "success" : "warning"}
-            label={`${cv.availability.currentCapacityPercent}% available`}
-          />
-        </Stack>
+      {/* The light-lock. The sheet is the *document*, not app chrome: what a client receives
+          cannot depend on which Theme Mode the operator happened to be in, so the whole subtree
+          renders under the light theme in both modes (P1T-164). The chrome above stays in the
+          app's theme — it is print-hidden and never leaves the screen.
 
-        {cv.summary && (
-          <CvSection title="Summary">
-            <Typography variant="body2">{cv.summary}</Typography>
-          </CvSection>
-        )}
+          One provider at one boundary rather than a `@media print` colour block, which would
+          have to stay exhaustive forever as the sheet grows sections, and would only ever fix
+          the paper — leaving the screen lying about what the print will look like.
 
-        {cv.skillGroups.length > 0 && (
-          <CvSection title="Skills">
-            {cv.skillGroups.map((g) => (
-              <Box key={g.category} mb={1}>
-                <Typography variant="body2" fontWeight={600}>
-                  {g.category}
-                </Typography>
-                <Stack direction="row" gap={0.5} flexWrap="wrap">
-                  {g.skills.map((s) => (
-                    <Chip key={s.id} size="small" label={`${s.skillName} (${s.level})`} />
-                  ))}
-                </Stack>
-              </Box>
-            ))}
-          </CvSection>
-        )}
-
-        {cv.experiences.length > 0 && (
-          <CvSection title="Experience">
-            {cv.experiences.map((x, i) => (
-              <Box key={i} mb={2}>
-                <Stack direction="row" justifyContent="space-between">
-                  <Typography variant="body1" fontWeight={600}>
-                    {x.title} · {x.company}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {x.period}
-                  </Typography>
-                </Stack>
-                {x.summary && <Typography variant="body2">{x.summary}</Typography>}
-                <ul style={{ margin: "4px 0" }}>
-                  {x.achievements.map((a) => (
-                    <li key={a.id}>
-                      <Typography variant="body2">{a.text}</Typography>
-                    </li>
-                  ))}
-                </ul>
-                {x.skills.length > 0 && (
-                  <Typography variant="caption" color="text.secondary">
-                    {x.skills.join(" · ")}
-                  </Typography>
-                )}
-              </Box>
-            ))}
-          </CvSection>
-        )}
-
-        {cv.education.length > 0 && (
-          <CvSection title="Education">
-            {cv.education.map((q) => (
-              <Typography key={q.id} variant="body2">
-                {qualLine(q)}
+          `Paper` is what carries it, and that is the load-bearing detail: MUI gives its root both
+          `background.paper` *and* `color: text.primary`, so the eight `<Typography>`s in here that
+          set no colour of their own — plus the `<li>` markers — inherit the light one. A nested
+          provider alone would have re-themed only what names a palette key and left the rest
+          inheriting `body`'s near-white `#E6EDF3`: a white-on-white sheet, which is worse than the
+          dark one it replaced, because it is invisible rather than merely wrong. */}
+      <ThemeProvider theme={lightTheme}>
+        {/* On paper the sheet *is* the page: no elevation shadow, no centring margin. These used to
+            be a global `#cv-sheet` rule; the id now only marks the sheet for the e2e suite. */}
+        <Paper
+          id="cv-sheet"
+          sx={{
+            p: 5,
+            maxWidth: 820,
+            mx: "auto",
+            "@media print": { boxShadow: "none", margin: 0 },
+          }}
+        >
+          <Stack direction="row" spacing={3} alignItems="center" mb={3}>
+            {cv.photoUrl && <Avatar src={cv.photoUrl} sx={{ width: 80, height: 80 }} />}
+            <Box flexGrow={1}>
+              <Typography variant="h4">{cv.fullName}</Typography>
+              <Typography variant="h6" color="text.secondary">
+                {cv.title}
               </Typography>
-            ))}
-          </CvSection>
-        )}
-
-        {cv.certifications.length > 0 && (
-          <CvSection title="Certifications">
-            {cv.certifications.map((q) => (
-              <Typography key={q.id} variant="body2">
-                {qualLine(q)}
+              <Typography variant="body2" color="text.secondary">
+                {[cv.email, cv.phone, cv.location].filter(Boolean).join("  ·  ")}
               </Typography>
-            ))}
-          </CvSection>
-        )}
+            </Box>
+            <Chip
+              color={cv.availability.currentCapacityPercent >= 100 ? "success" : "warning"}
+              label={`${cv.availability.currentCapacityPercent}% available`}
+            />
+          </Stack>
 
-        {cv.languages.length > 0 && (
-          <CvSection title="Languages">
-            <Stack direction="row" gap={0.5} flexWrap="wrap">
-              {cv.languages.map((l) => (
-                <Chip key={l.id} size="small" variant="outlined" label={`${l.language} (${l.level})`} />
+          {cv.summary && (
+            <CvSection title="Summary">
+              <Typography variant="body2">{cv.summary}</Typography>
+            </CvSection>
+          )}
+
+          {cv.skillGroups.length > 0 && (
+            <CvSection title="Skills">
+              {cv.skillGroups.map((g) => (
+                <Box key={g.category} mb={1}>
+                  <Typography variant="body2" fontWeight={600}>
+                    {g.category}
+                  </Typography>
+                  <Stack direction="row" gap={0.5} flexWrap="wrap">
+                    {g.skills.map((s) => (
+                      <Chip key={s.id} size="small" label={`${s.skillName} (${s.level})`} />
+                    ))}
+                  </Stack>
+                </Box>
               ))}
-            </Stack>
-          </CvSection>
-        )}
-      </Paper>
+            </CvSection>
+          )}
+
+          {cv.experiences.length > 0 && (
+            <CvSection title="Experience">
+              {cv.experiences.map((x, i) => (
+                <Box key={i} mb={2}>
+                  <Stack direction="row" justifyContent="space-between">
+                    <Typography variant="body1" fontWeight={600}>
+                      {x.title} · {x.company}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {x.period}
+                    </Typography>
+                  </Stack>
+                  {x.summary && <Typography variant="body2">{x.summary}</Typography>}
+                  <ul style={{ margin: "4px 0" }}>
+                    {x.achievements.map((a) => (
+                      <li key={a.id}>
+                        <Typography variant="body2">{a.text}</Typography>
+                      </li>
+                    ))}
+                  </ul>
+                  {x.skills.length > 0 && (
+                    <Typography variant="caption" color="text.secondary">
+                      {x.skills.join(" · ")}
+                    </Typography>
+                  )}
+                </Box>
+              ))}
+            </CvSection>
+          )}
+
+          {cv.education.length > 0 && (
+            <CvSection title="Education">
+              {cv.education.map((q) => (
+                <Typography key={q.id} variant="body2">
+                  {qualLine(q)}
+                </Typography>
+              ))}
+            </CvSection>
+          )}
+
+          {cv.certifications.length > 0 && (
+            <CvSection title="Certifications">
+              {cv.certifications.map((q) => (
+                <Typography key={q.id} variant="body2">
+                  {qualLine(q)}
+                </Typography>
+              ))}
+            </CvSection>
+          )}
+
+          {cv.languages.length > 0 && (
+            <CvSection title="Languages">
+              <Stack direction="row" gap={0.5} flexWrap="wrap">
+                {cv.languages.map((l) => (
+                  <Chip key={l.id} size="small" variant="outlined" label={`${l.language} (${l.level})`} />
+                ))}
+              </Stack>
+            </CvSection>
+          )}
+        </Paper>
+      </ThemeProvider>
     </Box>
   );
 }

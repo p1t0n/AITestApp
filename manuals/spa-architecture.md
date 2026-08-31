@@ -43,9 +43,11 @@ step, which MUI has no name for) and `outline` (a control's own boundary, which 
 where `divider` deliberately does not). `background.default` / `background.paper` are *not*
 re-exposed under `surface` — a second name for the same colour is what this layer exists to avoid.
 
-> **Still scheduled to change (P1T-158).** The left rail replacing this `AppBar`, the `PageHeader`,
-> the component overrides and the CV-sheet light-lock are slices 2–6 and are not built. This section
-> describes the shell as it stands until slice 3 lands.
+> **Still scheduled to change (P1T-158).** The left rail replacing this `AppBar`, the `PageHeader`
+> and the component overrides are slices 2–5 and are not built. This section describes the shell as it
+> stands until slice 3 lands. The CV-sheet light-lock (§9) was slice 6 and **is** built — it was pulled
+> ahead of the rest because slice 1 made dark mode reachable by default and left a client-facing
+> document exposed; `manuals/spa-design-system.md` §11 records why and what it cost.
 
 `App.tsx` is the whole chrome: an `AppBar` with three nav buttons, a `Container maxWidth="lg"`, the
 route table, and the agent dock. It is 112 lines and holds no data.
@@ -275,14 +277,27 @@ replaces both lists wholesale. The form is a nested-collection editor, not three
 
 `CvPage` renders the assembled CV into a `Paper` with `id="cv-sheet"`, and offers two exits:
 
-- **Print** — `window.print()`, styled by the app's only global CSS (`index.css`): hide `.no-print`
-  and `header`, white background, drop the sheet's shadow and margin.
+- **Print** — `window.print()`. The print styling is **colocated**, not global (P1T-154): the sheet
+  flattens itself (`boxShadow: "none"`, `margin: 0`) and the page toolbar and the `AppBar` each hide
+  themselves, all in their own `sx`. `index.css` is down to one rule — `body`'s print background,
+  which no component owns. The `#cv-sheet` id survives only as the e2e suite's locator.
 - **Download PDF** — `useDownloadCvPdf` fetches a blob from the server-side QuestPDF renderer and
   saves it, parsing the filename out of `content-disposition`.
 
 The two exist side by side deliberately: the server render is the canonical document, the browser
-print is the human-driven fallback. The cost is that `index.css` reaches into a component's DOM id
-— the one place in this app where styling is not colocated.
+print is the human-driven fallback. They are also independent — `CvPdfRenderer` is a pure function of
+`CvDto` with QuestPDF's own colours and never loads the SPA, so nothing in this section can change
+what a `cv.pdf` download contains.
+
+**The sheet is light-locked (P1T-164).** The `Paper` subtree renders under a nested `lightTheme`
+`ThemeProvider` whatever mode the app is in, because what a client receives cannot depend on which
+Theme Mode the operator happened to be using. One provider at one boundary, rather than a `@media
+print` colour block that would have to stay exhaustive as the sheet grows sections — and it makes the
+screen match the paper, so there is no surprise at the print dialog. `Paper` is the mechanism, not the
+provider: MUI's root sets `color: text.primary` as well as `background.paper`, which is what re-colours
+the eight `<Typography>`s in the sheet that name no palette key. Held by
+`CvSheet.lightLock.test.tsx` (resolved colour in a dark app) and `e2e/cv-print.e2e.ts` (the same claim
+in a real Chromium at print media, where jsdom cannot go).
 
 ## 10. Error handling
 
@@ -357,7 +372,10 @@ P1T-153 (error boundary + shared error surface), P1T-154 (colocation cleanups).
   navigation shape never changed with it.
 - **Error handling is copy-paste** (P1T-153). Eleven independent `error` states, each with its own placement.
   No boundary, so a render throw is a white page.
-- **`index.css` knows `#cv-sheet`** (P1T-154). The only styling that is not colocated with its component.
+- ~~**`index.css` knows `#cv-sheet`**~~ (P1T-154) — **shipped**. The print rules moved into the `sx` of
+  whoever renders the element (§9); the one global rule left is `body`'s print background. Whether
+  those colocated rules actually *win* in a browser was the open half, and it is now answered for this
+  page by `e2e/cv-print.e2e.ts` — for the rest of the app it is P1T-166.
 - ~~**Type placement is split by accident**~~ (P1T-151) — **shipped**. Roster domain types stay in
   `types.ts`; each agent contract now sits in its own agent module beside the hook that returns it.
 - **The dock's width lives in `App`** (P1T-154). `useAgentDock` is hoisted because the root element needs the

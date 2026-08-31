@@ -291,6 +291,14 @@ The rendered page of a CV Projection as a person sees it before printing. A clie
 so it looks the same for every user regardless of theme — what is on screen is what prints.
 _Avoid_: CV preview, print view
 
+**Light Lock**:
+The rule that the CV Sheet renders under the light theme in both Theme Modes, and the nested
+`ThemeProvider` that enforces it. Named because it is a *lock*, not a default: no app-level mode may
+reach the sheet, since the artifact leaves the building. The subtlety worth keeping is that the
+provider only re-themes what names a palette role — the light text colour reaches the rest by being
+set on the sheet element itself, which everything inside then inherits.
+_Avoid_: print theme, light override, forced light mode
+
 **Theme Mode**:
 Light or dark, defaulting to the operating system's preference until a person overrides it. A
 display preference of the browser, never of the account — it is not roster data and does not travel
