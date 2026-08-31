@@ -1,13 +1,15 @@
 # SPA design system
 
-> **Status (2026-08-31):** **every slice built** — P1T-159 (§2, §3's type/accent rules, §8),
-> P1T-160 (§3's override policy and the density pass), P1T-161 (§4, the shell), P1T-162 (§5, the
-> page headers), P1T-163 (§6, the dock) and P1T-164 (§7, taken out of order; see §11). Tracked as
-> **P1T-158** with six children, P1T-159 … P1T-164, plus P1T-165 deferred — a ⌘K palette, which
-> needs a search story this chain does not have. Each section names the slice that makes it true.
-> Update the status line as slices land — a rule here that no code enforces is a lie, not a plan.
-> (Slice 4 had already landed when slice 5 started and this line still called it a target; that is
-> the failure mode the sentence above is warning about, so it is worth saying it happened.)
+> **Status (2026-08-31):** **every slice built**, and the deferred palette with them — P1T-159
+> (§2, §3's type/accent rules, §8), P1T-160 (§3's override policy and the density pass), P1T-161
+> (§4, the shell), P1T-162 (§5, the page headers), P1T-163 (§6, the dock) and P1T-164 (§7, taken out
+> of order; see §11). Tracked as **P1T-158** with six children, P1T-159 … P1T-164. The ⌘K palette —
+> **P1T-165, §12** — was never a slice of the chain: it was deferred for want of a search story, and
+> built off `main` while PR #124 was open, so it deliberately touches none of that PR's files. Each
+> section names the slice that makes it true. Update the status line as slices land — a rule here
+> that no code enforces is a lie, not a plan. (Slice 4 had already landed when slice 5 started and
+> this line still called it a target; that is the failure mode the sentence above is warning about,
+> so it is worth saying it happened.)
 
 The goal in one sentence: a dense, dark-first product UI — hairline borders instead of shadows,
 accent reserved for the primary action and the focus ring, compact rows — with light mode as an
@@ -437,6 +439,7 @@ now.
 | Accessible names `Close the agents assistant`, `Resize the agents dock` | Added by slice 5 and frozen on arrival: the close control had no name at all before it, and the handle is only reachable by one |
 | The CV sheet's visual design | Client-facing artifact — §7 |
 | Agent Surface IA | Settled by P1T-152; a re-skin is not the place to reopen it |
+| Accessible name `Search` on the rail's palette row | The e2e suite tabs to it and clicks it by name (`e2e/command-palette.e2e.ts`, `e2e/shell.e2e.ts`) |
 
 ## 10. Slices
 
@@ -457,7 +460,7 @@ change no DOM structure at all, so the test suites stay untouched until slice 3.
    copying it (importing a `*.test.ts` re-registers its assertions) argues for a plain module, not
    for a third copy
 6. ~~**P1T-164**~~ — `CvPage` light-lock. **Shipped, and shipped second** rather than sixth — §11 is why. Also zero edits to existing tests: 189 → 195 unit tests, all six new
-7. **P1T-165** (later) — ⌘K palette — it hangs off the shell and needs a search-endpoint story of its own
+7. ~~**P1T-165**~~ — the ⌘K palette. **Shipped**, off `main` rather than as a seventh slice: it was never part of the sequence, and building it while PR #124 was open meant staying off that PR's files by construction (§12). 284 → 314 unit tests and 26 → 32 Playwright specs, with exactly one existing assertion rewritten — the first Tab in `e2e/shell.e2e.ts` now lands on the rail's new first row
 
 Each slice ends with Playwright screenshots in light and dark of: roster, employee detail, catalog,
 users, sign-in, dock open, CV page — plus, from slice 3, the rail collapsed and the mobile drawer,
@@ -540,3 +543,64 @@ slice 1's focus ring:
   concatenates every matching block (`src/test/printCss.ts`). Worth stating plainly: the jsdom layer
   still cannot say which of the two declarations wins — that this one does was settled by watching
   Chromium, and the fact that MUI's default pulls in the *opposite* direction is why it needed to be.
+
+## 12. The ⌘K palette — what "search" means here
+
+*P1T-165, and not a slice of the chain.* It was deferred out of the sequence because it needed one
+decision the re-skin did not: **what the palette searches.** The ticket framed the risk exactly
+right — "a palette that only searches the loaded page is a lie".
+
+**The decision: filter the cached roster, and no new endpoint.** `GET /api/employees` is unpaged. It
+returns every active employee in one response, which is why the roster page can be a client-side
+table at all. So filtering that same `["employees"]` query *is* searching the whole roster: the
+palette finds exactly what the roster page shows — all of it, drafts excluded — with no second
+definition of what a match is and no second thing to keep in step. The feared lie is a property of
+paging, and there is no paging.
+
+That is a claim about the *server*, made in the SPA, so it is asserted on the server:
+`Roster_list_returns_every_active_employee_in_one_response` (`tests/Web.Tests/EmployeeCrudTests.cs`)
+creates 25 employees and demands all 25 back from one call. The day the list endpoint starts paging,
+that test fails — and on that day the roster table needs a server search as much as the palette
+does, which is the point. A search endpoint built *now* would have been a second retrieval path
+maintained for a page size that does not exist.
+
+The one honest limit is display, not retrieval: seven people are drawn at a time and the count of
+what was left out is shown (`Showing 7 of 23 matches — keep typing`). Truncating in silence is the
+one thing this feature must not do.
+
+**Three kinds of jump, none of them a new vocabulary.** Places come from the rail's own `NAV`, and
+Agent Surfaces from the dock's own `SURFACE_GROUPS` with the picker's four categories as their
+subtitles — both imported rather than restated, so the tenth surface joins the palette by being
+added to the dock. The Token Ledger is deliberately absent, exactly as it is from the picker: it is
+not an Agent Surface (`CONTEXT.md`).
+
+**Why the plumbing is a module store rather than a prop.** Two of them, both mirroring
+`src/theme/mode.ts` — this app adds no React Context.
+
+- `useCommandPalette.ts` holds the open state, because the *trigger* is a rail row and the *palette*
+  is mounted beside the dock. A prop would have had to travel through `App` into two unrelated
+  subtrees and widen `AppRailNav`'s props for a button.
+- `agent/surfaceRequest.ts` carries "show this surface" to whichever dock is mounted. It is
+  deliberately **not** a field on `AgentDock`: that interface is built as an object literal in
+  eleven test files, so widening it costs eleven edits — the same price that keeps the dock's state
+  hoisted rather than making the widget uncontrolled (`manuals/spa-architecture.md` §13). A Surface
+  Request is an event with no state to hold: delivered synchronously, remembered by nobody, and
+  dropped if no dock is listening. The widget's own `useState` stays the only answer to which
+  surface is showing.
+
+**Built against an open PR, and it shows in the diff.** P1T-163 (PR #124) was in review while this
+was written, and the no-stacked-PR rule puts this branch on `main`. So the palette's reach into the
+dock is one hook call in a region PR #124 does not touch plus one word (`export`) on
+`SURFACE_GROUPS`, and nothing here extends `e2e/screenshots.e2e.ts` — a file that PR would collide
+with. Same move slice 5 made with P1T-166's three `sx` sites, and verified the same way: a trial
+merge of the two branches, with the merged tree's suites run.
+
+**What a browser had to answer** (`e2e/command-palette.e2e.ts`), because jsdom cannot:
+
+- Whether the app gets the keystroke at all. Chrome and Firefox both bind ⌘K/Ctrl+K to their own
+  address-bar search, so `preventDefault` is the whole feature working or not working.
+- Where focus lands when the dialog opens — the unit suite can see `autoFocus` as a prop; only a
+  browser runs MUI's focus trap.
+- Whether the highlighted row is *painted* differently rather than only classed differently. Two
+  rows, two resolved `backgroundColor`s. `Mui-selected` emitting a rule proves nothing about whether
+  it won, which is §11's standing lesson arriving for the fifth time.

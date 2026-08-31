@@ -175,6 +175,16 @@ test.describe("the shell's two edges", () => {
 
     // Tabbed to, not `.focus()`ed: `:focus-visible` is a heuristic on *how* focus arrived, so a
     // programmatic focus renders no ring and would fail this assertion for the wrong reason.
+    //
+    // The palette's trigger is the rail's first row since P1T-165, so it is what the first Tab
+    // reaches — the only assertion in this chain rewritten because the *fact* changed rather than
+    // because a grip on the DOM slipped. The ring below is still measured on `CVs`, the frozen name
+    // this test exists for.
+    await page.keyboard.press("Tab");
+    expect(await page.evaluate(() => document.activeElement?.getAttribute("aria-label"))).toBe(
+      "Search",
+    );
+
     await page.keyboard.press("Tab");
     expect(await page.evaluate(() => document.activeElement?.getAttribute("aria-label"))).toBe(
       "CVs",

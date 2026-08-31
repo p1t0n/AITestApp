@@ -18,6 +18,7 @@ import RecoverPage from "./pages/RecoverPage";
 import UsersPage from "./pages/UsersPage";
 import AgentWidget from "./components/AgentWidget";
 import AppRailNav, { BRAND } from "./components/AppRail";
+import CommandPalette from "./components/CommandPalette";
 import { ErrorBoundary, PageErrorFallback, WidgetErrorFallback } from "./components/ErrorBoundary";
 import { PageContainer } from "./components/PageHeader";
 import { DOCK_PUSH_VAR, dockPushWidth, useAgentDock } from "./components/useAgentDock";
@@ -126,9 +127,16 @@ export default function App() {
       {/* The widget sits under its own boundary: the assistant crashing must not take the roster
           with it. Panels have a second, inner boundary inside the widget. */}
       {authed && (
-        <ErrorBoundary fallback={(error, reset) => <WidgetErrorFallback error={error} reset={reset} />}>
-          <AgentWidget dock={dock} />
-        </ErrorBoundary>
+        <>
+          {/* ⌘K (P1T-165). Mounted here rather than in the rail, which only carries the visible
+              trigger: the palette has to open with no rail on screen — below `md` the rail is a
+              closed drawer — and it acts on the dock as well as on the routes, so it belongs
+              beside both. It takes the dock because "jump to an agent surface" opens it. */}
+          <CommandPalette dock={dock} />
+          <ErrorBoundary fallback={(error, reset) => <WidgetErrorFallback error={error} reset={reset} />}>
+            <AgentWidget dock={dock} />
+          </ErrorBoundary>
+        </>
       )}
     </Box>
   );

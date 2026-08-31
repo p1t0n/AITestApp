@@ -32,7 +32,8 @@ function pageBox(page: Page) {
  * One row of this spec's own. The suite runs `workers: 1` against one shared roster and specs keep
  * apart by owning the rows they create — and so does each test in this file, since the roster is
  * global while the account is not. Taken already: Ada Lovelace, Grace Hopper, Grace Murray,
- * Barbara Liskov, Katherine Johnson, Alan Turing, Dorothy Vaughan.
+ * Barbara Liskov, Katherine Johnson, Alan Turing, Dorothy Vaughan, Radia Perlman, Hedy Lamarr,
+ * Margaret Hamilton, Annie Easley, Evelyn Granville.
  */
 async function seed(page: Page, first: string, last: string) {
   await page.getByRole("button", { name: "New CV" }).click();

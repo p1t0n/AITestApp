@@ -291,6 +291,20 @@ The rendered page of a CV Projection as a person sees it before printing. A clie
 so it looks the same for every user regardless of theme — what is on screen is what prints.
 _Avoid_: CV preview, print view
 
+**Command Palette**:
+The ⌘K surface that jumps to a place, a person, or an Agent Surface from one keystroke. It searches
+the whole roster rather than a page of it, because the roster endpoint is unpaged — the same cached
+response the roster table filters. Advertised by the rail's `Search` row; mounted beside the dock,
+because it must open with no rail on screen and it acts on the dock as well as on the routes.
+_Avoid_: quick search, spotlight, omnibox
+
+**Surface Request**:
+"Show this Agent Surface", sent to whichever dock is mounted. An event, not a value: delivered
+synchronously, remembered by nobody, dropped when no dock is listening — so it adds no second answer
+to which surface is showing, and no field to `AgentDock`. A name the dock does not recognise is
+ignored rather than blanking the panel.
+_Avoid_: surface state, dock navigation event
+
 **Light Lock**:
 The rule that the CV Sheet renders under the light theme in both Theme Modes, and the nested
 `ThemeProvider` that enforces it. Named because it is a *lock*, not a default: no app-level mode may
