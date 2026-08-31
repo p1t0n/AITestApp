@@ -26,6 +26,12 @@ export function baselineStyles(mode: ThemeMode, t: ThemeModeTokens): CSSObject {
       MozOsxFontSmoothing: "grayscale",
     },
 
+    // `fontFamilyMono` finally has a consumer (P1T-163). Slice 1 declared it and nothing pointed at
+    // it, so every `code` span the agents emit was rendering in the browser's default monospace —
+    // the same shape of gap slice 2 found in `surface.outline`. It is a document-level type floor,
+    // not a component look, which is why it is here and not in `components.ts`: nothing owns `code`.
+    "code, kbd, samp, pre": { fontFamily: tokens.type.fontFamilyMono },
+
     // One visible focus ring for every interactive element, whatever renders it. Applied to
     // `:focus-visible` rather than `:focus` so a mouse click does not leave a ring behind, and
     // written as a global rule because the alternative is remembering it per component — and the

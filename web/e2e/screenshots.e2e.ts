@@ -214,6 +214,62 @@ for (const mode of ["light", "dark"] as const) {
       await settled(strip);
       fs.mkdirSync(path.join(OUT, mode), { recursive: true });
       await page.screenshot({ path: path.join(OUT, mode, "10-roster-scrolled.png") });
+
+      // Slice 5's own states (P1T-163). The dock is this app's signature surface and one shot of
+      // it open says nothing about the chrome: what changed is the header bar, the resize handle,
+      // the bubbles and the ledger's own row, and each of those is a different state of the panel.
+      // Numbered after the existing ten so a reader comparing slices keeps 1–10 meaning what they
+      // meant in slices 1–4.
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.goto("/");
+      await expect(page.getByRole("button", { name: "New CV" })).toBeVisible();
+      const bubble = page.getByRole("button", { name: "Open the agents assistant" });
+      await settled(bubble);
+      await shoot(page, mode, "11-dock-closed");
+
+      await bubble.click();
+      const dockIt = page.getByRole("button", { name: "Dock to side" });
+      if (await dockIt.count()) await dockIt.click();
+      await expect(page.getByRole("button", { name: "Float" })).toBeVisible();
+
+      // Mid-conversation, for the two bubbles this run *can* produce: the person's, and the error
+      // turn. The e2e stack starts no Agents service (`run.mjs`), so the answer bubble is not
+      // photographable here — and the error bubble is a designed state of this panel in its own
+      // right, the one P1T-153 decided keeps a bubble's look rather than becoming a banner.
+      await page.getByPlaceholder("Ask about the roster…").fill("Who knows React?");
+      await page.getByRole("button", { name: "Send" }).click();
+      await expect(page.getByText("Who knows React?")).toBeVisible();
+      await settled(page.getByText("Who knows React?"));
+      await shoot(page, mode, "12-dock-rosterqa");
+
+      await page.getByRole("button", { name: /^Agent surface: / }).click();
+      await page.getByRole("menuitem", { name: "Staffing" }).click();
+      const picker = page.getByRole("button", { name: /^Agent surface: Staffing/ });
+      await expect(picker).toBeVisible();
+      // The menu fades out over the motion ceiling, and the first run of this shot photographed
+      // the four group headers ghosting over the panel — the same 150ms trap as the rail. Waited
+      // on the *popover*, not on `role="menu"`: MUI drops the role as soon as the menu closes and
+      // keeps painting the paper for the length of the exit transition, so the role goes to zero
+      // while the thing in the picture is still on screen.
+      await expect(page.locator(".MuiPopover-root")).toHaveCount(0);
+      await settled(picker);
+      await shoot(page, mode, "13-dock-staffing");
+
+      // Driven from the keyboard rather than by dragging: it is the affordance this slice added,
+      // and using it to set up the picture is cheaper than a mouse gesture that has to be tuned.
+      await page.getByRole("separator", { name: "Resize the agents dock" }).focus();
+      await page.keyboard.press("Home");
+      await expect
+        .poll(() =>
+          page.evaluate(() =>
+            getComputedStyle(document.documentElement).getPropertyValue("--agent-dock-push").trim()))
+        .toBe("360px");
+      // Shot with the handle still focused, on purpose: the affordance is the subject.
+      await shoot(page, mode, "14-dock-min-width");
+
+      await page.getByRole("button", { name: "Token usage" }).click();
+      await expect(page.getByRole("button", { name: /Back to Staffing/ })).toBeVisible();
+      await shoot(page, mode, "15-dock-ledger");
     });
   });
 }

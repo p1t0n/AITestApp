@@ -240,8 +240,18 @@ export function RosterScanPanel({
               />
             </Box>
 
+            {/* `warning.contrastText`, like the other four warning wells in the dock. This one had
+                the fill and not the label colour, so in dark mode it was inheriting the app's
+                near-white `text.primary` onto a `#FFD37A` panel — about 1.2:1, which is the
+                degradation notice saying a scan paused being the one thing on the panel you cannot
+                read. `light` is a saturated mid-step in this palette, not a tint (`tokens.ts`), so
+                a fill of it always needs its own label colour. */}
             {data.state === "paused" && (
-              <Paper variant="well" sx={{ p: 1.5, bgcolor: "warning.light" }} data-testid="scan-paused">
+              <Paper
+                variant="well"
+                sx={{ p: 1.5, bgcolor: "warning.light", color: "warning.contrastText" }}
+                data-testid="scan-paused"
+              >
                 <Stack direction="row" spacing={1} alignItems="center">
                   <PauseCircleOutlineIcon fontSize="small" />
                   <Typography variant="body2">

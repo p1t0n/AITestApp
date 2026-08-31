@@ -368,6 +368,21 @@ not an Agent Surface: it spends nothing and does nothing, so it lives in the doc
 you open and close, not as a place among the things that bill you.
 _Avoid_: usage tab, quota screen
 
+**Dock Bar**:
+The dock's one piece of chrome: what the panel *is* (the title and the three controls — the Token
+Ledger peek, float/dock, close) on top of where it is *pointed* (the Agent Surface picker, or the
+way back out of the ledger). Two rows, one surface, one hairline under the pair — a single bar, not
+a header plus a strip. It carries no accent: the app's accent belongs to the primary action and the
+focus ring, and a solid accent header was the largest thing in this app breaking that rule.
+_Avoid_: dock header, title bar, toolbar
+
+**Resize Handle**:
+The dock's left edge as a control: a window splitter with a name, a width it announces, and arrow
+keys, whose grip is drawn at rest and lights up on hover or keyboard focus. Named as a control
+because that is the change — it existed as a mouse gesture with no visible presence, which is an
+affordance only the people who already knew about it could use.
+_Avoid_: drag strip, splitter bar, resizer
+
 ### Client registration
 
 **Registration Ceiling**:

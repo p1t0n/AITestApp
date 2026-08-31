@@ -9,29 +9,8 @@ import { describe, expect, it } from "vitest";
 import { darkTheme, lightTheme } from "./index";
 import { tokens } from "./tokens";
 import type { ColorRole, ThemeModeTokens } from "./tokens";
-
-/** sRGB channel → linear light. The 8-bit companding from WCAG's relative-luminance definition. */
-function channel(value: number): number {
-  const c = value / 255;
-  return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-}
-
-function luminance(hex: string): number {
-  const h = hex.replace("#", "");
-  expect(h, `${hex} must be a 6-digit hex so its contrast is computable`).toMatch(
-    /^[0-9a-fA-F]{6}$/,
-  );
-  const r = channel(parseInt(h.slice(0, 2), 16));
-  const g = channel(parseInt(h.slice(2, 4), 16));
-  const b = channel(parseInt(h.slice(4, 6), 16));
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-/** WCAG contrast ratio, 1:1 … 21:1. */
-export function contrastRatio(a: string, b: string): number {
-  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-  return (hi + 0.05) / (lo + 0.05);
-}
+// The WCAG arithmetic itself lives in `src/test/contrast.ts` (P1T-163) — three specs needed it.
+import { contrastRatio } from "../test/contrast";
 
 const modes: [string, ThemeModeTokens][] = [
   ["light", tokens.modes.light],

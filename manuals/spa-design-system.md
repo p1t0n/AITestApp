@@ -1,10 +1,13 @@
 # SPA design system
 
-> **Status (2026-08-31):** **slices 1, 2, 3 and 6 built** — P1T-159 (§2, §3's type/accent rules,
-> §8), P1T-160 (§3's override policy and the density pass), P1T-161 (§4, the shell) and P1T-164 (§7,
-> taken out of order; see §11). Slices 4 and 5 are still the agreed target, not the code. Tracked as **P1T-158** with six children,
-> P1T-159 … P1T-164, plus P1T-165 deferred. Each section names the slice that makes it true. Update
-> the status line as slices land — a rule here that no code enforces is a lie, not a plan.
+> **Status (2026-08-31):** **every slice built** — P1T-159 (§2, §3's type/accent rules, §8),
+> P1T-160 (§3's override policy and the density pass), P1T-161 (§4, the shell), P1T-162 (§5, the
+> page headers), P1T-163 (§6, the dock) and P1T-164 (§7, taken out of order; see §11). Tracked as
+> **P1T-158** with six children, P1T-159 … P1T-164, plus P1T-165 deferred — a ⌘K palette, which
+> needs a search story this chain does not have. Each section names the slice that makes it true.
+> Update the status line as slices land — a rule here that no code enforces is a lie, not a plan.
+> (Slice 4 had already landed when slice 5 started and this line still called it a target; that is
+> the failure mode the sentence above is warning about, so it is worth saying it happened.)
 
 The goal in one sentence: a dense, dark-first product UI — hairline borders instead of shadows,
 accent reserved for the primary action and the focus ring, compact rows — with light mode as an
@@ -273,7 +276,73 @@ The dock adopts the tokens and gets a chrome refresh — header row, picker butt
 that shows itself on hover, message bubbles retuned for dark. Its information architecture does not
 change: the grouped picker and the nine Agent Surfaces are P1T-152's shape and stay.
 
-*Slice 5 — P1T-163.*
+**Built (P1T-163), and four of the five things it landed were defects rather than looks:**
+
+- **The header was a solid `primary.main` slab** — the single largest violation of §3's accent rule
+  in the app, and the reason the dock read as bolted on: the one surface painted in the colour every
+  other surface reserves for its primary action. It is the **Dock Bar** now (`CONTEXT.md`): the
+  raised step of the ramp, one hairline under both rows rather than a rule between them, so the
+  title row and the picker row read as one piece of chrome. The three controls group behind a
+  vertical hairline — the ledger is a peek at state, the two beside it are window controls — and
+  they take `color="inherit"` rather than MUI's `action.active`, which this palette resolves to flat
+  white in dark mode. That is slice 4's Back-button trap, found again two slices later.
+- **The close control had no accessible name at all.** An icon button with no tooltip and no label:
+  the dock's own exit was unreachable by name for a screen reader and unlocatable by role for the
+  suite. Every other control in that row was named by its `Tooltip`; this one had no tooltip either,
+  so nothing named it. It is `Close the agents assistant`, mirroring the Fab's frozen `Open the
+  agents assistant`.
+- **The resize handle was a mouse gesture with no visible existence** — a 6px strip declaring
+  nothing but `cursor: col-resize`, painting an accent wash on hover and nothing at rest. A person
+  who does not hover, or does not use a mouse, could neither discover it nor use it. It is the ARIA
+  window-splitter pattern now: `role="separator"`, focusable, `aria-valuenow`/`min`/`max`, and
+  arrow keys (×4 with Shift, `Home`/`End` for the ends). The clamping stayed in `useAgentDock`, so
+  both input paths land on one rule. The grip is drawn *at rest* in `divider` and grows into the
+  accent on hover or focus — a hover-only affordance is invisible until you have already found it.
+- **`fontFamilyMono` had no consumer.** Declared in slice 1, pointed at by nothing, so every `code`
+  span an agent emitted rendered in the browser's default monospace — the same shape of gap slice 2
+  found in `surface.outline`, and found the same way. It is a `code, kbd, samp, pre` rule in
+  `MuiCssBaseline`: a document-level type floor, not a component look, and nothing owns `code`.
+- **A fenced code block, a wide table and a linkified GUID each overflowed the panel.** Only inline
+  `code` had ever been styled in `AgentMarkdown`; a `pre` does not wrap, a markdown table has no
+  width rule, and a linkified employee id is 36 unbreakable characters inside a bubble in a 360px
+  column. The answer was arriving and being unreadable, which is the same failure as not having it.
+  The table scrolls inside a wrapper rather than by `display: block` on the table — the usual fix,
+  which drops the table's own role in Chrome. A scrollbar bought by deleting an element's semantics
+  is not a fix.
+- **One dark-mode legibility bug outside the chrome, found by looking for the pattern.** Four of the
+  dock's five warning wells set `warning.contrastText` on their `warning.light` fill; Roster Scan's
+  *paused* notice set the fill alone, so in dark mode it inherited the app's near-white
+  `text.primary` onto `#FFD37A` — about 1.2:1, on the one notice that explains why a scan stopped.
+  In this palette `light` is a saturated mid-step and not a tint (§2), so a fill of it always needs
+  its own label colour.
+
+**The message bubbles, which are the part that is a look and not a defect.** The person's turn was a
+solid `primary.main` fill; it is the accent as a *wash* (`action.selected`) with the accent as a
+hairline edge, which still says "this one is yours" without competing with the Send button two
+inches below it — §3's rule applied to the loudest thing on the panel. The agent's turn stays on the
+raised step. The error turn was left exactly as it was, deliberately: it is the app's only
+`error.light` + `error.contrastText` pairing, which is why `tokens.contrast.test.ts` asserts that
+one extra pair, and P1T-153 already decided it keeps a bubble's look rather than becoming a banner,
+because it is a turn in a conversation.
+
+**What the chrome did not touch, and why it matters here specifically.** P1T-166 hid the dock from
+print, and that branch was still in review when this one started. All three `sx` sites it touches —
+the Fab, the panel root, and the `hideInPrint` constant between them — were left byte-for-byte as
+they are on `main`, and the chrome work went around them, so whichever of the two lands second keeps
+both rules and nothing competes for those lines. The print claim stays where P1T-166 put it
+(`AgentWidget.print.test.tsx`, `print.e2e.ts`) rather than being restated here.
+
+**Where the claims are held.** `AgentWidget.chrome.test.tsx` (20 assertions on resolved colour and
+on keyboard behaviour, in a dark app) and `e2e/dock-chrome.e2e.ts` (3 specs). The split is the one
+this chain keeps re-learning: jsdom can answer "what colour is this" and "does a key reach it", and
+cannot answer either of the questions the ticket's "done when" is actually about — a `::after` grip
+has no DOM node to read, and "does the header wrap at 360px" is layout. Both live in the browser
+file, and the first run of the grip spec earned its place immediately: `:focus-visible` is
+*modality dependent*, so `element.focus()` after a mouse click does not match it and the grip that
+the unit suite had proved was declared did not light up. The e2e spec reaches the handle with
+`Shift+Tab` instead, which is also the assertion the ticket wanted — the handle is in the tab order.
+
+*Slice 5 — P1T-163, **built**.*
 
 ## 7. The CV sheet is frozen, and always light
 
@@ -332,6 +401,7 @@ colours. They are trivial to put in the foundation and expensive to retrofit acr
 | Accessible names `Sign out`, `CVs`, `Sign in` | The e2e suite asserts by role + name (`e2e/auth.e2e.ts`) |
 | The dock's push contract (`DOCK_PUSH_VAR`) | The rail copies it; changing it breaks both edges at once |
 | Accessible name `Open the agents assistant` | The dock's own entry point, asserted by the e2e suite and the screenshot pass |
+| Accessible names `Close the agents assistant`, `Resize the agents dock` | Added by slice 5 and frozen on arrival: the close control had no name at all before it, and the handle is only reachable by one |
 | The CV sheet's visual design | Client-facing artifact — §7 |
 | Agent Surface IA | Settled by P1T-152; a re-skin is not the place to reopen it |
 
@@ -344,14 +414,35 @@ change no DOM structure at all, so the test suites stay untouched until slice 3.
 2. ~~**P1T-160**~~ — component overrides and the density pass — **shipped**: `src/theme/components.ts`, 168 redundant props swept out of 22 files, 45 new assertions, and again zero edits to existing tests (189 unit + 11 Playwright specs green untouched)
 3. ~~**P1T-161**~~ — the rail, its CSS var, the mobile drawer, the persisted theme toggle. **Shipped**, with one test edit (a mock gaining an export) and no assertion rewritten: the frozen accessible names survived the `AppBar`'s removal, which is what §9's table exists to buy
 4. ~~**P1T-162**~~ — `PageHeader` and its adoption across the five pages, incl. per-page width. **Shipped**, again with no existing assertion rewritten: 270 → 284 unit tests and 18 → 23 Playwright specs, all additive. The three `getByRole("heading", { name })` locators the e2e suite already had went on passing against a real `<h1>`, which is what §9's table exists to buy
-5. **P1T-163** — dock chrome refresh
+5. ~~**P1T-163**~~ — dock chrome refresh. **Shipped**, and the fifth DOM-changing child in a row
+   with **no existing assertion rewritten**: 284 → 303 unit tests and 23 → 26 Playwright specs, all
+   additive, across the ten dock spec files that are the tightest net in this repo. Four of the six
+   things it landed were defects the re-skin found rather than looks it chose (§6), and the one
+   piece of churn it did allow itself was the WCAG helper: written twice already, needed a third
+   time, so it moved to `src/test/contrast.ts` and the two older specs import it instead of
+   redefining it. That is the Override Policy applied to test code — the reason slice 2 gave for
+   copying it (importing a `*.test.ts` re-registers its assertions) argues for a plain module, not
+   for a third copy
 6. ~~**P1T-164**~~ — `CvPage` light-lock. **Shipped, and shipped second** rather than sixth — §11 is why. Also zero edits to existing tests: 189 → 195 unit tests, all six new
 7. **P1T-165** (later) — ⌘K palette — it hangs off the shell and needs a search-endpoint story of its own
 
 Each slice ends with Playwright screenshots in light and dark of: roster, employee detail, catalog,
 users, sign-in, dock open, CV page — plus, from slice 3, the rail collapsed and the mobile drawer,
-and from slice 4 the roster scrolled with its header pinned. Screenshots land in `docs/`
-(gitignored); this record and `manuals/spa-architecture.md` are what gets committed.
+from slice 4 the roster scrolled with its header pinned, and from slice 5 the dock's own five
+states (closed, mid-conversation, on Staffing, at `DOCK_MIN_WIDTH`, and the Token Ledger open).
+Screenshots land in `docs/` (gitignored); this record and `manuals/spa-architecture.md` are what
+gets committed.
+
+Slice 5's five are numbered 11–15 so that 1–10 keep meaning what they meant in slices 1–4, and two
+of them say something about the capture itself. The mid-conversation shot photographs the person's
+bubble and the *error* bubble, not an answer: `run.mjs` starts the database, the API and the SPA and
+no Agents service, so an answer is not photographable from this harness — and the error turn is a
+designed state of that panel in its own right. The minimum-width shot is set up from the keyboard
+(focus the handle, press `Home`) rather than by a tuned drag, and is deliberately shot with the
+handle still focused, because the affordance is its subject. It also cost the capture its third
+150ms lesson: `role="menu"` goes to zero the moment the picker closes while MUI keeps painting the
+popover for the length of the exit transition, so the first run photographed four group headers
+ghosting over the panel. The wait is on `.MuiPopover-root`.
 
 One fix to the capture landed in slice 2: `/catalog` and `/users` were shot with no wait, so the
 light catalog image from slice 1 (and the first slice-2 pass) is a spinner on an empty page — a
