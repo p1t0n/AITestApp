@@ -110,9 +110,13 @@ describe("the CV sheet is light-locked while the app is dark", () => {
   it("leaves the page chrome in the app's dark theme", () => {
     // The other half of the boundary. The toolbar is chrome, it never reaches paper (it is
     // print-hidden), and re-theming it would make a dark app look broken around a light sheet.
+    // Asserted on `text.primary` rather than the accent: P1T-160 made a `text` button neutral
+    // chrome (accent belongs to the primary action alone), so the accent is no longer what
+    // distinguishes the two themes here — the text role is, and it still differs per mode.
     const back = screen.getByRole("link", { name: /back/i });
 
-    expect(getComputedStyle(back).color).toBe(rgb(dark.primary.main));
+    expect(getComputedStyle(back).color).toBe(rgb(dark.text.primary));
+    expect(getComputedStyle(back).color).not.toBe(rgb(light.text.primary));
   });
 
   it("confirms the app around it really is dark — otherwise this file proves nothing", () => {
