@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  Box,
   Button,
   Chip,
   Dialog,
@@ -32,6 +31,7 @@ import {
   type UserSummary,
 } from "../api";
 import { ErrorNotice } from "../components/ErrorNotice";
+import PageHeader from "../components/PageHeader";
 
 const capLabel = (v: number | null) => (v === null ? "default" : v.toLocaleString());
 
@@ -60,10 +60,10 @@ export default function UsersPage() {
   };
 
   return (
-    <Box>
-      <Typography variant="h4" gutterBottom>
-        Users
-      </Typography>
+    // Seven columns of caps and counts — a table, so the same wide cap as the roster.
+    <PageHeader title="Users" width="wide">
+      {/* Stays in the body rather than becoming the header's subtitle: it is two lines of policy,
+          and a sticky strip is not where a paragraph belongs. */}
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         Anyone signed in can manage any account (flat roles). Token caps blank as "default" inherit
         the system-wide limit.
@@ -151,7 +151,7 @@ export default function UsersPage() {
           saving={updateUser.isPending}
         />
       )}
-    </Box>
+    </PageHeader>
   );
 }
 

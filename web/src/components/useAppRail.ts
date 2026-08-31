@@ -41,6 +41,21 @@ export const RAIL_NARROW_QUERY = "(max-width:899.95px)";
 export const RAIL_PUSH_VAR = "--app-rail-push";
 
 /**
+ * How much of the *top* of the viewport the rail is currently covering, published alongside
+ * {@link RAIL_PUSH_VAR} by {@link useRailPush}.
+ *
+ * Zero whenever the rail is standing beside the app; below `md` it becomes the slim sticky bar the
+ * temporary drawer hangs off, and that bar sits on top of everything the page wants to pin there.
+ * Published rather than looked up, on the same reasoning as the two side pushes: whoever needs to
+ * make room reads one property and knows nothing about the rail's state, its breakpoint, or the
+ * height of a dense `Toolbar`.
+ */
+export const RAIL_TOP_INSET_VAR = "--app-rail-top-inset";
+
+/** A dense MUI `Toolbar`, which is what the narrow-mode bar is. */
+export const RAIL_TOP_BAR_HEIGHT = 48;
+
+/**
  * The viewport widths at which an expanded rail would breach {@link RAIL_CONTENT_FLOOR}, given how
  * much the dock is currently covering.
  *
@@ -103,18 +118,23 @@ export function useAppRail(dockPush: number): AppRail {
 }
 
 /**
- * Publishes {@link RAIL_PUSH_VAR} for as long as the rail is mounted. Called by the rail, so the
- * property exists exactly while there is a rail to make room for: the auth pages render no rail,
- * and every container's `var(…, 0px)` fallback closes the gap on its own.
+ * Publishes {@link RAIL_PUSH_VAR} and {@link RAIL_TOP_INSET_VAR} for as long as the rail is
+ * mounted. Called by the rail, so the properties exist exactly while there is a rail to make room
+ * for: the auth pages render no rail, and every consumer's `var(…, 0px)` fallback closes the gap on
+ * its own.
  */
 export function useRailPush(rail: AppRail): void {
   const push = rail.width;
+  // Only the drawer form of the rail covers the top, and it covers exactly its bar.
+  const topInset = rail.isNarrow ? RAIL_TOP_BAR_HEIGHT : 0;
 
   useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty(RAIL_PUSH_VAR, `${push}px`);
+    root.style.setProperty(RAIL_TOP_INSET_VAR, `${topInset}px`);
     return () => {
       root.style.removeProperty(RAIL_PUSH_VAR);
+      root.style.removeProperty(RAIL_TOP_INSET_VAR);
     };
-  }, [push]);
+  }, [push, topInset]);
 }

@@ -1,4 +1,4 @@
-import { Link as RouterLink, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import {
   Avatar,
   Box,
@@ -13,8 +13,8 @@ import {
 } from "@mui/material";
 import PrintIcon from "@mui/icons-material/Print";
 import DownloadIcon from "@mui/icons-material/Download";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useCv, useDownloadCvPdf } from "../api";
+import PageHeader, { PageContainer } from "../components/PageHeader";
 import { lightTheme } from "../theme";
 import type { Qualification } from "../types";
 
@@ -44,21 +44,30 @@ export default function CvPage() {
   const { data: cv, isLoading } = useCv(id);
   const downloadPdf = useDownloadCvPdf(id);
 
-  if (isLoading || !cv) return <CircularProgress />;
+  if (isLoading || !cv)
+    return (
+      <PageContainer width="content">
+        <CircularProgress />
+      </PageContainer>
+    );
 
   return (
-    <Box>
-      {/* Page chrome, not part of the document: printing a CV must not print its own toolbar. */}
-      <Stack
-        direction="row"
-        justifyContent="space-between"
-        mb={2}
-        sx={{ "@media print": { display: "none" } }}
-      >
-        <Button startIcon={<ArrowBackIcon />} component={RouterLink} to={`/employees/${id}`}>
-          Back
-        </Button>
-        <Stack direction="row" spacing={1}>
+    // Page chrome, not part of the document: printing a CV must not print its own toolbar. The
+    // print rule now lives on `PageHeader`'s strip rather than on a `Stack` here — same element,
+    // same mechanism, one owner.
+    //
+    // The title is `CV` and not the person's name on purpose. The sheet below already renders that
+    // name as a heading, and it is the *document's* heading — two of them would make the page's own
+    // subject ambiguous to a screen reader, and ambiguous to `getByRole("heading", { name })`,
+    // which three specs use to prove the sheet rendered.
+    <PageHeader
+      title="CV"
+      backTo={`/employees/${id}`}
+      // The sheet caps itself at 820px (§7, frozen); this is the toolbar's own measure, sized to
+      // sit close to the sheet's edges rather than float 200px outside them as `lg` did.
+      width="content"
+      actions={
+        <>
           <Button startIcon={<PrintIcon />} onClick={() => window.print()}>
             Print
           </Button>
@@ -72,8 +81,9 @@ export default function CvPage() {
           >
             {downloadPdf.isPending ? "Preparing…" : "Download PDF"}
           </Button>
-        </Stack>
-      </Stack>
+        </>
+      }
+    >
 
       {/* The light-lock. The sheet is the *document*, not app chrome: what a client receives
           cannot depend on which Theme Mode the operator happened to be in, so the whole subtree
@@ -205,6 +215,6 @@ export default function CvPage() {
           )}
         </Paper>
       </ThemeProvider>
-    </Box>
+    </PageHeader>
   );
 }

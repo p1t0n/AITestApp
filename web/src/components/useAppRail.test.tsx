@@ -4,6 +4,8 @@ import {
   RAIL_COLLAPSED_WIDTH,
   RAIL_CONTENT_FLOOR,
   RAIL_PUSH_VAR,
+  RAIL_TOP_BAR_HEIGHT,
+  RAIL_TOP_INSET_VAR,
   RAIL_WIDTH,
   railSqueezeQuery,
   useRailPush,
@@ -72,6 +74,38 @@ describe("useRailPush", () => {
 
     // Removed rather than zeroed: the shell's `var(…, 0px)` fallback is what closes the gap.
     expect(publishedPush()).toBe("");
+  });
+});
+
+describe("the top inset (P1T-162)", () => {
+  function publishedInset(): string {
+    return document.documentElement.style.getPropertyValue(RAIL_TOP_INSET_VAR);
+  }
+
+  afterEach(() => document.documentElement.style.removeProperty(RAIL_TOP_INSET_VAR));
+
+  // The third property of the same contract: a sticky page header has to pin *under* the rail's
+  // narrow-mode bar, and asking it to know the rail's breakpoint and a dense Toolbar's height would
+  // be the coupling the two side pushes exist to avoid.
+  it("covers nothing at the top while the rail stands beside the app", () => {
+    renderHook(() => useRailPush(railWith({})));
+
+    expect(publishedInset()).toBe("0px");
+  });
+
+  it("covers its bar once the rail is a drawer behind one", () => {
+    renderHook(() => useRailPush(railWith({ isNarrow: true, width: 0 })));
+
+    expect(publishedInset()).toBe(`${RAIL_TOP_BAR_HEIGHT}px`);
+  });
+
+  it("drops with the rail, so the auth pages pin against the viewport", () => {
+    const { unmount } = renderHook(() => useRailPush(railWith({ isNarrow: true, width: 0 })));
+    expect(publishedInset()).toBe("48px");
+
+    unmount();
+
+    expect(publishedInset()).toBe("");
   });
 });
 

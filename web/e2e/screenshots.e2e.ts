@@ -80,6 +80,48 @@ async function seedEmployee(page: Page, mode: keyof typeof PEOPLE): Promise<stri
   return page.url();
 }
 
+/**
+ * Filler rows, for the one shot whose subject is the *table* rather than a person: a roster has to
+ * be longer than the viewport before a sticky header has anything to stick to. Seeded rather than
+ * faked with a tiny viewport — a 200px-tall frame proves the behaviour (`page-header.e2e.ts` does
+ * exactly that) but is useless as a picture of it.
+ */
+async function seedRoster(page: Page, mode: keyof typeof PEOPLE) {
+  // Each mode takes its own half of the list. Both modes are captured in one run against one
+  // database, and the dark pass runs second — sharing the names would put seven duplicate rows in
+  // the very image whose subject is the table.
+  const half = mode === "light" ? BENCH.slice(0, 7) : BENCH.slice(7);
+
+  for (const [first, last] of half) {
+    await page.getByRole("button", { name: "New CV" }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByLabel("First name").fill(first);
+    await dialog.getByLabel("Last name").fill(last);
+    await dialog.getByLabel("Title").fill("Senior Engineer");
+    await dialog.getByLabel("Email").fill(uniqueEmail("bench"));
+    await dialog.getByLabel("Location").fill("Remote");
+    await dialog.getByRole("button", { name: "Save" }).click();
+    await expect(dialog).toBeHidden();
+  }
+}
+
+const BENCH = [
+  ["Jean", "Bartik"],
+  ["Frances", "Allen"],
+  ["Adele", "Goldberg"],
+  ["Sophie", "Wilson"],
+  ["Lynn", "Conway"],
+  ["Evelyn", "Granville"],
+  ["Mary", "Keller"],
+  ["Carol", "Shaw"],
+  ["Erna", "Hoover"],
+  ["Susan", "Kare"],
+  ["Elizabeth", "Feinler"],
+  ["Thelma", "Estrin"],
+  ["Ida", "Rhodes"],
+  ["Klara", "Dan"],
+] as const;
+
 for (const mode of ["light", "dark"] as const) {
   test.describe(`${mode} mode screenshots`, () => {
     test.skip(!CAPTURE, "Artifact pass — run `npm run shots` to capture.");
@@ -149,6 +191,29 @@ for (const mode of ["light", "dark"] as const) {
       await expect(catalogLink).toBeVisible();
       await settled(catalogLink);
       await shoot(page, mode, "9-mobile-drawer");
+
+      // Slice 4's own state: the heading strip pinned, with the border it only has when pinned.
+      // Not `fullPage` — a full-page capture photographs the whole document and so unpins the
+      // strip, leaving the one thing this image exists to show out of it.
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.goto("/");
+      await expect(page.getByRole("heading", { level: 1, name: "CVs" })).toBeVisible();
+      await seedRoster(page, mode);
+
+      // Sized off the document rather than guessed. The two modes run against one database and the
+      // dark pass runs second, so the roster is twice as long by then — a hard-coded height that
+      // scrolls in dark does not scroll in light, which is how the first run of this failed.
+      const scroll = 240;
+      const docHeight = await page.evaluate(() => document.documentElement.scrollHeight);
+      await page.setViewportSize({ width: 1440, height: Math.max(420, docHeight - scroll) });
+      await page.mouse.wheel(0, scroll);
+      const strip = page
+        .locator("h1")
+        .locator("xpath=ancestor::*[contains(@class,'MuiStack-root')][1]");
+      await expect(strip).toHaveAttribute("data-pinned", "true");
+      await settled(strip);
+      fs.mkdirSync(path.join(OUT, mode), { recursive: true });
+      await page.screenshot({ path: path.join(OUT, mode, "10-roster-scrolled.png") });
     });
   });
 }

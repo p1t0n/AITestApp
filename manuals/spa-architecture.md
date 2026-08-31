@@ -47,14 +47,43 @@ step, which MUI has no name for) and `outline` (a control's own boundary, which 
 where `divider` deliberately does not). `background.default` / `background.paper` are *not*
 re-exposed under `surface` — a second name for the same colour is what this layer exists to avoid.
 
-> **Still scheduled to change (P1T-158).** The `PageHeader` and per-page width (slice 4) and the
-> dock chrome refresh (slice 5) are not built. This section describes the shell as it stands after
-> slice 3. The CV-sheet light-lock (§9) was slice 6 and **is** built — it was pulled ahead of the
-> rest because slice 1 made dark mode reachable by default and left a client-facing document
-> exposed; `manuals/spa-design-system.md` §11 records why and what it cost.
+> **Still scheduled to change (P1T-158).** The dock chrome refresh (slice 5) is not built. This
+> section describes the shell as it stands after slice 4. The CV-sheet light-lock (§9) was slice 6
+> and **is** built — it was pulled ahead of the rest because slice 1 made dark mode reachable by
+> default and left a client-facing document exposed; `manuals/spa-design-system.md` §11 records why
+> and what it cost.
 
-`App.tsx` is the whole chrome: the rail (or, signed out, a slim public top bar), a
-`Container maxWidth="lg"`, the route table, and the agent dock. It holds no data.
+`App.tsx` is the whole chrome: the rail (or, signed out, a slim public top bar), the route table,
+and the agent dock. It holds no data — and since P1T-162 it holds no page container either. Width
+is a per-page decision, stated once at the top of each page through `PageHeader` (below).
+
+### One heading strip, and width decided per page
+
+`components/PageHeader.tsx` (P1T-162) is the only title strip in the app: the page's `<h1>`, an
+optional back link, a right slot for its primary actions, sticky with a border that appears once it
+is pinned. All five routed pages render through it and none renders a title of its own.
+
+**The page body comes through the header**, which is the part worth explaining. Width is a per-page
+prop (`wide` → 1440px for the three tables, `content` → 1000px for the profile and the CV page), and
+a header capped at one width above a body capped at another is a defect nobody would notice for
+months. Passing the body in makes the two incapable of disagreeing. `PageContainer` is exported
+without the strip for the one caller that needs the box and no heading: the routed-area error
+fallback, which renders *instead of* a page.
+
+The strip pins **under** whatever the rail is covering at the top, read from a third published
+property — `--app-rail-top-inset`, `0px` while the rail stands beside the app and the height of its
+bar while the rail is a mobile drawer. Same contract as the two side pushes, for the same reason:
+the header would otherwise have to know the rail's breakpoint and the height of a dense `Toolbar`.
+
+"Pinned" is measured as the gap between the strip and a zero-height sentinel left at its place in
+the flow, not as `scrollY > 0` — so the border appears when the strip actually stops moving,
+whatever the inset currently is, and the border is always 1px (transparent until then) so gaining
+it moves nothing.
+
+The whole strip is print-hidden, and the strip is what carries the rule — every control inside it
+goes with it, because `display` does not inherit but layout does. That is the mechanism the print
+specs measure, and `PageContainer` deliberately drops its cap and gutters at print media so a CV is
+the page rather than an inset panel.
 
 ### Two edges that push
 
