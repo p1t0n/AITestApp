@@ -4,10 +4,16 @@ using ExpertToJob.Application.Experts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
+// The seventeen child endpoints of a CV. Both audiences reach all of them (P1T-182) — an Expert
+// edits their own languages, skills, jobs and bullets — and *which* rows they reach is decided one
+// layer down by the ownership scope, not here. Eleven of these carry no expert in the URL at all
+// (PUT /api/languages/{id}, PATCH /api/achievements/{id}), which is exactly why the check cannot
+// live in the route.
+
 namespace ExpertToJob.Web.Controllers;
 
 [ApiController]
-[Authorize(Policy = AuthPolicies.ServiceManager)]
+[Authorize(Policy = AuthPolicies.AnyRole)]
 public class LanguagesController : ControllerBase
 {
     private readonly ILanguageService _svc;
@@ -30,7 +36,7 @@ public class LanguagesController : ControllerBase
 }
 
 [ApiController]
-[Authorize(Policy = AuthPolicies.ServiceManager)]
+[Authorize(Policy = AuthPolicies.AnyRole)]
 public class AvailabilityController : ControllerBase
 {
     private readonly IAvailabilityService _svc;
@@ -57,7 +63,7 @@ public class AvailabilityController : ControllerBase
 }
 
 [ApiController]
-[Authorize(Policy = AuthPolicies.ServiceManager)]
+[Authorize(Policy = AuthPolicies.AnyRole)]
 public class ExpertSkillsController : ControllerBase
 {
     private readonly IExpertSkillService _svc;
@@ -80,7 +86,7 @@ public class ExpertSkillsController : ControllerBase
 }
 
 [ApiController]
-[Authorize(Policy = AuthPolicies.ServiceManager)]
+[Authorize(Policy = AuthPolicies.AnyRole)]
 public class QualificationsController : ControllerBase
 {
     private readonly IQualificationService _svc;
@@ -103,7 +109,7 @@ public class QualificationsController : ControllerBase
 }
 
 [ApiController]
-[Authorize(Policy = AuthPolicies.ServiceManager)]
+[Authorize(Policy = AuthPolicies.AnyRole)]
 public class AchievementsController : ControllerBase
 {
     private readonly IAchievementService _svc;
@@ -119,7 +125,7 @@ public class AchievementsController : ControllerBase
 }
 
 [ApiController]
-[Authorize(Policy = AuthPolicies.ServiceManager)]
+[Authorize(Policy = AuthPolicies.AnyRole)]
 public class ExperiencesController : ControllerBase
 {
     private readonly IExperienceService _svc;

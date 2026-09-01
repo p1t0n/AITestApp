@@ -1,4 +1,5 @@
 using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Application.Auth;
 using ExpertToJob.Application.Common;
 using ExpertToJob.Domain.Entities;
 using ExpertToJob.Domain.Enums;
@@ -30,16 +31,21 @@ public class QualificationService : IQualificationService
 {
     private readonly IAppDbContext _db;
     private readonly IValidator<SaveQualificationDto> _validator;
-    public QualificationService(IAppDbContext db, IValidator<SaveQualificationDto> validator)
+    private readonly IOwnershipScopeProvider _scope;
+    public QualificationService(
+        IAppDbContext db, IValidator<SaveQualificationDto> validator, IOwnershipScopeProvider scope)
     {
         _db = db;
         _validator = validator;
+        _scope = scope;
     }
 
     public async Task<QualificationDto> AddAsync(Guid expertId, SaveQualificationDto dto, CancellationToken ct = default)
     {
         await _validator.ValidateAndThrowAsync(dto, ct);
-        if (!await _db.Experts.AnyAsync(e => e.Id == expertId, ct))
+        var (unrestricted, owned) = await _scope.CurrentAsync(ct);
+        // Out of scope reads as "no such expert", not as "not yours": a 403 would confirm the id.
+        if (!await _db.Experts.AnyAsync(e => e.Id == expertId && (unrestricted || e.Id == owned), ct))
             throw new NotFoundException(nameof(Expert), expertId);
 
         var q = new Qualification { Id = Guid.NewGuid(), ExpertId = expertId };
@@ -52,7 +58,9 @@ public class QualificationService : IQualificationService
     public async Task<QualificationDto> UpdateAsync(Guid qualificationId, SaveQualificationDto dto, CancellationToken ct = default)
     {
         await _validator.ValidateAndThrowAsync(dto, ct);
-        var q = await _db.Qualifications.FirstOrDefaultAsync(x => x.Id == qualificationId, ct)
+        var (unrestricted, owned) = await _scope.CurrentAsync(ct);
+        var q = await _db.Qualifications
+            .FirstOrDefaultAsync(x => x.Id == qualificationId && (unrestricted || x.ExpertId == owned), ct)
             ?? throw new NotFoundException(nameof(Qualification), qualificationId);
         Apply(q, dto);
         await _db.SaveChangesAsync(ct);
@@ -61,7 +69,9 @@ public class QualificationService : IQualificationService
 
     public async Task DeleteAsync(Guid qualificationId, CancellationToken ct = default)
     {
-        var q = await _db.Qualifications.FirstOrDefaultAsync(x => x.Id == qualificationId, ct)
+        var (unrestricted, owned) = await _scope.CurrentAsync(ct);
+        var q = await _db.Qualifications
+            .FirstOrDefaultAsync(x => x.Id == qualificationId && (unrestricted || x.ExpertId == owned), ct)
             ?? throw new NotFoundException(nameof(Qualification), qualificationId);
         _db.Qualifications.Remove(q);
         await _db.SaveChangesAsync(ct);

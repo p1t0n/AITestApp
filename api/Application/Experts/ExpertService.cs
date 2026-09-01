@@ -1,4 +1,5 @@
 using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Application.Auth;
 using ExpertToJob.Application.Common;
 using ExpertToJob.Domain.Entities;
 using ExpertToJob.Domain.Enums;
@@ -33,20 +34,31 @@ public class ExpertService : IExpertService
     private readonly IAppDbContext _db;
     private readonly IValidator<SaveExpertDto> _validator;
     private readonly IValidator<UpdateExpertDto> _patchValidator;
-    public ExpertService(IAppDbContext db, IValidator<SaveExpertDto> validator, IValidator<UpdateExpertDto> patchValidator)
+    private readonly IOwnershipScopeProvider _scope;
+    public ExpertService(
+        IAppDbContext db,
+        IValidator<SaveExpertDto> validator,
+        IValidator<UpdateExpertDto> patchValidator,
+        IOwnershipScopeProvider scope)
     {
         _db = db;
         _validator = validator;
         _patchValidator = patchValidator;
+        _scope = scope;
     }
 
     private static DateOnly Today => DateOnly.FromDateTime(DateTime.UtcNow);
 
     public async Task<IReadOnlyList<ExpertSummaryDto>> ListAsync(bool includeDrafts = false, CancellationToken ct = default)
     {
+        // Scoped too, though the roster endpoint itself is Service Manager only: this is the one
+        // call that would hand over the whole product, so it does not rely on a single [Authorize]
+        // somewhere above it being right.
+        var (unrestricted, owned) = await _scope.CurrentAsync(ct);
         var experts = await _db.Experts
             .AsNoTracking()
-            .Where(e => includeDrafts || e.Status == ExpertStatus.Active)
+            .Where(e => (includeDrafts || e.Status == ExpertStatus.Active)
+                        && (unrestricted || e.Id == owned))
             .Include(e => e.AvailabilityEntries)
             .OrderBy(e => e.LastName).ThenBy(e => e.FirstName)
             .ToListAsync(ct);
@@ -61,6 +73,19 @@ public class ExpertService : IExpertService
         return e.ToDetail(Today);
     }
 
+    /// <summary>
+    /// Reads back a row this call has just written, ignoring the caller's scope. Only ever called
+    /// with an id the same method already resolved *through* the scope, so the check has happened —
+    /// re-applying it here would 404 the one legitimate case where it must not: a Service Manager
+    /// creating a row, and an Expert saving their own.
+    /// </summary>
+    private async Task<ExpertDetailDto> ReadBackAsync(Guid id, CancellationToken ct)
+    {
+        var e = await LoadFullAsync(id, track: false, ct, OwnershipScope.Unrestricted);
+        if (e is null) throw new NotFoundException(nameof(Expert), id);
+        return e.ToDetail(Today);
+    }
+
     public async Task<ExpertDetailDto> CreateAsync(SaveExpertDto dto, CancellationToken ct = default)
     {
         await _validator.ValidateAndThrowAsync(dto, ct);
@@ -68,7 +93,7 @@ public class ExpertService : IExpertService
         Apply(e, dto);
         _db.Experts.Add(e);
         await SaveGuardingEmailAsync(e.Email, "Use the existing expert, or give this one a different address.", ct);
-        return await GetAsync(e.Id, ct);
+        return await ReadBackAsync(e.Id, ct);
     }
 
     public async Task<IngestionDraftDto> CreateDraftAsync(SaveExpertDto dto, CancellationToken ct = default)
@@ -95,17 +120,17 @@ public class ExpertService : IExpertService
             ? null
             : $"An expert named {dto.FirstName.Trim()} {dto.LastName.Trim()} already exists ({duplicate.Title}, {duplicate.Status}). Review before promoting.";
 
-        return new IngestionDraftDto(await GetAsync(e.Id, ct), warning);
+        return new IngestionDraftDto(await ReadBackAsync(e.Id, ct), warning);
     }
 
     public async Task<ExpertDetailDto> PromoteAsync(Guid id, CancellationToken ct = default)
     {
-        var e = await _db.Experts.FirstOrDefaultAsync(x => x.Id == id, ct)
+        var e = await LoadScopedAsync(id, ct)
             ?? throw new NotFoundException(nameof(Expert), id);
 
         if (e.Status == ExpertStatus.Active)
         {
-            return await GetAsync(id, ct); // idempotent: promoting an Active expert is a no-op
+            return await ReadBackAsync(id, ct); // idempotent: promoting an Active expert is a no-op
         }
 
         // The publication gate demands the one field drafts may honestly lack.
@@ -119,32 +144,32 @@ public class ExpertService : IExpertService
         // The partial unique index only binds Active rows, so a draft's clash surfaces exactly here.
         await SaveGuardingEmailAsync(e.Email, "Resolve the duplicate before promoting.", ct);
 
-        return await GetAsync(id, ct);
+        return await ReadBackAsync(id, ct);
     }
 
     public async Task<ExpertDetailDto> UpdateAsync(Guid id, SaveExpertDto dto, CancellationToken ct = default)
     {
         await _validator.ValidateAndThrowAsync(dto, ct);
-        var e = await _db.Experts.FirstOrDefaultAsync(x => x.Id == id, ct)
+        var e = await LoadScopedAsync(id, ct)
             ?? throw new NotFoundException(nameof(Expert), id);
         Apply(e, dto);
         await SaveGuardingEmailAsync(e.Email, "Use a different address for this expert.", ct);
-        return await GetAsync(id, ct);
+        return await ReadBackAsync(id, ct);
     }
 
     public async Task<ExpertDetailDto> PatchAsync(Guid id, UpdateExpertDto dto, CancellationToken ct = default)
     {
         await _patchValidator.ValidateAndThrowAsync(dto, ct);
-        var e = await _db.Experts.FirstOrDefaultAsync(x => x.Id == id, ct)
+        var e = await LoadScopedAsync(id, ct)
             ?? throw new NotFoundException(nameof(Expert), id);
         ApplyPatch(e, dto);
         await SaveGuardingEmailAsync(e.Email, "Use a different address for this expert.", ct);
-        return await GetAsync(id, ct);
+        return await ReadBackAsync(id, ct);
     }
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
-        var e = await _db.Experts.FirstOrDefaultAsync(x => x.Id == id, ct)
+        var e = await LoadScopedAsync(id, ct)
             ?? throw new NotFoundException(nameof(Expert), id);
         _db.Experts.Remove(e);
         await _db.SaveChangesAsync(ct);
@@ -168,8 +193,19 @@ public class ExpertService : IExpertService
         }
     }
 
-    private async Task<Expert?> LoadFullAsync(Guid id, bool track, CancellationToken ct)
+    /// <summary>The tracked row, if this caller may reach it. Null covers both "no such row" and
+    /// "not yours", which is the whole point — the caller cannot tell the two apart.</summary>
+    private async Task<Expert?> LoadScopedAsync(Guid id, CancellationToken ct)
     {
+        var (unrestricted, owned) = await _scope.CurrentAsync(ct);
+        return await _db.Experts
+            .FirstOrDefaultAsync(x => x.Id == id && (unrestricted || x.Id == owned), ct);
+    }
+
+    private async Task<Expert?> LoadFullAsync(
+        Guid id, bool track, CancellationToken ct, OwnershipScope? scope = null)
+    {
+        var (unrestricted, owned) = scope ?? await _scope.CurrentAsync(ct);
         var query = _db.Experts.AsQueryable();
         if (!track) query = query.AsNoTracking();
         return await query
@@ -179,7 +215,7 @@ public class ExpertService : IExpertService
             .Include(e => e.Qualifications)
             .Include(e => e.Experiences).ThenInclude(x => x.Achievements)
             .Include(e => e.Experiences).ThenInclude(x => x.Skills).ThenInclude(s => s.Skill)
-            .FirstOrDefaultAsync(e => e.Id == id, ct);
+            .FirstOrDefaultAsync(e => e.Id == id && (unrestricted || e.Id == owned), ct);
     }
 
     private static void Apply(Expert e, SaveExpertDto dto)

@@ -36,6 +36,12 @@ public static class AuthServiceCollectionExtensions
         services.AddSingleton<IControlWordHasher, ControlWordHasher>();
         services.AddScoped<IJwtTokenIssuer, JwtTokenIssuer>();
 
+        // Row-level reach (P1T-182). The Application services ask this; the Web host answers from
+        // the session. Needs the accessor because the scope is a property of the caller, not of a
+        // parameter any controller could be trusted to pass down.
+        services.AddHttpContextAccessor();
+        services.AddScoped<IOwnershipScopeProvider, HttpOwnershipScopeProvider>();
+
         AddSessionJwtAuthentication(services, auth.Jwt);
 
         return services;
@@ -102,6 +108,13 @@ public static class AuthServiceCollectionExtensions
             options.AddPolicy(AuthPolicies.Expert, policy => policy
                 .RequireAuthenticatedUser()
                 .RequireRole(AuthPolicies.Expert));
+
+            // Both audiences, still explicit on the endpoint (P1T-182). Used where the row-level
+            // answer comes from the ownership scope rather than from the policy: the catalog's
+            // reads, an Expert's own row and its children.
+            options.AddPolicy(AuthPolicies.AnyRole, policy => policy
+                .RequireAuthenticatedUser()
+                .RequireRole(AuthPolicies.ServiceManager, AuthPolicies.Expert));
 
             options.DefaultPolicy = options.GetPolicy(AuthPolicies.ServiceManager)!;
             options.FallbackPolicy = options.DefaultPolicy;

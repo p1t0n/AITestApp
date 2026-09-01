@@ -1,3 +1,4 @@
+using ExpertToJob.Application.Auth;
 using ExpertToJob.Application.Availability;
 using ExpertToJob.Infrastructure.Persistence;
 using FluentAssertions;
@@ -15,7 +16,7 @@ public class AvailabilityServiceValidationTests
             .Options);
 
     private static AvailabilityService NewService(AppDbContext db) =>
-        new(db, new SaveAvailabilityEntryValidator());
+        new(db, new SaveAvailabilityEntryValidator(), new UnrestrictedOwnershipScopeProvider());
 
     [Fact]
     public async Task AddAsync_with_out_of_range_capacity_throws_ValidationException()

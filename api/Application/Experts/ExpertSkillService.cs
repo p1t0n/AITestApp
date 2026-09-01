@@ -1,4 +1,5 @@
 using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Application.Auth;
 using ExpertToJob.Application.Common;
 using ExpertToJob.Domain.Entities;
 using ExpertToJob.Domain.Enums;
@@ -20,16 +21,21 @@ public class ExpertSkillService : IExpertSkillService
 {
     private readonly IAppDbContext _db;
     private readonly IValidator<SaveExpertSkillDto> _validator;
-    public ExpertSkillService(IAppDbContext db, IValidator<SaveExpertSkillDto> validator)
+    private readonly IOwnershipScopeProvider _scope;
+    public ExpertSkillService(
+        IAppDbContext db, IValidator<SaveExpertSkillDto> validator, IOwnershipScopeProvider scope)
     {
         _db = db;
         _validator = validator;
+        _scope = scope;
     }
 
     public async Task<ExpertSkillDto> AddAsync(Guid expertId, SaveExpertSkillDto dto, CancellationToken ct = default)
     {
         await _validator.ValidateAndThrowAsync(dto, ct);
-        if (!await _db.Experts.AnyAsync(e => e.Id == expertId, ct))
+        var (unrestricted, owned) = await _scope.CurrentAsync(ct);
+        // Out of scope reads as "no such expert", not as "not yours": a 403 would confirm the id.
+        if (!await _db.Experts.AnyAsync(e => e.Id == expertId && (unrestricted || e.Id == owned), ct))
             throw new NotFoundException(nameof(Expert), expertId);
         if (!await _db.Skills.AnyAsync(s => s.Id == dto.SkillId, ct))
             throw new NotFoundException(nameof(Skill), dto.SkillId);
@@ -52,7 +58,9 @@ public class ExpertSkillService : IExpertSkillService
     public async Task<ExpertSkillDto> UpdateAsync(Guid expertSkillId, SaveExpertSkillDto dto, CancellationToken ct = default)
     {
         await _validator.ValidateAndThrowAsync(dto, ct);
-        var es = await _db.ExpertSkills.FirstOrDefaultAsync(x => x.Id == expertSkillId, ct)
+        var (unrestricted, owned) = await _scope.CurrentAsync(ct);
+        var es = await _db.ExpertSkills
+            .FirstOrDefaultAsync(x => x.Id == expertSkillId && (unrestricted || x.ExpertId == owned), ct)
             ?? throw new NotFoundException(nameof(ExpertSkill), expertSkillId);
         es.Level = dto.Level;
         es.YearsExperience = dto.YearsExperience;
@@ -62,7 +70,9 @@ public class ExpertSkillService : IExpertSkillService
 
     public async Task DeleteAsync(Guid expertSkillId, CancellationToken ct = default)
     {
-        var es = await _db.ExpertSkills.FirstOrDefaultAsync(x => x.Id == expertSkillId, ct)
+        var (unrestricted, owned) = await _scope.CurrentAsync(ct);
+        var es = await _db.ExpertSkills
+            .FirstOrDefaultAsync(x => x.Id == expertSkillId && (unrestricted || x.ExpertId == owned), ct)
             ?? throw new NotFoundException(nameof(ExpertSkill), expertSkillId);
         _db.ExpertSkills.Remove(es);
         await _db.SaveChangesAsync(ct);

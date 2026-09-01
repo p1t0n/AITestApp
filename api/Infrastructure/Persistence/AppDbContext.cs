@@ -62,6 +62,16 @@ public class AppDbContext : DbContext, IAppDbContext
             e.Property(x => x.Phone).HasMaxLength(50);
             e.Property(x => x.Location).HasMaxLength(200);
 
+            // One person, one row (P1T-182). Unique where the row is claimed, silent where it is
+            // not — a filtered index is the only shape that expresses "at most one owner per user,
+            // and any number of unclaimed rows". Database truth, not service convention.
+            e.HasIndex(x => x.OwnerUserId).IsUnique()
+                .HasFilter("\"OwnerUserId\" IS NOT NULL");
+            // Deleting the account unclaims the row; it never deletes the CV. What happens to the
+            // data itself on erasure is its own decision (P1T-186), taken deliberately elsewhere.
+            e.HasOne<User>().WithMany()
+                .HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.SetNull);
+
             e.HasMany(x => x.SpokenLanguages).WithOne(x => x.Expert)
                 .HasForeignKey(x => x.ExpertId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(x => x.AvailabilityEntries).WithOne(x => x.Expert)
