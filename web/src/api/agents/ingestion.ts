@@ -1,6 +1,6 @@
 // Resume ingestion (P1T-96). The only agent that writes to the roster, so it invalidates
-// ["employees"] as well as the ledger; what it creates lands as a Draft that a human promotes
-// (usePromoteEmployee, in ../employees).
+// ["experts"] as well as the ledger; what it creates lands as a Draft that a human promotes
+// (usePromoteExpert, in ../experts).
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { agentHttp } from "../http";
 
@@ -14,7 +14,7 @@ export interface IngestionCreated {
 /** The composed ingestion result: deterministic fields from captured tool results; proposals are
  * catalog-unmatched skill names awaiting a human decision. */
 export interface IngestionResponse {
-  employeeId: string;
+  expertId: string;
   created: IngestionCreated;
   proposals: string[];
   notes: string[];
@@ -29,7 +29,7 @@ export function useResumeIngestion() {
       (await agentHttp.post<IngestionResponse>("/resume-ingestion", { resumeText })).data,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["usage"] });
-      qc.invalidateQueries({ queryKey: ["employees"] });
+      qc.invalidateQueries({ queryKey: ["experts"] });
     },
   });
 }

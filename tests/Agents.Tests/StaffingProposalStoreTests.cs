@@ -81,11 +81,11 @@ public class StaffingProposalStoreTests
         proposal.Status.Should().Be(StaffingProposalStatus.Pending);
         proposal.RequestedByUserId.Should().Be(requester);
         proposal.JobDescription.Should().Be("Platform engineer.");
-        proposal.RecommendedEmployeeId.Should().Be(Ada);
+        proposal.RecommendedExpertId.Should().Be(Ada);
         proposal.ReportDegraded.Should().BeTrue();
         proposal.Candidates.Should().HaveCount(2);
         var first = proposal.Candidates.Single(c => c.Rank == 1);
-        first.EmployeeId.Should().Be(Ada);
+        first.ExpertId.Should().Be(Ada);
         first.MatchScore.Should().Be(78);
         first.MatchBand.Should().Be("Strong");
         first.Rationale.Should().Be("Best coverage.");

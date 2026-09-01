@@ -17,7 +17,7 @@ public class StaffingProposal
     public string JobDescription { get; set; } = string.Empty;
 
     /// <summary>The narrative step's validated pick, when the run produced one.</summary>
-    public Guid? RecommendedEmployeeId { get; set; }
+    public Guid? RecommendedExpertId { get; set; }
 
     /// <summary>Whether the source report shipped degraded — reviewers should weigh partial
     /// evidence accordingly.</summary>
@@ -52,7 +52,7 @@ public class StaffingProposalCandidate
 
     public Guid ProposalId { get; set; }
 
-    public Guid EmployeeId { get; set; }
+    public Guid ExpertId { get; set; }
 
     public string Name { get; set; } = string.Empty;
 

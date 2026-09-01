@@ -2,7 +2,7 @@ namespace ExpertToJob.Tools.DemoRoster;
 
 public sealed record GenerationOptions
 {
-    public int EmployeeCount { get; init; } = 500;
+    public int ExpertCount { get; init; } = 500;
 
     /// <summary>Roster seed; the committed dataset was produced with the default.</summary>
     public int Seed { get; init; } = 48;
@@ -13,6 +13,6 @@ public sealed record GenerationOptions
     /// </summary>
     public DateOnly AnchorDate { get; init; } = new(2026, 7, 1);
 
-    /// <summary>Share of employees whose narratives are written acronym/product-name-heavy.</summary>
+    /// <summary>Share of experts whose narratives are written acronym/product-name-heavy.</summary>
     public double AcronymHeavyShare { get; init; } = 0.13;
 }

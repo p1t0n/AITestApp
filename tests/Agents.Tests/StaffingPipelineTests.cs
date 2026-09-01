@@ -41,9 +41,9 @@ public class StaffingPipelineTests
         new ShortlistResponse(["event streaming with Kafka", "Kubernetes operations", "team leadership"], candidates),
         FaultDetail: null);
 
-    private static MatchRunOutcome MatchOk(Guid employeeId) => new(
+    private static MatchRunOutcome MatchOk(Guid expertId) => new(
         "match",
-        $"Gap analysis for {employeeId}.",
+        $"Gap analysis for {expertId}.",
         new AgentReply("answer", 200, 50, 250),
         Score: 78,
         Band: "Strong");
@@ -53,8 +53,8 @@ public class StaffingPipelineTests
 
     private static string NarrativeJson(Guid first, Guid second) =>
         $$"""
-          {"rationales":[{"employeeId":"{{first}}","rationale":"R1"},{"employeeId":"{{second}}","rationale":"R2"}],
-           "recommendation":{"employeeId":"{{first}}","narrative":"Pick person one."} }
+          {"rationales":[{"expertId":"{{first}}","rationale":"R1"},{"expertId":"{{second}}","rationale":"R2"}],
+           "recommendation":{"expertId":"{{first}}","narrative":"Pick person one."} }
           """;
 
     private static FakeChatClient NarrativeChat(string json) => new(
@@ -106,7 +106,7 @@ public class StaffingPipelineTests
         report.Candidates.Should().HaveCount(2);
 
         var first = report.Candidates[0];
-        first.EmployeeId.Should().Be(Id(1));
+        first.ExpertId.Should().Be(Id(1));
         first.Name.Should().Be("Person 1");
         first.Title.Should().Be("Title 1");
         first.Shortlist.Score.Should().BeApproximately(0.85, 0.0001);
@@ -121,7 +121,7 @@ public class StaffingPipelineTests
         report.Candidates[1].Rationale.Should().Be("R2");
 
         report.Recommendation.Should().NotBeNull();
-        report.Recommendation!.EmployeeId.Should().Be(Id(1));
+        report.Recommendation!.ExpertId.Should().Be(Id(1));
         report.Recommendation.Narrative.Should().Be("Pick person one.");
         report.Degraded.Should().BeFalse();
         report.Notes.Should().BeEmpty();
@@ -206,7 +206,7 @@ public class StaffingPipelineTests
                 ("narrative", "started", null, null, null),
                 ("narrative", "completed", null, null, null));
         outcome.Events.Where(e => e.CandidateName is not null)
-            .Should().OnlyContain(e => e.EmployeeId != null);
+            .Should().OnlyContain(e => e.ExpertId != null);
     }
 
     [Fact]
@@ -259,18 +259,18 @@ public class StaffingPipelineTests
 
         match.Calls.Should().Be(2);
         outcome.Report!.Candidates.Should().HaveCount(2);
-        outcome.Report.Candidates.Select(c => c.EmployeeId).Should().Equal(Id(1), Id(2));
+        outcome.Report.Candidates.Select(c => c.ExpertId).Should().Equal(Id(1), Id(2));
     }
 
     // ----- Narrative corruption guards ------------------------------------------------------
 
     [Fact]
-    public async Task Narrative_rationales_with_unknown_employee_ids_are_dropped_for_templates()
+    public async Task Narrative_rationales_with_unknown_expert_ids_are_dropped_for_templates()
     {
         var chat = NarrativeChat(
             $$"""
-              {"rationales":[{"employeeId":"{{Guid.NewGuid()}}","rationale":"Bogus."}],
-               "recommendation":{"employeeId":"{{Id(1)}}","narrative":"Pick person one."} }
+              {"rationales":[{"expertId":"{{Guid.NewGuid()}}","rationale":"Bogus."}],
+               "recommendation":{"expertId":"{{Id(1)}}","narrative":"Pick person one."} }
               """);
         var pipeline = Pipeline(
             new FakeShortlistRunService(ShortlistOk(Candidate(1), Candidate(2))), MatchAlwaysOk(), chat);
@@ -280,7 +280,7 @@ public class StaffingPipelineTests
         // Unknown-id rationales never reach the report; the affected candidates degrade to the
         // deterministic template, but the validated recommendation survives.
         outcome.Report!.Candidates.Should().OnlyContain(c => c.Rationale.Contains("Matched 2/3"));
-        outcome.Report.Recommendation!.EmployeeId.Should().Be(Id(1));
+        outcome.Report.Recommendation!.ExpertId.Should().Be(Id(1));
     }
 
     [Fact]
@@ -288,8 +288,8 @@ public class StaffingPipelineTests
     {
         var chat = NarrativeChat(
             $$"""
-              {"rationales":[{"employeeId":"{{Id(1)}}","rationale":"R1"},{"employeeId":"{{Id(2)}}","rationale":"R2"}],
-               "recommendation":{"employeeId":"{{Guid.NewGuid()}}","narrative":"Pick a ghost."} }
+              {"rationales":[{"expertId":"{{Id(1)}}","rationale":"R1"},{"expertId":"{{Id(2)}}","rationale":"R2"}],
+               "recommendation":{"expertId":"{{Guid.NewGuid()}}","narrative":"Pick a ghost."} }
               """);
         var pipeline = Pipeline(
             new FakeShortlistRunService(ShortlistOk(Candidate(1), Candidate(2))), MatchAlwaysOk(), chat);

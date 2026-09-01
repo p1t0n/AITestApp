@@ -34,25 +34,25 @@ public class RosterScanEndpointTests
 
     private sealed class FakeDigests : IRosterDigestSource
     {
-        public Task<EmployeeDigestPage?> ListAsync(int page, int pageSize, CancellationToken ct = default) =>
-            Task.FromResult<EmployeeDigestPage?>(page == 1
-                ? new EmployeeDigestPage(1, pageSize, 2,
+        public Task<ExpertDigestPage?> ListAsync(int page, int pageSize, CancellationToken ct = default) =>
+            Task.FromResult<ExpertDigestPage?>(page == 1
+                ? new ExpertDigestPage(1, pageSize, 2,
                 [
-                    new EmployeeDigest(Ada, "Ada Lovelace", "Engineer", "Kafka for 6 years."),
-                    new EmployeeDigest(Grace, "Grace Hopper", "Admiral", "Compilers."),
+                    new ExpertDigest(Ada, "Ada Lovelace", "Engineer", "Kafka for 6 years."),
+                    new ExpertDigest(Grace, "Grace Hopper", "Admiral", "Compilers."),
                 ])
-                : new EmployeeDigestPage(page, pageSize, 2, []));
+                : new ExpertDigestPage(page, pageSize, 2, []));
     }
 
     private sealed class FakeTransport : IScoringTransport
     {
         public Task<ScoredChunk> ScoreChunkAsync(
-            string jobDescription, JdRequirements? extraction, IReadOnlyList<EmployeeDigest> chunk,
+            string jobDescription, JdRequirements? extraction, IReadOnlyList<ExpertDigest> chunk,
             CancellationToken ct = default) =>
             Task.FromResult(new ScoredChunk(
                 chunk.Select((c, i) => i == 0
-                    ? new ScoringCandidateResult(c.EmployeeId, ScoringCandidateStatus.Scored, 82, "Strong", "fit", true, null)
-                    : new ScoringCandidateResult(c.EmployeeId, ScoringCandidateStatus.Scored, null, "Insufficient evidence", null, false, null))
+                    ? new ScoringCandidateResult(c.ExpertId, ScoringCandidateStatus.Scored, 82, "Strong", "fit", true, null)
+                    : new ScoringCandidateResult(c.ExpertId, ScoringCandidateStatus.Scored, null, "Insufficient evidence", null, false, null))
                     .ToList(),
                 new AgentReply("{}", 20, 10, 30)));
     }
@@ -165,7 +165,7 @@ public class RosterScanEndpointTests
         var candidates = body.GetProperty("candidates");
         candidates.GetArrayLength().Should().Be(2);
         // Scored-by-score-desc: Ada (82) before the not-scorable row.
-        candidates[0].GetProperty("employeeId").GetGuid().Should().Be(Ada);
+        candidates[0].GetProperty("expertId").GetGuid().Should().Be(Ada);
         candidates[0].GetProperty("score").GetInt32().Should().Be(82);
         candidates[0].GetProperty("band").GetString().Should().Be("Strong");
         candidates[1].GetProperty("scorable").GetBoolean().Should().BeFalse("honest absence rides the wire");

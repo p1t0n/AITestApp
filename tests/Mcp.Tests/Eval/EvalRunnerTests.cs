@@ -104,7 +104,7 @@ public sealed class EvalRunnerTests : IAsyncLifetime
         return new AppDbContext(options);
     }
 
-    private static EvalEmployee Person(string key, string firstName, string narrative) => new(
+    private static EvalExpert Person(string key, string firstName, string narrative) => new(
         Key: key,
         FirstName: firstName,
         LastName: "Eval",

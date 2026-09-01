@@ -105,7 +105,7 @@ test.describe("the command palette", () => {
     await expect(page.getByRole("option", { name: /Evelyn Granville/ })).toBeVisible();
     await page.keyboard.press("Enter");
 
-    await expect(page).toHaveURL(/\/employees\/[0-9a-f-]{36}$/);
+    await expect(page).toHaveURL(/\/experts\/[0-9a-f-]{36}$/);
     await expect(page.getByRole("heading", { name: "Evelyn Granville" })).toBeVisible();
   });
 

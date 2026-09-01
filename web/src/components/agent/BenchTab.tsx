@@ -72,7 +72,7 @@ export function BenchPanel() {
         {stats && (
           <>
             <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" data-testid="bench-stats">
-              <StatCard label="Active" value={stats.activeEmployees} />
+              <StatCard label="Active" value={stats.activeExperts} />
               <StatCard label="Fully available" value={stats.fullyAvailable} />
               <StatCard label="Partial" value={stats.partiallyAvailable} />
               <StatCard label="Booked" value={stats.fullyBooked} />

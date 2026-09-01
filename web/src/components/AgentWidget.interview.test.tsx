@@ -15,7 +15,7 @@ const interviewState = {
   isPending: false,
 };
 
-const EMPLOYEE_ID = "11111111-2222-3333-4444-555555555555";
+const EXPERT_ID = "11111111-2222-3333-4444-555555555555";
 
 vi.mock("../api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../api")>();
@@ -26,10 +26,10 @@ vi.mock("../api", async (importOriginal) => {
     useMatch: () => ({ mutateAsync: vi.fn(), isPending: false }),
     useJdMatch: () => ({ mutateAsync: vi.fn(), isPending: false }),
     useApplyRewrite: () => ({ isPending: false, isSuccess: false, isError: false, error: null, mutate: vi.fn() }),
-    useEmployees: () => ({
+    useExperts: () => ({
       data: [
         {
-          id: EMPLOYEE_ID,
+          id: EXPERT_ID,
           firstName: "Ada",
           lastName: "Lovelace",
           title: "Senior Engineer",
@@ -71,7 +71,7 @@ async function openInterviewTab() {
 }
 
 async function submitRun(user: Awaited<ReturnType<typeof openInterviewTab>>) {
-  await user.click(screen.getByLabelText(/employee/i));
+  await user.click(screen.getByLabelText(/expert/i));
   await user.click(screen.getByText("Ada Lovelace — Senior Engineer"));
   await user.type(screen.getByPlaceholderText(/paste a job description/i), "Platform engineer.");
   await user.click(screen.getByRole("button", { name: /build interview kit/i }));
@@ -82,7 +82,7 @@ beforeEach(() => {
 });
 
 describe("Interview kit tab (P1T-102)", () => {
-  it("submits employee + JD and renders the kit with vetted questions", async () => {
+  it("submits expert + JD and renders the kit with vetted questions", async () => {
     interviewState.mutateAsync.mockResolvedValue({
       answer: "## Interview kit\n\nFit summary here.",
       questions: [
@@ -99,7 +99,7 @@ describe("Interview kit tab (P1T-102)", () => {
     await submitRun(user);
 
     expect(interviewState.mutateAsync).toHaveBeenCalledWith({
-      employeeId: EMPLOYEE_ID,
+      expertId: EXPERT_ID,
       jobDescription: "Platform engineer.",
     });
     expect(await screen.findByText("Fit summary here.")).toBeInTheDocument();

@@ -16,14 +16,14 @@ import {
 import { currentAgentSurface } from "../test/agentSurface";
 import type { AgentDock } from "./useAgentDock";
 import { lightTheme } from "../theme";
-import type { EmployeeSummary } from "../types";
+import type { ExpertSummary } from "../types";
 
 // The ⌘K Command Palette (P1T-165). What is asserted here is the three kinds of jump, the keyboard
 // path through them, and the one claim the feature rests on: the palette searches the whole roster
 // rather than a page of it. The last test in the file is the only one that renders a real dock —
 // it is what proves a Surface Request is honoured rather than merely sent.
 
-function person(over: Partial<EmployeeSummary> & { id: string }): EmployeeSummary {
+function person(over: Partial<ExpertSummary> & { id: string }): ExpertSummary {
   return {
     firstName: "Ada",
     lastName: "Lovelace",
@@ -36,13 +36,13 @@ function person(over: Partial<EmployeeSummary> & { id: string }): EmployeeSummar
   };
 }
 
-const ROSTER: EmployeeSummary[] = [
+const ROSTER: ExpertSummary[] = [
   person({ id: "e1", firstName: "Grace", lastName: "Hopper", title: "Rear Admiral", location: "Arlington", email: "grace@navy.example" }),
   person({ id: "e2", firstName: "Ada", lastName: "Lovelace", title: "Analyst", location: "London", email: "ada@example.com" }),
   person({ id: "e3", firstName: "Alan", lastName: "Turing", title: "Cryptanalyst", location: "Bletchley", email: "alan@example.com" }),
 ];
 
-let roster: EmployeeSummary[] = ROSTER;
+let roster: ExpertSummary[] = ROSTER;
 let rosterLoading = false;
 
 vi.mock("../api", async (importOriginal) => {
@@ -51,7 +51,7 @@ vi.mock("../api", async (importOriginal) => {
   return {
     ...actual,
     // Read through a getter so a test can change the roster without re-mocking the module.
-    useEmployees: () => ({ data: roster, isLoading: rosterLoading, isError: false, error: null }),
+    useExperts: () => ({ data: roster, isLoading: rosterLoading, isError: false, error: null }),
     useUsage: () => ({ data: undefined, isLoading: false, isError: false, error: null }),
     useSkills: () => ({ data: [], isLoading: false }),
     useCategories: () => ({ data: [], isLoading: false }),
@@ -270,7 +270,7 @@ describe("finding a person", () => {
     await user.type(input(), "hopper");
     await user.click(screen.getByRole("option", { name: /Grace Hopper/ }));
 
-    expect(where()).toBe("/employees/e1");
+    expect(where()).toBe("/experts/e1");
     await gone();
   });
 

@@ -38,9 +38,9 @@ public class StaffingHandoffPackageTests
         new ShortlistResponse(["Kafka"], candidates),
         FaultDetail: null);
 
-    private static MatchRunOutcome MatchOk(Guid employeeId) => new(
+    private static MatchRunOutcome MatchOk(Guid expertId) => new(
         "match",
-        $"Gap analysis for {employeeId}.",
+        $"Gap analysis for {expertId}.",
         new AgentReply("answer", 200, 50, 250),
         Score: 78,
         Band: "Strong");
@@ -49,8 +49,8 @@ public class StaffingHandoffPackageTests
         () => new ChatResponse(new ChatMessage(
             ChatRole.Assistant,
             $$"""
-              {"rationales":[{"employeeId":"{{first}}","rationale":"R1"},{"employeeId":"{{second}}","rationale":"R2"}],
-               "recommendation":{"employeeId":"{{first}}","narrative":"Pick person one."} }
+              {"rationales":[{"expertId":"{{first}}","rationale":"R1"},{"expertId":"{{second}}","rationale":"R2"}],
+               "recommendation":{"expertId":"{{first}}","narrative":"Pick person one."} }
               """))
         {
             Usage = new UsageDetails { InputTokenCount = 30, OutputTokenCount = 15, TotalTokenCount = 45 },

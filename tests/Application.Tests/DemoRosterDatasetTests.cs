@@ -29,26 +29,26 @@ public class DemoRosterDatasetTests
     }
 
     [Fact]
-    public void Contains_exactly_five_hundred_employees()
+    public void Contains_exactly_five_hundred_experts()
     {
-        Dataset.Value.Employees.Should().HaveCount(500);
+        Dataset.Value.Experts.Should().HaveCount(500);
     }
 
     [Fact]
     public void Every_email_is_unique_and_carries_the_demo_wipe_tag_domain()
     {
-        var emails = Dataset.Value.Employees.Select(e => e.Email).ToList();
+        var emails = Dataset.Value.Experts.Select(e => e.Email).ToList();
 
         emails.Should().OnlyHaveUniqueItems();
         emails.Should().AllSatisfy(e => e.Should().EndWith("@demo.example.com"));
     }
 
     [Fact]
-    public void Every_employee_has_a_complete_valid_profile()
+    public void Every_expert_has_a_complete_valid_profile()
     {
         var catalog = Dataset.Value.Skills.Select(s => s.Name).ToHashSet(StringComparer.Ordinal);
 
-        Dataset.Value.Employees.Should().AllSatisfy(e =>
+        Dataset.Value.Experts.Should().AllSatisfy(e =>
         {
             e.FirstName.Should().NotBeNullOrWhiteSpace();
             e.LastName.Should().NotBeNullOrWhiteSpace();
@@ -84,7 +84,7 @@ public class DemoRosterDatasetTests
     [Fact]
     public void Narratives_are_varied_no_summary_repeated_more_than_three_times()
     {
-        var summaries = Dataset.Value.Employees
+        var summaries = Dataset.Value.Experts
             .SelectMany(e => e.Experiences)
             .Select(x => x.Summary)
             .ToList();
@@ -96,6 +96,6 @@ public class DemoRosterDatasetTests
     [Fact]
     public void Ten_industry_clusters_are_present()
     {
-        Dataset.Value.Employees.Select(e => e.Industry).Distinct().Should().HaveCount(10);
+        Dataset.Value.Experts.Select(e => e.Industry).Distinct().Should().HaveCount(10);
     }
 }

@@ -16,7 +16,7 @@ import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
 import SearchIcon from "@mui/icons-material/Search";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import { useNavigate } from "react-router-dom";
-import { useEmployees } from "../api";
+import { useExperts } from "../api";
 import { apiErrorMessage } from "../api/http";
 import { NAV } from "./AppRail";
 import { SURFACE_GROUPS } from "./AgentWidget";
@@ -70,24 +70,24 @@ function matchesQuery(query: string, ...fields: (string | null | undefined)[]): 
 /**
  * The palette's body, mounted only while it is open.
  *
- * That is what makes the roster query honest *and* free: `useEmployees` is the same
- * `["employees"]` query the roster page uses, so an already-loaded roster costs nothing and a cold
+ * That is what makes the roster query honest *and* free: `useExperts` is the same
+ * `["experts"]` query the roster page uses, so an already-loaded roster costs nothing and a cold
  * one is fetched on the first ⌘K rather than on every page load.
  *
- * **What "search" means here** (the question P1T-165 was deferred to answer). `GET /api/employees`
- * is unpaged — it returns every active employee in one response, which is why the roster page can
+ * **What "search" means here** (the question P1T-165 was deferred to answer). `GET /api/experts`
+ * is unpaged — it returns every active expert in one response, which is why the roster page can
  * be a client-side table at all — so filtering that cached list *is* searching the whole roster.
  * The palette therefore searches exactly what the roster page shows: all of it, drafts excluded,
  * with no new endpoint and no second definition of what a match is. A server search becomes
  * necessary on the day the list endpoint starts paging, and on that day the roster page needs one
- * too; the guard is `Roster_list_returns_every_active_employee_in_one_response` in
- * `tests/Web.Tests/EmployeeCrudTests.cs`, which fails the moment that stops being true.
+ * too; the guard is `Roster_list_returns_every_active_expert_in_one_response` in
+ * `tests/Web.Tests/ExpertCrudTests.cs`, which fails the moment that stops being true.
  */
 function PaletteBody({ dock }: { dock: AgentDock }) {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
-  const { data: employees, isLoading, isError, error } = useEmployees();
+  const { data: experts, isLoading, isError, error } = useExperts();
   const listRef = useRef<HTMLUListElement | null>(null);
 
   const groups = useMemo<PaletteGroup[]>(() => {
@@ -103,7 +103,7 @@ function PaletteBody({ dock }: { dock: AgentDock }) {
     // People appear once there is something to search for. With an empty query the palette is a
     // list of places to go, and pouring the whole roster into it would bury them.
     const people = query.trim()
-      ? (employees ?? []).filter((e) =>
+      ? (experts ?? []).filter((e) =>
           matchesQuery(query, `${e.firstName} ${e.lastName}`, e.title, e.location, e.email),
         )
       : [];
@@ -135,12 +135,12 @@ function PaletteBody({ dock }: { dock: AgentDock }) {
           label: `${e.firstName} ${e.lastName}`,
           hint: [e.title, e.location].filter(Boolean).join(" · "),
           icon: <PersonOutlinedIcon fontSize="small" />,
-          run: () => navigate(`/employees/${e.id}`),
+          run: () => navigate(`/experts/${e.id}`),
         })),
       },
       { heading: "Agent surfaces", items: surfaces },
     ].filter((group) => group.items.length > 0);
-  }, [query, employees, navigate, dock]);
+  }, [query, experts, navigate, dock]);
 
   // One flat list underneath the headings: the arrow keys move through results, not through groups.
   const flat = useMemo(() => groups.flatMap((g) => g.items), [groups]);

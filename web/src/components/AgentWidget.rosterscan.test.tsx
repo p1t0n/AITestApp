@@ -26,7 +26,7 @@ vi.mock("../api", async (importOriginal) => {
     useSubmitRosterScan: () => submitState,
     useRosterScanJob: () => jobState,
     useSkills: () => ({ data: [], isLoading: false }),
-    useEmployees: () => ({ data: [], isLoading: false }),
+    useExperts: () => ({ data: [], isLoading: false }),
     useUsage: () => ({ data: undefined, isLoading: false, isError: false, error: null }),
     useRosterQa: () => ({ mutateAsync: vi.fn(), isPending: false }),
     useCvTailoring: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -67,7 +67,7 @@ function job(overrides: Partial<RosterScanJob>): RosterScanJob {
     progress: { scored: 1, failed: 0, pending: 1, total: 2, settled: 1 },
     candidates: [
       {
-        employeeId: ADA,
+        expertId: ADA,
         name: "Ada Lovelace",
         title: "Engineer",
         status: "scored",
@@ -76,7 +76,7 @@ function job(overrides: Partial<RosterScanJob>): RosterScanJob {
         rationale: "Deep Kafka evidence.",
         scorable: true,
       },
-      { employeeId: GRACE, name: "Grace Hopper", title: "Admiral", status: "pending" },
+      { expertId: GRACE, name: "Grace Hopper", title: "Admiral", status: "pending" },
     ],
     ...overrides,
   };
@@ -133,7 +133,7 @@ describe("Roster Scan tab", () => {
         progress: { scored: 1, failed: 0, pending: 0, total: 1, settled: 1 },
         candidates: [
           {
-            employeeId: ADA,
+            expertId: ADA,
             name: "Ada Lovelace",
             title: "Engineer",
             status: "scored",

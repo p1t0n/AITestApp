@@ -41,7 +41,7 @@ A second axis of scope on the same claim.
 Two rules, and the second is the load-bearing one:
 
 1. **Grants only ever narrow.** They compose with the capability scopes rather than replacing
-   them, so `mcp:tool:employee_delete` on an `mcp:read` token buys nothing — deletes need
+   them, so `mcp:tool:expert_delete` on an `mcp:read` token buys nothing — deletes need
    `mcp:admin`, and the tool's own `[Authorize]` policy is still what decides that. A grant says
    "of the tools you may already use, these". It is deliberately a distinct prefix so it can
    never be mistaken for a route to capability.

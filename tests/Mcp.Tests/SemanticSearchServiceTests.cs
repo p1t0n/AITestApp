@@ -41,7 +41,7 @@ public sealed class SemanticSearchServiceTests : IAsyncLifetime
     public async Task DisposeAsync() => await _postgres.DisposeAsync();
 
     [Fact]
-    public async Task Ranks_topically_relevant_employees_and_excludes_others()
+    public async Task Ranks_topically_relevant_experts_and_excludes_others()
     {
         var result = await Service().SearchAsync("fintech");
 
@@ -56,7 +56,7 @@ public sealed class SemanticSearchServiceTests : IAsyncLifetime
     [Fact]
     public async Task Achievement_bullet_chunks_are_excluded_from_the_retrieval_pool()
     {
-        // Larry's only "logistics" mention lives in an achievement bullet; the employee-level
+        // Larry's only "logistics" mention lives in an achievement bullet; the expert-level
         // search must not surface him through it (bullet chunks are reserved for the exemplar
         // retrieval path).
         var result = await Service().SearchAsync("logistics");
@@ -84,7 +84,7 @@ public sealed class SemanticSearchServiceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Skill_pre_filter_keeps_only_employees_with_the_skill()
+    public async Task Skill_pre_filter_keeps_only_experts_with_the_skill()
     {
         // Only Fiona has React among the fintech people.
         var result = await Service().SearchAsync("fintech",
@@ -126,16 +126,16 @@ public sealed class SemanticSearchServiceTests : IAsyncLifetime
         db.Categories.Add(category);
         db.Skills.Add(react);
 
-        var fiona = Employee("Fiona", "Fintech", "London", "Built fintech trading systems.");
-        fiona.Skills.Add(new EmployeeSkill
+        var fiona = Expert("Fiona", "Fintech", "London", "Built fintech trading systems.");
+        fiona.Skills.Add(new ExpertSkill
         {
             Id = Guid.NewGuid(), SkillId = react.Id, Level = SkillLevel.Advanced, YearsExperience = 5m,
         });
 
-        var pat = Employee("Pat", "Payments", "London", "Ran a fintech payments platform.");
-        var gary = Employee("Gary", "Gaming", "Berlin", "Wrote gaming engines.");
+        var pat = Expert("Pat", "Payments", "London", "Ran a fintech payments platform.");
+        var gary = Expert("Gary", "Gaming", "Berlin", "Wrote gaming engines.");
 
-        db.Employees.AddRange(fiona, pat, gary);
+        db.Experts.AddRange(fiona, pat, gary);
         await db.SaveChangesAsync();
     }
 
@@ -146,15 +146,15 @@ public sealed class SemanticSearchServiceTests : IAsyncLifetime
     /// </summary>
     private async Task SeedLarrysBulletChunkAsync(AppDbContext db)
     {
-        var larry = Employee("Larry", "Logistics", "London", "Moved boxes around.");
+        var larry = Expert("Larry", "Logistics", "London", "Moved boxes around.");
         larry.Experiences.Clear();
-        db.Employees.Add(larry);
+        db.Experts.Add(larry);
 
         var embedded = await new KeywordEmbedder().EmbedAsync(["Optimized logistics routing."]);
-        db.EmployeeSearchChunks.Add(new EmployeeSearchChunk
+        db.ExpertSearchChunks.Add(new ExpertSearchChunk
         {
             Id = Guid.NewGuid(),
-            EmployeeId = larry.Id,
+            ExpertId = larry.Id,
             SourceType = SearchChunkSource.Achievement,
             SourceId = Guid.NewGuid(),
             Content = "Optimized logistics routing.",
@@ -166,7 +166,7 @@ public sealed class SemanticSearchServiceTests : IAsyncLifetime
         await db.SaveChangesAsync();
     }
 
-    private static Employee Employee(string first, string last, string location, string experienceSummary) => new()
+    private static Expert Expert(string first, string last, string location, string experienceSummary) => new()
     {
         Id = Guid.NewGuid(),
         FirstName = first,
@@ -250,7 +250,7 @@ public sealed class SemanticSearchServiceTests : IAsyncLifetime
         var filtered = await service.SearchAsync("fintech", new SemanticSearchFilters(Location: "Berlin"));
         filtered.Results.Should().BeEmpty();
 
-        // Achievement bullet chunks stay out of the employee-level pool, same as the semantic path.
+        // Achievement bullet chunks stay out of the expert-level pool, same as the semantic path.
         var bullets = await service.SearchAsync("logistics");
         bullets.Results.Should().BeEmpty();
     }

@@ -60,7 +60,7 @@ public class StaffingLiveSmokeTests
         candidates.GetArrayLength().Should().BeGreaterThan(0);
         foreach (var candidate in candidates.EnumerateArray())
         {
-            candidate.GetProperty("employeeId").GetGuid().Should().NotBeEmpty();
+            candidate.GetProperty("expertId").GetGuid().Should().NotBeEmpty();
             candidate.GetProperty("rationale").GetString().Should().NotBeNullOrWhiteSpace();
             candidate.GetProperty("match").GetProperty("status").GetString()
                 .Should().BeOneOf("completed", "failed", "skipped");

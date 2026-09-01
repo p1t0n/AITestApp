@@ -29,7 +29,7 @@ export interface ShortlistRequirementItem {
 }
 
 export interface ShortlistCandidate {
-  employeeId: string;
+  expertId: string;
   name: string;
   title: string;
   score: number;

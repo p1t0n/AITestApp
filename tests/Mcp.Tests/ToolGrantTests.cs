@@ -32,7 +32,7 @@ public class ToolGrantTests
         var grants = McpToolGrants.Of(Principal(McpScopes.Read, McpScopes.Write));
 
         grants.ShowsEverything.Should().BeTrue();
-        grants.Allows("employee_delete").Should().BeTrue();
+        grants.Allows("expert_delete").Should().BeTrue();
     }
 
     [Fact]
@@ -44,7 +44,7 @@ public class ToolGrantTests
         grants.ShowsEverything.Should().BeFalse();
         grants.ToolNames.Should().BeEquivalentTo(["cv_get", "skill_list"]);
         grants.Allows("cv_get").Should().BeTrue();
-        grants.Allows("employee_list").Should().BeFalse();
+        grants.Allows("expert_list").Should().BeFalse();
     }
 
     [Fact]
@@ -74,12 +74,12 @@ public class ToolGrantTests
     {
         using var factory = McpTestHost.CreateFactory(nameof(Tools_list_advertises_only_the_granted_tools));
         var token = McpTestHost.MintToken(
-            McpScopes.Read, McpScopes.ForTool("cv_get"), McpScopes.ForTool("employee_list"));
+            McpScopes.Read, McpScopes.ForTool("cv_get"), McpScopes.ForTool("expert_list"));
         await using var client = await McpTestHost.ConnectAsync(factory, token);
 
         var names = (await client.ListToolsAsync()).Select(t => t.Name);
 
-        names.Should().BeEquivalentTo(["cv_get", "employee_list"]);
+        names.Should().BeEquivalentTo(["cv_get", "expert_list"]);
     }
 
     [Fact]
@@ -89,28 +89,28 @@ public class ToolGrantTests
         // client could still call what it had discarded, because its token was entitled to the
         // whole read surface — the allowlist was a convention, not a boundary.
         using var factory = McpTestHost.CreateFactory(nameof(Calling_an_ungranted_tool_is_refused));
-        McpTestHost.SeedEmployee(factory);
+        McpTestHost.SeedExpert(factory);
         var token = McpTestHost.MintToken(McpScopes.Read, McpScopes.ForTool("cv_get"));
         await using var client = await McpTestHost.ConnectAsync(factory, token);
 
-        var result = await client.CallToolAsync("employee_list");
+        var result = await client.CallToolAsync("expert_list");
 
         // Refused as a structured tool error, not a protocol fault: the agent reads the code and
         // picks another tool, the same way it self-corrects a validation or not_found failure.
         result.IsError.Should().BeTrue();
         McpTestHost.Text(result).Should()
-            .Contain(ToolGrantFilters.ForbiddenCode).And.Contain("employee_list");
+            .Contain(ToolGrantFilters.ForbiddenCode).And.Contain("expert_list");
     }
 
     [Fact]
     public async Task A_granted_tool_still_works()
     {
         using var factory = McpTestHost.CreateFactory(nameof(A_granted_tool_still_works));
-        McpTestHost.SeedEmployee(factory);
-        var token = McpTestHost.MintToken(McpScopes.Read, McpScopes.ForTool("employee_list"));
+        McpTestHost.SeedExpert(factory);
+        var token = McpTestHost.MintToken(McpScopes.Read, McpScopes.ForTool("expert_list"));
         await using var client = await McpTestHost.ConnectAsync(factory, token);
 
-        var result = await client.CallToolAsync("employee_list");
+        var result = await client.CallToolAsync("expert_list");
 
         McpTestHost.Text(result).Should().Contain("Lovelace");
     }
@@ -118,18 +118,18 @@ public class ToolGrantTests
     [Fact]
     public async Task A_grant_cannot_widen_what_the_capability_scope_carries()
     {
-        // The two axes compose; they do not substitute. mcp:tool:employee_delete on a read-only
+        // The two axes compose; they do not substitute. mcp:tool:expert_delete on a read-only
         // token buys nothing, because deletes need mcp:admin — which is the whole point of
         // keeping the grant prefix separate from the capability scopes.
         using var factory = McpTestHost.CreateFactory(nameof(A_grant_cannot_widen_what_the_capability_scope_carries));
-        var employee = McpTestHost.SeedEmployee(factory);
-        var token = McpTestHost.MintToken(McpScopes.Read, McpScopes.ForTool("employee_delete"));
+        var expert = McpTestHost.SeedExpert(factory);
+        var token = McpTestHost.MintToken(McpScopes.Read, McpScopes.ForTool("expert_delete"));
         await using var client = await McpTestHost.ConnectAsync(factory, token);
 
         (await client.ListToolsAsync()).Should().BeEmpty();
 
         var call = async () => await client.CallToolAsync(
-            "employee_delete", new Dictionary<string, object?> { ["id"] = employee.Id });
+            "expert_delete", new Dictionary<string, object?> { ["id"] = expert.Id });
 
         // Refused by the capability policy, which is the SDK's own filter and refuses harder —
         // a protocol error, not a result. The grant never got a say, and that is the assertion.

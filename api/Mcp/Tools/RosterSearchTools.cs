@@ -10,7 +10,7 @@ public class RosterSearchTools
 {
     [McpServerTool(Name = "roster_semantic_search", ReadOnly = true, Destructive = false),
      Description(
-         "Find employees by the MEANING of their experience — ONE free-form question searched " +
+         "Find experts by the MEANING of their experience — ONE free-form question searched " +
          "semantically over their career narratives. Use this for capability questions like " +
          "'who has built real-time payments systems' or 'anyone with fintech + team-lead " +
          "experience', where the answer lives in prose rather than skill tags. It searches for " +
@@ -18,14 +18,14 @@ public class RosterSearchTools
          "examples, well-written or exemplar bullets, how something is best described — that is " +
          "style_exemplar_search; do NOT use it for a job description with several must-haves " +
          "— roster_shortlist_search searches each requirement and ranks coverage-first with " +
-         "per-requirement evidence; do NOT use it to sweep every employee — roster_digest_list " +
+         "per-requirement evidence; do NOT use it to sweep every expert — roster_digest_list " +
          "pages the whole roster in digest form; do NOT use it for exact facts (specific skill " +
-         "levels, availability dates, contact info) — employee_get and employee_list hold those. " +
+         "levels, availability dates, contact info) — expert_get and expert_list hold those. " +
          "For a compound question combine its filters — location, skillIds, availableOn, " +
          "minYears — into ONE call, never a roster sweep filtered by hand. Input: query, those " +
          "filters, topK; e.g. {\"query\": \"led a payments platform migration\", " +
          "\"location\": \"London\"}. Returns " +
-         "the best-matching employees, each with a relevance score (0-1) and the evidence " +
+         "the best-matching experts, each with a relevance score (0-1) and the evidence " +
          "snippets that matched — NOT full CVs (drill into cv_get) and NOT per-requirement " +
          "coverage. Returns an empty list when nothing is relevant."),
      Authorize(Policy = McpScopes.Read)]
@@ -35,15 +35,15 @@ public class RosterSearchTools
                      "e.g. 'led a real-time payments platform migration'.")]
         string query,
         CancellationToken ct,
-        [Description("Optional: keep only employees available (capacity > 0) on this date (YYYY-MM-DD).")]
+        [Description("Optional: keep only experts available (capacity > 0) on this date (YYYY-MM-DD).")]
         DateOnly? availableOn = null,
-        [Description("Optional: keep only employees who have ALL of these catalog skill ids (GUIDs).")]
+        [Description("Optional: keep only experts who have ALL of these catalog skill ids (GUIDs).")]
         Guid[]? skillIds = null,
-        [Description("Optional: keep only employees in this location (case-insensitive).")]
+        [Description("Optional: keep only experts in this location (case-insensitive).")]
         string? location = null,
         [Description("Optional: minimum years of experience (applied to the required skills, or any skill if none given).")]
         decimal? minYears = null,
-        [Description("Optional: max employees to return (default 5, capped at 20).")]
+        [Description("Optional: max experts to return (default 5, capped at 20).")]
         int? topK = null)
     {
         var hasFilter = availableOn is not null

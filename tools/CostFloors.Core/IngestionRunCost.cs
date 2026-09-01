@@ -13,7 +13,7 @@ namespace ExpertToJob.CostFloors;
 /// achievement bullet, every date, every skill id it has already written. Those are the payload,
 /// and there is no filter or page that makes them smaller.</para>
 ///
-/// <para>And the run is long by construction, not by thrash. One employee, one skill, one
+/// <para>And the run is long by construction, not by thrash. One expert, one skill, one
 /// language, one qualification, one role — each is its own MCP write. A faithful ingestion of an
 /// ordinary two-role resume is sixteen tool calls before it has done anything wrong. That is what
 /// makes an iteration ceiling the load-bearing number here, and what
@@ -56,10 +56,10 @@ public static class IngestionRunCost
     [
         "skill_list", "skill_list", "skill_list", "skill_list",
         "skill_list", "skill_list", "skill_list", "skill_list",
-        "employee_create_draft",
+        "expert_create_draft",
         "language_add", "language_add", "language_add",
-        "employee_skill_add", "employee_skill_add", "employee_skill_add", "employee_skill_add",
-        "employee_skill_add", "employee_skill_add", "employee_skill_add", "employee_skill_add",
+        "expert_skill_add", "expert_skill_add", "expert_skill_add", "expert_skill_add",
+        "expert_skill_add", "expert_skill_add", "expert_skill_add", "expert_skill_add",
         "qualification_add",
         "experience_add", "experience_add",
     ];
@@ -77,7 +77,7 @@ public static class IngestionRunCost
     /// costs one kind's retry rather than the whole draft's.</para>
     /// </summary>
     public static readonly IReadOnlyList<string> ReferenceIngestionTurns =
-        ["skill_list", "employee_create_draft", "language_add", "employee_skill_add",
+        ["skill_list", "expert_create_draft", "language_add", "expert_skill_add",
          "qualification_add", "experience_add"];
 
     /// <summary>

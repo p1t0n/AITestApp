@@ -1,6 +1,6 @@
 namespace ExpertToJob.RetrievalEval;
 
-/// <summary>One returned employee with the similarity the search scored it at.</summary>
+/// <summary>One returned expert with the similarity the search scored it at.</summary>
 public sealed record ScoredHit(string Key, double Similarity);
 
 /// <summary>

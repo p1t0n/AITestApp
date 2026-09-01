@@ -48,7 +48,7 @@ public static class EvalRunner
     public static async Task<EvalRunResult> RunAsync(
         Func<AppDbContext> dbFactory,
         IEmbedder embedder,
-        IReadOnlyList<EvalEmployee> corpus,
+        IReadOnlyList<EvalExpert> corpus,
         IReadOnlyList<GoldenQuery> goldenSet,
         CancellationToken ct = default)
     {
@@ -66,7 +66,7 @@ public static class EvalRunner
     public static async Task<IReadOnlyList<CachedQueryResult>> CaptureAsync(
         Func<AppDbContext> dbFactory,
         IEmbedder embedder,
-        IReadOnlyList<EvalEmployee> corpus,
+        IReadOnlyList<EvalExpert> corpus,
         IReadOnlyList<GoldenQuery> goldenSet,
         double floorSimilarity,
         QueryRetryPolicy? retry = null,
@@ -87,7 +87,7 @@ public static class EvalRunner
 
             cached.Add(new CachedQueryResult(query,
                 result.Results
-                    .Select(hit => new ScoredHit(keysById[hit.EmployeeId], hit.Score))
+                    .Select(hit => new ScoredHit(keysById[hit.ExpertId], hit.Score))
                     .ToList()));
         }
 
@@ -135,16 +135,16 @@ public static class EvalRunner
 
     /// <summary>Seed the corpus and embed it via the production reconciler; returns id → corpus key.</summary>
     private static async Task<Dictionary<Guid, string>> SeedAndIndexAsync(
-        Func<AppDbContext> dbFactory, IEmbedder embedder, IReadOnlyList<EvalEmployee> corpus, CancellationToken ct)
+        Func<AppDbContext> dbFactory, IEmbedder embedder, IReadOnlyList<EvalExpert> corpus, CancellationToken ct)
     {
         await using var db = dbFactory();
 
         var keysById = new Dictionary<Guid, string>();
         foreach (var fixture in corpus)
         {
-            var employee = EvalCorpusSeeder.ToEmployee(fixture);
-            keysById[employee.Id] = fixture.Key;
-            db.Employees.Add(employee);
+            var expert = EvalCorpusSeeder.ToExpert(fixture);
+            keysById[expert.Id] = fixture.Key;
+            db.Experts.Add(expert);
         }
 
         await db.SaveChangesAsync(ct);

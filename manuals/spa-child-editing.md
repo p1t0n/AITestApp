@@ -1,10 +1,10 @@
-# SPA editing for the employee's children (P1T-142, P1T-156)
+# SPA editing for the expert's children (P1T-142, P1T-156)
 
 The API has supported these three children since the domain slice. The SPA rendered all three
 read-only: chips and `<ul>`s with no way to add, edit or remove, and `web/src/api.ts` had no client
 function for any of them. Availability and skills had inline add/delete; these did not. This records
 the slice that closes it — and, below, the second slice (P1T-156) that gave availability and
-employee skills the same treatment.
+expert skills the same treatment.
 
 The gap was not only a missing feature. `ExperiencesController` had no `[ApiController]`, so MVC did
 not infer `[FromBody]` and every JSON `POST`/`PUT` bound an empty DTO and answered 400 — dead from
@@ -16,34 +16,34 @@ it from the other side). A UI that never exercises an endpoint is how an endpoin
 ```
 web/src/
   types.ts                     SaveSpokenLanguage / SaveQualification / SaveExperience(+SaveAchievement)
-  api.ts                       add/update/delete per child, invalidating ["employees", id]
+  api.ts                       add/update/delete per child, invalidating ["experts", id]
   pages/
     LanguageFormDialog.tsx     language + level
     QualificationFormDialog.tsx  the Degree half or the Certification half, never both
     ExperienceFormDialog.tsx   scalars + the bullet editor + the catalog skill picker
-    EmployeeDetailPage.tsx     Add / Edit / Delete affordances on the three sections
+    ExpertDetailPage.tsx     Add / Edit / Delete affordances on the three sections
     ChildFormDialogs.test.tsx  11 component tests
-  e2e/employee-children.e2e.ts three browser journeys against a real API
+  e2e/expert-children.e2e.ts three browser journeys against a real API
 ```
 
 P1T-156 added, in the same shape:
 
 ```
 web/src/
-  types.ts                        SaveAvailabilityEntry / SaveEmployeeSkill
-  api.ts                          useUpdateAvailability / useUpdateEmployeeSkill
+  types.ts                        SaveAvailabilityEntry / SaveExpertSkill
+  api.ts                          useUpdateAvailability / useUpdateExpertSkill
   pages/
     AvailabilityFormDialog.tsx    effective-from + capacity
-    EmployeeSkillFormDialog.tsx   catalog link (add only) + level + years
+    ExpertSkillFormDialog.tsx   catalog link (add only) + level + years
     ChildFormDialogs.test.tsx     8 more component tests
-  e2e/employee-children.e2e.ts    a fourth journey, over both PUTs
+  e2e/expert-children.e2e.ts    a fourth journey, over both PUTs
 ```
 
 ## Decisions
 
-**The dialog is mounted only while a row is being edited.** The `EmployeeFormDialog` pattern seeds
+**The dialog is mounted only while a row is being edited.** The `ExpertFormDialog` pattern seeds
 its state with `useState({ ...empty, ...initial })`, which reads `initial` on first render and never
-again. That is invisible for a single employee-edit dialog and wrong for a list: a dialog kept
+again. That is invisible for a single expert-edit dialog and wrong for a list: a dialog kept
 mounted across two rows shows the first row's values for the second. Conditional rendering
 (`{languageEdit && <LanguageFormDialog … />}`) makes mounting the thing that loads the form, so the
 existing pattern stays usable without a `useEffect` that re-syncs state behind the user's back.
@@ -83,22 +83,22 @@ Both layers were broken deliberately once, since a green suite proves nothing on
 * Sending `achievements: []` from the form fails the e2e
   `an experience with bullets and a skill is written, edited, and reaches the CV` — at the CV
   assertion, which is the far end of the path the dead controller used to break.
-* Dropping the locked `skillId` from the employee-skill payload fails
+* Dropping the locked `skillId` from the expert-skill payload fails
   `locks the skill on edit and sends the row's own id back`; removing the empty-date guard fails
   `cannot save without a date, because an empty one fails binding before validation` (P1T-156).
 
-## Availability and employee skills (P1T-156)
+## Availability and expert skills (P1T-156)
 
 The bullet this manual used to carry under *Worth revisiting* — two PUTs with no caller anywhere,
 so correcting a capacity typo meant delete-then-add. Closed by giving both children the shape above,
 which also removed the two inline add rows: one form now builds each payload rather than two.
 
-**The employee-skill picker is disabled on edit, not hidden.** `EmployeeSkillService.UpdateAsync`
+**The expert-skill picker is disabled on edit, not hidden.** `ExpertSkillService.UpdateAsync`
 validates `SkillId` and then assigns `Level` and `YearsExperience` only — it never reassigns the
 catalog link. An editable picker would look like it worked and change nothing, which is the worst of
 the three options; hiding the field would leave the dialog ambiguous about which row it is editing.
 A disabled field showing the skill name, with a helper line saying that pointing the row at another
-catalog entry is a remove and an add, is the honest one. The name comes off the row (`EmployeeSkillDto`
+catalog entry is a remove and an add, is the honest one. The name comes off the row (`ExpertSkillDto`
 carries it) rather than out of a catalog lookup, so the dialog does not wait on a query for a string
 it was handed.
 

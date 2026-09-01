@@ -14,7 +14,7 @@ public sealed record ShortlistRequirementItem(
 
 /// <summary>One shortlisted candidate in the pinned response contract.</summary>
 public sealed record ShortlistCandidateItem(
-    Guid EmployeeId,
+    Guid ExpertId,
     string Name,
     string Title,
     double Score,
@@ -56,7 +56,7 @@ public static class ShortlistComposer
 
         var candidates = tool.Results
             .Select(candidate => new ShortlistCandidateItem(
-                candidate.EmployeeId,
+                candidate.ExpertId,
                 candidate.Name,
                 candidate.Title,
                 candidate.Score,
@@ -64,7 +64,7 @@ public static class ShortlistComposer
                 candidate.Evidence
                     .Select(e => new ShortlistRequirementItem(e.Requirement, e.Matched, e.Snippet))
                     .ToList(),
-                rationales.TryGetValue(candidate.EmployeeId, out var rationale)
+                rationales.TryGetValue(candidate.ExpertId, out var rationale)
                     ? rationale
                     : TemplatedRationale(candidate)))
             .ToList();
@@ -86,7 +86,7 @@ public static class ShortlistComposer
 
         foreach (var entry in entries)
         {
-            if (entry?.EmployeeId is { } idText
+            if (entry?.ExpertId is { } idText
                 && Guid.TryParse(idText, out var id)
                 && !string.IsNullOrWhiteSpace(entry.Rationale))
             {
@@ -102,7 +102,7 @@ public static class ShortlistComposer
         // Primary shape since P1T-117: the schema-constrained {"rationales":[...]} object.
         if (TryDeserializeObject(modelText) is { Rationales: { } wrapped })
         {
-            return wrapped.Select(e => e is null ? null : new RationaleEntry(e.EmployeeId, e.Rationale)).ToList();
+            return wrapped.Select(e => e is null ? null : new RationaleEntry(e.ExpertId, e.Rationale)).ToList();
         }
 
         if (TryDeserialize(modelText) is { } direct)
@@ -165,5 +165,5 @@ public static class ShortlistComposer
         return rationale + ".";
     }
 
-    private sealed record RationaleEntry(string? EmployeeId, string? Rationale);
+    private sealed record RationaleEntry(string? ExpertId, string? Rationale);
 }

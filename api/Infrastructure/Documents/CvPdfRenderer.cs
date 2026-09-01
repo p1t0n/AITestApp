@@ -1,6 +1,6 @@
 using System.Globalization;
 using ExpertToJob.Application.Cv;
-using ExpertToJob.Application.Employees;
+using ExpertToJob.Application.Experts;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -128,7 +128,7 @@ public sealed class CvPdfRenderer : ICvPdfRenderer
             // A CV with nothing on it but a header would leave the content column empty, which
             // QuestPDF rejects outright — say so instead.
             if (IsEmpty(cv))
-                col.Item().Text("No CV content recorded for this employee yet.")
+                col.Item().Text("No CV content recorded for this expert yet.")
                     .Italic().FontColor(Colors.Grey.Darken1);
         });
     }

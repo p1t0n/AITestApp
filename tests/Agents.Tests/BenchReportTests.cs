@@ -8,11 +8,11 @@ namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// Unit tests for the bench report's deterministic pieces (P1T-104): the pure stats composer,
-/// the deterministic fallback narrative, and the array-aware employee_list result extraction.
+/// the deterministic fallback narrative, and the array-aware expert_list result extraction.
 /// </summary>
 public class BenchReportTests
 {
-    private static BenchEmployee Emp(int capacity, string title = "Engineer", string? location = "London")
+    private static BenchExpert Emp(int capacity, string title = "Engineer", string? location = "London")
         => new(title, location, capacity);
 
     private static StaffingProposal Proposal(string status, string jd = "Backend engineer role", params string[] candidates) => new()
@@ -24,7 +24,7 @@ public class BenchReportTests
         Candidates = candidates
             .Select((name, i) => new StaffingProposalCandidate
             {
-                Id = Guid.NewGuid(), EmployeeId = Guid.NewGuid(), Name = name, Rank = i + 1,
+                Id = Guid.NewGuid(), ExpertId = Guid.NewGuid(), Name = name, Rank = i + 1,
             })
             .ToList(),
     };
@@ -39,7 +39,7 @@ public class BenchReportTests
             ],
             proposals: null);
 
-        stats.ActiveEmployees.Should().Be(5);
+        stats.ActiveExperts.Should().Be(5);
         stats.FullyAvailable.Should().Be(2);
         stats.PartiallyAvailable.Should().Be(2);
         stats.FullyBooked.Should().Be(1);
@@ -75,11 +75,11 @@ public class BenchReportTests
     {
         var stats = BenchStatsComposer.Compose(null, null);
 
-        stats.ActiveEmployees.Should().Be(0);
+        stats.ActiveExperts.Should().Be(0);
         stats.AverageCapacityPercent.Should().Be(0);
 
         var fallback = BenchStatsComposer.FallbackAnswer(stats);
-        fallback.Should().Contain("Active employees: 0");
+        fallback.Should().Contain("Active experts: 0");
     }
 
     [Fact]
@@ -91,25 +91,25 @@ public class BenchReportTests
 
         var fallback = BenchStatsComposer.FallbackAnswer(stats);
 
-        fallback.Should().Contain("Active employees: 2");
+        fallback.Should().Contain("Active experts: 2");
         fallback.Should().Contain("fully booked: 1");
         fallback.Should().Contain("1 pending");
     }
 
     [Fact]
-    public void Extracts_employee_list_from_plain_arrays_and_mcp_envelopes()
+    public void Extracts_expert_list_from_plain_arrays_and_mcp_envelopes()
     {
-        const string employees =
+        const string experts =
             """[{"title":"Engineer","location":"London","currentCapacityPercent":100}]""";
 
-        var plain = BenchReportService.ExtractEmployees(JsonNode.Parse(employees), 0);
+        var plain = BenchReportService.ExtractExperts(JsonNode.Parse(experts), 0);
         plain.Should().ContainSingle().Which.CurrentCapacityPercent.Should().Be(100);
 
         var envelope = JsonNode.Parse(
-            $$"""{"content":[{"$type":"text","text":{{System.Text.Json.JsonSerializer.Serialize(employees)}}}]}""");
-        var fromEnvelope = BenchReportService.ExtractEmployees(envelope, 0);
+            $$"""{"content":[{"$type":"text","text":{{System.Text.Json.JsonSerializer.Serialize(experts)}}}]}""");
+        var fromEnvelope = BenchReportService.ExtractExperts(envelope, 0);
         fromEnvelope.Should().ContainSingle().Which.Title.Should().Be("Engineer");
 
-        BenchReportService.ExtractEmployees(JsonNode.Parse("\"not employees\""), 0).Should().BeNull();
+        BenchReportService.ExtractExperts(JsonNode.Parse("\"not experts\""), 0).Should().BeNull();
     }
 }

@@ -5,13 +5,13 @@ namespace ExpertToJob.RetrievalEval;
 
 /// <summary>
 /// Maps the frozen eval corpus onto real domain entities so the eval exercises the exact production
-/// pipeline: <c>ChunkProjection</c> renders these employees the same way it renders roster ones.
+/// pipeline: <c>ChunkProjection</c> renders these experts the same way it renders roster ones.
 /// </summary>
 public static class EvalCorpusSeeder
 {
-    public static Employee ToEmployee(EvalEmployee fixture)
+    public static Expert ToExpert(EvalExpert fixture)
     {
-        var employee = new Employee
+        var expert = new Expert
         {
             Id = Guid.NewGuid(),
             FirstName = fixture.FirstName,
@@ -24,7 +24,7 @@ public static class EvalCorpusSeeder
 
         foreach (var experience in fixture.Experiences)
         {
-            employee.Experiences.Add(new Experience
+            expert.Experiences.Add(new Experience
             {
                 Id = Guid.NewGuid(),
                 Company = experience.Company,
@@ -38,7 +38,7 @@ public static class EvalCorpusSeeder
             });
         }
 
-        return employee;
+        return expert;
     }
 
     /// <summary>"yyyy-MM" fixture months land on the first of the month.</summary>

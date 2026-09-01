@@ -1,7 +1,7 @@
 namespace ExpertToJob.Application.Search;
 
 /// <summary>
-/// Pure diff between the chunks an employee <em>should</em> have (from <see cref="ChunkProjection"/>)
+/// Pure diff between the chunks an expert <em>should</em> have (from <see cref="ChunkProjection"/>)
 /// and the chunks currently persisted. Drives the reconciliation worker: content changes and new
 /// sources become upserts (to re-embed), and sources that no longer exist become deletes.
 ///

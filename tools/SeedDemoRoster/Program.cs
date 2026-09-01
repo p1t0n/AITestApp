@@ -4,13 +4,13 @@ using Microsoft.EntityFrameworkCore;
 namespace ExpertToJob.Tools.SeedDemoRoster;
 
 /// <summary>
-/// Repo tool (P1T-51): seeds the committed 500-employee demo roster into a database, or wipes it
-/// back out. Idempotent — re-running skips employees whose email already exists. Embeddings are
-/// not produced here; the MCP service's reconcile worker indexes new employees on its own.
+/// Repo tool (P1T-51): seeds the committed 500-expert demo roster into a database, or wipes it
+/// back out. Idempotent — re-running skips experts whose email already exists. Embeddings are
+/// not produced here; the MCP service's reconcile worker indexes new experts on its own.
 ///
 /// Usage: dotnet run -- [--count N] [--wipe] [--connection "..."]
-///   --count N       seed only the first N dataset employees (default: all 500)
-///   --wipe          delete every employee whose email ends @demo.example.com, then exit
+///   --count N       seed only the first N dataset experts (default: all 500)
+///   --wipe          delete every expert whose email ends @demo.example.com, then exit
 ///                   (combine with --count to wipe and reseed in one run)
 ///   --connection    Postgres connection string; falls back to ConnectionStrings__Default,
 ///                   then the local dev default.
@@ -48,7 +48,7 @@ public static class Program
         if (wipe)
         {
             var wiped = await DemoRosterSeeder.WipeAsync(db);
-            Console.WriteLine($"Wiped {wiped} demo employees (emails ending {DemoRosterSeeder.DemoEmailSuffix}).");
+            Console.WriteLine($"Wiped {wiped} demo experts (emails ending {DemoRosterSeeder.DemoEmailSuffix}).");
             if (count is null)
                 return 0; // wipe-only run: no reseed unless --count asked for one
         }
@@ -56,8 +56,8 @@ public static class Program
         var dataset = DemoRosterSeeder.LoadCommittedDataset();
         var result = await DemoRosterSeeder.SeedAsync(db, dataset, count);
         Console.WriteLine(
-            $"Seeded {result.Seeded} demo employees, skipped {result.Skipped} already present " +
-            $"(requested {count?.ToString() ?? "all"} of {dataset.Employees.Count}).");
+            $"Seeded {result.Seeded} demo experts, skipped {result.Skipped} already present " +
+            $"(requested {count?.ToString() ?? "all"} of {dataset.Experts.Count}).");
         return 0;
     }
 }

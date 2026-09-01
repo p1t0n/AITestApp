@@ -14,15 +14,15 @@ public class AuthBoundaryTests(WebApiFactory factory)
 {
     public static TheoryData<string, string> ProtectedEndpoints() => new()
     {
-        { "GET", "/api/employees" },
-        { "GET", "/api/employees/00000000-0000-0000-0000-000000000001" },
-        { "GET", "/api/employees/00000000-0000-0000-0000-000000000001/cv" },
-        { "GET", "/api/employees/00000000-0000-0000-0000-000000000001/cv.pdf" },
+        { "GET", "/api/experts" },
+        { "GET", "/api/experts/00000000-0000-0000-0000-000000000001" },
+        { "GET", "/api/experts/00000000-0000-0000-0000-000000000001/cv" },
+        { "GET", "/api/experts/00000000-0000-0000-0000-000000000001/cv.pdf" },
         { "GET", "/api/catalog/categories" },
         { "GET", "/api/catalog/categories/tree" },
         { "GET", "/api/catalog/skills" },
         { "GET", "/api/users" },
-        { "DELETE", "/api/employees/00000000-0000-0000-0000-000000000001" },
+        { "DELETE", "/api/experts/00000000-0000-0000-0000-000000000001" },
     };
 
     [Theory]
@@ -44,7 +44,7 @@ public class AuthBoundaryTests(WebApiFactory factory)
         client.DefaultRequestHeaders.Authorization = new("Bearer",
             "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiaXNzIjoiY3ZtYW5hZ2VyIiwiYXVkIjoiY3ZtYW5hZ2VyLWFwcCJ9.Ke4Yb5xHhX1fMPbqNQ3-7bOZbnI0Xz6mTgQZ0xhFqUo");
 
-        var response = await client.GetAsync("/api/employees");
+        var response = await client.GetAsync("/api/experts");
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -54,7 +54,7 @@ public class AuthBoundaryTests(WebApiFactory factory)
     {
         using var client = factory.CreateAuthenticatedClient();
 
-        var response = await client.GetAsync("/api/employees");
+        var response = await client.GetAsync("/api/experts");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }

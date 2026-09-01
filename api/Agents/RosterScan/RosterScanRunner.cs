@@ -28,7 +28,7 @@ public sealed class RosterScanRunner(
     IJdRequirementExtractor extractor,
     IRosterDigestSource digests,
     IScoringTransport transport,
-    IEmployeeFilterService filters,
+    IExpertFilterService filters,
     IUsageMeter meter,
     IUsageService usage,
     RosterScanOptions options,
@@ -125,11 +125,11 @@ public sealed class RosterScanRunner(
 
         for (var page = 1; ; page++)
         {
-            var digestPage = await digests.ListAsync(page, EmployeeDigestService.DefaultPageSize, ct)
+            var digestPage = await digests.ListAsync(page, ExpertDigestService.DefaultPageSize, ct)
                 ?? throw new InvalidOperationException("The roster_digest_list result was unreadable.");
             var seeds = digestPage.Items
-                .Where(d => eligible is null || eligible.Contains(d.EmployeeId))
-                .Select(d => new ScoringCandidateSeed(d.EmployeeId, d.Name, d.Title, d.Digest))
+                .Where(d => eligible is null || eligible.Contains(d.ExpertId))
+                .Select(d => new ScoringCandidateSeed(d.ExpertId, d.Name, d.Title, d.Digest))
                 .ToList();
             if (seeds.Count > 0)
             {
@@ -171,7 +171,7 @@ public sealed class RosterScanRunner(
             }
 
             var chunk = pending
-                .Select(c => new EmployeeDigest(c.EmployeeId, c.Name, c.Title, c.Digest))
+                .Select(c => new ExpertDigest(c.ExpertId, c.Name, c.Title, c.Digest))
                 .ToList();
             var scored = await transport.ScoreChunkAsync(job.JobDescription, extraction, chunk, ct);
             await MeterAsync(job, AgentName, scored.Reply, ct);

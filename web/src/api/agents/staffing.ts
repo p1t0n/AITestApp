@@ -29,7 +29,7 @@ export type StaffingStepStatus = "started" | "completed" | "failed";
 export interface StaffingStepEvent {
   stage: StaffingStage;
   status: StaffingStepStatus;
-  candidate?: { employeeId: string; name: string };
+  candidate?: { expertId: string; name: string };
   completedCount?: number;
   totalCount?: number;
   error?: string;
@@ -48,7 +48,7 @@ export interface StaffingMatchResult {
 }
 
 export interface StaffingReportCandidate {
-  employeeId: string;
+  expertId: string;
   name: string;
   title: string;
   shortlist: {
@@ -66,7 +66,7 @@ export interface StaffingReportCandidate {
 export interface StaffingReport {
   requirements: string[];
   candidates: StaffingReportCandidate[];
-  recommendation?: { employeeId: string; narrative: string } | null;
+  recommendation?: { expertId: string; narrative: string } | null;
   degraded: boolean;
   notes: string[];
   proposalId?: string | null;

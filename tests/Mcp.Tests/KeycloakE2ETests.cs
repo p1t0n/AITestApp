@@ -44,14 +44,14 @@ public class KeycloakE2ETests : IAsyncLifetime
 
         using var factory = McpTestHost.CreateFactoryWithAuthority(
             nameof(Real_keycloak_token_is_validated_and_scope_gated), authority, McpTestHost.Resource);
-        McpTestHost.SeedEmployee(factory);
+        McpTestHost.SeedExpert(factory);
         await using var client = await McpTestHost.ConnectAsync(factory, token);
 
         var names = (await client.ListToolsAsync()).Select(t => t.Name).ToList();
-        names.Should().Contain("employee_list");
-        names.Should().Contain("employee_delete"); // e2e client carries mcp:admin
+        names.Should().Contain("expert_list");
+        names.Should().Contain("expert_delete"); // e2e client carries mcp:admin
 
-        var list = await client.CallToolAsync("employee_list");
+        var list = await client.CallToolAsync("expert_list");
         McpTestHost.Text(list).Should().Contain("Lovelace");
     }
 

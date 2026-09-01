@@ -7,8 +7,8 @@ public class Experience
 {
     public Guid Id { get; set; }
 
-    public Guid EmployeeId { get; set; }
-    public Employee Employee { get; set; } = null!;
+    public Guid ExpertId { get; set; }
+    public Expert Expert { get; set; } = null!;
 
     public string Company { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;

@@ -1,7 +1,7 @@
 namespace ExpertToJob.Domain.Entities;
 
 /// <summary>
-/// A skill in the shared catalog. Employees link to it via <see cref="EmployeeSkill"/>.
+/// A skill in the shared catalog. Experts link to it via <see cref="ExpertSkill"/>.
 /// </summary>
 public class Skill
 {
@@ -18,5 +18,5 @@ public class Skill
     public Guid CategoryId { get; set; }
     public Category Category { get; set; } = null!;
 
-    public ICollection<EmployeeSkill> EmployeeSkills { get; set; } = new List<EmployeeSkill>();
+    public ICollection<ExpertSkill> ExpertSkills { get; set; } = new List<ExpertSkill>();
 }

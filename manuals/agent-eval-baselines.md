@@ -28,7 +28,7 @@ every staged write recorded and scored against 8 hand-written ground-truth resum
 (`IngestionEvalFixtures`: clean markdown, LinkedIn dump, terse, messy formatting, career changer,
 missing email, non-catalog skills, date traps).
 
-Metrics: employee field accuracy, catalog-skill recall/precision (via the written skill ids),
+Metrics: expert field accuracy, catalog-skill recall/precision (via the written skill ids),
 hallucinated skills (written but neither true nor mentioned), fabricated emails (the honesty hard
 line — a resume without an address must stage an empty one), experience match + date errors,
 language/qualification recall, validation-rejection count (self-correction pressure).
@@ -103,7 +103,7 @@ reason on the issue — never the fix for a red run.
 
 | Floor | Where | How |
 |---|---|---|
-| Read-tool result size | `Mcp.Tests/CostFloors/ReadToolResultCostFloorTests` | Real Postgres (Testcontainers, pgvector), the first 45 demo-roster employees over the full 79-skill catalog — the roster shape the 2026-08-30 measurement ran on |
+| Read-tool result size | `Mcp.Tests/CostFloors/ReadToolResultCostFloorTests` | Real Postgres (Testcontainers, pgvector), the first 45 demo-roster experts over the full 79-skill catalog — the roster shape the 2026-08-30 measurement ran on |
 | Per-tool schema size | `Mcp.Tests/CostFloors/ToolSurfaceCostFloorTests` | The MCP tool listing itself: name + description + input schema |
 | Read surface total | same | Sum over the 11 `mcp:read` tools — the pool every Tool Allowlist is drawn from |
 | Agent instruction size | `Agents.Tests/CostFloors/BaselinePromptSizeFloorTests` | The authored `Instructions` prompt of all 9 prompted agents |
@@ -119,7 +119,7 @@ really advertises per scope.
 
 ### Measured 2026-08-30 (estimated tokens)
 
-Read-tool results, 45-employee demo roster:
+Read-tool results, 45-expert demo roster:
 
 | Tool | Ceiling | Note |
 |---|---|---|
@@ -127,14 +127,14 @@ Read-tool results, 45-employee demo roster:
 | `skill_list` (`nameContains: "React"`) | 87 | was 3,080 and 42% of the traced roster-qa run; **P1T-145** ratcheted it onto the lookup that run wanted |
 | `skill_list` (unfiltered) | 3,100 | the sweep half, ratcheted separately as `SkillListUnfilteredPageCeiling` |
 | `category_tree` | 3,379 | |
-| `employee_list` | 2,805 | 12.7% of the same run |
-| `employee_get` | 2,064 | |
+| `expert_list` | 2,805 | 12.7% of the same run |
+| `expert_get` | 2,064 | |
 | `cv_get` | 1,643 | |
 | `category_list` | 270 | |
 | `availability_list` | 73 | |
 
 `roster_digest_list` is the one ceiling carrying slack (measured 18,248–18,253). Digests truncate
-at 1,500 **characters** and EF leaves an employee's experience order unspecified, so which
+at 1,500 **characters** and EF leaves an expert's experience order unspecified, so which
 non-ASCII characters fall inside the cut — and therefore how many `\uXXXX` escapes the JSON
 carries — shifts a few tokens per seed. Every other ceiling is pinned exactly.
 

@@ -28,7 +28,7 @@ public static class MarkdownReport
         sb.AppendLine("## Retrieval eval sweep");
         sb.AppendLine();
         sb.AppendLine(Invariant($"- Embedding model: `{metadata.ModelId}`"));
-        sb.AppendLine(Invariant($"- Corpus size: {metadata.CorpusSize} employees"));
+        sb.AppendLine(Invariant($"- Corpus size: {metadata.CorpusSize} experts"));
         sb.AppendLine(Invariant($"- Golden set: {metadata.QueryCount} queries"));
         sb.AppendLine(Invariant($"- Date: {metadata.Date}"));
         sb.AppendLine();

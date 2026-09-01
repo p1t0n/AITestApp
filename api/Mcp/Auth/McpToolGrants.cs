@@ -12,7 +12,7 @@ namespace ExpertToJob.Mcp.Auth;
 /// <list type="number">
 ///   <item><description><b>Grants only ever narrow.</b> They compose with the capability scopes
 ///   (<c>mcp:read</c> / <c>mcp:write</c> / <c>mcp:admin</c>) rather than replacing them, so
-///   <c>mcp:tool:employee_delete</c> on a read-only token buys nothing. A grant says "of the
+///   <c>mcp:tool:expert_delete</c> on a read-only token buys nothing. A grant says "of the
 ///   tools you may already use, these"; it is not a second way to be entitled to one.</description></item>
 ///   <item><description><b>No grants means no narrowing.</b> A token carrying none is shown
 ///   everything its capability scopes carry — the same rule as an absent Tool Allowlist, for the

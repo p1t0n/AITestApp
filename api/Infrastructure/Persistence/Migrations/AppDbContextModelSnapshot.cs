@@ -114,12 +114,12 @@ namespace ExpertToJob.Infrastructure.Persistence.Migrations
                     b.Property<DateOnly>("EffectiveFrom")
                         .HasColumnType("date");
 
-                    b.Property<Guid>("EmployeeId")
+                    b.Property<Guid>("ExpertId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EmployeeId", "EffectiveFrom")
+                    b.HasIndex("ExpertId", "EffectiveFrom")
                         .IsUnique();
 
                     b.ToTable("AvailabilityEntries");
@@ -146,7 +146,68 @@ namespace ExpertToJob.Infrastructure.Persistence.Migrations
                     b.ToTable("Categories");
                 });
 
-            modelBuilder.Entity("ExpertToJob.Domain.Entities.Employee", b =>
+            modelBuilder.Entity("ExpertToJob.Domain.Entities.Experience", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Company")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateOnly?>("EndDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("ExpertId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Summary")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpertId");
+
+                    b.ToTable("Experiences");
+                });
+
+            modelBuilder.Entity("ExpertToJob.Domain.Entities.ExperienceSkill", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ExperienceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SkillId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SkillId");
+
+                    b.HasIndex("ExperienceId", "SkillId")
+                        .IsUnique();
+
+                    b.ToTable("ExperienceSkills");
+                });
+
+            modelBuilder.Entity("ExpertToJob.Domain.Entities.Expert", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -196,16 +257,16 @@ namespace ExpertToJob.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasFilter("\"Status\" = 'Active' AND \"Email\" <> ''");
 
-                    b.ToTable("Employees");
+                    b.ToTable("Experts");
                 });
 
-            modelBuilder.Entity("ExpertToJob.Domain.Entities.EmployeeSkill", b =>
+            modelBuilder.Entity("ExpertToJob.Domain.Entities.ExpertSkill", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("EmployeeId")
+                    b.Property<Guid>("ExpertId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("Level")
@@ -224,71 +285,10 @@ namespace ExpertToJob.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("SkillId");
 
-                    b.HasIndex("EmployeeId", "SkillId")
+                    b.HasIndex("ExpertId", "SkillId")
                         .IsUnique();
 
-                    b.ToTable("EmployeeSkills");
-                });
-
-            modelBuilder.Entity("ExpertToJob.Domain.Entities.Experience", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Company")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<Guid>("EmployeeId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateOnly?>("EndDate")
-                        .HasColumnType("date");
-
-                    b.Property<string>("Location")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<DateOnly>("StartDate")
-                        .HasColumnType("date");
-
-                    b.Property<string>("Summary")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EmployeeId");
-
-                    b.ToTable("Experiences");
-                });
-
-            modelBuilder.Entity("ExpertToJob.Domain.Entities.ExperienceSkill", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("ExperienceId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("SkillId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SkillId");
-
-                    b.HasIndex("ExperienceId", "SkillId")
-                        .IsUnique();
-
-                    b.ToTable("ExperienceSkills");
+                    b.ToTable("ExpertSkills");
                 });
 
             modelBuilder.Entity("ExpertToJob.Domain.Entities.PasskeyCredential", b =>
@@ -345,11 +345,11 @@ namespace ExpertToJob.Infrastructure.Persistence.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
 
-                    b.Property<Guid>("EmployeeId")
-                        .HasColumnType("uuid");
-
                     b.Property<DateOnly?>("EndDate")
                         .HasColumnType("date");
+
+                    b.Property<Guid>("ExpertId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateOnly?>("ExpiryDate")
                         .HasColumnType("date");
@@ -384,7 +384,7 @@ namespace ExpertToJob.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EmployeeId");
+                    b.HasIndex("ExpertId");
 
                     b.ToTable("Qualifications");
                 });
@@ -456,12 +456,12 @@ namespace ExpertToJob.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<Guid>("EmployeeId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("Error")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
+
+                    b.Property<Guid>("ExpertId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("JobId")
                         .HasColumnType("uuid");
@@ -529,7 +529,7 @@ namespace ExpertToJob.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("EmployeeId")
+                    b.Property<Guid>("ExpertId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("Language")
@@ -544,7 +544,7 @@ namespace ExpertToJob.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EmployeeId");
+                    b.HasIndex("ExpertId");
 
                     b.ToTable("SpokenLanguages");
                 });
@@ -575,7 +575,7 @@ namespace ExpertToJob.Infrastructure.Persistence.Migrations
                     b.Property<string>("PackageJson")
                         .HasColumnType("jsonb");
 
-                    b.Property<Guid?>("RecommendedEmployeeId")
+                    b.Property<Guid?>("RecommendedExpertId")
                         .HasColumnType("uuid");
 
                     b.Property<bool>("ReportDegraded")
@@ -606,7 +606,7 @@ namespace ExpertToJob.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("EmployeeId")
+                    b.Property<Guid>("ExpertId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("MatchBand")
@@ -686,7 +686,7 @@ namespace ExpertToJob.Infrastructure.Persistence.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("ExpertToJob.Infrastructure.Persistence.EmployeeSearchChunk", b =>
+            modelBuilder.Entity("ExpertToJob.Infrastructure.Persistence.ExpertSearchChunk", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -707,7 +707,7 @@ namespace ExpertToJob.Infrastructure.Persistence.Migrations
                     b.Property<Vector>("Embedding")
                         .HasColumnType("vector(1536)");
 
-                    b.Property<Guid>("EmployeeId")
+                    b.Property<Guid>("ExpertId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("Model")
@@ -725,12 +725,12 @@ namespace ExpertToJob.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EmployeeId");
+                    b.HasIndex("ExpertId");
 
                     b.HasIndex("SourceType", "SourceId")
                         .IsUnique();
 
-                    b.ToTable("EmployeeSearchChunks");
+                    b.ToTable("ExpertSearchChunks");
                 });
 
             modelBuilder.Entity("ExpertToJob.Domain.Entities.Achievement", b =>
@@ -755,13 +755,13 @@ namespace ExpertToJob.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("ExpertToJob.Domain.Entities.AvailabilityEntry", b =>
                 {
-                    b.HasOne("ExpertToJob.Domain.Entities.Employee", "Employee")
+                    b.HasOne("ExpertToJob.Domain.Entities.Expert", "Expert")
                         .WithMany("AvailabilityEntries")
-                        .HasForeignKey("EmployeeId")
+                        .HasForeignKey("ExpertId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Employee");
+                    b.Navigation("Expert");
                 });
 
             modelBuilder.Entity("ExpertToJob.Domain.Entities.Category", b =>
@@ -774,34 +774,15 @@ namespace ExpertToJob.Infrastructure.Persistence.Migrations
                     b.Navigation("Parent");
                 });
 
-            modelBuilder.Entity("ExpertToJob.Domain.Entities.EmployeeSkill", b =>
-                {
-                    b.HasOne("ExpertToJob.Domain.Entities.Employee", "Employee")
-                        .WithMany("Skills")
-                        .HasForeignKey("EmployeeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("ExpertToJob.Domain.Entities.Skill", "Skill")
-                        .WithMany("EmployeeSkills")
-                        .HasForeignKey("SkillId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Employee");
-
-                    b.Navigation("Skill");
-                });
-
             modelBuilder.Entity("ExpertToJob.Domain.Entities.Experience", b =>
                 {
-                    b.HasOne("ExpertToJob.Domain.Entities.Employee", "Employee")
+                    b.HasOne("ExpertToJob.Domain.Entities.Expert", "Expert")
                         .WithMany("Experiences")
-                        .HasForeignKey("EmployeeId")
+                        .HasForeignKey("ExpertId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Employee");
+                    b.Navigation("Expert");
                 });
 
             modelBuilder.Entity("ExpertToJob.Domain.Entities.ExperienceSkill", b =>
@@ -823,6 +804,25 @@ namespace ExpertToJob.Infrastructure.Persistence.Migrations
                     b.Navigation("Skill");
                 });
 
+            modelBuilder.Entity("ExpertToJob.Domain.Entities.ExpertSkill", b =>
+                {
+                    b.HasOne("ExpertToJob.Domain.Entities.Expert", "Expert")
+                        .WithMany("Skills")
+                        .HasForeignKey("ExpertId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ExpertToJob.Domain.Entities.Skill", "Skill")
+                        .WithMany("ExpertSkills")
+                        .HasForeignKey("SkillId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Expert");
+
+                    b.Navigation("Skill");
+                });
+
             modelBuilder.Entity("ExpertToJob.Domain.Entities.PasskeyCredential", b =>
                 {
                     b.HasOne("ExpertToJob.Domain.Entities.User", "User")
@@ -836,13 +836,13 @@ namespace ExpertToJob.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("ExpertToJob.Domain.Entities.Qualification", b =>
                 {
-                    b.HasOne("ExpertToJob.Domain.Entities.Employee", "Employee")
+                    b.HasOne("ExpertToJob.Domain.Entities.Expert", "Expert")
                         .WithMany("Qualifications")
-                        .HasForeignKey("EmployeeId")
+                        .HasForeignKey("ExpertId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Employee");
+                    b.Navigation("Expert");
                 });
 
             modelBuilder.Entity("ExpertToJob.Domain.Entities.ScoringJob", b =>
@@ -875,13 +875,13 @@ namespace ExpertToJob.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("ExpertToJob.Domain.Entities.SpokenLanguage", b =>
                 {
-                    b.HasOne("ExpertToJob.Domain.Entities.Employee", "Employee")
+                    b.HasOne("ExpertToJob.Domain.Entities.Expert", "Expert")
                         .WithMany("SpokenLanguages")
-                        .HasForeignKey("EmployeeId")
+                        .HasForeignKey("ExpertId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Employee");
+                    b.Navigation("Expert");
                 });
 
             modelBuilder.Entity("ExpertToJob.Domain.Entities.StaffingProposal", b =>
@@ -906,11 +906,11 @@ namespace ExpertToJob.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("ExpertToJob.Infrastructure.Persistence.EmployeeSearchChunk", b =>
+            modelBuilder.Entity("ExpertToJob.Infrastructure.Persistence.ExpertSearchChunk", b =>
                 {
-                    b.HasOne("ExpertToJob.Domain.Entities.Employee", null)
+                    b.HasOne("ExpertToJob.Domain.Entities.Expert", null)
                         .WithMany()
-                        .HasForeignKey("EmployeeId")
+                        .HasForeignKey("ExpertId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -922,7 +922,14 @@ namespace ExpertToJob.Infrastructure.Persistence.Migrations
                     b.Navigation("Skills");
                 });
 
-            modelBuilder.Entity("ExpertToJob.Domain.Entities.Employee", b =>
+            modelBuilder.Entity("ExpertToJob.Domain.Entities.Experience", b =>
+                {
+                    b.Navigation("Achievements");
+
+                    b.Navigation("Skills");
+                });
+
+            modelBuilder.Entity("ExpertToJob.Domain.Entities.Expert", b =>
                 {
                     b.Navigation("AvailabilityEntries");
 
@@ -935,13 +942,6 @@ namespace ExpertToJob.Infrastructure.Persistence.Migrations
                     b.Navigation("SpokenLanguages");
                 });
 
-            modelBuilder.Entity("ExpertToJob.Domain.Entities.Experience", b =>
-                {
-                    b.Navigation("Achievements");
-
-                    b.Navigation("Skills");
-                });
-
             modelBuilder.Entity("ExpertToJob.Domain.Entities.ScoringJob", b =>
                 {
                     b.Navigation("Candidates");
@@ -949,7 +949,7 @@ namespace ExpertToJob.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("ExpertToJob.Domain.Entities.Skill", b =>
                 {
-                    b.Navigation("EmployeeSkills");
+                    b.Navigation("ExpertSkills");
                 });
 
             modelBuilder.Entity("ExpertToJob.Domain.Entities.StaffingProposal", b =>

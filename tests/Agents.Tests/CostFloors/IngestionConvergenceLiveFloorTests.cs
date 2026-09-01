@@ -28,7 +28,7 @@ namespace ExpertToJob.Agents.Tests.CostFloors;
 /// different units and must not be compared.</para>
 ///
 /// <para><b>It writes.</b> resume-ingestion is the one agent holding <c>mcp:write</c>, so a pass
-/// leaves a real DRAFT employee behind — Torvald Emberwright, staged for the approval gate like
+/// leaves a real DRAFT expert behind — Torvald Emberwright, staged for the approval gate like
 /// any other ingestion. That is the run being measured, not a side effect to design away: a
 /// harness that stubbed the writes would be pricing a different loop.</para>
 ///
@@ -79,7 +79,7 @@ public class IngestionConvergenceLiveFloorTests(ITestOutputHelper output)
         output.WriteLine(
             $"{reply.Iterations} model calls, {reply.InputTokens} in / {reply.OutputTokens} out, " +
             $"{reply.LatencyMs}ms — {reply.ToolSequence}");
-        output.WriteLine($"draft {outcome.EmployeeId}, {outcome.ToolCalls.Count} write calls, " +
+        output.WriteLine($"draft {outcome.ExpertId}, {outcome.ToolCalls.Count} write calls, " +
                          $"degradation: {reply.Degradation ?? "none"}");
 
         using var _ = new AssertionScope();
@@ -100,9 +100,9 @@ public class IngestionConvergenceLiveFloorTests(ITestOutputHelper output)
         // mcp:write it is the expensive kind of wrong. The ground truth is the same one
         // ExtractionFidelityEvalTests holds the extractor to: every child actually written.
         var truth = Reference.Truth;
-        outcome.EmployeeId.Should().NotBeNull("the draft is the deliverable");
+        outcome.ExpertId.Should().NotBeNull("the draft is the deliverable");
         Written(outcome, "language_add").Should().Be(truth.Languages.Count);
-        Written(outcome, "employee_skill_add").Should().Be(truth.Skills.Count(s => s.InCatalog));
+        Written(outcome, "expert_skill_add").Should().Be(truth.Skills.Count(s => s.InCatalog));
         Written(outcome, "qualification_add").Should().Be(truth.Qualifications.Count);
         Written(outcome, "experience_add").Should().Be(truth.Experiences.Count);
         outcome.ToolCalls.Where(c => !c.Succeeded).Should().BeEmpty(

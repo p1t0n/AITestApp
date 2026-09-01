@@ -50,7 +50,7 @@ async function settled(locator: Locator): Promise<void> {
 }
 
 /**
- * One employee per mode, with enough on it that the detail page and the CV are not empty frames.
+ * One expert per mode, with enough on it that the detail page and the CV are not empty frames.
  * A *different* person per mode on purpose: both modes are captured in one run against one
  * database, so a shared name would make the roster row locator ambiguous on the second pass.
  */
@@ -59,7 +59,7 @@ const PEOPLE = {
   dark: { first: "Grace", last: "Hopper", title: "Systems Architect", city: "New York" },
 } as const;
 
-async function seedEmployee(page: Page, mode: keyof typeof PEOPLE): Promise<string> {
+async function seedExpert(page: Page, mode: keyof typeof PEOPLE): Promise<string> {
   const who = PEOPLE[mode];
   const fullName = `${who.first} ${who.last}`;
 
@@ -76,7 +76,7 @@ async function seedEmployee(page: Page, mode: keyof typeof PEOPLE): Promise<stri
   const row = page.getByRole("row", { name: new RegExp(fullName) });
   await expect(row).toBeVisible();
   await row.getByRole("cell", { name: fullName }).click();
-  await expect(page).toHaveURL(/\/employees\/[0-9a-f-]{36}$/);
+  await expect(page).toHaveURL(/\/experts\/[0-9a-f-]{36}$/);
   return page.url();
 }
 
@@ -136,7 +136,7 @@ for (const mode of ["light", "dark"] as const) {
       await addVirtualAuthenticator(context, page);
       await signUp(page);
 
-      const detailUrl = await seedEmployee(page, mode);
+      const detailUrl = await seedExpert(page, mode);
 
       await page.goto("/");
       await expect(page.getByRole("button", { name: "New CV" })).toBeVisible();
@@ -145,7 +145,7 @@ for (const mode of ["light", "dark"] as const) {
       const fullName = `${PEOPLE[mode].first} ${PEOPLE[mode].last}`;
       await page.goto(detailUrl);
       await expect(page.getByRole("heading", { name: fullName })).toBeVisible();
-      await shoot(page, mode, "3-employee-detail");
+      await shoot(page, mode, "3-expert-detail");
 
       await page.goto(`${detailUrl}/cv`);
       await expect(page.getByRole("heading", { name: fullName })).toBeVisible();

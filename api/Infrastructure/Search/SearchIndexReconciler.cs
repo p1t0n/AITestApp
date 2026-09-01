@@ -23,9 +23,9 @@ public sealed record ReconcileReport(int Inserted, int Updated, int Deleted, int
 }
 
 /// <summary>
-/// Rebuilds <see cref="EmployeeSearchChunk"/> rows from the roster and embeds the stale ones.
+/// Rebuilds <see cref="ExpertSearchChunk"/> rows from the roster and embeds the stale ones.
 ///
-/// <para>Two phases per pass: (1) project every employee to its desired chunks and diff against the
+/// <para>Two phases per pass: (1) project every expert to its desired chunks and diff against the
 /// persisted chunks (<see cref="Reconciler"/>), applying inserts (embedding cleared), content
 /// updates (embedding cleared), and orphan deletes; (2) embed every chunk whose embedding is null,
 /// in batches. Because a fresh/edited chunk has a null embedding, the same loop backfills a cold
@@ -69,18 +69,18 @@ public sealed class SearchIndexReconciler : ISearchIndexReconciler
     private async Task<(int Inserted, int Updated, int Deleted)> SyncChunksAsync(CancellationToken ct)
     {
         // Drafts stay out of the index until a human promotes them; the diff below then deletes
-        // any chunks belonging to employees that left the Active set (self-healing both ways).
-        var employees = await _db.Employees
+        // any chunks belonging to experts that left the Active set (self-healing both ways).
+        var experts = await _db.Experts
             .AsNoTracking()
-            .Where(e => e.Status == EmployeeStatus.Active)
+            .Where(e => e.Status == ExpertStatus.Active)
             .Include(e => e.Experiences)
             .ThenInclude(x => x.Achievements)
             .ToListAsync(ct);
 
-        var desired = employees.SelectMany(ChunkProjection.Project).ToList();
+        var desired = experts.SelectMany(ChunkProjection.Project).ToList();
 
         // Tracked so updates/deletes flush without a second lookup.
-        var existingEntities = await _db.EmployeeSearchChunks.ToListAsync(ct);
+        var existingEntities = await _db.ExpertSearchChunks.ToListAsync(ct);
         var existingById = existingEntities.ToDictionary(e => e.Id);
         var existing = existingEntities
             .Select(e => new ExistingChunk(e.Id, e.SourceType, e.SourceId, e.ContentHash))
@@ -108,10 +108,10 @@ public sealed class SearchIndexReconciler : ISearchIndexReconciler
             }
             else
             {
-                _db.EmployeeSearchChunks.Add(new EmployeeSearchChunk
+                _db.ExpertSearchChunks.Add(new ExpertSearchChunk
                 {
                     Id = Guid.NewGuid(),
-                    EmployeeId = upsert.Chunk.EmployeeId,
+                    ExpertId = upsert.Chunk.ExpertId,
                     SourceType = upsert.Chunk.SourceType,
                     SourceId = upsert.Chunk.SourceId,
                     Content = upsert.Chunk.Content,
@@ -126,7 +126,7 @@ public sealed class SearchIndexReconciler : ISearchIndexReconciler
         {
             if (existingById.TryGetValue(deleteId, out var row))
             {
-                _db.EmployeeSearchChunks.Remove(row);
+                _db.ExpertSearchChunks.Remove(row);
             }
         }
 
@@ -136,7 +136,7 @@ public sealed class SearchIndexReconciler : ISearchIndexReconciler
 
     private async Task<(int Embedded, long Tokens)> EmbedPendingAsync(CancellationToken ct)
     {
-        var pending = await _db.EmployeeSearchChunks
+        var pending = await _db.ExpertSearchChunks
             .Where(c => c.Embedding == null)
             .ToListAsync(ct);
 

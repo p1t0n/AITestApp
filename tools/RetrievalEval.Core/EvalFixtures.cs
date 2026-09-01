@@ -4,11 +4,11 @@ using System.Text.Json.Serialization;
 namespace ExpertToJob.RetrievalEval;
 
 /// <summary>
-/// One employee of the frozen eval corpus. This is measurement truth, distinct from any demo data:
+/// One expert of the frozen eval corpus. This is measurement truth, distinct from any demo data:
 /// changing a narrative here changes what every retrieval metric means, so treat edits like moving
 /// the goalposts. Keys are stable slugs the golden set references.
 /// </summary>
-public sealed record EvalEmployee(
+public sealed record EvalExpert(
     string Key,
     string FirstName,
     string LastName,
@@ -17,7 +17,7 @@ public sealed record EvalEmployee(
     string Summary,
     IReadOnlyList<EvalExperience> Experiences);
 
-/// <summary>A work experience of a corpus employee. Months are "yyyy-MM"; a null end means current.</summary>
+/// <summary>A work experience of a corpus expert. Months are "yyyy-MM"; a null end means current.</summary>
 public sealed record EvalExperience(
     string Company,
     string Title,
@@ -57,8 +57,8 @@ public static class EvalFixtures
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.KebabCaseLower) },
     };
 
-    public static IReadOnlyList<EvalEmployee> LoadCorpus()
-        => Load<EvalEmployee>("eval-corpus.json");
+    public static IReadOnlyList<EvalExpert> LoadCorpus()
+        => Load<EvalExpert>("eval-corpus.json");
 
     public static IReadOnlyList<GoldenQuery> LoadGoldenSet()
         => Load<GoldenQuery>("golden-set.json");

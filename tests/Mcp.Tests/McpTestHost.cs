@@ -185,11 +185,11 @@ internal static class McpTestHost
         return await McpClient.CreateAsync(transport);
     }
 
-    public static Employee SeedEmployee(WebApplicationFactory<Program> factory)
+    public static Expert SeedExpert(WebApplicationFactory<Program> factory)
     {
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var employee = new Employee
+        var expert = new Expert
         {
             Id = Guid.NewGuid(),
             FirstName = "Ada",
@@ -197,9 +197,9 @@ internal static class McpTestHost
             Title = "Engineer",
             Email = "ada@example.com",
         };
-        db.Employees.Add(employee);
+        db.Experts.Add(expert);
         db.SaveChanges();
-        return employee;
+        return expert;
     }
 
     public static string Text(CallToolResult result) =>

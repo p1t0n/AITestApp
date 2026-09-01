@@ -316,7 +316,7 @@ change: the grouped picker and the nine Agent Surfaces are P1T-152's shape and s
   `MuiCssBaseline`: a document-level type floor, not a component look, and nothing owns `code`.
 - **A fenced code block, a wide table and a linkified GUID each overflowed the panel.** Only inline
   `code` had ever been styled in `AgentMarkdown`; a `pre` does not wrap, a markdown table has no
-  width rule, and a linkified employee id is 36 unbreakable characters inside a bubble in a 360px
+  width rule, and a linkified expert id is 36 unbreakable characters inside a bubble in a 360px
   column. The answer was arriving and being unreadable, which is the same failure as not having it.
   The table scrolls inside a wrapper rather than by `display: block` on the table — the usual fix,
   which drops the table's own role in Chrome. A scrollbar bought by deleting an element's semantics
@@ -462,7 +462,7 @@ change no DOM structure at all, so the test suites stay untouched until slice 3.
 6. ~~**P1T-164**~~ — `CvPage` light-lock. **Shipped, and shipped second** rather than sixth — §11 is why. Also zero edits to existing tests: 189 → 195 unit tests, all six new
 7. ~~**P1T-165**~~ — the ⌘K palette. **Shipped**, off `main` rather than as a seventh slice: it was never part of the sequence, and building it while PR #124 was open meant staying off that PR's files by construction (§12). 284 → 314 unit tests and 26 → 32 Playwright specs, with exactly one existing assertion rewritten — the first Tab in `e2e/shell.e2e.ts` now lands on the rail's new first row
 
-Each slice ends with Playwright screenshots in light and dark of: roster, employee detail, catalog,
+Each slice ends with Playwright screenshots in light and dark of: roster, expert detail, catalog,
 users, sign-in, dock open, CV page — plus, from slice 3, the rail collapsed and the mobile drawer,
 from slice 4 the roster scrolled with its header pinned, and from slice 5 the dock's own five
 states (closed, mid-conversation, on Staffing, at `DOCK_MIN_WIDTH`, and the Token Ledger open).
@@ -550,16 +550,16 @@ slice 1's focus ring:
 decision the re-skin did not: **what the palette searches.** The ticket framed the risk exactly
 right — "a palette that only searches the loaded page is a lie".
 
-**The decision: filter the cached roster, and no new endpoint.** `GET /api/employees` is unpaged. It
-returns every active employee in one response, which is why the roster page can be a client-side
-table at all. So filtering that same `["employees"]` query *is* searching the whole roster: the
+**The decision: filter the cached roster, and no new endpoint.** `GET /api/experts` is unpaged. It
+returns every active expert in one response, which is why the roster page can be a client-side
+table at all. So filtering that same `["experts"]` query *is* searching the whole roster: the
 palette finds exactly what the roster page shows — all of it, drafts excluded — with no second
 definition of what a match is and no second thing to keep in step. The feared lie is a property of
 paging, and there is no paging.
 
 That is a claim about the *server*, made in the SPA, so it is asserted on the server:
-`Roster_list_returns_every_active_employee_in_one_response` (`tests/Web.Tests/EmployeeCrudTests.cs`)
-creates 25 employees and demands all 25 back from one call. The day the list endpoint starts paging,
+`Roster_list_returns_every_active_expert_in_one_response` (`tests/Web.Tests/ExpertCrudTests.cs`)
+creates 25 experts and demands all 25 back from one call. The day the list endpoint starts paging,
 that test fails — and on that day the roster table needs a server search as much as the palette
 does, which is the point. A search endpoint built *now* would have been a second retrieval path
 maintained for a page size that does not exist.

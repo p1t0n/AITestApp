@@ -29,7 +29,7 @@ public sealed class ReadToolResultCostFloorTests(ITestOutputHelper output) : IAs
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("pgvector/pgvector:pg17").Build();
 
     private Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory<Program> _factory = null!;
-    private Guid _employeeId;
+    private Guid _expertId;
 
     public async Task InitializeAsync()
     {
@@ -40,14 +40,14 @@ public sealed class ReadToolResultCostFloorTests(ITestOutputHelper output) : IAs
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         await db.Database.MigrateAsync();
 
-        // The same roster shape the 2026-08-30 measurement ran on: the first 45 dataset employees
+        // The same roster shape the 2026-08-30 measurement ran on: the first 45 dataset experts
         // over the full 79-skill catalog. A different count would make the ceilings incomparable.
         await DemoRosterSeeder.SeedAsync(
-            db, DemoRosterSeeder.LoadCommittedDataset(), ExpertToJob.CostFloors.CostFloors.DemoRosterEmployees);
+            db, DemoRosterSeeder.LoadCommittedDataset(), ExpertToJob.CostFloors.CostFloors.DemoRosterExperts);
 
-        // A deterministic subject for the per-employee tools: lowest email wins, so the ceilings
+        // A deterministic subject for the per-expert tools: lowest email wins, so the ceilings
         // measure the same person on every run.
-        _employeeId = await db.Employees.OrderBy(e => e.Email).Select(e => e.Id).FirstAsync();
+        _expertId = await db.Experts.OrderBy(e => e.Email).Select(e => e.Id).FirstAsync();
     }
 
     public async Task DisposeAsync()
@@ -67,13 +67,13 @@ public sealed class ReadToolResultCostFloorTests(ITestOutputHelper output) : IAs
             // before filtering a search by it. Before P1T-145 there was no way to ask for less
             // than all 79 skills, and that answer was re-sent on nine following model calls.
             ("skill_list", new() { ["nameContains"] = "React" }),
-            ("employee_list", []),
+            ("expert_list", []),
             ("category_list", []),
             ("category_tree", []),
             ("roster_digest_list", []),
-            ("employee_get", new() { ["id"] = _employeeId }),
-            ("cv_get", new() { ["employeeId"] = _employeeId }),
-            ("availability_list", new() { ["employeeId"] = _employeeId }),
+            ("expert_get", new() { ["id"] = _expertId }),
+            ("cv_get", new() { ["expertId"] = _expertId }),
+            ("availability_list", new() { ["expertId"] = _expertId }),
         };
 
         using var _ = new AssertionScope();

@@ -23,9 +23,9 @@ public sealed partial class FragmentNarrativeSource : INarrativeSource
 
     private static readonly string[] Multipliers = ["2x", "3x", "4x", "5x", "7x", "10x"];
 
-    public string WriteEmployeeSummary(string industry, string title, IReadOnlyList<string> topSkills, DeterministicRandom rng)
+    public string WriteExpertSummary(string industry, string title, IReadOnlyList<string> topSkills, DeterministicRandom rng)
     {
-        var template = rng.Pick(NarrativeFragments.For(industry).EmployeeSummaries);
+        var template = rng.Pick(NarrativeFragments.For(industry).ExpertSummaries);
         return Fill(template, company: null, topSkills, rng);
     }
 

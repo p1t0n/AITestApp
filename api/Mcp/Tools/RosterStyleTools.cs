@@ -13,7 +13,7 @@ public class RosterStyleTools
          "Fetch strong-PHRASING exemplars for CV bullet writing, in one of two modes — supply " +
          "EXACTLY ONE of achievementIds or theme, never both, never neither. Id mode: given " +
          "achievement ids, returns per bullet the closest quantified achievement bullets from " +
-         "OTHER employees' CVs. Theme mode: given a free-text theme with no bullet to name, " +
+         "OTHER experts' CVs. Theme mode: given a free-text theme with no bullet to name, " +
          "returns the closest quantified achievement bullets against that theme across the whole " +
          "roster. Both modes return anonymized results ([name]/[company] placeholders). Use this tool " +
          "whenever the ask is about WORDING rather than people — 'examples of strongly phrased " +
@@ -34,7 +34,7 @@ public class RosterStyleTools
          "\"topKPerBullet\": 2} or {\"theme\": \"cost reduction\", \"topKPerBullet\": 3}. Both " +
          "or neither supplied is a validation error. Unknown ids are skipped; a bullet or theme " +
          "with no strong match nearby gets an empty exemplar list. Returns exemplar bullet text " +
-         "with similarity only — no employee identities and no rewritten bullet (the caller does " +
+         "with similarity only — no expert identities and no rewritten bullet (the caller does " +
          "the rewriting)."),
      Authorize(Policy = McpScopes.Read)]
     public static Task<object> StyleExemplarSearch(

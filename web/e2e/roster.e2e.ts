@@ -8,14 +8,14 @@ test.describe("roster round trip", () => {
   });
 
   test("a new CV created in the UI is listed, opens, and renders as a CV", async ({ page }) => {
-    const employeeEmail = uniqueEmail("ada");
+    const expertEmail = uniqueEmail("ada");
 
     await page.getByRole("button", { name: "New CV" }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("First name").fill("Ada");
     await dialog.getByLabel("Last name").fill("Lovelace");
     await dialog.getByLabel("Title").fill("Analytical Engineer");
-    await dialog.getByLabel("Email").fill(employeeEmail);
+    await dialog.getByLabel("Email").fill(expertEmail);
     await dialog.getByLabel("Location").fill("London");
     await dialog.getByLabel("Summary").fill("First programmer.");
     await dialog.getByRole("button", { name: "Save" }).click();
@@ -27,7 +27,7 @@ test.describe("roster round trip", () => {
 
     // The row navigates to the detail page, and the detail page to the CV.
     await row.getByRole("cell", { name: "Ada Lovelace" }).click();
-    await expect(page).toHaveURL(/\/employees\/[0-9a-f-]{36}$/);
+    await expect(page).toHaveURL(/\/experts\/[0-9a-f-]{36}$/);
     await expect(page.getByRole("heading", { name: "Ada Lovelace" })).toBeVisible();
 
     await page.goto(`${page.url()}/cv`);
@@ -37,14 +37,14 @@ test.describe("roster round trip", () => {
   });
 
   test("the CV page downloads a PDF from the server", async ({ page }) => {
-    const employeeEmail = uniqueEmail("grace");
+    const expertEmail = uniqueEmail("grace");
 
     await page.getByRole("button", { name: "New CV" }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("First name").fill("Grace");
     await dialog.getByLabel("Last name").fill("Hopper");
     await dialog.getByLabel("Title").fill("Rear Admiral");
-    await dialog.getByLabel("Email").fill(employeeEmail);
+    await dialog.getByLabel("Email").fill(expertEmail);
     await dialog.getByRole("button", { name: "Save" }).click();
 
     await page.getByRole("row", { name: /Grace Hopper/ }).getByTitle("View CV").click();

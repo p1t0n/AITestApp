@@ -34,12 +34,12 @@ container clears history. The services run fine when it is down.
 
 ```bash
 dotnet run --project tools/SeedDemoRoster --no-build -- --count 40   # idempotent; --wipe to remove
-# The Mcp service's reconcile worker embeds new employees every ~30s. Watch progress:
+# The Mcp service's reconcile worker embeds new experts every ~30s. Watch progress:
 docker exec experttojob-db psql -U postgres -d experttojob -tAc \
-  'SELECT count(*) FILTER (WHERE "Embedding" IS NOT NULL) || \'/\' || count(*) FROM "EmployeeSearchChunks";'
+  'SELECT count(*) FILTER (WHERE "Embedding" IS NOT NULL) || \'/\' || count(*) FROM "ExpertSearchChunks";'
 ```
 
-Don't stop polling at the first `n/n` — the worker may not have projected the new employees yet
+Don't stop polling at the first `n/n` — the worker may not have projected the new experts yet
 (chunk *total* grows first, then embeds).
 
 ## Driving the UI (passkey auth!)

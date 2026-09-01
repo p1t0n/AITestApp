@@ -18,35 +18,35 @@ public class ToolDescriptionBarTests
     /// disambiguation itself; the rest pin the input example and the negative space.</summary>
     private static readonly (string Tool, string[] MustContain)[] Bar =
     [
-        ("employee_list", [
+        ("expert_list", [
             "roster_semantic_search", "roster_shortlist_search", "roster_digest_list",
-            "employee_get", "cv_get", "e.g. {}", "NO skills", "draft employees are excluded", "capacity"]),
-        ("employee_get", [
-            "roster_semantic_search", "roster_shortlist_search", "cv_get", "employee_list",
+            "expert_get", "cv_get", "e.g. {}", "NO skills", "draft experts are excluded", "capacity"]),
+        ("expert_get", [
+            "roster_semantic_search", "roster_shortlist_search", "cv_get", "expert_list",
             "roster_digest_list", "\"id\":", "not_found", "no PDF", "availability step function"]),
         ("cv_get", [
             "roster_semantic_search", "roster_shortlist_search", "roster_digest_list",
-            "employee_get", "style_exemplar_search", "achievementId", "\"employeeId\":",
+            "expert_get", "style_exemplar_search", "achievementId", "\"expertId\":",
             "not a PDF"]),
         ("roster_semantic_search", [
             "roster_shortlist_search", "style_exemplar_search", "roster_digest_list",
-            "employee_get", "employee_list", "cv_get", "\"query\":", "semantic",
+            "expert_get", "expert_list", "cv_get", "\"query\":", "semantic",
             "relevance score", "empty list"]),
         ("roster_shortlist_search", [
             "roster_semantic_search", "style_exemplar_search", "roster_digest_list",
-            "employee_list", "cv_get", "\"requirements\":", "requirement", "coverage",
+            "expert_list", "cv_get", "\"requirements\":", "requirement", "coverage",
             "empty list"]),
         ("style_exemplar_search", [
             "roster_semantic_search", "roster_shortlist_search", "cv_get", "anonymized",
             "\"achievementIds\":", "PHRASING", "never"]),
         ("category_list", [
-            "category_tree", "skill_list", "employee_get", "e.g. {}", "parentId", "no skills"]),
+            "category_tree", "skill_list", "expert_get", "e.g. {}", "parentId", "no skills"]),
         ("category_tree", [
-            "category_list", "skill_list", "employee_get", "e.g. {}", "TREE",
-            "no employee data"]),
+            "category_list", "skill_list", "expert_get", "e.g. {}", "TREE",
+            "no expert data"]),
         ("skill_list", [
-            "category_tree", "category_list", "employee_get", "skill_create",
-            "employee_skill_add", "e.g. {}", "categoryId",
+            "category_tree", "category_list", "expert_get", "skill_create",
+            "expert_skill_add", "e.g. {}", "categoryId",
             // P1T-145: the filter is the whole point — a description that stops naming it sends
             // the model back to fetching all 79 skills to resolve one name.
             "nameContains", "\"nameContains\": \"react\"", "total"]),
@@ -54,45 +54,45 @@ public class ToolDescriptionBarTests
         ("roster_digest_list", ["roster_semantic_search", "cv_get", "bulk", "e.g. {"]),
 
         // ---- P1T-129: the write surface ----
-        ("employee_create", [
-            "employee_create_draft", "employee_update", "employee_skill_add", "language_add",
+        ("expert_create", [
+            "expert_create_draft", "expert_update", "expert_skill_add", "language_add",
             "availability_add", "\"firstName\":", "ACTIVE", "unique"]),
-        ("employee_create_draft", [
-            "employee_create", "employee_update", "hidden", "HUMAN", "duplicateWarning",
+        ("expert_create_draft", [
+            "expert_create", "expert_update", "hidden", "HUMAN", "duplicateWarning",
             "\"firstName\":", "EMPTY email"]),
-        ("employee_update", [
-            "employee_get", "employee_skill_add", "availability_add", "employee_create",
+        ("expert_update", [
+            "expert_get", "expert_skill_add", "availability_add", "expert_create",
             "PARTIAL UPDATE", "\"title\":", "not_found"]),
-        ("employee_delete", [
-            "availability_add", "employee_update", "DESTRUCTIVE", "admin scope", "\"id\":"]),
-        ("employee_skill_add", [
-            "skill_list", "skill_create", "experience_skill_add", "employee_skill_update",
+        ("expert_delete", [
+            "availability_add", "expert_update", "DESTRUCTIVE", "admin scope", "\"id\":"]),
+        ("expert_skill_add", [
+            "skill_list", "skill_create", "experience_skill_add", "expert_skill_update",
             "PERSON", "\"skillId\":", "Advanced", "conflict"]),
-        ("employee_skill_update", [
-            "employee_skill_add", "skill_update", "employee_get", "\"level\":", "full replace"]),
-        ("employee_skill_delete", [
-            "skill_delete", "employee_skill_update", "DESTRUCTIVE", "admin scope"]),
+        ("expert_skill_update", [
+            "expert_skill_add", "skill_update", "expert_get", "\"level\":", "full replace"]),
+        ("expert_skill_delete", [
+            "skill_delete", "expert_skill_update", "DESTRUCTIVE", "admin scope"]),
         ("skill_create", [
-            "employee_skill_add", "skill_list", "category_create", "CATALOG",
+            "expert_skill_add", "skill_list", "category_create", "CATALOG",
             "\"categoryId\":", "conflict"]),
         ("skill_update", [
-            "employee_skill_update", "skill_create", "employee_skill_add", "\"name\":"]),
+            "expert_skill_update", "skill_create", "expert_skill_add", "\"name\":"]),
         ("skill_delete", [
-            "employee_skill_delete", "skill_update", "DESTRUCTIVE", "admin scope"]),
+            "expert_skill_delete", "skill_update", "DESTRUCTIVE", "admin scope"]),
         ("category_create", ["skill_create", "\"name\":", "parentId"]),
         ("category_update", ["skill_update", "\"parentId\":", "cycle"]),
         ("category_delete", [
-            "skill_delete", "employee_skill_delete", "category_tree", "DESTRUCTIVE"]),
+            "skill_delete", "expert_skill_delete", "category_tree", "DESTRUCTIVE"]),
         ("language_add", [
-            "employee_skill_add", "skill_create", "language_update", "\"language\":",
+            "expert_skill_add", "skill_create", "language_update", "\"language\":",
             "Professional", "programming language"]),
-        ("language_update", ["language_add", "employee_get", "\"level\":", "full replace"]),
+        ("language_update", ["language_add", "expert_get", "\"level\":", "full replace"]),
         ("language_delete", ["language_update", "DESTRUCTIVE", "admin scope"]),
         ("availability_list", [
-            "roster_shortlist_search", "employee_list", "availableOn", "\"employeeId\":",
+            "roster_shortlist_search", "expert_list", "availableOn", "\"expertId\":",
             "step function"]),
         ("availability_add", [
-            "employee_update", "availability_update", "employee_delete", "step function",
+            "expert_update", "availability_update", "expert_delete", "step function",
             "\"effectiveFrom\":", "yyyy-MM-dd", "conflict"]),
         ("availability_update", [
             "availability_add", "availability_list", "yyyy-MM-dd", "full replace"]),
@@ -112,16 +112,16 @@ public class ToolDescriptionBarTests
             "achievement_add", "experience_update", "cv_get", "\"text\":"]),
         ("achievement_delete", ["achievement_update", "DESTRUCTIVE", "admin scope"]),
         ("qualification_add", [
-            "employee_skill_add", "experience_add", "qualification_update", "\"type\":",
+            "expert_skill_add", "experience_add", "qualification_update", "\"type\":",
             "Certification", "yyyy-MM-dd"]),
         ("qualification_update", [
-            "qualification_add", "employee_get", "full replace", "\"issuer\":"]),
+            "qualification_add", "expert_get", "full replace", "\"issuer\":"]),
         ("qualification_delete", ["qualification_update", "DESTRUCTIVE", "admin scope"]),
         ("experience_skill_add", [
-            "employee_skill_add", "skill_create", "skill_list", "\"experienceId\":",
+            "expert_skill_add", "skill_create", "skill_list", "\"experienceId\":",
             "conflict"]),
         ("experience_skill_delete", [
-            "employee_skill_delete", "DESTRUCTIVE", "admin scope", "\"id\":"]),
+            "expert_skill_delete", "DESTRUCTIVE", "admin scope", "\"id\":"]),
     ];
 
     /// <summary>The two traps the P1T-112 audit called out by name: person-vs-catalog skills and
@@ -129,12 +129,12 @@ public class ToolDescriptionBarTests
     /// one reads the correction in the description it is already looking at.</summary>
     private static readonly (string Tool, string MustNameTwin)[] Traps =
     [
-        ("employee_skill_add", "skill_create"),
-        ("skill_create", "employee_skill_add"),
-        ("employee_create", "employee_create_draft"),
-        ("employee_create_draft", "employee_create"),
-        ("employee_skill_delete", "skill_delete"),
-        ("skill_delete", "employee_skill_delete"),
+        ("expert_skill_add", "skill_create"),
+        ("skill_create", "expert_skill_add"),
+        ("expert_create", "expert_create_draft"),
+        ("expert_create_draft", "expert_create"),
+        ("expert_skill_delete", "skill_delete"),
+        ("skill_delete", "expert_skill_delete"),
     ];
 
     [Fact]
@@ -158,8 +158,8 @@ public class ToolDescriptionBarTests
 
             description.Should().Contain("Do NOT", $"{tool} must say when NOT to use it");
             description.Should().Contain("e.g.", $"{tool} must carry an inline input example");
-            // Word-boundary match, since employee_create_draft legitimately contains
-            // "employee_create" and employee_skill_delete contains "skill_delete".
+            // Word-boundary match, since expert_create_draft legitimately contains
+            // "expert_create" and expert_skill_delete contains "skill_delete".
             Regex.IsMatch(description, $@"(?<!\w){Regex.Escape(tool)}(?!\w)").Should()
                 .BeFalse($"{tool} must not cite itself as the alternative");
             foreach (var fragment in mustContain)

@@ -5,10 +5,10 @@ using Microsoft.Extensions.AI;
 namespace ExpertToJob.Agents.Agents;
 
 /// <summary>
-/// Read-only agent that assesses how well one employee fits a target job description. A Microsoft
+/// Read-only agent that assesses how well one expert fits a target job description. A Microsoft
 /// Agent Framework <see cref="ChatClientAgent"/> backed by the configured chat model, given only
 /// the <c>cv_get</c> MCP tool. It returns a gap analysis and a fit assessment grounded strictly in
-/// the employee's real CV; it never fabricates data and writes nothing. Single-turn: each request
+/// the expert's real CV; it never fabricates data and writes nothing. Single-turn: each request
 /// runs on a fresh, ephemeral session.
 /// </summary>
 public sealed class MatchAgent : IChatAgent
@@ -18,8 +18,8 @@ public sealed class MatchAgent : IChatAgent
 
     private const string Instructions =
         """
-        You are the Match assistant for ExpertToJob. You are given an employee id and a target job
-        description. Call the cv_get tool to fetch that employee's full CV, then assess their fit
+        You are the Match assistant for ExpertToJob. You are given an expert id and a target job
+        description. Call the cv_get tool to fetch that expert's full CV, then assess their fit
         for the role and reply with the structured object.
 
         gapAnalysisMarkdown holds the full analysis as markdown, in two sections:
@@ -32,7 +32,7 @@ public sealed class MatchAgent : IChatAgent
 
         score is the overall 0-100 total of the rubric rows — the number must follow from the
         rubric, never invented. band is Strong (>=75), Moderate (50-74), Weak (25-49), or
-        InsufficientEvidence. When the employee cannot be assessed (cv_get reports not found, or
+        InsufficientEvidence. When the expert cannot be assessed (cv_get reports not found, or
         the CV holds no usable evidence), say so plainly in gapAnalysisMarkdown and set score and
         band to null — never fabricate a verdict.
 
@@ -112,7 +112,7 @@ public sealed class MatchAgent : IChatAgent
                 _chatClient,
                 instructions: Instructions,
                 name: "Match",
-                description: "Assesses an employee's fit for a target job description (read-only, advisory).",
+                description: "Assesses an expert's fit for a target job description (read-only, advisory).",
                 tools: cvTools,
                 loggerFactory: _loggerFactory);
             return _agent;

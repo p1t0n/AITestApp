@@ -1,6 +1,6 @@
 using ExpertToJob.Application.Availability;
 using ExpertToJob.Application.Cv;
-using ExpertToJob.Application.Employees;
+using ExpertToJob.Application.Experts;
 using ExpertToJob.Application.Skills;
 using ExpertToJob.Application.Users;
 using FluentValidation;
@@ -12,8 +12,8 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
-        services.AddScoped<IEmployeeService, EmployeeService>();
-        services.AddScoped<IEmployeeSkillService, EmployeeSkillService>();
+        services.AddScoped<IExpertService, ExpertService>();
+        services.AddScoped<IExpertSkillService, ExpertSkillService>();
         services.AddScoped<ILanguageService, LanguageService>();
         services.AddScoped<IQualificationService, QualificationService>();
         services.AddScoped<IExperienceService, ExperienceService>();
@@ -23,8 +23,8 @@ public static class DependencyInjection
         services.AddScoped<ISkillCatalogService, SkillCatalogService>();
         services.AddScoped<ICvService, CvService>();
         services.AddScoped<IUserService, UserService>();
-        services.AddScoped<Search.IEmployeeDigestService, Search.EmployeeDigestService>();
-        services.AddScoped<Search.IEmployeeFilterService, Search.EmployeeFilterService>();
+        services.AddScoped<Search.IExpertDigestService, Search.ExpertDigestService>();
+        services.AddScoped<Search.IExpertFilterService, Search.ExpertFilterService>();
 
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 

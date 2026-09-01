@@ -27,7 +27,7 @@ public class ShortlistAgentTests
     public async Task Requests_the_structured_rationales_schema_on_the_wire()
     {
         var chat = new FakeChatClient(() => new ChatResponse(new ChatMessage(ChatRole.Assistant,
-            $$"""{"rationales":[{"employeeId":"{{Ada}}","rationale":"Strong Kafka evidence."}]}""")));
+            $$"""{"rationales":[{"expertId":"{{Ada}}","rationale":"Strong Kafka evidence."}]}""")));
         var agent = new ShortlistAgent(chat);
 
         await agent.RationalesAsync("Platform engineer JD.", Payload());

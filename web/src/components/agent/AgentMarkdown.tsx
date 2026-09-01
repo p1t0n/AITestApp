@@ -3,16 +3,16 @@ import { Box, Link } from "@mui/material";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-// Matches a GUID anywhere in the text. The agents cite employees by name + id, so we turn those
-// ids into links to the employee detail page.
+// Matches a GUID anywhere in the text. The agents cite experts by name + id, so we turn those
+// ids into links to the expert detail page.
 const GUID = /[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}/g;
 
-// Turn bare employee ids into markdown links so they render as navigable links in the answer.
+// Turn bare expert ids into markdown links so they render as navigable links in the answer.
 function linkifyGuids(markdown: string): string {
-  return markdown.replace(GUID, (id) => `[${id}](/employees/${id})`);
+  return markdown.replace(GUID, (id) => `[${id}](/experts/${id})`);
 }
 
-/** Renders an agent answer as GitHub-flavoured markdown (headings, lists, tables), with employee
+/** Renders an agent answer as GitHub-flavoured markdown (headings, lists, tables), with expert
  * ids linkified to their detail page.
  *
  * Every rule here is about one thing: an agent's answer is arbitrary-length markdown arriving in a

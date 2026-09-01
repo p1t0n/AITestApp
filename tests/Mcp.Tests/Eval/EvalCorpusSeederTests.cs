@@ -6,11 +6,11 @@ namespace ExpertToJob.Mcp.Tests.Eval;
 
 /// <summary>
 /// Unit tests for the pure fixture-to-entity mapping: what the eval seeds must be exactly what the
-/// corpus JSON says, chunk-projectable the same way production employees are.
+/// corpus JSON says, chunk-projectable the same way production experts are.
 /// </summary>
 public class EvalCorpusSeederTests
 {
-    private static readonly EvalEmployee Fixture = new(
+    private static readonly EvalExpert Fixture = new(
         Key: "ada-l",
         FirstName: "Ada",
         LastName: "Lovelace",
@@ -38,24 +38,24 @@ public class EvalCorpusSeederTests
     [Fact]
     public void Maps_identity_fields_and_narrative_text()
     {
-        var employee = EvalCorpusSeeder.ToEmployee(Fixture);
+        var expert = EvalCorpusSeeder.ToExpert(Fixture);
 
-        employee.Id.Should().NotBeEmpty();
-        employee.FirstName.Should().Be("Ada");
-        employee.LastName.Should().Be("Lovelace");
-        employee.Title.Should().Be("Analyst");
-        employee.Location.Should().Be("London");
-        employee.Summary.Should().Be("Wrote the first program.");
-        employee.Email.Should().Be("ada-l@eval.example.com");
+        expert.Id.Should().NotBeEmpty();
+        expert.FirstName.Should().Be("Ada");
+        expert.LastName.Should().Be("Lovelace");
+        expert.Title.Should().Be("Analyst");
+        expert.Location.Should().Be("London");
+        expert.Summary.Should().Be("Wrote the first program.");
+        expert.Email.Should().Be("ada-l@eval.example.com");
     }
 
     [Fact]
     public void Maps_experiences_with_month_precision_dates()
     {
-        var employee = EvalCorpusSeeder.ToEmployee(Fixture);
+        var expert = EvalCorpusSeeder.ToExpert(Fixture);
 
-        employee.Experiences.Should().HaveCount(2);
-        var first = employee.Experiences.First();
+        expert.Experiences.Should().HaveCount(2);
+        var first = expert.Experiences.First();
         first.Company.Should().Be("Analytical Engines Ltd");
         first.Title.Should().Be("Programmer");
         first.StartDate.Should().Be(new DateOnly(1842, 5, 1));
@@ -65,12 +65,12 @@ public class EvalCorpusSeederTests
 
     [Fact]
     public void Null_end_month_means_a_current_role()
-        => EvalCorpusSeeder.ToEmployee(Fixture)
+        => EvalCorpusSeeder.ToExpert(Fixture)
             .Experiences.Last().EndDate.Should().BeNull();
 
     [Fact]
     public void Achievements_keep_their_authored_order()
-        => EvalCorpusSeeder.ToEmployee(Fixture)
+        => EvalCorpusSeeder.ToExpert(Fixture)
             .Experiences.First().Achievements.OrderBy(a => a.Order)
             .Select(a => a.Text)
             .Should().Equal("Note G.", "First published algorithm.");

@@ -30,7 +30,7 @@ public class RosterQaLiveSmokeTests
         using var client = factory.CreateAuthenticatedClient();
 
         var response = await client.PostAsJsonAsync(
-            "/agents/roster-qa", new { question = "Which employees are in the roster?" });
+            "/agents/roster-qa", new { question = "Which experts are in the roster?" });
 
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();

@@ -144,18 +144,18 @@ public sealed class ShortlistSearchServiceTests : IAsyncLifetime
         db.Categories.Add(category);
         db.Skills.Add(react);
 
-        var bella = Employee("Bella", "Both", "London",
+        var bella = Expert("Bella", "Both", "London",
             "Built fintech trading systems.", "Wrote gaming engines.");
 
-        var fiona = Employee("Fiona", "Fintech", "London", "Built fintech trading systems.");
-        fiona.Skills.Add(new EmployeeSkill
+        var fiona = Expert("Fiona", "Fintech", "London", "Built fintech trading systems.");
+        fiona.Skills.Add(new ExpertSkill
         {
             Id = Guid.NewGuid(), SkillId = react.Id, Level = SkillLevel.Advanced, YearsExperience = 5m,
         });
 
-        var gary = Employee("Gary", "Gaming", "Berlin", "Wrote gaming engines.");
+        var gary = Expert("Gary", "Gaming", "Berlin", "Wrote gaming engines.");
 
-        db.Employees.AddRange(bella, fiona, gary);
+        db.Experts.AddRange(bella, fiona, gary);
         await db.SaveChangesAsync();
     }
 
@@ -166,14 +166,14 @@ public sealed class ShortlistSearchServiceTests : IAsyncLifetime
     /// </summary>
     private async Task SeedLarrysBulletChunkAsync(AppDbContext db)
     {
-        var larry = Employee("Larry", "Logistics", "London");
-        db.Employees.Add(larry);
+        var larry = Expert("Larry", "Logistics", "London");
+        db.Experts.Add(larry);
 
         var embedded = await new CountingKeywordEmbedder().EmbedAsync(["Optimized logistics routing."]);
-        db.EmployeeSearchChunks.Add(new EmployeeSearchChunk
+        db.ExpertSearchChunks.Add(new ExpertSearchChunk
         {
             Id = Guid.NewGuid(),
-            EmployeeId = larry.Id,
+            ExpertId = larry.Id,
             SourceType = SearchChunkSource.Achievement,
             SourceId = Guid.NewGuid(),
             Content = "Optimized logistics routing.",
@@ -185,7 +185,7 @@ public sealed class ShortlistSearchServiceTests : IAsyncLifetime
         await db.SaveChangesAsync();
     }
 
-    private static Employee Employee(string first, string last, string location, params string[] experienceSummaries) => new()
+    private static Expert Expert(string first, string last, string location, params string[] experienceSummaries) => new()
     {
         Id = Guid.NewGuid(),
         FirstName = first,

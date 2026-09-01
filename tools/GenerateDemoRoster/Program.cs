@@ -19,7 +19,7 @@ public static class Program
         {
             switch (args[i])
             {
-                case "--count": options = options with { EmployeeCount = int.Parse(args[++i]) }; break;
+                case "--count": options = options with { ExpertCount = int.Parse(args[++i]) }; break;
                 case "--seed": options = options with { Seed = int.Parse(args[++i]) }; break;
                 case "--output": output = args[++i]; break;
                 case "--offline": offline = true; break;
@@ -32,7 +32,7 @@ public static class Program
         output ??= Path.Combine(FindRepoRoot(), "api", "Infrastructure", "Persistence", "SeedData", "demo-roster.json");
 
         var dataset = DemoRosterGenerator.Generate(options, new FragmentNarrativeSource());
-        Console.WriteLine($"Assembled {dataset.Employees.Count} employees / {dataset.Skills.Count} catalog skills (seed {options.Seed}).");
+        Console.WriteLine($"Assembled {dataset.Experts.Count} experts / {dataset.Skills.Count} catalog skills (seed {options.Seed}).");
 
         var token = Environment.GetEnvironmentVariable("GEMINI_API_KEY");
         if (offline || string.IsNullOrWhiteSpace(token))
@@ -43,7 +43,7 @@ public static class Program
         {
             Console.WriteLine("Rewriting narratives via Gemini (best-effort, batched)...");
             var enriched = await new GeminiEnricher(token).EnrichAsync(dataset, Console.WriteLine);
-            Console.WriteLine($"LLM-enriched {enriched}/{dataset.Employees.Count} employees; the rest keep fragment prose.");
+            Console.WriteLine($"LLM-enriched {enriched}/{dataset.Experts.Count} experts; the rest keep fragment prose.");
         }
 
         await File.WriteAllTextAsync(output, DemoRosterLoader.Serialize(dataset) + Environment.NewLine);

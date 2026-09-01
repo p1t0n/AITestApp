@@ -23,7 +23,7 @@ interface Props {
 const empty: SaveAvailabilityEntry = { effectiveFrom: "", capacityPercent: 100 };
 
 /**
- * One step of the availability step function: from this date on, the employee is at this capacity.
+ * One step of the availability step function: from this date on, the expert is at this capacity.
  * Add and edit share the form, so the payload the API sees is built in one place.
  *
  * Save stays disabled until a date is typed — not client-side validation (the server is the only

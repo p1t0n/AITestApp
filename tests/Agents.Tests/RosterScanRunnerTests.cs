@@ -36,25 +36,25 @@ public class RosterScanRunnerTests
         }
     }
 
-    private sealed class FakeDigests(params EmployeeDigestPage[] pages) : IRosterDigestSource
+    private sealed class FakeDigests(params ExpertDigestPage[] pages) : IRosterDigestSource
     {
         public int Calls { get; private set; }
 
-        public Task<EmployeeDigestPage?> ListAsync(int page, int pageSize, CancellationToken ct = default)
+        public Task<ExpertDigestPage?> ListAsync(int page, int pageSize, CancellationToken ct = default)
         {
             Calls++;
-            return Task.FromResult<EmployeeDigestPage?>(
-                page <= pages.Length ? pages[page - 1] : new EmployeeDigestPage(page, pageSize, 0, []));
+            return Task.FromResult<ExpertDigestPage?>(
+                page <= pages.Length ? pages[page - 1] : new ExpertDigestPage(page, pageSize, 0, []));
         }
     }
 
-    private sealed class FakeTransport(Func<IReadOnlyList<EmployeeDigest>, ScoredChunk> score) : IScoringTransport
+    private sealed class FakeTransport(Func<IReadOnlyList<ExpertDigest>, ScoredChunk> score) : IScoringTransport
     {
         public int Calls { get; private set; }
         public List<int> ChunkSizes { get; } = [];
 
         public Task<ScoredChunk> ScoreChunkAsync(
-            string jobDescription, JdRequirements? extraction, IReadOnlyList<EmployeeDigest> chunk,
+            string jobDescription, JdRequirements? extraction, IReadOnlyList<ExpertDigest> chunk,
             CancellationToken ct = default)
         {
             Calls++;
@@ -86,13 +86,13 @@ public class RosterScanRunnerTests
         "jd-extraction", new AgentReply("{}", 90, 30, 120),
         new JdRequirements([], JdSeniority.Unspecified, null, []), FaultDetail: null);
 
-    private static EmployeeDigestPage Page(int page, int total, params (Guid Id, string Name)[] people) => new(
+    private static ExpertDigestPage Page(int page, int total, params (Guid Id, string Name)[] people) => new(
         page, 2, total,
-        people.Select(p => new EmployeeDigest(p.Id, p.Name, "Engineer", $"Digest of {p.Name}")).ToList());
+        people.Select(p => new ExpertDigest(p.Id, p.Name, "Engineer", $"Digest of {p.Name}")).ToList());
 
-    private static ScoredChunk AllScored(IReadOnlyList<EmployeeDigest> chunk) => new(
+    private static ScoredChunk AllScored(IReadOnlyList<ExpertDigest> chunk) => new(
         chunk.Select(c => new ScoringCandidateResult(
-            c.EmployeeId, ScoringCandidateStatus.Scored, 75, "Strong", "fit", true, null)).ToList(),
+            c.ExpertId, ScoringCandidateStatus.Scored, 75, "Strong", "fit", true, null)).ToList(),
         new AgentReply("{}", 200, 50, 250));
 
     private static (RosterScanRunner Runner, ScoringJobStore Store, FakeExtractor Extractor,
@@ -112,7 +112,7 @@ public class RosterScanRunnerTests
             fakeExtractor,
             digests ?? new FakeDigests(Page(1, 3, (Ada, "Ada"), (Grace, "Grace")), Page(2, 3, (Linus, "Linus"))),
             fakeTransport,
-            new EmployeeFilterService(db),
+            new ExpertFilterService(db),
             meter,
             usage ?? new ScriptedUsage(),
             new RosterScanOptions { ChunkSize = 2 },
@@ -245,8 +245,8 @@ public class RosterScanRunnerTests
         await using var db = NewDb();
         var transport = new FakeTransport(chunk => new ScoredChunk(
             chunk.Select((c, i) => i == 0
-                ? new ScoringCandidateResult(c.EmployeeId, ScoringCandidateStatus.Failed, null, null, null, null, "boom")
-                : new ScoringCandidateResult(c.EmployeeId, ScoringCandidateStatus.Scored, 60, "Moderate", "ok", true, null))
+                ? new ScoringCandidateResult(c.ExpertId, ScoringCandidateStatus.Failed, null, null, null, null, "boom")
+                : new ScoringCandidateResult(c.ExpertId, ScoringCandidateStatus.Scored, 60, "Moderate", "ok", true, null))
                 .ToList(),
             new AgentReply("{}", 10, 5, 15)));
         var (runner, store, _, _, _) = Build(db, transport);

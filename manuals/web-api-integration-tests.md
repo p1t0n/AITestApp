@@ -12,7 +12,7 @@ defects it found on its first run.
 tests/Web.Tests/
   WebApiFactory.cs          the real host over a throwaway Postgres, + session-token minting
   AuthBoundaryTests.cs      what an unauthenticated caller gets
-  EmployeeCrudTests.cs      the resource and its children, round trip
+  ExpertCrudTests.cs      the resource and its children, round trip
   ErrorShapeTests.cs        404 / 400 / 409 shapes
   CvEndpointTests.cs        the CV projection and the PDF render, over the wire
   ApiClientExtensions.cs    test-side helpers
@@ -32,7 +32,7 @@ Production the host refuses to start on the placeholder key, by design (P1T-87).
 store. A plain `postgres:17` image fails at migration time, which is a confusing way to learn this.
 
 **One container and one host for the whole assembly.** Starting Postgres per test class costs more
-than the isolation buys. Tests stay apart by owning what they create — a fresh employee per test,
+than the isolation buys. Tests stay apart by owning what they create — a fresh expert per test,
 `ApiClientExtensions.UniqueEmail` for addresses — and by never asserting on collection totals. A
 test that needs an empty roster does not belong here.
 
@@ -52,19 +52,19 @@ Both were real, both are fixed in this slice, and neither was reachable from the
 layers.
 
 **`ExperiencesController` had no `[ApiController]`.** Without it MVC does not infer `[FromBody]` for
-a complex parameter, so `POST /api/employees/{id}/experiences` and `PUT /api/experiences/{id}` bound
+a complex parameter, so `POST /api/experts/{id}/experiences` and `PUT /api/experiences/{id}` bound
 an empty `SaveExperienceDto` from the query string and answered 400 to every JSON caller. The
 endpoints had been dead since they were written; nothing noticed because the SPA has no experience
 edit form yet (still listed as unbuilt) and agents reach experiences over MCP, which calls the
 Application layer directly. `Experiences_round_trip_with_their_achievements_from_a_json_body` is the
 regression guard.
 
-**A duplicate active email returned 500.** Employee email uniqueness lives in a *partial* unique
+**A duplicate active email returned 500.** Expert email uniqueness lives in a *partial* unique
 index over Active rows — a rule EF cannot pre-check without a race, and one EF InMemory does not
 enforce at all. `PromoteAsync` translated the violation into a `ConflictException`; `CreateAsync`,
 `UpdateAsync` and `PatchAsync` did not, so an ordinary correctable mistake surfaced as a server
-error. All four now save through `EmployeeService.SaveGuardingEmailAsync`, which maps the
-`IX_Employees_Email` violation to a Conflict with the offending address and a remedy sentence.
+error. All four now save through `ExpertService.SaveGuardingEmailAsync`, which maps the
+`IX_Experts_Email` violation to a Conflict with the offending address and a remedy sentence.
 REST answers 409; the MCP adapter maps the same exception to its `conflict` error code, so both
 surfaces now agree.
 

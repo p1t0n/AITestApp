@@ -1,6 +1,6 @@
 # Semantic Roster Search & JD Shortlist (RAG)
 
-Retrieval-augmented "find people by meaning" over employee CV narratives.
+Retrieval-augmented "find people by meaning" over expert CV narratives.
 
 The structured MCP tools match on rows — skill tags, categories, availability. They can't answer
 *"who has shipped real-time trading systems?"* or *"anyone with fintech + team-lead experience?"*,
@@ -14,10 +14,10 @@ surface embeds those narratives, stores the vectors in pgvector, and exposes the
   Match" drill-in.
 - **`style_exemplar_search`** + **`CvTailoringAgent`** — CV bullet rewriting: tailoring returns
   before/after achievement-bullet rewrites shaped by anonymized strong-phrasing exemplars retrieved
-  from *other* employees' CVs, vetted by a fabrication guard, applied via the user's own session.
+  from *other* experts' CVs, vetted by a fabrication guard, applied via the user's own session.
 
 Supporting machinery: a **retrieval eval harness** (frozen golden set, measured baseline, live
-regression gate) and a **500-employee demo roster** (generator + seeder tooling).
+regression gate) and a **500-expert demo roster** (generator + seeder tooling).
 
 The **staffing pipeline** (`POST /agents/staffing`) composes the shortlist and match steps
 described here into one streamed, recommendation-first report — see
@@ -59,7 +59,7 @@ described here into one streamed, recommendation-first report — see
                     ▼                                        ▼                              ▼
         ┌────────────────────────┐        ┌───────────────────────────┐     ┌────────────────────────┐
         │ Application             │        │ Infrastructure             │     │ Gemini                  │
-        │  ChunkProjection        │        │  EmployeeSearchChunk        │     │  gemini-embedding-001   │
+        │  ChunkProjection        │        │  ExpertSearchChunk        │     │  gemini-embedding-001   │
         │  Reconciler (pure diff) │        │  (pgvector table)           │     │  (OpenAI-compatible)    │
         │  ISemanticSearchService │        │  GeminiEmbedder       │     └────────────────────────┘
         │  IShortlistSearchService│        │  SearchIndexReconciler      │
@@ -73,8 +73,8 @@ described here into one streamed, recommendation-first report — see
   tools/: GenerateDemoRoster · SeedDemoRoster · RetrievalEval(+Core, eval fixtures + sweep CLI)
 ```
 
-**Boundary rule.** All employee-data access goes through MCP tools, never the DB — semantic search
-over narratives *is* employee-data access, so it ships as an MCP tool. Any MCP client gets it under
+**Boundary rule.** All expert-data access goes through MCP tools, never the DB — semantic search
+over narratives *is* expert-data access, so it ships as an MCP tool. Any MCP client gets it under
 `mcp:read`; the existing Keycloak scope model covers it with no new auth.
 
 **Layering.** The retrieval *contracts* and the *pure* logic (projection, diff) live in
@@ -85,34 +85,34 @@ Infrastructure. The background *scheduler* lives in the Mcp service.
 
 ## Data model
 
-`EmployeeSearchChunk` (in `Infrastructure/Persistence`, not Domain — it carries the Postgres-specific
+`ExpertSearchChunk` (in `Infrastructure/Persistence`, not Domain — it carries the Postgres-specific
 `Vector` type and is a derived read-model, not domain state):
 
 | Column | Type | Notes |
 |--------|------|-------|
 | `Id` | uuid | PK |
-| `EmployeeId` | uuid | FK → Employee, cascade delete; scopes pre-filter + aggregation |
+| `ExpertId` | uuid | FK → Expert, cascade delete; scopes pre-filter + aggregation |
 | `SourceType` | text (enum) | `Experience` \| `Summary` \| `Achievement` |
-| `SourceId` | uuid | Experience id, Employee id for a Summary chunk, or Achievement id for a bullet chunk |
+| `SourceId` | uuid | Experience id, Expert id for a Summary chunk, or Achievement id for a bullet chunk |
 | `Content` | text | the exact rendered text that was embedded |
 | `ContentHash` | text (64) | SHA-256 hex of `Content`; the dirty signal |
 | `Embedding` | `vector(1536)` null | null until embedded |
 | `Model` | text | embedding model id used |
 | `EmbeddedAt` | timestamptz null | when the embedding was written |
 
-Unique index `(SourceType, SourceId)` — one chunk per source. `EmployeeId` index for filtering.
+Unique index `(SourceType, SourceId)` — one chunk per source. `ExpertId` index for filtering.
 Mapped only under Npgsql; ignored for the in-memory test provider (which can't map `Vector`).
 
 ### Chunk granularity & rendering (`ChunkProjection`)
 
 - **One chunk per `Experience`**: header `"{Title} @ {Company} ({yyyy-MM}–{yyyy-MM|present})"`, then
   the experience `Summary`, then achievement texts (ordered by `Order`) as `- ` bullets.
-- **One chunk for the employee `Summary`** (skipped when blank).
+- **One chunk for the expert `Summary`** (skipped when blank).
 - **One chunk per non-blank `Achievement` bullet** (trimmed text; `SourceId` = the achievement id):
   the fine-grained unit for style-exemplar retrieval (P1T-63). The parent experience chunk keeps the
-  bullets rolled in as the employee-level narrative unit, so a bullet edit re-embeds exactly two
+  bullets rolled in as the expert-level narrative unit, so a bullet edit re-embeds exactly two
   chunks: the bullet's own and its parent experience chunk. Achievement chunks are **excluded** from
-  the two employee-level search paths — see the bullet-rewriting section for the measured why.
+  the two expert-level search paths — see the bullet-rewriting section for the measured why.
 
 Rendering is pure and deterministic, so identical content always yields the same `ContentHash` —
 that's what makes change detection exact.
@@ -124,7 +124,7 @@ that's what makes change detection exact.
 `SearchIndexReconciler.RunOnceAsync` (Infrastructure), driven by `ReconcileWorker` (a hosted
 `BackgroundService` in the Mcp service) every `IntervalSeconds`:
 
-1. **Sync** — project every employee → desired chunks; diff against persisted chunks by
+1. **Sync** — project every expert → desired chunks; diff against persisted chunks by
    `(SourceType, SourceId)` (`Reconciler.Diff`). Content-hash change ⇒ update in place +
    clear the embedding; new source ⇒ insert (embedding null); vanished source ⇒ delete.
 2. **Embed** — every chunk with a null embedding is embedded in batches of `EmbedBatchSize`;
@@ -133,7 +133,7 @@ that's what makes change detection exact.
 A fresh or edited chunk has a null embedding, so the same loop **backfills a cold index and keeps a
 warm one current** — there is no separate backfill path. A failed pass is logged and retried on the
 next tick (dirty chunks stay dirty), so the index self-heals across every write path (Web API, MCP
-write tools, even raw SQL). Employee deletes cascade the chunks away.
+write tools, even raw SQL). Expert deletes cascade the chunks away.
 
 **Embedding cost** is logged per batch (`embedding-index: … N input tokens`) for visibility. It is
 **not** charged against per-user token caps — embeddings are an infra/operational cost, distinct
@@ -154,7 +154,7 @@ MCP tool (`mcp:read`, read-only) → `ISemanticSearchService.SearchAsync`:
 3. Rank chunks by cosine similarity (`embedding <=> query`); drop anything below `MinSimilarity`
    (0.55 for gemini-embedding-001) so an off-topic query returns nothing rather than the least-bad rows. Achievement bullet
    chunks are excluded from this pool (shared with the shortlist path — see bullet rewriting).
-4. Aggregate chunk hits → employees by **best** similarity, take top-K (default 5, max 20), attach
+4. Aggregate chunk hits → experts by **best** similarity, take top-K (default 5, max 20), attach
    up to 3 truncated evidence snippets each.
 
 **Tool parameters:** `query` (required); optional `availableOn`, `skillIds`, `location`,
@@ -165,7 +165,7 @@ MCP tool (`mcp:read`, read-only) → `ISemanticSearchService.SearchAsync`:
 ```json
 {
   "results": [
-    { "employeeId": "…", "name": "Ada Lovelace", "title": "Payments Lead",
+    { "expertId": "…", "name": "Ada Lovelace", "title": "Payments Lead",
       "score": 0.88, "snippets": ["Payments Lead @ BankCo (2019-03–present)\nLed the payments rewrite."] }
   ],
   "error": null
@@ -194,7 +194,7 @@ to embed as one query (it averages into mush), so the flow splits it:
 1. **`ShortlistAgent`** (name `shortlist`, tools narrowed to `roster_shortlist_search`) runs one
    two-turn session: turn 1 — the model distills the JD into 3–8 short requirement phrases and calls
    the tool once (user-set filters pass through verbatim); turn 2 — the model returns only minimal
-   `[{"employeeId","rationale"}]` JSON.
+   `[{"expertId","rationale"}]` JSON.
 2. **`roster_shortlist_search(requirements[], filters?, topK?)`** (MCP, `mcp:read`) batch-embeds all
    requirements in **one** embedding call, runs one cosine query per requirement over the pre-filtered
    chunk set, and merges **in code** (`ShortlistRanker`, pure): a candidate matches a requirement iff
@@ -214,7 +214,7 @@ to embed as one query (it averages into mush), so the flow splits it:
 {
   "requirements": ["built real-time payments systems", "led a team"],
   "candidates": [{
-    "employeeId": "…", "name": "Ada Lovelace", "title": "Payments Lead",
+    "expertId": "…", "name": "Ada Lovelace", "title": "Payments Lead",
     "score": 0.82,
     "coverage": { "matched": 4, "total": 5 },
     "requirements": [{ "text": "…", "matched": true, "snippet": "…" }],
@@ -229,8 +229,8 @@ guard is tested (model returns wrong ids → response ids stay the tool's). Hard
 
 **Widget**: the Shortlist tab takes the JD + optional filters (date, catalog-bound skill picker,
 location, min years, topK), renders the requirement chips ("how the JD was read"), ranked candidate
-cards (employee link, score, coverage badge, rationale, expandable evidence), and a **Run full
-Match** action that jumps to the Match tab pre-filled with that employee + the same JD. Cap-reached
+cards (expert link, score, coverage badge, rationale, expandable evidence), and a **Run full
+Match** action that jumps to the Match tab pre-filled with that expert + the same JD. Cap-reached
 (429) and errors render like the other tabs; the Usage tab picks up the `shortlist` agent
 automatically.
 
@@ -243,11 +243,11 @@ raised to 25k / 150k / 500k (daily/weekly/monthly) — the old 1000/7000/30000 w
 ## CV bullet rewriting — `style_exemplar_search` + the 2-turn `CvTailoringAgent`
 
 Tailoring output gains vetted **before/after rewrites of the CV's achievement bullets**, phrased
-with the help of anonymized strong bullets retrieved from *other* employees' CVs (P1T-57…67).
+with the help of anonymized strong bullets retrieved from *other* experts' CVs (P1T-57…67).
 
 ### Why the feature is bullet-shaped (the gate verdict, P1T-58)
 
-Before any plumbing was built, a throwaway prototype ran tailoring for 3 demo employees × one JD,
+Before any plumbing was built, a throwaway prototype ran tailoring for 3 demo experts × one JD,
 with and without hand-picked cross-CV bullets injected as labelled style exemplars carrying
 distinctive fabrication tripwires. Findings: **honesty held** (zero tripwire facts leaked — the
 framing that achieved it now ships verbatim in the agent's instructions: *"STYLE EXEMPLARS — bullets
@@ -257,11 +257,11 @@ shape (summary + advisory guidance) was **marginal — not worth building retrie
 that *would* benefit from quantified, cause→effect exemplar phrasing is rewritten achievement
 bullets, which the agent never produced. Verdict: proceed, re-scoped to bullet rewriting.
 
-### Achievement chunks stay out of employee-level search
+### Achievement chunks stay out of expert-level search
 
 The bullet chunks (see the data model) exist *only* for exemplar retrieval. When they first entered
 the shared chunk pool, the **live eval gate caught the regression**: the negative-false-positive
-rate went 0.0 → 0.1667 (an off-topic query pulled in an employee through a single bullet) and MRR
+rate went 0.0 → 0.1667 (an off-topic query pulled in an expert through a single bullet) and MRR
 dipped 0.9848 → 0.9697. Filtering `SourceType = Achievement` out of the shared ranking query used by
 both `roster_semantic_search` and `roster_shortlist_search` **restored every metric to the committed
 baseline exactly** (recall@5 1.0, MRR 0.9848, neg-FP 0.0). Bullet narrative still reaches those
@@ -276,8 +276,8 @@ resolves each bullet's stored text server-side — the model never supplies free
 Unknown/empty ids are skipped silently. Then:
 
 1. **One batched embed call** for all resolved bullets.
-2. Per bullet, rank **other** employees' Achievement chunks by cosine similarity
-   (`EmployeeId != owner` — a bullet never gets its own CV back), under the shared `MinSimilarity`
+2. Per bullet, rank **other** experts' Achievement chunks by cosine similarity
+   (`ExpertId != owner` — a bullet never gets its own CV back), under the shared `MinSimilarity`
    floor (0.55) and a SQL length-band pre-filter.
 3. **Quality gate** in memory (`ExemplarQualityFilter`): an exemplar must be *quantified* (contain a
    digit or `%` — the hallmark of strong CV phrasing) and sit inside the length band
@@ -285,7 +285,7 @@ Unknown/empty ids are skipped silently. Then:
 4. **Dedup within the request**: the same source bullet is never returned twice, whichever requested
    bullet it matched first (closest first).
 5. **Anonymization scrub** (`ExemplarAnonymizer`) before any text leaves the service: every
-   occurrence of the source employee's first/last name → `[name]`, every employer's company name →
+   occurrence of the source expert's first/last name → `[name]`, every employer's company name →
    `[company]` (case-insensitive, whole-word, longest term first).
 
 `topKPerBullet` defaults to `ExemplarsPerBullet` (2), clamped to `ExemplarsPerBulletMax` (5) — all
@@ -319,7 +319,7 @@ contract
 
 The answer is turn 1's markdown verbatim. Every deterministic rewrite field — `experienceId`,
 `achievementId`, `original` — is resolved from the **captured cv_get result**, never from model text
-(the Agents service may not query employee data directly; MCP is the boundary); the model's turn-2
+(the Agents service may not query expert data directly; MCP is the boundary); the model's turn-2
 JSON contributes only the `rewritten` strings. Entries with unknown/unselected/duplicate ids or
 blank text are dropped; the JSON parse is lenient (tolerates prose and markdown fences).
 
@@ -356,11 +356,11 @@ with a copy button for the rewritten text and its own **Apply** button with stri
 pending/applied/error state. **Exemplars are never disclosed in the UI** (or in the answer text).
 
 **Apply authority model** (P1T-62/P1T-67): the agent never writes. Apply is a plain Web-API edit
-with the **user's own session**, exactly like a manual edit — the SPA fetches the employee, swaps
+with the **user's own session**, exactly like a manual edit — the SPA fetches the expert, swaps
 the one bullet's text, and `PUT /api/experiences/{id}`s the experience back otherwise unchanged
 (there is no per-achievement endpoint). That PUT **regenerates achievement ids**, so the apply hook
 falls back from id → original-text match (a sibling rewrite was applied first) → rewritten-text
-match (re-apply; the PUT becomes a no-op). Success invalidates the employee's detail/CV queries by
+match (re-apply; the PUT becomes a no-op). Success invalidates the expert's detail/CV queries by
 prefix so open views refetch.
 
 **Live-verified** end-to-end: rewrites rendered in the tab, Apply persisted through the user's
@@ -373,7 +373,7 @@ agent-side writes observed.
 
 Retrieval quality is **measured, not vibed** (`tools/RetrievalEval.Core` + `tools/RetrievalEval`):
 
-- **Frozen corpus** (24 hand-authored employees; keyword terms exclusive per employee) + **golden
+- **Frozen corpus** (24 hand-authored experts; keyword terms exclusive per expert) + **golden
   set** (39 labelled queries: keyword / paraphrase / cross-facet / negative). Fixtures live with the
   eval core; labels are versioned truth — never mix demo data in.
 - **Metrics**: recall@5, MRR, negative-query false-positive rate (the trio the threshold trades
@@ -394,7 +394,7 @@ it doesn't claim perfection at scale.
 
 ## Demo data
 
-500 synthetic employees across 10 industry clusters with rich career narratives
+500 synthetic experts across 10 industry clusters with rich career narratives
 (`api/Infrastructure/Persistence/SeedData/demo-roster.json`, committed; all emails
 `@demo.example.com`):
 
@@ -402,17 +402,17 @@ it doesn't claim perfection at scale.
   career templates (seeded PRNG), optional LLM enrichment pass (`GEMINI_API_KEY`). The committed file
   is the deterministic output (seed 48).
 - **Seed**: `dotnet run --project tools/SeedDemoRoster -- [--count N] [--wipe]` — idempotent by
-  email; `--wipe` deletes exactly the `@demo.example.com` employees (cascades children + chunks).
+  email; `--wipe` deletes exactly the `@demo.example.com` experts (cascades children + chunks).
   Or set `Seed:DemoRoster=true` (+ `Seed:DemoRosterCount`) for seed-on-boot demo environments.
 - After seeding, the reconcile worker embeds the new chunks on its own (real embeddings; 500
-  employees ≈ 75–150k embedding tokens once — infra cost, not user caps).
+  experts ≈ 75–150k embedding tokens once — infra cost, not user caps).
 
 ---
 
 ## Operations
 
 - **Postgres image**: `pgvector/pgvector:pg17` (stock `postgres:17` plus the `vector` extension).
-- **Extension + table**: created by the `AddEmployeeSearchChunk` EF migration (the `vector` extension
+- **Extension + table**: created by the `AddExpertSearchChunk` EF migration (the `vector` extension
   is emitted from `HasPostgresExtension("vector")`).
 - **No ANN index in v1**: at hundreds–low-thousands of chunks a flat cosine scan over the pre-filtered
   set is fine, and it sidesteps HNSW's under-return on selective filters. The `vector` column is
@@ -426,7 +426,7 @@ Mcp service `appsettings.json`:
 "Gemini":        { "Endpoint": "…", "EmbeddingModel": "gemini-embedding-001", "Dimensions": 1536, "ApiKey": "" },
 "SearchIndex":   { "Enabled": true, "IntervalSeconds": 30, "EmbedBatchSize": 32 },
 "SemanticSearch":{ "MinSimilarity": 0.55, "DefaultTopK": 5, "MaxTopK": 20,
-                   "MaxSnippetsPerEmployee": 3, "SnippetMaxChars": 500,
+                   "MaxSnippetsPerExpert": 3, "SnippetMaxChars": 500,
                    "ShortlistDefaultTopK": 10, "ShortlistMaxTopK": 20,
                    // style exemplars (bullet rewriting):
                    "ExemplarsPerBullet": 2, "ExemplarsPerBulletMax": 5,
@@ -461,7 +461,7 @@ The worker is disabled in the in-memory MCP tests via `SearchIndex:Enabled=false
   (`Category=live`, needs `GEMINI_API_KEY`).
 - **Integration** (`Mcp.Tests`, Testcontainers `pgvector/pgvector:pg17`, fake embedder):
   `SearchIndexReconciler` (backfill, no-op second pass, edit re-embeds only the changed chunk,
-  orphan delete, employee cascade) and `SemanticSearchService` (topical ranking + threshold
+  orphan delete, expert cascade) and `SemanticSearchService` (topical ranking + threshold
   exclusion, off-topic empty, location + skill pre-filters, embed-failure soft error).
 - **MCP transport** (`Mcp.Tests`, in-memory host, stubbed service): both search tools exposed under
   `mcp:read`, ranked results returned, params (incl. `requirements[]`) bound through correctly.
@@ -470,7 +470,7 @@ The worker is disabled in the in-memory MCP tests via `SearchIndex:Enabled=false
   composer corruption guard (model can't change ids), degrade-to-templated-rationale, endpoint
   contract/429/502, live smoke.
 - **Agent** (`Agents.Tests`, fake chat client + fake tools): capability question routes to
-  `roster_semantic_search` and cites the snippet; a soft error falls back to `employee_list`.
+  `roster_semantic_search` and cites the snippet; a soft error falls back to `expert_list`.
 - **Bullet rewriting** (`Application.Tests` + `Mcp.Tests` + `Agents.Tests` + `web`): pure exemplar
   quality gate + anonymizer scrub; pgvector `ExemplarSearchService` (owner exclusion, in-request
   dedup, similarity floor, quantified gate, soft error); `style_exemplar_search` transport binding;

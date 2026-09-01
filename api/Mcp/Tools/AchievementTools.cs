@@ -1,5 +1,5 @@
 using System.ComponentModel;
-using ExpertToJob.Application.Employees;
+using ExpertToJob.Application.Experts;
 using Microsoft.AspNetCore.Authorization;
 using ModelContextProtocol.Server;
 
@@ -11,8 +11,8 @@ public class AchievementTools
     [McpServerTool(Name = "achievement_add", ReadOnly = false, Destructive = false),
      Description(
          "Append ONE achievement bullet to an existing job — the quantified 'what I accomplished' " +
-         "line under a work experience. It hangs off the EXPERIENCE id (from employee_get or " +
-         "cv_get), NOT the employee id, because a bullet belongs to a role. Use it for 'append " +
+         "line under a work experience. It hangs off the EXPERIENCE id (from expert_get or " +
+         "cv_get), NOT the expert id, because a bullet belongs to a role. Use it for 'append " +
          "\"Cut deploy time by 40%\" to that experience'. Do NOT use it when the job itself does " +
          "not exist yet — experience_add creates the role and can carry its bullets in one call; " +
          "do NOT use it to reword an existing bullet — achievement_update by the achievement id; " +
@@ -24,7 +24,7 @@ public class AchievementTools
      Authorize(Policy = McpScopes.Write)]
     public static Task<object> Add(
         IAchievementService achievements,
-        [Description("Experience id (GUID) — the ROLE this bullet belongs to, not the employee id.")]
+        [Description("Experience id (GUID) — the ROLE this bullet belongs to, not the expert id.")]
         Guid experienceId,
         [Description("order: 1-based display position among that role's bullets; text: the bullet " +
                      "itself, taken verbatim from the source — never invented or embellished.")]
@@ -35,7 +35,7 @@ public class AchievementTools
     [McpServerTool(Name = "achievement_update", ReadOnly = false, Destructive = false),
      Description(
          "CHANGE one achievement bullet — its text or its display order — by ACHIEVEMENT id (from " +
-         "cv_get or employee_get). Use it to fix wording or reorder bullets within a role. Do NOT " +
+         "cv_get or expert_get). Use it to fix wording or reorder bullets within a role. Do NOT " +
          "use it to add a bullet — achievement_add with the experience id; do NOT use " +
          "experience_update for a single bullet, since its achievements array is a full replace " +
          "and can silently drop the others. Input: id + dto {order, text}; e.g. {\"id\": " +
@@ -44,7 +44,7 @@ public class AchievementTools
      Authorize(Policy = McpScopes.Write)]
     public static Task<object> Update(
         IAchievementService achievements,
-        [Description("Achievement id (GUID) from cv_get / employee_get — not the experience id.")]
+        [Description("Achievement id (GUID) from cv_get / expert_get — not the experience id.")]
         Guid id,
         [Description("order and text AFTER the edit; both are replaced.")]
         SaveAchievementDto dto,
@@ -54,7 +54,7 @@ public class AchievementTools
     [McpServerTool(Name = "achievement_delete", ReadOnly = false, Destructive = true, Idempotent = true),
      Description(
          "DESTRUCTIVE: delete one achievement bullet by achievement id (from cv_get or " +
-         "employee_get), leaving its role and the other bullets intact. Do NOT use it to reword " +
+         "expert_get), leaving its role and the other bullets intact. Do NOT use it to reword " +
          "— achievement_update. Input: id; e.g. {\"id\": " +
          "\"2b2b2b2b-1111-2222-3333-444455556666\"}. Requires the admin scope; idempotent. " +
          "Returns no data."),

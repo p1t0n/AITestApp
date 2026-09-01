@@ -17,7 +17,7 @@ public class ResumeIngestionRunServiceTests
     private static readonly Guid DraftId = Guid.Parse("33333333-3333-3333-3333-333333333333");
 
     private static string DraftPayload() =>
-        $$"""{"employee":{"id":"{{DraftId}}"},"duplicateWarning":"Same name exists."}""";
+        $$"""{"expert":{"id":"{{DraftId}}"},"duplicateWarning":"Same name exists."}""";
 
     private const string ValidationError =
         """{"code":"validation_failed","message":"Validation failed.","fields":[]}""";
@@ -34,22 +34,22 @@ public class ResumeIngestionRunServiceTests
     public async Task Composes_counts_proposals_and_duplicate_warning_from_captures()
     {
         var chat = new FakeChatClient(
-            () => new ChatResponse(new ChatMessage(ChatRole.Assistant, [Call("c1", "employee_create_draft")])),
+            () => new ChatResponse(new ChatMessage(ChatRole.Assistant, [Call("c1", "expert_create_draft")])),
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
-                [Call("c2", "language_add"), Call("c3", "employee_skill_add"), Call("c4", "experience_add"), Call("c5", "experience_add")])),
+                [Call("c2", "language_add"), Call("c3", "expert_skill_add"), Call("c4", "experience_add"), Call("c5", "experience_add")])),
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
                 """{"proposals":["LabVIEW","COBOL"],"aborted":false,"abortReason":null}""")));
 
         var outcome = await Service(chat,
-                Tool("employee_create_draft", DraftPayload),
+                Tool("expert_create_draft", DraftPayload),
                 Tool("language_add", () => """{"id":"a"}"""),
-                Tool("employee_skill_add", () => """{"id":"b"}"""),
+                Tool("expert_skill_add", () => """{"id":"b"}"""),
                 Tool("experience_add", () => """{"id":"c"}"""))
             .RunAsync("resume");
 
         outcome.Response.Should().NotBeNull();
         var r = outcome.Response!;
-        r.EmployeeId.Should().Be(DraftId);
+        r.ExpertId.Should().Be(DraftId);
         r.Created.Should().Be(new IngestionCreated(Languages: 1, Skills: 1, Qualifications: 0, Experiences: 2));
         r.Proposals.Should().Equal("LabVIEW", "COBOL");
         r.DuplicateWarning.Should().Be("Same name exists.");
@@ -62,14 +62,14 @@ public class ResumeIngestionRunServiceTests
     public async Task A_child_that_keeps_failing_degrades_into_a_note_not_an_abort()
     {
         var chat = new FakeChatClient(
-            () => new ChatResponse(new ChatMessage(ChatRole.Assistant, [Call("c1", "employee_create_draft")])),
+            () => new ChatResponse(new ChatMessage(ChatRole.Assistant, [Call("c1", "expert_create_draft")])),
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant, [Call("c2", "qualification_add")])),
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant, [Call("c3", "qualification_add")])),
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
                 """{"proposals":[],"aborted":false,"abortReason":null}""")));
 
         var outcome = await Service(chat,
-                Tool("employee_create_draft", DraftPayload),
+                Tool("expert_create_draft", DraftPayload),
                 Tool("qualification_add", () => ValidationError))
             .RunAsync("resume");
 
@@ -87,13 +87,13 @@ public class ResumeIngestionRunServiceTests
         var qualification = AIFunctionFactory.Create(
             () => ++calls == 1 ? ValidationError : """{"id":"q1"}""", "qualification_add");
         var chat = new FakeChatClient(
-            () => new ChatResponse(new ChatMessage(ChatRole.Assistant, [Call("c1", "employee_create_draft")])),
+            () => new ChatResponse(new ChatMessage(ChatRole.Assistant, [Call("c1", "expert_create_draft")])),
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant, [Call("c2", "qualification_add")])),
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant, [Call("c3", "qualification_add")])),
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
                 """{"proposals":[],"aborted":false,"abortReason":null}""")));
 
-        var outcome = await Service(chat, Tool("employee_create_draft", DraftPayload), qualification)
+        var outcome = await Service(chat, Tool("expert_create_draft", DraftPayload), qualification)
             .RunAsync("resume");
 
         outcome.Response!.Created.Qualifications.Should().Be(1, "the corrected retry succeeded");
@@ -105,11 +105,11 @@ public class ResumeIngestionRunServiceTests
     public async Task Aborts_with_the_create_error_when_no_draft_was_created()
     {
         var chat = new FakeChatClient(
-            () => new ChatResponse(new ChatMessage(ChatRole.Assistant, [Call("c1", "employee_create_draft")])),
+            () => new ChatResponse(new ChatMessage(ChatRole.Assistant, [Call("c1", "expert_create_draft")])),
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
                 """{"proposals":[],"aborted":true,"abortReason":"No name in the text."}""")));
 
-        var outcome = await Service(chat, Tool("employee_create_draft", () => ValidationError))
+        var outcome = await Service(chat, Tool("expert_create_draft", () => ValidationError))
             .RunAsync("garbage");
 
         outcome.Response.Should().BeNull();
@@ -123,7 +123,7 @@ public class ResumeIngestionRunServiceTests
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
                 "```json\n{\"proposals\":[],\"aborted\":true,\"abortReason\":\"The text is not a resume.\"}\n```")));
 
-        var outcome = await Service(chat, Tool("employee_create_draft", DraftPayload))
+        var outcome = await Service(chat, Tool("expert_create_draft", DraftPayload))
             .RunAsync("what is the weather");
 
         outcome.Response.Should().BeNull();

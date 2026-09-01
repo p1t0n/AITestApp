@@ -46,7 +46,7 @@ public class ScoringJob
     public List<ScoringJobCandidate> Candidates { get; set; } = [];
 }
 
-/// <summary>One employee's slot in a scan. Score/band/rationale come from the structured chunk
+/// <summary>One expert's slot in a scan. Score/band/rationale come from the structured chunk
 /// verdict; <see cref="Scorable"/> false with nulls is the honest "the digest gave nothing to
 /// judge" outcome — represented, never invented.</summary>
 public class ScoringJobCandidate
@@ -55,7 +55,7 @@ public class ScoringJobCandidate
 
     public Guid JobId { get; set; }
 
-    public Guid EmployeeId { get; set; }
+    public Guid ExpertId { get; set; }
 
     public string Name { get; set; } = string.Empty;
 

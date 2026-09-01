@@ -70,8 +70,8 @@ public class StaffingProposalDrillInTests
     private static FakeChatClient NarrativeChat() => new(() => new ChatResponse(new ChatMessage(
         ChatRole.Assistant,
         $$"""
-          {"rationales":[{"employeeId":"{{AdaId}}","rationale":"Best coverage."},{"employeeId":"{{GraceId}}","rationale":"Solid depth."}],
-           "recommendation":{"employeeId":"{{AdaId}}","narrative":"Ada is the strongest fit."} }
+          {"rationales":[{"expertId":"{{AdaId}}","rationale":"Best coverage."},{"expertId":"{{GraceId}}","rationale":"Solid depth."}],
+           "recommendation":{"expertId":"{{AdaId}}","narrative":"Ada is the strongest fit."} }
           """))
     {
         Usage = new UsageDetails { InputTokenCount = 30, OutputTokenCount = 15, TotalTokenCount = 45 },

@@ -41,14 +41,14 @@ function CandidateRow({
   onRunMatch,
 }: {
   candidate: RosterScanCandidate;
-  onRunMatch: (employeeId: string) => void;
+  onRunMatch: (expertId: string) => void;
 }) {
   const c = candidate;
   return (
-    <Paper sx={{ p: 1 }} data-testid={`scan-row-${c.employeeId}`}>
+    <Paper sx={{ p: 1 }} data-testid={`scan-row-${c.expertId}`}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
         <Box sx={{ minWidth: 0 }}>
-          <Link component={RouterLink} to={`/employees/${c.employeeId}`} variant="body2" fontWeight={600}>
+          <Link component={RouterLink} to={`/experts/${c.expertId}`} variant="body2" fontWeight={600}>
             {c.name}
           </Link>
           <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
@@ -65,7 +65,7 @@ function CandidateRow({
           ) : (
             <Chip variant="outlined" label="Pending" />
           )}
-          <Button onClick={() => onRunMatch(c.employeeId)}>
+          <Button onClick={() => onRunMatch(c.expertId)}>
             Open in Match
           </Button>
         </Stack>
@@ -82,7 +82,7 @@ function CandidateRow({
 export function RosterScanPanel({
   onOpenInMatch,
 }: {
-  onOpenInMatch: (employeeId: string, jobDescription: string) => void;
+  onOpenInMatch: (expertId: string, jobDescription: string) => void;
 }) {
   const submit = useSubmitRosterScan();
   const skills = useSkills();
@@ -270,9 +270,9 @@ export function RosterScanPanel({
                 .filter((c) => c.status !== "pending")
                 .map((c) => (
                   <CandidateRow
-                    key={c.employeeId}
+                    key={c.expertId}
                     candidate={c}
-                    onRunMatch={(employeeId) => onOpenInMatch(employeeId, submittedJd)}
+                    onRunMatch={(expertId) => onOpenInMatch(expertId, submittedJd)}
                   />
                 ))}
             </Stack>

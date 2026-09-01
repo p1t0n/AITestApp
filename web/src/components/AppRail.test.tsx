@@ -79,7 +79,7 @@ describe("the rail, expanded", () => {
   });
 
   it("does not treat every path as the roster: `/` matches exactly", () => {
-    renderRail(railWith(), "/employees/abc");
+    renderRail(railWith(), "/experts/abc");
 
     expect(screen.getByRole("link", { name: "CVs" })).not.toHaveClass("Mui-selected");
   });

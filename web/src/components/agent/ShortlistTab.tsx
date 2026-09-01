@@ -39,7 +39,7 @@ function ShortlistCandidateCard({
   onRunMatch,
 }: {
   candidate: ShortlistCandidate;
-  onRunMatch: (employeeId: string) => void;
+  onRunMatch: (expertId: string) => void;
 }) {
   const [showEvidence, setShowEvidence] = useState(false);
   const c = candidate;
@@ -49,7 +49,7 @@ function ShortlistCandidateCard({
         <Box sx={{ minWidth: 0 }}>
           <Link
             component={RouterLink}
-            to={`/employees/${c.employeeId}`}
+            to={`/experts/${c.expertId}`}
             variant="body2"
             fontWeight={600}
           >
@@ -83,13 +83,13 @@ function ShortlistCandidateCard({
         >
           Evidence
         </Button>
-        <Button onClick={() => onRunMatch(c.employeeId)}>
+        <Button onClick={() => onRunMatch(c.expertId)}>
           Run full Match
         </Button>
       </Stack>
 
       <Collapse in={showEvidence} unmountOnExit>
-        <Stack spacing={0.75} sx={{ mt: 1 }} data-testid={`evidence-${c.employeeId}`}>
+        <Stack spacing={0.75} sx={{ mt: 1 }} data-testid={`evidence-${c.expertId}`}>
           {c.requirements.map((r, i) => (
             <Stack key={i} direction="row" spacing={1} alignItems="flex-start" data-testid={`evidence-row-${i}`}>
               {r.matched ? (
@@ -116,7 +116,7 @@ function ShortlistCandidateCard({
 export function ShortlistPanel({
   onRunMatch,
 }: {
-  onRunMatch: (employeeId: string, jobDescription: string) => void;
+  onRunMatch: (expertId: string, jobDescription: string) => void;
 }) {
   const shortlist = useShortlist();
   const skills = useSkills();
@@ -275,9 +275,9 @@ export function ShortlistPanel({
             ) : (
               result.data.candidates.map((c) => (
                 <ShortlistCandidateCard
-                  key={c.employeeId}
+                  key={c.expertId}
                   candidate={c}
-                  onRunMatch={(employeeId) => onRunMatch(employeeId, result.jobDescription)}
+                  onRunMatch={(expertId) => onRunMatch(expertId, result.jobDescription)}
                 />
               ))
             )}

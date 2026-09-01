@@ -112,15 +112,15 @@ export default function AgentWidget({ dock }: { dock: AgentDock }) {
   const [usageOpen, setUsageOpen] = useState(false);
 
   // Cross-surface drill-ins ("Run full Match" on a shortlist card, "Open in Match" / "Tailor CV" on
-  // a staffing card) jump to the target surface with the employee + JD pre-filled. Cleared on any
+  // a staffing card) jump to the target surface with the expert + JD pre-filled. Cleared on any
   // manual navigation — picking a surface, or opening the ledger — so a stale prefill never
   // resurfaces later.
   const [prefill, setPrefill] = useState<{
     mode: "cv-tailoring" | "match";
     request: AgentJobRequest;
   } | null>(null);
-  function openPrefilled(target: "cv-tailoring" | "match", employeeId: string, jobDescription: string) {
-    setPrefill({ mode: target, request: { employeeId, jobDescription } });
+  function openPrefilled(target: "cv-tailoring" | "match", expertId: string, jobDescription: string) {
+    setPrefill({ mode: target, request: { expertId, jobDescription } });
     setUsageOpen(false);
     setSurface(target);
   }
@@ -436,24 +436,24 @@ export default function AgentWidget({ dock }: { dock: AgentDock }) {
             ) : surface === "shortlist" ? (
               <ShortlistPanel
                 key="shortlist"
-                onRunMatch={(employeeId, jd) => openPrefilled("match", employeeId, jd)}
+                onRunMatch={(expertId, jd) => openPrefilled("match", expertId, jd)}
               />
             ) : surface === "staffing" ? (
               <StaffingPanel
                 key="staffing"
-                onOpenInMatch={(employeeId, jd) => openPrefilled("match", employeeId, jd)}
-                onTailorCv={(employeeId, jd) => openPrefilled("cv-tailoring", employeeId, jd)}
+                onOpenInMatch={(expertId, jd) => openPrefilled("match", expertId, jd)}
+                onTailorCv={(expertId, jd) => openPrefilled("cv-tailoring", expertId, jd)}
               />
             ) : surface === "roster-scan" ? (
               <RosterScanPanel
                 key="roster-scan"
-                onOpenInMatch={(employeeId, jd) => openPrefilled("match", employeeId, jd)}
+                onOpenInMatch={(expertId, jd) => openPrefilled("match", expertId, jd)}
               />
             ) : surface === "bench" ? (
               <BenchPanel key="bench" />
             ) : (
               <AgentJobForm
-                key={prefill?.mode === surface ? `${surface}-${prefill.request.employeeId}` : surface}
+                key={prefill?.mode === surface ? `${surface}-${prefill.request.expertId}` : surface}
                 mode={surface}
                 initial={prefill?.mode === surface ? prefill.request : undefined}
               />

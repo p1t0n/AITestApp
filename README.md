@@ -1,6 +1,6 @@
 # ExpertToJob
 
-A .NET 10 + React (Vite) service to manage available employees — skills, qualifications,
+A .NET 10 + React (Vite) service to manage available experts — skills, qualifications,
 work experience, and time-based availability — and render their CVs. An MCP server exposes
 every operation on every entity to external AI agents over the same Application layer, and a
 suite of built-in AI agents (Roster Q&A, CV Tailoring, Match, **JD Shortlist**) consumes it —
@@ -10,10 +10,10 @@ See [SPEC.md](SPEC.md).
 
 ## Features
 
-- **Employee management** — CRUD for employees + languages, availability (capacity step-function),
+- **Expert management** — CRUD for experts + languages, availability (capacity step-function),
   skills (catalog-backed), qualifications, experiences, achievements; assembled CV view.
 - **MCP server** — 40 tools over the same Application layer, OAuth 2.1 (Keycloak) per-tool scopes.
-- **Semantic roster search (RAG)** — employee narratives embedded into pgvector by a self-healing
+- **Semantic roster search (RAG)** — expert narratives embedded into pgvector by a self-healing
   reconcile worker; `roster_semantic_search` answers "who has done X" by meaning, with evidence.
   When the embedding quota is exhausted a breaker fails fast and search degrades to Postgres
   full-text over the same chunks, flagged `degradedReason` so agents disclose reduced ranking.
@@ -37,7 +37,7 @@ See [SPEC.md](SPEC.md).
   achievement bullets, phrased after anonymized cross-CV style exemplars (`style_exemplar_search`)
   and screened by a fabrication guard; one-click **Apply** persists a rewrite through the user's
   own session (the agent never writes).
-- **Interview kit** — pick an employee + JD, get gap-targeted interview questions; every evidence
+- **Interview kit** — pick an expert + JD, get gap-targeted interview questions; every evidence
   quote is verified verbatim against the captured `cv_get` result (unverifiable quotes are
   stripped — the model's evidence claims are checked, never trusted).
 - **Roster Scan** — score the whole (optionally filtered) roster against one JD as a durable
@@ -56,7 +56,7 @@ See [SPEC.md](SPEC.md).
   must-haves, seniority, location, or years when the JD is silent.
 - **Retrieval evals** — frozen golden set + live regression gate + threshold-sweep CLI; retrieval
   quality is measured, not guessed (see `manuals/retrieval-eval-baseline.md`).
-- **Demo data** — committed 500-employee synthetic roster + seeder CLI for realistic demos.
+- **Demo data** — committed 500-expert synthetic roster + seeder CLI for realistic demos.
 
 ## Stack
 
@@ -117,7 +117,7 @@ dotnet run
 ```
 
 On first run in Development it applies EF migrations and seeds the skill catalog + sample
-employees. API listens on `http://localhost:5069`; Swagger UI at `http://localhost:5069/swagger`.
+experts. API listens on `http://localhost:5069`; Swagger UI at `http://localhost:5069/swagger`.
 
 ### 3. Start the SPA
 
@@ -181,15 +181,15 @@ available as tabs in the in-app widget):
   capability questions and cites evidence snippets. The first model call is forced to a tool
   (`RequireAny`), and an answer with no tool result behind it retries once, then ships with an
   explicit "could not be grounded" note (the Capture-Verify Guard).
-- `POST /agents/cv-tailoring {employeeId, jobDescription}` — tailoring guidance for one CV, plus
+- `POST /agents/cv-tailoring {expertId, jobDescription}` — tailoring guidance for one CV, plus
   vetted before/after achievement-bullet rewrites (`{answer, rewrites[]}`). `cv_get` is
   pre-fetched deterministically (fixed order → code; see
   `manuals/mcp-tool-descriptions.md`); only the exemplar search stays model-driven.
-- `POST /agents/match {employeeId, jobDescription}` — gap analysis + scored fit assessment.
-  Omit `employeeId` (JD-only mode) to retrieve the top candidates and score each:
+- `POST /agents/match {expertId, jobDescription}` — gap analysis + scored fit assessment.
+  Omit `expertId` (JD-only mode) to retrieve the top candidates and score each:
   `{jobDescription, topK?}` → `{requirements, results[]}` with per-candidate score/band; a failed
   match degrades that entry, never the call.
-- `POST /agents/interview-kit {employeeId, jobDescription}` — markdown interview kit plus vetted
+- `POST /agents/interview-kit {expertId, jobDescription}` — markdown interview kit plus vetted
   structured questions (`{answer, questions[]}`); evidence quotes verified against the CV.
 - `POST /agents/shortlist {jobDescription, availableOn?, skillIds?, location?, minYears?, topK?}` —
   JD → coverage-ranked candidates with per-requirement evidence (structured JSON).
@@ -236,7 +236,7 @@ per-user token caps (defaults 50k/150k/500k daily/weekly/monthly).
 
 ### 6. Seed the demo roster (optional)
 
-500 synthetic employees across 10 industries, with narratives rich enough to make semantic search
+500 synthetic experts across 10 industries, with narratives rich enough to make semantic search
 worth demoing:
 
 ```bash
@@ -244,7 +244,7 @@ dotnet run --project tools/SeedDemoRoster            # seed all 500 (idempotent)
 dotnet run --project tools/SeedDemoRoster -- --wipe  # remove exactly the demo rows
 ```
 
-With the MCP service running, the reconcile worker embeds the new employees automatically.
+With the MCP service running, the reconcile worker embeds the new experts automatically.
 See `manuals/semantic-roster-search.md` for the full RAG documentation.
 
 ## MCP tools
@@ -252,8 +252,8 @@ See `manuals/semantic-roster-search.md` for the full RAG documentation.
 40 tools, 1:1 thin adapters over the Application layer, annotated read-only / write /
 destructive so clients can gate dangerous calls:
 
-- **Employees:** `employee_list`, `employee_get`, `employee_create`, `employee_update`, `employee_delete`
-- **Children:** `language_*`, `availability_*`, `employee_skill_*`, `qualification_*`, `experience_*`,
+- **Experts:** `expert_list`, `expert_get`, `expert_create`, `expert_update`, `expert_delete`
+- **Children:** `language_*`, `availability_*`, `expert_skill_*`, `qualification_*`, `experience_*`,
   `achievement_*`, `experience_skill_*`
 - **Skill catalog:** `category_list/tree/create/update/delete`, `skill_list/create/update/delete`
   (`skill_list` takes a `nameContains` filter + paging, so resolving one skill id costs a row)
@@ -267,7 +267,7 @@ Descriptions follow a five-part bar — what it does, when to use it, when NOT t
 sibling tool), input notes with an inline example, what it does not return — because tool
 descriptions are what the model actually selects on. All 41 tools are written to it and pinned by
 tests, including the standing traps (attaching an existing catalog skill to a person vs adding a new
-skill to the catalog; creating an employee vs staging a draft) and every destructive tool naming its
+skill to the catalog; creating an expert vs staging a draft) and every destructive tool naming its
 safer alternative. A frozen 39-prompt eval measures which tool the model reaches for first
 (`manuals/mcp-tool-descriptions.md` carries the bar and the measured before/after).
 
@@ -315,10 +315,10 @@ dotnet ef migrations add <Name> \
 
 ## API surface
 
-- `GET/POST/PUT/DELETE /api/employees` — employee CRUD
-- `GET /api/employees/{id}` — full detail
-- `GET /api/employees/{id}/cv` — assembled CV
-- `GET /api/employees/{id}/cv.pdf` — the same CV rendered server-side to PDF (QuestPDF, no browser);
+- `GET/POST/PUT/DELETE /api/experts` — expert CRUD
+- `GET /api/experts/{id}` — full detail
+- `GET /api/experts/{id}/cv` — assembled CV
+- `GET /api/experts/{id}/cv.pdf` — the same CV rendered server-side to PDF (QuestPDF, no browser);
   see `manuals/cv-pdf-render.md`
 - `.../availability`, `.../skills`, `.../languages`, `.../qualifications`, `.../experiences` — child resources
 - `GET/POST/DELETE /api/catalog/categories`, `/api/catalog/categories/tree`, `/api/catalog/skills` — skill catalog

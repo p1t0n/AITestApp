@@ -33,7 +33,7 @@ public sealed class PasskeyOptions
     public string ServerDomain { get; set; } = "localhost";
 
     /// <summary>Human-readable relying-party name shown in the passkey prompt.</summary>
-    public string ServerName { get; set; } = "Employee Manager";
+    public string ServerName { get; set; } = "ExpertToJob";
 
     /// <summary>Allowed origins for ceremonies (scheme + host + port), e.g. "http://localhost:5173".</summary>
     public string[] Origins { get; set; } = [];

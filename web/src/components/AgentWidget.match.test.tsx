@@ -20,7 +20,7 @@ const jdMatchState = {
   isPending: false,
 };
 
-const EMPLOYEE_ID = "11111111-2222-3333-4444-555555555555";
+const EXPERT_ID = "11111111-2222-3333-4444-555555555555";
 const ADA = "aaaaaaaa-1111-2222-3333-444444444444";
 const GRACE = "bbbbbbbb-1111-2222-3333-444444444444";
 
@@ -33,10 +33,10 @@ vi.mock("../api", async (importOriginal) => {
     useCvTailoring: () => ({ mutateAsync: vi.fn(), isPending: false }),
     useInterviewKit: () => ({ mutateAsync: vi.fn(), isPending: false }),
     useApplyRewrite: () => ({ isPending: false, isSuccess: false, isError: false, error: null, mutate: vi.fn() }),
-    useEmployees: () => ({
+    useExperts: () => ({
       data: [
         {
-          id: EMPLOYEE_ID,
+          id: EXPERT_ID,
           firstName: "Ada",
           lastName: "Lovelace",
           title: "Senior Engineer",
@@ -83,12 +83,12 @@ beforeEach(() => {
 });
 
 describe("Match tab — JD-only mode (P1T-103)", () => {
-  it("runs JD-only mode when no employee is selected and renders ranked results", async () => {
+  it("runs JD-only mode when no expert is selected and renders ranked results", async () => {
     jdMatchState.mutateAsync.mockResolvedValue({
       requirements: ["kafka"],
       results: [
         {
-          employeeId: ADA,
+          expertId: ADA,
           name: "Ada Lovelace",
           title: "Platform Lead",
           retrievalScore: 0.95,
@@ -98,7 +98,7 @@ describe("Match tab — JD-only mode (P1T-103)", () => {
           answer: "## Analysis\n\nGreat fit.",
         },
         {
-          employeeId: GRACE,
+          expertId: GRACE,
           name: "Grace Hopper",
           title: "Engineer",
           retrievalScore: 0.8,
@@ -128,17 +128,17 @@ describe("Match tab — JD-only mode (P1T-103)", () => {
     expect(screen.getByText("Great fit.")).toBeInTheDocument();
   });
 
-  it("keeps the single-employee path when an employee is selected", async () => {
+  it("keeps the single-expert path when an expert is selected", async () => {
     matchState.mutateAsync.mockResolvedValue({ answer: "Fit: MODERATE (60/100)" });
     const user = await openMatchTab();
 
-    await user.click(screen.getByLabelText(/employee/i));
+    await user.click(screen.getByLabelText(/expert/i));
     await user.click(screen.getByText("Ada Lovelace — Senior Engineer"));
     await user.type(screen.getByPlaceholderText(/paste a job description/i), "Role.");
     await user.click(screen.getByRole("button", { name: /assess fit/i }));
 
     expect(matchState.mutateAsync).toHaveBeenCalledWith({
-      employeeId: EMPLOYEE_ID,
+      expertId: EXPERT_ID,
       jobDescription: "Role.",
     });
     expect(jdMatchState.mutateAsync).not.toHaveBeenCalled();

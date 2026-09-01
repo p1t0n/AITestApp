@@ -4,7 +4,7 @@ namespace ExpertToJob.Application.Search;
 
 /// <summary>
 /// Scrubs identifying detail out of an exemplar bullet before it leaves the service: every
-/// occurrence of the source employee's first/last name becomes <c>[name]</c> and every occurrence
+/// occurrence of the source expert's first/last name becomes <c>[name]</c> and every occurrence
 /// of any of their employers' names becomes <c>[company]</c>. Matching is case-insensitive and
 /// whole-word (so "Mark" never mangles "benchmark"); multi-word company names collapse to a single
 /// placeholder, and longer names win over their own prefixes.

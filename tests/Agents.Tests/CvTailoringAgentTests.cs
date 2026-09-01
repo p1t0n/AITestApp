@@ -17,7 +17,7 @@ namespace ExpertToJob.Agents.Tests;
 /// </summary>
 public class CvTailoringAgentTests
 {
-    private static readonly Guid EmployeeId = Guid.Parse("e1e1e1e1-1111-1111-1111-111111111111");
+    private static readonly Guid ExpertId = Guid.Parse("e1e1e1e1-1111-1111-1111-111111111111");
     private static readonly Guid Achievement1 = Guid.Parse("aaaaaaa1-1111-1111-1111-111111111111");
     private static readonly Guid Achievement2 = Guid.Parse("aaaaaaa2-2222-2222-2222-222222222222");
     private static readonly Guid Experience1 = Guid.Parse("eeeeeee1-1111-1111-1111-111111111111");
@@ -39,7 +39,7 @@ public class CvTailoringAgentTests
 
     private static AIFunction CvGetTool(Action<Guid>? onInvoke = null, string? payload = null) =>
         AIFunctionFactory.Create(
-            (Guid employeeId) => { onInvoke?.Invoke(employeeId); return payload ?? CvPayload; },
+            (Guid expertId) => { onInvoke?.Invoke(expertId); return payload ?? CvPayload; },
             "cv_get");
 
     private static AIFunction ExemplarTool(Action? onInvoke = null, string? payload = null) =>
@@ -47,8 +47,8 @@ public class CvTailoringAgentTests
             (Guid[] achievementIds) => { onInvoke?.Invoke(); return payload ?? ExemplarPayload; },
             "style_exemplar_search");
 
-    private static AIFunction EmployeeListTool() =>
-        AIFunctionFactory.Create(() => "Ada Lovelace;id-1", "employee_list");
+    private static AIFunction ExpertListTool() =>
+        AIFunctionFactory.Create(() => "Ada Lovelace;id-1", "expert_list");
 
     /// <summary>The scripted happy path: the CV arrives pre-fetched in the opening message, so
     /// turn 1 calls only style_exemplar_search and answers with the tailoring markdown; turn 2
@@ -64,7 +64,7 @@ public class CvTailoringAgentTests
         () => new ChatResponse(new ChatMessage(ChatRole.Assistant, RewritesJson)));
 
     private static Task<TailoringAgentOutcome> TailorAsync(CvTailoringAgent agent) =>
-        agent.TailorAsync(EmployeeId, "A platform engineering role.");
+        agent.TailorAsync(ExpertId, "A platform engineering role.");
 
     [Fact]
     public async Task Prefetches_cv_get_deterministically_and_exposes_only_the_exemplar_tool()
@@ -75,13 +75,13 @@ public class CvTailoringAgentTests
         // the model.
         var agent = new CvTailoringAgent(
             chat,
-            new FakeToolSource(CvGetTool(id => fetched = id), ExemplarTool(), EmployeeListTool()),
+            new FakeToolSource(CvGetTool(id => fetched = id), ExemplarTool(), ExpertListTool()),
             NullLoggerFactory.Instance);
 
         await TailorAsync(agent);
 
         agent.Name.Should().Be("cv-tailoring");
-        fetched.Should().Be(EmployeeId, "cv_get is a fixed prerequisite, invoked in code");
+        fetched.Should().Be(ExpertId, "cv_get is a fixed prerequisite, invoked in code");
         var tools = chat.ReceivedOptions[0]!.Tools;
         tools.Should().ContainSingle().Which.Name.Should().Be(
             "style_exemplar_search", "only the genuinely dynamic call stays model-driven");
@@ -142,7 +142,7 @@ public class CvTailoringAgentTests
         // as a Microsoft.Extensions.AI.TextContent whose Text holds the payload JSON — it
         // serializes to {"$type":"text","text":"{…}"}, not a bare payload or an MCP content-array
         // envelope. Missing this shape was a production bug in the shortlist flow.
-        var cvTool = AIFunctionFactory.Create((Guid employeeId) => new TextContent(CvPayload), "cv_get");
+        var cvTool = AIFunctionFactory.Create((Guid expertId) => new TextContent(CvPayload), "cv_get");
         var exemplarTool = AIFunctionFactory.Create(
             (Guid[] achievementIds) => new TextContent(ExemplarPayload), "style_exemplar_search");
         var chat = ScriptedChat();
@@ -179,11 +179,11 @@ public class CvTailoringAgentTests
     public async Task A_not_found_cv_result_leaves_the_capture_null_and_the_answer_stands()
     {
         var chat = new FakeChatClient(
-            () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "That employee was not found.")),
+            () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "That expert was not found.")),
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "[]")));
         var agent = new CvTailoringAgent(
             chat,
-            new FakeToolSource(CvGetTool(payload: """{"error":"employee not found"}"""), ExemplarTool()),
+            new FakeToolSource(CvGetTool(payload: """{"error":"expert not found"}"""), ExemplarTool()),
             NullLoggerFactory.Instance);
 
         var outcome = await TailorAsync(agent);

@@ -5,18 +5,18 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ExpertToJob.Infrastructure.Persistence;
 
-/// <summary>Outcome of a demo roster seed pass: how many employees were inserted vs. already present.</summary>
+/// <summary>Outcome of a demo roster seed pass: how many experts were inserted vs. already present.</summary>
 public sealed record DemoRosterSeedResult(int Seeded, int Skipped);
 
 /// <summary>
-/// Seeds the committed 500-employee demo roster (P1T-48 dataset) into the database, and wipes it
-/// back out. Idempotent by employee email; the dataset's skill catalog is upserted by name so
+/// Seeds the committed 500-expert demo roster (P1T-48 dataset) into the database, and wipes it
+/// back out. Idempotent by expert email; the dataset's skill catalog is upserted by name so
 /// existing catalog rows are reused untouched. Deliberately no embedding logic — the MCP service's
-/// reconcile worker picks up new employees on its own.
+/// reconcile worker picks up new experts on its own.
 /// </summary>
 public static class DemoRosterSeeder
 {
-    /// <summary>Every dataset employee's email ends with this; the wipe targets exactly these rows.</summary>
+    /// <summary>Every dataset expert's email ends with this; the wipe targets exactly these rows.</summary>
     public const string DemoEmailSuffix = "@demo.example.com";
 
     /// <summary>Loads the demo-roster.json asset embedded in this assembly via the shared strict loader.</summary>
@@ -30,17 +30,17 @@ public static class DemoRosterSeeder
     }
 
     /// <summary>
-    /// Inserts the first <paramref name="count"/> dataset employees (default: all) with all their
-    /// children, skipping employees whose email already exists so re-runs add nothing.
+    /// Inserts the first <paramref name="count"/> dataset experts (default: all) with all their
+    /// children, skipping experts whose email already exists so re-runs add nothing.
     /// </summary>
     public static async Task<DemoRosterSeedResult> SeedAsync(
         AppDbContext db, DemoRosterDataset dataset, int? count = null, CancellationToken ct = default)
     {
-        var wanted = count is { } n ? dataset.Employees.Take(n).ToList() : dataset.Employees;
+        var wanted = count is { } n ? dataset.Experts.Take(n).ToList() : dataset.Experts;
 
         var skillsByName = await UpsertCatalogAsync(db, dataset, ct);
 
-        var existingEmails = (await db.Employees.Select(e => e.Email).ToListAsync(ct))
+        var existingEmails = (await db.Experts.Select(e => e.Email).ToListAsync(ct))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var seeded = 0;
@@ -53,7 +53,7 @@ public static class DemoRosterSeeder
                 continue;
             }
 
-            db.Employees.Add(BuildEmployee(source, skillsByName));
+            db.Experts.Add(BuildExpert(source, skillsByName));
             seeded++;
         }
 
@@ -62,23 +62,23 @@ public static class DemoRosterSeeder
     }
 
     /// <summary>
-    /// Deletes exactly the employees whose email carries the demo tag; DB cascades remove their
-    /// children and EmployeeSearchChunks. The upserted skill catalog stays. Returns the wipe count.
+    /// Deletes exactly the experts whose email carries the demo tag; DB cascades remove their
+    /// children and ExpertSearchChunks. The upserted skill catalog stays. Returns the wipe count.
     /// </summary>
     public static async Task<int> WipeAsync(AppDbContext db, CancellationToken ct = default)
     {
-        var demoEmployees = await db.Employees
+        var demoExperts = await db.Experts
             .Where(e => e.Email.EndsWith(DemoEmailSuffix))
             .ToListAsync(ct);
 
-        db.Employees.RemoveRange(demoEmployees);
+        db.Experts.RemoveRange(demoExperts);
         await db.SaveChangesAsync(ct);
-        return demoEmployees.Count;
+        return demoExperts.Count;
     }
 
     /// <summary>
     /// Adds the dataset's catalog skills (and their categories) that are missing by name; existing
-    /// rows are reused as-is. Returns the merged name → skill map employee skills resolve against.
+    /// rows are reused as-is. Returns the merged name → skill map expert skills resolve against.
     /// </summary>
     private static async Task<Dictionary<string, Skill>> UpsertCatalogAsync(
         AppDbContext db, DemoRosterDataset dataset, CancellationToken ct)
@@ -111,7 +111,7 @@ public static class DemoRosterSeeder
         return skillsByName;
     }
 
-    private static Employee BuildEmployee(DemoRosterEmployee source, Dictionary<string, Skill> skillsByName) => new()
+    private static Expert BuildExpert(DemoRosterExpert source, Dictionary<string, Skill> skillsByName) => new()
     {
         Id = Guid.NewGuid(),
         FirstName = source.FirstName,
@@ -133,7 +133,7 @@ public static class DemoRosterSeeder
             })
             .ToList(),
         Skills = source.Skills
-            .Select(s => new EmployeeSkill
+            .Select(s => new ExpertSkill
             {
                 Id = Guid.NewGuid(),
                 SkillId = Resolve(skillsByName, s.Name, source.Email).Id,
@@ -185,5 +185,5 @@ public static class DemoRosterSeeder
         skillsByName.TryGetValue(name, out var skill)
             ? skill
             : throw new InvalidOperationException(
-                $"Demo employee '{email}' references skill '{name}' missing from both the dataset catalog and the database.");
+                $"Demo expert '{email}' references skill '{name}' missing from both the dataset catalog and the database.");
 }

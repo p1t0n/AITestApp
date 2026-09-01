@@ -234,9 +234,9 @@ public class SkillCatalogService : ISkillCatalogService
         var s = await _db.Skills.FirstOrDefaultAsync(x => x.Id == id, ct)
             ?? throw new NotFoundException(nameof(Skill), id);
 
-        if (await _db.EmployeeSkills.AnyAsync(x => x.SkillId == id, ct) ||
+        if (await _db.ExpertSkills.AnyAsync(x => x.SkillId == id, ct) ||
             await _db.ExperienceSkills.AnyAsync(x => x.SkillId == id, ct))
-            throw new ConflictException("Skill is in use by employees or experiences and cannot be deleted.");
+            throw new ConflictException("Skill is in use by experts or experiences and cannot be deleted.");
 
         _db.Skills.Remove(s);
         await _db.SaveChangesAsync(ct);

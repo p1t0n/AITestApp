@@ -16,7 +16,7 @@ const shortlistState = {
   isPending: false,
 };
 
-const EMPLOYEE_ID = "11111111-2222-3333-4444-555555555555";
+const EXPERT_ID = "11111111-2222-3333-4444-555555555555";
 
 vi.mock("../api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../api")>();
@@ -30,10 +30,10 @@ vi.mock("../api", async (importOriginal) => {
       ],
       isLoading: false,
     }),
-    useEmployees: () => ({
+    useExperts: () => ({
       data: [
         {
-          id: EMPLOYEE_ID,
+          id: EXPERT_ID,
           firstName: "Ada",
           lastName: "Lovelace",
           title: "Senior Engineer",
@@ -58,7 +58,7 @@ const RESPONSE: ShortlistResponse = {
   requirements: ["React expertise", "5+ years experience", "Team leadership"],
   candidates: [
     {
-      employeeId: EMPLOYEE_ID,
+      expertId: EXPERT_ID,
       name: "Ada Lovelace",
       title: "Senior Engineer",
       score: 0.9234,
@@ -190,7 +190,7 @@ describe("Shortlist tab", () => {
 
     // Candidate card: linked name, title, 2dp score, coverage badge, rationale.
     const nameLink = screen.getByRole("link", { name: "Ada Lovelace" });
-    expect(nameLink).toHaveAttribute("href", `/employees/${EMPLOYEE_ID}`);
+    expect(nameLink).toHaveAttribute("href", `/experts/${EXPERT_ID}`);
     expect(screen.getByText("Senior Engineer")).toBeInTheDocument();
     expect(screen.getByText("0.92")).toBeInTheDocument();
     expect(screen.getByText("2/3")).toBeInTheDocument();
@@ -205,7 +205,7 @@ describe("Shortlist tab", () => {
     await user.click(submitButton());
     await user.click(await screen.findByRole("button", { name: /evidence/i }));
 
-    const evidence = screen.getByTestId(`evidence-${EMPLOYEE_ID}`);
+    const evidence = screen.getByTestId(`evidence-${EXPERT_ID}`);
     expect(within(evidence).getByText("Built React apps for 6 years")).toBeInTheDocument();
     const missed = within(evidence).getByTestId("evidence-row-2");
     expect(within(missed).getByText("Team leadership")).toBeInTheDocument();
@@ -213,7 +213,7 @@ describe("Shortlist tab", () => {
     expect(within(missed).queryByTestId("snippet")).not.toBeInTheDocument();
   });
 
-  it("'Run full Match' switches to the Match tab with the employee and JD pre-filled", async () => {
+  it("'Run full Match' switches to the Match tab with the expert and JD pre-filled", async () => {
     shortlistState.mutateAsync.mockResolvedValue(RESPONSE);
     const user = await openShortlistTab();
 

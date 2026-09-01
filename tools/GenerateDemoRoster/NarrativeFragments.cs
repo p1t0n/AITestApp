@@ -7,7 +7,7 @@ namespace ExpertToJob.Tools.DemoRoster;
 /// for ~10-15% of the roster.
 /// </param>
 public sealed record IndustryNarratives(
-    IReadOnlyList<string> EmployeeSummaries,
+    IReadOnlyList<string> ExpertSummaries,
     NarrativeTemplateGroup Standard,
     NarrativeTemplateGroup AcronymHeavy);
 
@@ -18,7 +18,7 @@ public sealed record NarrativeTemplateGroup(
 /// <summary>
 /// Hand-authored career narrative building blocks, two template groups per industry.
 /// The committed dataset is assembled combinatorially from these: every summary template
-/// carries a {company} slot plus at least two randomized slots, so 500 employees stay
+/// carries a {company} slot plus at least two randomized slots, so 500 experts stay
 /// textually distinct without hand-writing 500 CVs.
 /// </summary>
 public static class NarrativeFragments
@@ -32,7 +32,7 @@ public static class NarrativeFragments
         new Dictionary<string, IndustryNarratives>
         {
             ["fintech"] = new(
-                EmployeeSummaries:
+                ExpertSummaries:
                 [
                     "Payments-focused backend engineer with {yrs}+ years across ledgers, settlement and risk; deep {skill} experience and a habit of leaving audit trails cleaner than found.",
                     "{yrs} years building money-movement systems — ledgers, card processing, reconciliation — with strong {skill} and a bias for boring, provable correctness.",
@@ -77,7 +77,7 @@ public static class NarrativeFragments
                     ])),
 
             ["gaming"] = new(
-                EmployeeSummaries:
+                ExpertSummaries:
                 [
                     "Engine and gameplay programmer with {yrs} years shipping console and PC titles; happiest deep in profilers, {skill} pipelines and simulation code.",
                     "{yrs} years in game development from prototypes to live ops, strong in {skill} and the performance work that keeps frame budgets honest.",
@@ -122,7 +122,7 @@ public static class NarrativeFragments
                     ])),
 
             ["healthtech"] = new(
-                EmployeeSummaries:
+                ExpertSummaries:
                 [
                     "Health-informatics engineer with {yrs} years wiring EHRs, labs and imaging together; fluent in {skill} and the realities of hospital IT.",
                     "{yrs} years in clinical software: patient portals, integration engines and data pipelines, with {skill} depth and a compliance-first habit.",
@@ -167,7 +167,7 @@ public static class NarrativeFragments
                     ])),
 
             ["e-commerce"] = new(
-                EmployeeSummaries:
+                ExpertSummaries:
                 [
                     "Full-stack commerce engineer, {yrs} years from storefront to fulfilment; strong {skill}, obsessive about conversion funnels and page speed.",
                     "{yrs} years building online retail platforms — search, checkout, promotions — with deep {skill} experience and a merchant's eye for metrics.",
@@ -212,7 +212,7 @@ public static class NarrativeFragments
                     ])),
 
             ["embedded"] = new(
-                EmployeeSummaries:
+                ExpertSummaries:
                 [
                     "Embedded engineer with {yrs} years across firmware, RTOS bring-up and hardware debugging; at home with {skill} and an oscilloscope.",
                     "{yrs} years of firmware development for shipped hardware — power management, comms stacks and the discipline of {skill}.",
@@ -257,7 +257,7 @@ public static class NarrativeFragments
                     ])),
 
             ["data-ml"] = new(
-                EmployeeSummaries:
+                ExpertSummaries:
                 [
                     "ML engineer with {yrs} years taking models from notebook to production; strong {skill}, allergic to unmonitored pipelines.",
                     "{yrs} years across data engineering and ML platforms — feature stores, serving, evaluation — with deep {skill} experience.",
@@ -302,7 +302,7 @@ public static class NarrativeFragments
                     ])),
 
             ["devops-platform"] = new(
-                EmployeeSummaries:
+                ExpertSummaries:
                 [
                     "Platform engineer with {yrs} years of Kubernetes, Terraform and the human systems around them; strong {skill}, allergic to snowflake servers.",
                     "{yrs} years keeping production boring across clouds — SLOs, GitOps and {skill} — with a paved-road philosophy.",
@@ -347,7 +347,7 @@ public static class NarrativeFragments
                     ])),
 
             ["mobile"] = new(
-                EmployeeSummaries:
+                ExpertSummaries:
                 [
                     "Mobile engineer with {yrs} years shipping iOS and Android apps people rate highly; deep {skill}, pragmatic about cross-platform choices.",
                     "{yrs} years of mobile development — native and cross-platform — with strong {skill} and a soft spot for buttery animations.",
@@ -392,7 +392,7 @@ public static class NarrativeFragments
                     ])),
 
             ["gov-enterprise"] = new(
-                EmployeeSummaries:
+                ExpertSummaries:
                 [
                     "Enterprise engineer with {yrs} years in public-sector delivery; strong {skill}, fluent in procurement realities and audit trails.",
                     "{yrs} years modernising systems that cannot fail politically or technically, with deep {skill} experience across {qty} programmes.",
@@ -437,7 +437,7 @@ public static class NarrativeFragments
                     ])),
 
             ["agency"] = new(
-                EmployeeSummaries:
+                ExpertSummaries:
                 [
                     "Agency engineer with {yrs} years shipping fast, polished work for demanding brands; strong {skill}, comfortable with ambiguous briefs.",
                     "{yrs} years of client-side delivery across dozens of stacks, deepest in {skill}, pragmatic about scope and deadlines.",

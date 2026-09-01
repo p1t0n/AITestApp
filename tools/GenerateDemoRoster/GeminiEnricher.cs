@@ -25,11 +25,11 @@ public sealed class GeminiEnricher(string apiKey, string endpoint = "https://gen
 
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(120) };
 
-    /// <summary>Rewrites narratives in place; returns how many employees were enriched.</summary>
+    /// <summary>Rewrites narratives in place; returns how many experts were enriched.</summary>
     public async Task<int> EnrichAsync(DemoRosterDataset dataset, Action<string> log)
     {
         var enriched = 0;
-        var batches = dataset.Employees.Chunk(BatchSize).ToList();
+        var batches = dataset.Experts.Chunk(BatchSize).ToList();
         for (var b = 0; b < batches.Count; b++)
         {
             try
@@ -49,16 +49,16 @@ public sealed class GeminiEnricher(string apiKey, string endpoint = "https://gen
         return enriched;
     }
 
-    private async Task<int> EnrichBatchAsync(IReadOnlyList<DemoRosterEmployee> employees)
+    private async Task<int> EnrichBatchAsync(IReadOnlyList<DemoRosterExpert> experts)
     {
-        var prompt = BuildPrompt(employees);
+        var prompt = BuildPrompt(experts);
         var responseJson = await PostWithRetryAsync(prompt);
-        return Apply(responseJson, employees);
+        return Apply(responseJson, experts);
     }
 
-    private static string BuildPrompt(IReadOnlyList<DemoRosterEmployee> employees)
+    private static string BuildPrompt(IReadOnlyList<DemoRosterExpert> experts)
     {
-        var drafts = employees.Select((e, i) => new
+        var drafts = experts.Select((e, i) => new
         {
             index = i,
             industry = e.Industry,
@@ -91,14 +91,14 @@ public sealed class GeminiEnricher(string apiKey, string endpoint = "https://gen
                 {
                     role = "system",
                     content =
-                        "You rewrite draft CV narratives for synthetic demo employees. For each employee rewrite " +
+                        "You rewrite draft CV narratives for synthetic demo experts. For each expert rewrite " +
                         "the professional summary, and each experience's summary and achievement bullets, in varied, " +
-                        "concrete, third-person-implied CV voice (no 'I', no employee names). Rules: keep every " +
+                        "concrete, third-person-implied CV voice (no 'I', no expert names). Rules: keep every " +
                         "company name, role, technology, protocol, product and version token from the drafts (e.g. " +
                         "FIX 4.4, HL7 v2, Unity ECS, WCAG 2.2) and keep the numbers plausible; keep exactly the same " +
                         "number of achievements per experience; experience summaries 110-260 characters; achievements " +
-                        "55-200 characters; employee summaries 110-260 characters; vary sentence openings across the " +
-                        "batch. Respond with JSON only: {\"employees\":[{\"index\":0,\"summary\":\"...\"," +
+                        "55-200 characters; expert summaries 110-260 characters; vary sentence openings across the " +
+                        "batch. Respond with JSON only: {\"experts\":[{\"index\":0,\"summary\":\"...\"," +
                         "\"experiences\":[{\"summary\":\"...\",\"achievements\":[\"...\"]}]}]}",
                 },
                 new { role = "user", content = draftsJson },
@@ -133,16 +133,16 @@ public sealed class GeminiEnricher(string apiKey, string endpoint = "https://gen
     }
 
     /// <summary>Applies rewrites that pass validation; anything else silently keeps fragment prose.</summary>
-    private static int Apply(string responseJson, IReadOnlyList<DemoRosterEmployee> employees)
+    private static int Apply(string responseJson, IReadOnlyList<DemoRosterExpert> experts)
     {
         using var doc = JsonDocument.Parse(responseJson);
         var applied = 0;
 
-        foreach (var rewritten in doc.RootElement.GetProperty("employees").EnumerateArray())
+        foreach (var rewritten in doc.RootElement.GetProperty("experts").EnumerateArray())
         {
-            var employee = employees[rewritten.GetProperty("index").GetInt32()];
+            var expert = experts[rewritten.GetProperty("index").GetInt32()];
             var experiences = rewritten.GetProperty("experiences");
-            if (experiences.GetArrayLength() != employee.Experiences.Count)
+            if (experiences.GetArrayLength() != expert.Experiences.Count)
                 continue;
 
             var newSummary = rewritten.GetProperty("summary").GetString();
@@ -151,9 +151,9 @@ public sealed class GeminiEnricher(string apiKey, string endpoint = "https://gen
 
             var valid = true;
             var newExperiences = new List<(string Summary, List<string> Achievements)>();
-            for (var i = 0; i < employee.Experiences.Count; i++)
+            for (var i = 0; i < expert.Experiences.Count; i++)
             {
-                var original = employee.Experiences[i];
+                var original = expert.Experiences[i];
                 var summary = experiences[i].GetProperty("summary").GetString();
                 var achievements = experiences[i].GetProperty("achievements").EnumerateArray()
                     .Select(a => a.GetString()).ToList();
@@ -171,11 +171,11 @@ public sealed class GeminiEnricher(string apiKey, string endpoint = "https://gen
             if (!valid)
                 continue;
 
-            employee.Summary = newSummary;
-            for (var i = 0; i < employee.Experiences.Count; i++)
+            expert.Summary = newSummary;
+            for (var i = 0; i < expert.Experiences.Count; i++)
             {
-                employee.Experiences[i].Summary = newExperiences[i].Summary;
-                employee.Experiences[i].Achievements = newExperiences[i].Achievements;
+                expert.Experiences[i].Summary = newExperiences[i].Summary;
+                expert.Experiences[i].Achievements = newExperiences[i].Achievements;
             }
             applied++;
         }

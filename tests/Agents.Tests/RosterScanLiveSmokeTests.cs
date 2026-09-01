@@ -15,7 +15,7 @@ namespace ExpertToJob.Agents.Tests;
 ///
 /// Preconditions (see README "Run it"): GEMINI_API_KEY, and a running MCP server + Keycloak
 /// (with the agent-roster-scan client — recreate the Keycloak container if the realm predates
-/// P1T-124) with seeded employees.
+/// P1T-124) with seeded experts.
 /// </summary>
 [Trait("Category", "live")]
 public class RosterScanLiveSmokeTests
@@ -59,8 +59,8 @@ public class RosterScanLiveSmokeTests
         estimate.GetProperty("candidates").GetInt32().Should().BeGreaterThan(0, "the roster is seeded");
         estimate.GetProperty("rpdBudget").GetInt32().Should().BeGreaterThan(0);
 
-        // Poll to a terminal state. On the 45-employee dev roster this is ~5 chunk calls; the
-        // budget covers a 500-employee roster's 50 calls under RPM pacing too.
+        // Poll to a terminal state. On the 45-expert dev roster this is ~5 chunk calls; the
+        // budget covers a 500-expert roster's 50 calls under RPM pacing too.
         var deadline = DateTime.UtcNow.AddMinutes(10);
         JsonElement job = default;
         while (DateTime.UtcNow < deadline)

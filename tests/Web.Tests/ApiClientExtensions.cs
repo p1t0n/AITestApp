@@ -1,5 +1,5 @@
 using System.Net.Http.Json;
-using ExpertToJob.Application.Employees;
+using ExpertToJob.Application.Experts;
 
 namespace ExpertToJob.Web.Tests;
 
@@ -7,17 +7,17 @@ namespace ExpertToJob.Web.Tests;
 internal static class ApiClientExtensions
 {
     /// <summary>A unique address per call — the roster carries a partial unique index on the email
-    /// of Active employees, and the suite shares one database.</summary>
+    /// of Active experts, and the suite shares one database.</summary>
     public static string UniqueEmail(string prefix) => $"{prefix}-{Guid.NewGuid():N}@example.com";
 
-    public static async Task<EmployeeDetailDto> CreateEmployeeAsync(
-        this HttpClient client, SaveEmployeeDto dto)
+    public static async Task<ExpertDetailDto> CreateExpertAsync(
+        this HttpClient client, SaveExpertDto dto)
     {
-        var response = await client.PostAsJsonAsync("/api/employees", dto, WebApiFactory.Json);
-        return await response.ReadOkAsync<EmployeeDetailDto>();
+        var response = await client.PostAsJsonAsync("/api/experts", dto, WebApiFactory.Json);
+        return await response.ReadOkAsync<ExpertDetailDto>();
     }
 
-    public static SaveEmployeeDto NewEmployee(
+    public static SaveExpertDto NewExpert(
         string firstName = "Ada",
         string lastName = "Lovelace",
         string title = "Engineer",

@@ -47,7 +47,7 @@ public sealed record TailoringAgentOutcome(
     TailoringCvPayload? Cv);
 
 /// <summary>
-/// Read-only agent that tailors one employee's CV to a target job description. A Microsoft Agent
+/// Read-only agent that tailors one expert's CV to a target job description. A Microsoft Agent
 /// Framework <see cref="ChatClientAgent"/> backed by the configured chat model. The <c>cv_get</c>
 /// call is a fixed prerequisite, so it runs deterministically in code (P1T-131) and its verbatim
 /// result opens the session; the model's tool surface is exactly <c>style_exemplar_search</c> —
@@ -74,7 +74,7 @@ public sealed class CvTailoringAgent
     private const string Instructions =
         """
         You are the CV Tailoring assistant for ExpertToJob. You are given a target job
-        description and the employee's full CV — the verbatim result of the cv_get tool, already
+        description and the expert's full CV — the verbatim result of the cv_get tool, already
         fetched for you and included in the message. The conversation has exactly two steps.
 
         STEP 1 — the current message. From the CV's experiences, select up to 8 achievement ids
@@ -88,7 +88,7 @@ public sealed class CvTailoringAgent
 
         Do not mention the exemplars or the upcoming rewrites in this reply. Use ONLY facts from
         the provided CV — never invent skills, experience, qualifications, or achievements the CV
-        does not contain. If the CV result reports the employee was not found or contains an
+        does not contain. If the CV result reports the expert was not found or contains an
         error, say so plainly and stop (do not call style_exemplar_search). You have read-only
         access and cannot change any data.
 
@@ -128,19 +128,19 @@ public sealed class CvTailoringAgent
     };
 
     public async Task<TailoringAgentOutcome> TailorAsync(
-        Guid employeeId, string jobDescription, CancellationToken ct = default)
+        Guid expertId, string jobDescription, CancellationToken ct = default)
     {
         var tools = await GetToolsAsync(ct);
 
         // Fixed order → code (P1T-131): cv_get is a hard prerequisite of the whole run — the
-        // employee is known before the model says a word — so it is invoked deterministically
+        // expert is known before the model says a word — so it is invoked deterministically
         // here (the P1T-117 shortlist-retrieval pattern) instead of hoping the tool loop calls
         // it. The exemplar call stays model-driven: genuinely dynamic, the model picks which
         // bullets deserve exemplars.
         var cvGet = tools.OfType<AIFunction>().FirstOrDefault(t => t.Name == CvTool)
             ?? throw new HttpRequestException($"The MCP server did not expose the {CvTool} tool.");
         var cvResult = await cvGet.InvokeAsync(
-            new AIFunctionArguments { ["employeeId"] = employeeId }, ct);
+            new AIFunctionArguments { ["expertId"] = expertId }, ct);
 
         // Per-run capture seam (mirrors the shortlist agent): the cv_get result is captured from
         // the deterministic call above; the exemplar decorator records the model's selection and
@@ -162,7 +162,7 @@ public sealed class CvTailoringAgent
             _chatClient,
             instructions: Instructions,
             name: "CvTailoring",
-            description: "Tailors an employee's CV to a target job description (read-only, advisory).",
+            description: "Tailors an expert's CV to a target job description (read-only, advisory).",
             tools: runTools,
             loggerFactory: _loggerFactory);
 
@@ -173,11 +173,11 @@ public sealed class CvTailoringAgent
         // the CV instead of fetching it.
         var question =
             $"""
-             Tailor the CV of employee {employeeId} to this job description:
+             Tailor the CV of expert {expertId} to this job description:
 
              {jobDescription}
 
-             The employee's full CV (the verbatim cv_get result):
+             The expert's full CV (the verbatim cv_get result):
              {RenderToolResult(cvResult)}
              """;
 

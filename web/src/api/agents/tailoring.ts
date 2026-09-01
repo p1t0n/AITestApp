@@ -29,13 +29,13 @@ export function useCvTailoring() {
   });
 }
 
-/** A tailoring rewrite plus the employee it belongs to — everything Apply needs. */
+/** A tailoring rewrite plus the expert it belongs to — everything Apply needs. */
 export interface ApplyRewriteInput extends TailoringRewrite {
-  employeeId: string;
+  expertId: string;
 }
 
 /**
- * Apply a tailoring rewrite to the employee's profile. The agent never writes (P1T-62): this is a
+ * Apply a tailoring rewrite to the expert's profile. The agent never writes (P1T-62): this is a
  * plain Web-API edit with the user's own session, exactly like a manual edit. One PATCH per
  * bullet (P1T-90) — ids and sibling bullets stay untouched, so concurrent applies can't clobber
  * each other.
@@ -46,9 +46,9 @@ export function useApplyRewrite() {
     mutationFn: async (input: ApplyRewriteInput) =>
       (await http.patch<Achievement>(`/achievements/${input.achievementId}`, { text: input.rewritten }))
         .data,
-    // Prefix-matches both the detail query (["employees", id]) and the CV query
-    // (["employees", id, "cv"]), so open detail/CV views refetch.
+    // Prefix-matches both the detail query (["experts", id]) and the CV query
+    // (["experts", id, "cv"]), so open detail/CV views refetch.
     onSuccess: (_data, input) =>
-      qc.invalidateQueries({ queryKey: ["employees", input.employeeId] }),
+      qc.invalidateQueries({ queryKey: ["experts", input.expertId] }),
   });
 }

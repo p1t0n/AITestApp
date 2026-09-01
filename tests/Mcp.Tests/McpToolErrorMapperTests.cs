@@ -12,21 +12,21 @@ public class McpToolErrorMapperTests
     [Fact]
     public void Maps_NotFoundException_to_not_found_code()
     {
-        var error = McpToolErrorMapper.Map(new NotFoundException("Employee", Guid.NewGuid()));
+        var error = McpToolErrorMapper.Map(new NotFoundException("Expert", Guid.NewGuid()));
 
         error.Should().NotBeNull();
         error!.Code.Should().Be("not_found");
-        error.Message.Should().Contain("Employee");
+        error.Message.Should().Contain("Expert");
     }
 
     [Fact]
     public void Maps_ConflictException_to_conflict_code()
     {
-        var error = McpToolErrorMapper.Map(new ConflictException("Employee already has this skill."));
+        var error = McpToolErrorMapper.Map(new ConflictException("Expert already has this skill."));
 
         error.Should().NotBeNull();
         error!.Code.Should().Be("conflict");
-        error.Message.Should().Be("Employee already has this skill.");
+        error.Message.Should().Be("Expert already has this skill.");
     }
 
     [Fact]

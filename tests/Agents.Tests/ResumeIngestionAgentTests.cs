@@ -18,7 +18,7 @@ public class ResumeIngestionAgentTests
 
     private static string DraftPayload(string? duplicateWarning = null) =>
         $$"""
-        {"employee":{"id":"{{DraftId}}","firstName":"Torvald","lastName":"Emberwright"},"duplicateWarning":{{(duplicateWarning is null ? "null" : $"\"{duplicateWarning}\"")}}}
+        {"expert":{"id":"{{DraftId}}","firstName":"Torvald","lastName":"Emberwright"},"duplicateWarning":{{(duplicateWarning is null ? "null" : $"\"{duplicateWarning}\"")}}}
         """;
 
     private const string ValidationError =
@@ -36,7 +36,7 @@ public class ResumeIngestionAgentTests
         var chat = new FakeChatClient(() => new ChatResponse(new ChatMessage(ChatRole.Assistant,
             """{"proposals":[],"aborted":false,"abortReason":null}""")));
         var agent = new ResumeIngestionAgent(chat, new FakeToolSource(
-                Tool("employee_create_draft", () => DraftPayload()),
+                Tool("expert_create_draft", () => DraftPayload()),
                 Tool("skill_list", () => "[]")),
             NullLoggerFactory.Instance);
 
@@ -52,16 +52,16 @@ public class ResumeIngestionAgentTests
         var chat = new FakeChatClient(() => new ChatResponse(new ChatMessage(ChatRole.Assistant,
             """{"proposals":[],"aborted":true,"abortReason":"nothing to do"}""")));
         var agent = new ResumeIngestionAgent(chat, new FakeToolSource(
-                Tool("employee_create_draft", () => DraftPayload()),
+                Tool("expert_create_draft", () => DraftPayload()),
                 Tool("language_add", () => "{}"),
-                Tool("employee_skill_add", () => "{}"),
+                Tool("expert_skill_add", () => "{}"),
                 Tool("qualification_add", () => "{}"),
                 Tool("experience_add", () => "{}"),
                 Tool("skill_list", () => "[]"),
                 Tool("skill_create", () => "{}"),
-                Tool("employee_create", () => "{}"),
+                Tool("expert_create", () => "{}"),
                 Tool("availability_add", () => "{}"),
-                Tool("employee_delete", () => "{}")),
+                Tool("expert_delete", () => "{}")),
             NullLoggerFactory.Instance);
 
         await agent.IngestAsync("resume");
@@ -69,7 +69,7 @@ public class ResumeIngestionAgentTests
         agent.Name.Should().Be("resume-ingestion");
         var toolNames = chat.ReceivedOptions[0]!.Tools!.Select(t => t.Name).ToList();
         toolNames.Should().BeEquivalentTo(
-            "employee_create_draft", "language_add", "employee_skill_add",
+            "expert_create_draft", "language_add", "expert_skill_add",
             "qualification_add", "experience_add", "skill_list");
     }
 
@@ -78,14 +78,14 @@ public class ResumeIngestionAgentTests
     {
         var chat = new FakeChatClient(
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
-                [Call("c1", "employee_create_draft")])),
+                [Call("c1", "expert_create_draft")])),
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
                 [Call("c2", "language_add"), Call("c3", "experience_add")])),
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
                 """{"proposals":["LabVIEW"],"aborted":false,"abortReason":null}""")));
 
         var agent = new ResumeIngestionAgent(chat, new FakeToolSource(
-                Tool("employee_create_draft", () => DraftPayload("Same name exists.")),
+                Tool("expert_create_draft", () => DraftPayload("Same name exists.")),
                 Tool("language_add", () => """{"id":"aaaaaaaa-1111-1111-1111-111111111111"}"""),
                 Tool("experience_add", () => """{"id":"bbbbbbbb-1111-1111-1111-111111111111"}"""),
                 Tool("skill_list", () => "[]")),
@@ -93,11 +93,11 @@ public class ResumeIngestionAgentTests
 
         var outcome = await agent.IngestAsync("resume text");
 
-        outcome.EmployeeId.Should().Be(DraftId);
+        outcome.ExpertId.Should().Be(DraftId);
         outcome.DuplicateWarning.Should().Be("Same name exists.");
         outcome.ToolCalls.Should().HaveCount(3);
         outcome.ToolCalls.Select(c => c.Tool).Should().Equal(
-            "employee_create_draft", "language_add", "experience_add");
+            "expert_create_draft", "language_add", "experience_add");
         outcome.ToolCalls.Should().OnlyContain(c => c.Succeeded);
         outcome.ClosingJson.Should().Contain("LabVIEW");
     }
@@ -115,7 +115,7 @@ public class ResumeIngestionAgentTests
 
         var chat = new FakeChatClient(
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
-                [Call("c1", "employee_create_draft")])),
+                [Call("c1", "expert_create_draft")])),
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
                 [Call("c2", "experience_add")])),
             // The model sees the validation error and retries with fixed arguments.
@@ -125,7 +125,7 @@ public class ResumeIngestionAgentTests
                 """{"proposals":[],"aborted":false,"abortReason":null}""")));
 
         var agent = new ResumeIngestionAgent(chat, new FakeToolSource(
-                Tool("employee_create_draft", () => DraftPayload()),
+                Tool("expert_create_draft", () => DraftPayload()),
                 experienceTool,
                 Tool("skill_list", () => "[]")),
             NullLoggerFactory.Instance);
@@ -140,23 +140,23 @@ public class ResumeIngestionAgentTests
     }
 
     [Fact]
-    public async Task EmployeeId_is_null_when_the_draft_create_never_succeeds()
+    public async Task ExpertId_is_null_when_the_draft_create_never_succeeds()
     {
         var chat = new FakeChatClient(
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
-                [Call("c1", "employee_create_draft")])),
+                [Call("c1", "expert_create_draft")])),
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
                 """{"proposals":[],"aborted":true,"abortReason":"The resume has no name."}""")));
 
         var agent = new ResumeIngestionAgent(chat, new FakeToolSource(
-                Tool("employee_create_draft", () => ValidationError),
+                Tool("expert_create_draft", () => ValidationError),
                 Tool("skill_list", () => "[]")),
             NullLoggerFactory.Instance);
 
         var outcome = await agent.IngestAsync("garbage");
 
-        outcome.EmployeeId.Should().BeNull();
-        outcome.ToolCalls.Should().ContainSingle(c => c.Tool == "employee_create_draft" && !c.Succeeded);
+        outcome.ExpertId.Should().BeNull();
+        outcome.ToolCalls.Should().ContainSingle(c => c.Tool == "expert_create_draft" && !c.Succeeded);
     }
 
     [Fact]
@@ -164,10 +164,10 @@ public class ResumeIngestionAgentTests
     {
         // The real MCP tool hands results back as TextContent — same production shape the
         // shortlist capture had to learn the hard way.
-        var tool = AIFunctionFactory.Create(() => new TextContent(DraftPayload()), "employee_create_draft");
+        var tool = AIFunctionFactory.Create(() => new TextContent(DraftPayload()), "expert_create_draft");
         var chat = new FakeChatClient(
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
-                [Call("c1", "employee_create_draft")])),
+                [Call("c1", "expert_create_draft")])),
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
                 """{"proposals":[],"aborted":false,"abortReason":null}""")));
 
@@ -176,6 +176,6 @@ public class ResumeIngestionAgentTests
 
         var outcome = await agent.IngestAsync("resume text");
 
-        outcome.EmployeeId.Should().Be(DraftId);
+        outcome.ExpertId.Should().Be(DraftId);
     }
 }

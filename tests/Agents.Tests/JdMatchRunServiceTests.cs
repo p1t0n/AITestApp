@@ -50,7 +50,7 @@ public class JdMatchRunServiceTests
         outcome.Requirements.Should().Equal("kafka", "k8s");
         match.Calls.Should().Be(2);
         // Grace's match score beats Ada's despite a lower retrieval score.
-        outcome.Results.Select(r => r.EmployeeId).Should().Equal(Grace, Ada);
+        outcome.Results.Select(r => r.ExpertId).Should().Equal(Grace, Ada);
         outcome.Results[0].Score.Should().Be(85);
         outcome.Results[0].Band.Should().Be("Strong");
         outcome.Results[0].Status.Should().Be(StaffingMatchStatus.Completed);
@@ -71,9 +71,9 @@ public class JdMatchRunServiceTests
         var outcome = await Service(shortlist, match).RunAsync("JD", topK: 2);
 
         outcome.Results.Should().HaveCount(2);
-        outcome.Results[0].EmployeeId.Should().Be(Grace);
+        outcome.Results[0].ExpertId.Should().Be(Grace);
         var failed = outcome.Results[1];
-        failed.EmployeeId.Should().Be(Ada);
+        failed.ExpertId.Should().Be(Ada);
         failed.Status.Should().Be(StaffingMatchStatus.Failed);
         failed.Error.Should().Be("model down");
         failed.Answer.Should().BeNull();

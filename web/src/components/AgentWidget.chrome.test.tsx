@@ -30,7 +30,7 @@ vi.mock("../api", async (importOriginal) => {
   return {
     ...actual,
     useUsage: () => ({ data: undefined, isLoading: false, isError: false, error: null }),
-    useEmployees: () => ({ data: [], isLoading: false }),
+    useExperts: () => ({ data: [], isLoading: false }),
     useSkills: () => ({ data: [], isLoading: false }),
     useCategories: () => ({ data: [], isLoading: false }),
     useRosterScanJob: () => ({ data: undefined }),
@@ -338,11 +338,11 @@ describe("a long agent answer stays inside a 360px panel", () => {
     );
   });
 
-  it("breaks a linkified employee id rather than the panel", () => {
+  it("breaks a linkified expert id rather than the panel", () => {
     const id = "11111111-2222-3333-4444-555555555555";
     const container = markdown(`See ${id} for the detail.`);
 
-    expect(screen.getByRole("link", { name: id })).toHaveAttribute("href", `/employees/${id}`);
+    expect(screen.getByRole("link", { name: id })).toHaveAttribute("href", `/experts/${id}`);
     expect(getComputedStyle(container.firstElementChild!).overflowWrap).toBe("anywhere");
   });
 

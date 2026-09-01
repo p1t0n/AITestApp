@@ -5,7 +5,7 @@ namespace ExpertToJob.Agents.Agents;
 /// <summary>
 /// The Match agent's structured verdict (P1T-118): the deterministic facts (score, band) as typed
 /// fields instead of regex-mined markdown, plus the full gap-analysis markdown that ships in
-/// reports unchanged. Score and band are nullable on purpose — an employee that cannot be assessed
+/// reports unchanged. Score and band are nullable on purpose — an expert that cannot be assessed
 /// (not found, no evidence) is represented honestly, never invented.
 /// </summary>
 public sealed record MatchAssessment(

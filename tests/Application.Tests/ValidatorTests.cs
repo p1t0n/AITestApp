@@ -1,5 +1,5 @@
 using ExpertToJob.Application.Availability;
-using ExpertToJob.Application.Employees;
+using ExpertToJob.Application.Experts;
 using FluentAssertions;
 using Xunit;
 
@@ -8,20 +8,20 @@ namespace ExpertToJob.Application.Tests;
 public class ValidatorTests
 {
     [Fact]
-    public void SaveEmployee_requires_name_and_valid_email()
+    public void SaveExpert_requires_name_and_valid_email()
     {
-        var result = new SaveEmployeeValidator().Validate(
-            new SaveEmployeeDto("", "X", "T", "not-an-email", null, null, null, null));
+        var result = new SaveExpertValidator().Validate(
+            new SaveExpertDto("", "X", "T", "not-an-email", null, null, null, null));
 
         result.IsValid.Should().BeFalse();
         result.Errors.Select(e => e.PropertyName).Should().Contain(new[] { "FirstName", "Email" });
     }
 
     [Fact]
-    public void SaveEmployee_passes_for_valid_input()
+    public void SaveExpert_passes_for_valid_input()
     {
-        var result = new SaveEmployeeValidator().Validate(
-            new SaveEmployeeDto("Ada", "Lovelace", "Engineer", "ada@example.com", null, "London", null, null));
+        var result = new SaveExpertValidator().Validate(
+            new SaveExpertDto("Ada", "Lovelace", "Engineer", "ada@example.com", null, "London", null, null));
 
         result.IsValid.Should().BeTrue();
     }

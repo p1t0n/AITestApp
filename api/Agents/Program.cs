@@ -78,7 +78,7 @@ builder.Services.AddOptions<McpServerOptions>()
 // Validate the shared session JWT issued by the Web host (same signing key/issuer/audience).
 builder.Services.AddSessionJwtAuthentication(builder.Configuration);
 
-// DB access for token-usage metering (and, next, per-user cap enforcement). Employee data still
+// DB access for token-usage metering (and, next, per-user cap enforcement). Expert data still
 // flows only through MCP; this is the operational usage log.
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddOptions<UsageOptions>().Bind(builder.Configuration.GetSection(UsageOptions.Section));
@@ -136,7 +136,7 @@ builder.Services.AddSingleton(sp => new InterviewKitAgent(
     sp.ResolveAgentChatClient("interview-kit"),
     sp.GetRequiredKeyedService<IMcpToolSource>("interview-kit"),
     sp.GetRequiredService<ILoggerFactory>()));
-// Bench report (P1T-104): server-composed aggregates (direct MCP employee_list + the proposals
+// Bench report (P1T-104): server-composed aggregates (direct MCP expert_list + the proposals
 // ledger), model writes narrative only. Scoped — it reads the DB through IAppDbContext.
 builder.Services.AddScoped(sp => new BenchReportService(
     sp.GetRequiredKeyedService<IMcpToolSource>("bench-report"),
@@ -144,7 +144,7 @@ builder.Services.AddScoped(sp => new BenchReportService(
     sp.GetRequiredService<ExpertToJob.Application.Abstractions.IAppDbContext>(),
     sp.GetRequiredService<ILogger<BenchReportService>>()));
 
-// The first mcp:write agent (P1T-92): stages resumes as draft employees; humans promote.
+// The first mcp:write agent (P1T-92): stages resumes as draft experts; humans promote.
 builder.Services.AddSingleton(sp => new ResumeIngestionAgent(
     sp.ResolveAgentChatClient("resume-ingestion"),
     sp.GetRequiredKeyedService<IMcpToolSource>("resume-ingestion"),
@@ -195,8 +195,8 @@ builder.Services.AddSingleton<ExpertToJob.Agents.RosterScan.IRosterDigestSource>
 builder.Services.AddScoped<ExpertToJob.Agents.RosterScan.ScoringJobStore>();
 // The deterministic filter resolver (shared semantics with semantic search's prefilter); the
 // Agents host doesn't pull the full Application registration, so it registers here directly.
-builder.Services.AddScoped<ExpertToJob.Application.Search.IEmployeeFilterService,
-    ExpertToJob.Application.Search.EmployeeFilterService>();
+builder.Services.AddScoped<ExpertToJob.Application.Search.IExpertFilterService,
+    ExpertToJob.Application.Search.ExpertFilterService>();
 builder.Services.AddScoped<ExpertToJob.Agents.RosterScan.RosterScanRunner>();
 builder.Services.AddSingleton<ExpertToJob.Agents.RosterScan.RosterScanQueue>();
 builder.Services.AddSingleton<ExpertToJob.Agents.RosterScan.IRosterScanQueue>(sp =>
@@ -303,7 +303,7 @@ app.MapPost("/agents/roster-qa", async (
     }
 }).RequireAuthorization();
 
-// POST /agents/cv-tailoring  { "employeeId": "guid", "jobDescription": "..." }
+// POST /agents/cv-tailoring  { "expertId": "guid", "jobDescription": "..." }
 // -> { "answer": "<markdown as before>", "rewrites": [{ experienceId, achievementId, original, rewritten }] }
 // The answer is unchanged for existing consumers; rewrite ids/originals are composed from the
 // captured cv_get result — never model text — and each rewrite passes the fabrication guard.
@@ -316,9 +316,9 @@ app.MapPost("/agents/cv-tailoring", async (
     ILoggerFactory loggerFactory,
     CancellationToken ct) =>
 {
-    if (request.EmployeeId == Guid.Empty)
+    if (request.ExpertId == Guid.Empty)
     {
-        return Results.BadRequest(new { error = "employeeId is required." });
+        return Results.BadRequest(new { error = "expertId is required." });
     }
 
     if (string.IsNullOrWhiteSpace(request.JobDescription))
@@ -336,7 +336,7 @@ app.MapPost("/agents/cv-tailoring", async (
     {
         // The agent pre-fetches cv_get deterministically (P1T-131) and opens its 2-turn session
         // with the JD + the captured CV.
-        var outcome = await agent.TailorAsync(request.EmployeeId, request.JobDescription, ct);
+        var outcome = await agent.TailorAsync(request.ExpertId, request.JobDescription, ct);
         if (userId is { } uid)
         {
             await meter.RecordAsync(uid, agent.Name, outcome.Reply, ct: ct);
@@ -353,7 +353,7 @@ app.MapPost("/agents/cv-tailoring", async (
     }
 }).RequireAuthorization();
 
-// POST /agents/interview-kit  { "employeeId": "guid", "jobDescription": "..." }
+// POST /agents/interview-kit  { "expertId": "guid", "jobDescription": "..." }
 // -> { "answer": "<markdown kit>", "questions": [{ question, probes?, evidence? }] }
 // The answer is turn 1's markdown verbatim; structured questions come from turn 2, and every
 // evidence quote is validated against the captured cv_get result (unverifiable quotes drop from
@@ -368,9 +368,9 @@ app.MapPost("/agents/interview-kit", async (
     ILoggerFactory loggerFactory,
     CancellationToken ct) =>
 {
-    if (request.EmployeeId == Guid.Empty)
+    if (request.ExpertId == Guid.Empty)
     {
-        return Results.BadRequest(new { error = "employeeId is required." });
+        return Results.BadRequest(new { error = "expertId is required." });
     }
 
     if (string.IsNullOrWhiteSpace(request.JobDescription))
@@ -384,7 +384,7 @@ app.MapPost("/agents/interview-kit", async (
         return CapReached(exceeded);
     }
 
-    var prompt = $"Build an interview kit for employee {request.EmployeeId} against this job description:\n\n{request.JobDescription}";
+    var prompt = $"Build an interview kit for expert {request.ExpertId} against this job description:\n\n{request.JobDescription}";
 
     try
     {
@@ -418,9 +418,9 @@ app.MapPost("/agents/interview-kit", async (
 }).RequireAuthorization();
 
 // POST /agents/match — two modes (P1T-103):
-//   { "employeeId": "guid", "jobDescription": "..." }        -> { "answer": "..." } (unchanged)
+//   { "expertId": "guid", "jobDescription": "..." }        -> { "answer": "..." } (unchanged)
 //   { "jobDescription": "...", "topK"? }                     -> { "requirements": [...],
-//     "results": [{ employeeId, name, title, retrievalScore, status, score, band, answer?, error? }] }
+//     "results": [{ expertId, name, title, retrievalScore, status, score, band, answer?, error? }] }
 // JD-only mode retrieves the top candidates via shortlist search and fans the match run out per
 // candidate (staffing throttle); one candidate's fault degrades that entry, never the call.
 app.MapPost("/agents/match", async (
@@ -433,9 +433,9 @@ app.MapPost("/agents/match", async (
     IUsageService usage,
     CancellationToken ct) =>
 {
-    if (request.EmployeeId == Guid.Empty)
+    if (request.ExpertId == Guid.Empty)
     {
-        return Results.BadRequest(new { error = "employeeId must be a real id when present." });
+        return Results.BadRequest(new { error = "expertId must be a real id when present." });
     }
 
     if (string.IsNullOrWhiteSpace(request.JobDescription))
@@ -451,7 +451,7 @@ app.MapPost("/agents/match", async (
 
     try
     {
-        if (request.EmployeeId is { } employeeId)
+        if (request.ExpertId is { } expertId)
         {
             // One extraction per JD (P1T-117): the structured requirements ride into the match
             // prompt. An extraction fault degrades to a plain-JD match, never fails the call.
@@ -461,7 +461,7 @@ app.MapPost("/agents/match", async (
                 await meter.RecordAsync(xuid, JdRequirementExtractor.AgentName, extraction.Reply, ct: ct);
             }
 
-            var run = await runner.RunAsync(employeeId, request.JobDescription, extraction.Requirements, ct);
+            var run = await runner.RunAsync(expertId, request.JobDescription, extraction.Requirements, ct);
             if (userId is { } uid)
             {
                 await meter.RecordAsync(uid, run.AgentName, run.Reply, ct: ct);
@@ -601,12 +601,12 @@ app.MapPost("/agents/resume-ingestion", async (
             await meter.RecordAsync(uid, run.AgentName, run.Reply, ct: ct);
         }
 
-        // Core abort (no draft exists): the resume did not yield a valid employee even after the
+        // Core abort (no draft exists): the resume did not yield a valid expert even after the
         // self-correction retries — the caller's input is the problem, not an upstream fault.
         if (run.Response is null)
         {
             return Results.Problem(
-                title: "The resume could not be staged as a draft employee.",
+                title: "The resume could not be staged as a draft expert.",
                 detail: run.AbortDetail,
                 statusCode: StatusCodes.Status422UnprocessableEntity);
         }
@@ -672,7 +672,7 @@ app.MapPost("/agents/staffing", async (
 }).RequireAuthorization();
 
 // POST /agents/bench-report  {}  ->  { "answer": "<markdown>", "stats": {...}, "notes": [...] }
-// Every number is server-composed (direct MCP employee_list + the proposals ledger); the model
+// Every number is server-composed (direct MCP expert_list + the proposals ledger); the model
 // only writes prose over them. Input failures degrade to leaner stats + notes; a model failure
 // ships the deterministic fallback summary — this endpoint never 500s for upstream faults.
 app.MapPost("/agents/bench-report", async (
@@ -775,7 +775,7 @@ app.MapPost("/agents/roster-scan", async (
     ExpertToJob.Agents.RosterScan.ScoringJobStore scanStore,
     ExpertToJob.Agents.RosterScan.IRosterScanQueue scanQueue,
     ExpertToJob.Agents.RosterScan.IRosterDigestSource digestSource,
-    ExpertToJob.Application.Search.IEmployeeFilterService employeeFilters,
+    ExpertToJob.Application.Search.IExpertFilterService expertFilters,
     ExpertToJob.Agents.RosterScan.RosterScanOptions scanOptions,
     ClaimsPrincipal user,
     CancellationToken ct) =>
@@ -800,7 +800,7 @@ app.MapPost("/agents/roster-scan", async (
     int candidates;
     if (scanFilters is not null)
     {
-        candidates = (await employeeFilters.ResolveEligibleAsync(scanFilters, ct))?.Count ?? 0;
+        candidates = (await expertFilters.ResolveEligibleAsync(scanFilters, ct))?.Count ?? 0;
     }
     else
     {
@@ -862,9 +862,9 @@ app.Run();
 internal sealed record RosterQaRequest(string Question, string? ThreadId = null);
 internal sealed record ResumeIngestionRequest(string ResumeText);
 internal sealed record RosterQaResponse(string Answer, string ThreadId);
-internal sealed record CvTailoringRequest(Guid EmployeeId, string JobDescription);
-internal sealed record InterviewKitRequest(Guid EmployeeId, string JobDescription);
-internal sealed record MatchRequest(Guid? EmployeeId, string JobDescription, int? TopK = null);
+internal sealed record CvTailoringRequest(Guid ExpertId, string JobDescription);
+internal sealed record InterviewKitRequest(Guid ExpertId, string JobDescription);
+internal sealed record MatchRequest(Guid? ExpertId, string JobDescription, int? TopK = null);
 internal sealed record MatchResponse(string Answer);
 internal sealed record JdMatchResponse(
     IReadOnlyList<string> Requirements,
@@ -885,13 +885,13 @@ internal sealed record StaffingRequest(
     int? MatchTop = null);
 internal sealed record ProposalDecisionRequest(string? Decision, string? Note = null);
 internal sealed record ProposalCandidateResponse(
-    Guid EmployeeId, string Name, string Title, int Rank, int? MatchScore, string? MatchBand, string Rationale);
+    Guid ExpertId, string Name, string Title, int Rank, int? MatchScore, string? MatchBand, string Rationale);
 internal sealed record ProposalResponse(
     Guid Id,
     string JobDescription,
     string Status,
     DateTimeOffset CreatedAt,
-    Guid? RecommendedEmployeeId,
+    Guid? RecommendedExpertId,
     bool ReportDegraded,
     IReadOnlyList<ProposalCandidateResponse> Candidates,
     Guid? DecidedByUserId,
@@ -903,10 +903,10 @@ internal sealed record ProposalResponse(
         p.JobDescription,
         p.Status,
         p.CreatedAt,
-        p.RecommendedEmployeeId,
+        p.RecommendedExpertId,
         p.ReportDegraded,
         p.Candidates.Select(c => new ProposalCandidateResponse(
-            c.EmployeeId, c.Name, c.Title, c.Rank, c.MatchScore, c.MatchBand, c.Rationale)).ToList(),
+            c.ExpertId, c.Name, c.Title, c.Rank, c.MatchScore, c.MatchBand, c.Rationale)).ToList(),
         p.DecidedByUserId,
         p.DecidedAt,
         p.DecisionNote);
@@ -920,7 +920,7 @@ internal sealed record ProposalDetailResponse(
     string JobDescription,
     string Status,
     DateTimeOffset CreatedAt,
-    Guid? RecommendedEmployeeId,
+    Guid? RecommendedExpertId,
     bool ReportDegraded,
     IReadOnlyList<ProposalCandidateResponse> Candidates,
     Guid? DecidedByUserId,
@@ -932,7 +932,7 @@ internal sealed record ProposalDetailResponse(
     {
         var meta = ProposalResponse.From(p);
         return new(
-            meta.Id, meta.JobDescription, meta.Status, meta.CreatedAt, meta.RecommendedEmployeeId,
+            meta.Id, meta.JobDescription, meta.Status, meta.CreatedAt, meta.RecommendedExpertId,
             meta.ReportDegraded, meta.Candidates, meta.DecidedByUserId, meta.DecidedAt, meta.DecisionNote,
             StaffingHandoffDocument.TryDeserialize(p.PackageJson));
     }

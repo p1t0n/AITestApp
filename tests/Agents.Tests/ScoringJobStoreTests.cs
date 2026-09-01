@@ -89,7 +89,7 @@ public class ScoringJobStoreTests
     }
 
     [Fact]
-    public async Task Chunk_results_batch_write_and_ignore_unknown_employees()
+    public async Task Chunk_results_batch_write_and_ignore_unknown_experts()
     {
         await using var db = NewDb();
         var store = Store(db);
@@ -103,9 +103,9 @@ public class ScoringJobStoreTests
         ]);
 
         var rows = await db.ScoringJobCandidates.Where(c => c.JobId == job.Id).ToListAsync();
-        rows.Should().HaveCount(2, "unknown employees are ignored, never inserted");
-        rows.Single(r => r.EmployeeId == Ada).Score.Should().Be(82);
-        rows.Single(r => r.EmployeeId == Grace).Error.Should().Be("chunk fault");
+        rows.Should().HaveCount(2, "unknown experts are ignored, never inserted");
+        rows.Single(r => r.ExpertId == Ada).Score.Should().Be(82);
+        rows.Single(r => r.ExpertId == Grace).Error.Should().Be("chunk fault");
         ScoringJobProgress.Of(rows).Should().Be(new ScoringJobProgress(1, 1, 0, 2));
         ScoringJobProgress.Of(rows).Settled.Should().Be(2, "failed counts as settled — N/N like staffing");
     }
@@ -162,7 +162,7 @@ public class ScoringJobStoreTests
 
         var loaded = await store.GetAsync(job.Id);
 
-        loaded!.Candidates.Select(c => c.EmployeeId).Should().Equal(Grace, Ada, extra);
+        loaded!.Candidates.Select(c => c.ExpertId).Should().Equal(Grace, Ada, extra);
     }
 
     [Fact]

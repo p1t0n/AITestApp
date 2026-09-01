@@ -13,24 +13,24 @@ namespace ExpertToJob.Agents.Tests;
 /// </summary>
 public class RosterQaAgentTests
 {
-    private static AIFunction EmployeeListTool(Action onInvoke) =>
+    private static AIFunction ExpertListTool(Action onInvoke) =>
         AIFunctionFactory.Create(
             () => { onInvoke(); return "Ada Lovelace;id-1;React"; },
-            "employee_list");
+            "expert_list");
 
     [Fact]
     public async Task Wires_mcp_tools_into_the_model_and_returns_its_answer()
     {
         var chat = new FakeChatClient(
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "Ada Lovelace (id-1) knows React.")));
-        var tool = EmployeeListTool(() => { });
+        var tool = ExpertListTool(() => { });
         var agent = new RosterQaAgent(chat, new FakeToolSource(tool), NullLoggerFactory.Instance);
 
         var answer = await agent.AskAsync("Who knows React?");
 
         answer.Text.Should().Contain("Ada Lovelace");
         chat.ReceivedOptions.Should().NotBeEmpty();
-        chat.ReceivedOptions[0]!.Tools.Should().Contain(t => t.Name == "employee_list");
+        chat.ReceivedOptions[0]!.Tools.Should().Contain(t => t.Name == "expert_list");
     }
 
     [Fact]
@@ -39,12 +39,12 @@ public class RosterQaAgentTests
         // Grounded flow: tool call first, then the answer carrying the usage.
         var chat = new FakeChatClient(
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
-                [new FunctionCallContent("call-1", "employee_list", new Dictionary<string, object?>())])),
+                [new FunctionCallContent("call-1", "expert_list", new Dictionary<string, object?>())])),
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "Ada Lovelace (id-1) knows React."))
             {
                 Usage = new UsageDetails { InputTokenCount = 123, OutputTokenCount = 45, TotalTokenCount = 168 },
             });
-        var agent = new RosterQaAgent(chat, new FakeToolSource(EmployeeListTool(() => { })), NullLoggerFactory.Instance);
+        var agent = new RosterQaAgent(chat, new FakeToolSource(ExpertListTool(() => { })), NullLoggerFactory.Instance);
 
         var reply = await agent.AskAsync("Who knows React?");
 
@@ -57,12 +57,12 @@ public class RosterQaAgentTests
     public async Task Invokes_a_tool_when_the_model_requests_it()
     {
         var toolInvoked = false;
-        var tool = EmployeeListTool(() => toolInvoked = true);
+        var tool = ExpertListTool(() => toolInvoked = true);
 
         var chat = new FakeChatClient(
-            // Turn 1: the model asks to call employee_list.
+            // Turn 1: the model asks to call expert_list.
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
-                [new FunctionCallContent("call-1", "employee_list", new Dictionary<string, object?>())])),
+                [new FunctionCallContent("call-1", "expert_list", new Dictionary<string, object?>())])),
             // Turn 2: with the tool result in hand, the model answers.
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "Ada Lovelace (id-1) knows React.")));
 
@@ -85,7 +85,7 @@ public class RosterQaAgentTests
         var semanticSearch = SemanticSearchTool(() =>
         {
             semanticCalled = true;
-            return """{"results":[{"employeeId":"id-1","name":"Ada Lovelace","title":"Payments Lead","score":0.88,"snippets":["Led the fintech payments rewrite."]}]}""";
+            return """{"results":[{"expertId":"id-1","name":"Ada Lovelace","title":"Payments Lead","score":0.88,"snippets":["Led the fintech payments rewrite."]}]}""";
         });
 
         var chat = new FakeChatClient(
@@ -100,7 +100,7 @@ public class RosterQaAgentTests
 
         var agent = new RosterQaAgent(
             chat,
-            new FakeToolSource(EmployeeListTool(() => { }), semanticSearch),
+            new FakeToolSource(ExpertListTool(() => { }), semanticSearch),
             NullLoggerFactory.Instance);
 
         var answer = await agent.AskAsync("Who has fintech payments experience?");
@@ -116,7 +116,7 @@ public class RosterQaAgentTests
         var listCalled = false;
         var semanticSearch = SemanticSearchTool(
             () => """{"results":[],"error":"The semantic search backend is unavailable."}""");
-        var list = AIFunctionFactory.Create(() => { listCalled = true; return "Ada Lovelace;id-1;React"; }, "employee_list");
+        var list = AIFunctionFactory.Create(() => { listCalled = true; return "Ada Lovelace;id-1;React"; }, "expert_list");
 
         var chat = new FakeChatClient(
             // Turn 1: semantic search returns a soft error.
@@ -125,7 +125,7 @@ public class RosterQaAgentTests
                     new Dictionary<string, object?> { ["query"] = "fintech" })])),
             // Turn 2: the model falls back to the structured list tool.
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
-                [new FunctionCallContent("call-2", "employee_list", new Dictionary<string, object?>())])),
+                [new FunctionCallContent("call-2", "expert_list", new Dictionary<string, object?>())])),
             // Turn 3: it answers, noting the degraded path.
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
                 "Semantic search was unavailable; from the roster, Ada Lovelace (id-1) is a candidate.")));
@@ -148,9 +148,9 @@ public class RosterQaAgentTests
     {
         var chat = new FakeChatClient(
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
-                [new FunctionCallContent("call-1", "employee_list", new Dictionary<string, object?>())])),
+                [new FunctionCallContent("call-1", "expert_list", new Dictionary<string, object?>())])),
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "Ada Lovelace (id-1) knows React.")));
-        var agent = new RosterQaAgent(chat, new FakeToolSource(EmployeeListTool(() => { })), NullLoggerFactory.Instance);
+        var agent = new RosterQaAgent(chat, new FakeToolSource(ExpertListTool(() => { })), NullLoggerFactory.Instance);
 
         await agent.AskAsync("Who knows React?");
 
@@ -165,9 +165,9 @@ public class RosterQaAgentTests
     {
         var chat = new FakeChatClient(
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
-                [new FunctionCallContent("call-1", "employee_list", new Dictionary<string, object?>())])),
+                [new FunctionCallContent("call-1", "expert_list", new Dictionary<string, object?>())])),
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "Ada Lovelace (id-1) knows React.")));
-        var agent = new RosterQaAgent(chat, new FakeToolSource(EmployeeListTool(() => { })), NullLoggerFactory.Instance);
+        var agent = new RosterQaAgent(chat, new FakeToolSource(ExpertListTool(() => { })), NullLoggerFactory.Instance);
 
         var answer = await agent.AskAsync("Who knows React?");
 
@@ -185,10 +185,10 @@ public class RosterQaAgentTests
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "Everyone knows React, probably.")),
             // Retry: it grounds itself and answers from the tool result.
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
-                [new FunctionCallContent("call-1", "employee_list", new Dictionary<string, object?>())])),
+                [new FunctionCallContent("call-1", "expert_list", new Dictionary<string, object?>())])),
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "Ada Lovelace (id-1) knows React.")));
         var agent = new RosterQaAgent(
-            chat, new FakeToolSource(EmployeeListTool(() => toolInvoked = true)), NullLoggerFactory.Instance);
+            chat, new FakeToolSource(ExpertListTool(() => toolInvoked = true)), NullLoggerFactory.Instance);
 
         var answer = await agent.AskAsync("Who knows React?");
 
@@ -213,7 +213,7 @@ public class RosterQaAgentTests
                 Usage = new UsageDetails { InputTokenCount = 20, OutputTokenCount = 7, TotalTokenCount = 27 },
             });
         var agent = new RosterQaAgent(
-            chat, new FakeToolSource(EmployeeListTool(() => { })), NullLoggerFactory.Instance);
+            chat, new FakeToolSource(ExpertListTool(() => { })), NullLoggerFactory.Instance);
 
         var answer = await agent.AskAsync("Who knows React?");
 

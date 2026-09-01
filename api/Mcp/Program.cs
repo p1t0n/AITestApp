@@ -98,10 +98,10 @@ builder.Services
     // Per-tool grants on top of the capability scopes (P1T-149): a token carrying
     // mcp:tool:<name> scopes is advertised — and may call — only those tools.
     .AddToolGrantFilters()
-    .WithTools<EmployeeTools>(toolSerializerOptions)
+    .WithTools<ExpertTools>(toolSerializerOptions)
     .WithTools<LanguageTools>(toolSerializerOptions)
     .WithTools<AvailabilityTools>(toolSerializerOptions)
-    .WithTools<EmployeeSkillTools>(toolSerializerOptions)
+    .WithTools<ExpertSkillTools>(toolSerializerOptions)
     .WithTools<QualificationTools>(toolSerializerOptions)
     .WithTools<ExperienceTools>(toolSerializerOptions)
     .WithTools<AchievementTools>(toolSerializerOptions)

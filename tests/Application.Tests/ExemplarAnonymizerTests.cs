@@ -5,7 +5,7 @@ using Xunit;
 namespace ExpertToJob.Application.Tests;
 
 /// <summary>
-/// The exemplar anonymization scrub: source-employee names and their companies must never leave
+/// The exemplar anonymization scrub: source-expert names and their companies must never leave
 /// the service inside exemplar text, whatever the casing or position.
 /// </summary>
 public class ExemplarAnonymizerTests

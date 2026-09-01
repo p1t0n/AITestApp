@@ -11,7 +11,7 @@
 > and how to re-measure them: `manuals/agent-eval-baselines.md` §4. P1T-150: resume-ingestion's
 > 157,252-token call is decomposed and its iteration ceiling fixed (§7). Measurements below are real —
 > taken from the `AgentUsages` ledger and from one live traced run of the roster-qa endpoint on
-> the seeded 45-employee demo roster; §6's are measured model-free in CI. Vocabulary lives in
+> the seeded 45-expert demo roster; §6's are measured model-free in CI. Vocabulary lives in
 > `CONTEXT.md` → *Cost & budgets*.
 
 `roster-qa` answers "who knows react and lives in London" for **160,220 input tokens**. The
@@ -24,7 +24,7 @@ four weeks earlier.
 
 ### 1.1 Every roster-qa call ever recorded
 
-`GenerateDemoRoster` has been untouched since 2026-08-01, so the roster (45 employees, 150
+`GenerateDemoRoster` has been untouched since 2026-08-01, so the roster (45 experts, 150
 experiences, 500 achievements, 79 catalog skills) is identical across all of these rows. Data
 growth is not the cause.
 
@@ -67,7 +67,7 @@ and lives in London"*. Result: **160,220 in / 593 out, 11.5s, 10 chat calls, 9 t
 | 2 | `roster_semantic_search` | +115 | 11,724 |
 | 3 | `roster_semantic_search` | +73 | 11,839 |
 | 4 | `roster_semantic_search` | +1,183 | 11,912 |
-| 5 | `employee_list` | +4,073 | 13,095 |
+| 5 | `expert_list` | +4,073 | 13,095 |
 | 6 | `cv_get` | +1,955 | 17,168 |
 | 7 | `cv_get` | +2,921 | 19,123 |
 | 8 | `cv_get` | +2,477 | 22,044 |
@@ -83,7 +83,7 @@ decomposition closes exactly:
 |---|---|---|---|---|
 | Baseline Prompt Size (instructions + 11 tool schemas) | 4,202 | ×10 | 42,020 | 26.2% |
 | `skill_list` result (all 79 catalog skills, unfiltered) | 7,522 | ×9 | 67,698 | 42.3% |
-| `employee_list` result (45 rows) | 4,073 | ×5 | 20,365 | 12.7% |
+| `expert_list` result (45 rows) | 4,073 | ×5 | 20,365 | 12.7% |
 | 3× `cv_get` | ~2.5k each | ×4, ×3, ×2 | 21,537 | 13.4% |
 | 3× `roster_semantic_search` | 73–1,183 | — | 8,529 | 5.3% |
 | `roster_shortlist_search` | 71 | ×1 | 71 | 0.04% |
@@ -338,7 +338,7 @@ which is the argument for P1T-144's ledger columns.
 traced run's real defect is not in any one payload — it is that nine tool calls were made to reach
 an answer two would have carried:
 
-> three near-identical `roster_semantic_search` calls, a whole-roster `employee_list`, three
+> three near-identical `roster_semantic_search` calls, a whole-roster `expert_list`, three
 > speculative `cv_get`s, and a `roster_shortlist_search` fired *after* it already had the answer.
 
 Every one of those payloads was inside its ceiling. A Runtime Budget truncates that run; it does
@@ -379,11 +379,11 @@ path prices at **≈6,600**, which is §3.1's projection reproduced from the oth
 
 The filters already existed — `roster_semantic_search` takes `location`, `skillIds`, `availableOn`
 and `minYears`. The model used none of them and rebuilt the location predicate by hand out of
-`employee_list` and three `cv_get`s. The affordance was there; nothing pointed at it.
+`expert_list` and three `cv_get`s. The affordance was there; nothing pointed at it.
 
 - **roster-qa's instructions** gained a Convergence rule ("aim to answer in two tool calls, never
   exceed four; once a result answers the question, answer and stop"), filter-first search, an
-  explicit ban on rebuilding a filter from `employee_list` + `cv_get` and on re-running a search
+  explicit ban on rebuilding a filter from `expert_list` + `cv_get` and on re-running a search
   reworded, and "an empty result set is also an answer". Paid for out of the old prose: **416 → 415**
   estimated tokens.
 - **`roster_semantic_search`'s description** now states the filters as the primary path for a
@@ -415,7 +415,7 @@ nothing to self-correct. Deliberately the **easiest** fixture, so what follows i
 ingestion rather than a worst case.
 
 Its ground truth is 8 catalog skills, 3 languages, 1 qualification, 2 roles. The write surface has
-one tool per child, so a faithful ingestion is `skill_list` + `employee_create_draft` + 14 child
+one tool per child, so a faithful ingestion is `skill_list` + `expert_create_draft` + 14 child
 adds = **16 tool calls, 17 model calls**, and there is no shorter path. That is asserted against
 the fixture rather than declared, so editing the fixture fails loudly instead of quietly
 re-baselining everything below it.
@@ -423,9 +423,9 @@ re-baselining everything below it.
 | # | tool called after this call | adds | × re-sends | total |
 |---|---|---|---|---|
 | 1 | `skill_list` | 229 | 17 | 3,893 |
-| 2 | `employee_create_draft` | 3,063 | 16 | **49,008** |
+| 2 | `expert_create_draft` | 3,063 | 16 | **49,008** |
 | 3–5 | `language_add` ×3 | 126, 39, 38 | 15, 14, 13 | 3,012 |
-| 6–13 | `employee_skill_add` ×8 | 39–54 | 12…5 | 3,674 |
+| 6–13 | `expert_skill_add` ×8 | 39–54 | 12…5 | 3,674 |
 | 14 | `qualification_add` | 54 | 4 | 216 |
 | 15–16 | `experience_add` ×2 | 64, 167 | 3, 2 | 526 |
 | 17 | — (closing report) | 166 | 1 | 166 |
@@ -454,7 +454,7 @@ does, because a decomposition that stops closing means something is being re-sen
    iterations because the surface has one tool per child. No thrash, no retries, no speculative
    reads — the shape roster-qa was guilty of. This run does nothing wrong and still costs 111,638.
 
-`roster_digest_list`, `employee_list` and `cv_get` are never called; the agent already narrows
+`roster_digest_list`, `expert_list` and `cv_get` are never called; the agent already narrows
 itself to six tools and uses all six.
 
 ### 7.3 The budget decision
@@ -543,7 +543,7 @@ The reference path is now **23 tool calls**, up from 16 — eight filtered looku
 one dump. Its declared turns are six:
 
 ```
-8× skill_list → employee_create_draft → 3× language_add → 8× employee_skill_add
+8× skill_list → expert_create_draft → 3× language_add → 8× expert_skill_add
    → qualification_add → 2× experience_add → answer
 ```
 
@@ -553,9 +553,9 @@ end to end by `IngestionRunCostFloorTests`, the same instrument that priced §7.
 | # | called after this call | adds | × re-sends | total |
 |---|---|---|---|---|
 | 1 | `skill_list` ×8 | 229 | 7 | 1,603 |
-| 2 | `employee_create_draft` | 774 | 6 | 4,644 |
+| 2 | `expert_create_draft` | 774 | 6 | 4,644 |
 | 3 | `language_add` ×3 | 126 | 5 | 630 |
-| 4 | `employee_skill_add` ×8 | 116 | 4 | 464 |
+| 4 | `expert_skill_add` ×8 | 116 | 4 | 464 |
 | 5 | `qualification_add` | 430 | 3 | 1,290 |
 | 6 | `experience_add` ×2 | 64 | 2 | 128 |
 | 7 | — (closing report) | 333 | 1 | 333 |

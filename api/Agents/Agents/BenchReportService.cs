@@ -13,8 +13,8 @@ public sealed record BenchReportOutcome(BenchReportResponse Response, AgentReply
 
 /// <summary>
 /// The bench &amp; capability-gap report (P1T-104). The server composes every deterministic input
-/// itself — roster stats via a DIRECT MCP <c>employee_list</c> call (no model in the loop; MCP
-/// stays the employee-data boundary) and demand stats from the agents-owned staffing proposals
+/// itself — roster stats via a DIRECT MCP <c>expert_list</c> call (no model in the loop; MCP
+/// stays the expert-data boundary) and demand stats from the agents-owned staffing proposals
 /// ledger — then a tool-less chat call writes the narrative over those aggregates. The model
 /// receives numbers, never produces them. Every input failure degrades to leaner stats + a note;
 /// a model failure degrades to the deterministic fallback summary. The run never throws for
@@ -28,7 +28,7 @@ public sealed class BenchReportService(
 {
     public const string AgentName = "bench-report";
 
-    private const string EmployeeListTool = "employee_list";
+    private const string ExpertListTool = "expert_list";
 
     private const string Instructions =
         """
@@ -56,35 +56,35 @@ public sealed class BenchReportService(
     {
         var notes = new List<string>();
 
-        var employees = await FetchEmployeesAsync(notes, ct);
+        var experts = await FetchExpertsAsync(notes, ct);
         var proposals = await FetchProposalsAsync(notes, ct);
-        var stats = BenchStatsComposer.Compose(employees, proposals);
+        var stats = BenchStatsComposer.Compose(experts, proposals);
 
         var (answer, reply) = await WriteNarrativeAsync(stats, notes, ct);
         return new BenchReportOutcome(new BenchReportResponse(answer, stats, notes), reply);
     }
 
     /// <summary>Roster stats via a direct (agent-less) MCP tool call — the model is not involved
-    /// in producing numbers, but employee data still flows only through MCP.</summary>
-    private async Task<IReadOnlyList<BenchEmployee>?> FetchEmployeesAsync(List<string> notes, CancellationToken ct)
+    /// in producing numbers, but expert data still flows only through MCP.</summary>
+    private async Task<IReadOnlyList<BenchExpert>?> FetchExpertsAsync(List<string> notes, CancellationToken ct)
     {
         try
         {
             var tools = await toolSource.GetToolsAsync(ct);
-            if (tools.OfType<AIFunction>().FirstOrDefault(t => t.Name == EmployeeListTool) is not { } list)
+            if (tools.OfType<AIFunction>().FirstOrDefault(t => t.Name == ExpertListTool) is not { } list)
             {
-                notes.Add("Roster stats unavailable (employee_list tool not exposed to this agent).");
+                notes.Add("Roster stats unavailable (expert_list tool not exposed to this agent).");
                 return null;
             }
 
             var result = await list.InvokeAsync(new AIFunctionArguments(), ct);
-            var employees = ExtractEmployees(JsonSerializer.SerializeToNode(result, Json), depth: 0);
-            if (employees is null)
+            var experts = ExtractExperts(JsonSerializer.SerializeToNode(result, Json), depth: 0);
+            if (experts is null)
             {
-                notes.Add("Roster stats unavailable (unrecognized employee_list result shape).");
+                notes.Add("Roster stats unavailable (unrecognized expert_list result shape).");
             }
 
-            return employees;
+            return experts;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -150,10 +150,10 @@ public sealed class BenchReportService(
         }
     }
 
-    /// <summary>Array-aware sibling of <see cref="ToolResultPayload"/>: employee_list returns a
+    /// <summary>Array-aware sibling of <see cref="ToolResultPayload"/>: expert_list returns a
     /// JSON array, possibly wrapped in an MCP envelope or a text content block. Public — pure and
     /// unit-tested directly, same convention as <c>GeminiCompatHandler.NormalizeFinishReasons</c>.</summary>
-    public static IReadOnlyList<BenchEmployee>? ExtractEmployees(JsonNode? node, int depth)
+    public static IReadOnlyList<BenchExpert>? ExtractExperts(JsonNode? node, int depth)
     {
         if (node is null || depth > 3)
         {
@@ -164,7 +164,7 @@ public sealed class BenchReportService(
         {
             try
             {
-                return array.Deserialize<List<BenchEmployee>>(Json);
+                return array.Deserialize<List<BenchExpert>>(Json);
             }
             catch (JsonException)
             {
@@ -176,7 +176,7 @@ public sealed class BenchReportService(
         {
             try
             {
-                return ExtractEmployees(JsonNode.Parse(text), depth + 1);
+                return ExtractExperts(JsonNode.Parse(text), depth + 1);
             }
             catch (JsonException)
             {
@@ -191,7 +191,7 @@ public sealed class BenchReportService(
 
         foreach (var key in new[] { "structuredContent", "result", "text" })
         {
-            if (obj[key] is { } inner && ExtractEmployees(inner, depth + 1) is { } fromInner)
+            if (obj[key] is { } inner && ExtractExperts(inner, depth + 1) is { } fromInner)
             {
                 return fromInner;
             }
@@ -201,7 +201,7 @@ public sealed class BenchReportService(
         {
             foreach (var block in content)
             {
-                if (block?["text"] is { } blockText && ExtractEmployees(blockText, depth + 1) is { } payload)
+                if (block?["text"] is { } blockText && ExtractExperts(blockText, depth + 1) is { } payload)
                 {
                     return payload;
                 }

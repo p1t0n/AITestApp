@@ -8,7 +8,7 @@ namespace ExpertToJob.Agents.Agents;
 /// (null when unreadable — the markdown ships regardless); <see cref="Error"/> is set only when
 /// that candidate's match run failed (the entry degrades, the call does not).</summary>
 public sealed record JdMatchCandidateResult(
-    Guid EmployeeId,
+    Guid ExpertId,
     string Name,
     string Title,
     double RetrievalScore,
@@ -78,21 +78,21 @@ public sealed class JdMatchRunService(
             try
             {
                 var run = await match.RunAsync(
-                    candidate.EmployeeId, jobDescription, shortlistRun.Response.Extraction, ct);
+                    candidate.ExpertId, jobDescription, shortlistRun.Response.Extraction, ct);
                 lock (meterGate)
                 {
                     metered.Add(new JdMatchMeteredReply(run.AgentName, run.Reply, "jd-match"));
                 }
 
                 results[index] = new JdMatchCandidateResult(
-                    candidate.EmployeeId, candidate.Name, candidate.Title, candidate.Score,
+                    candidate.ExpertId, candidate.Name, candidate.Title, candidate.Score,
                     StaffingMatchStatus.Completed, run.Score, run.Band, run.Answer, Error: null);
             }
             catch (HttpRequestException ex)
             {
                 // One candidate's model/MCP fault degrades that entry; the others still ship.
                 results[index] = new JdMatchCandidateResult(
-                    candidate.EmployeeId, candidate.Name, candidate.Title, candidate.Score,
+                    candidate.ExpertId, candidate.Name, candidate.Title, candidate.Score,
                     StaffingMatchStatus.Failed, Score: null, Band: null, Answer: null, Error: ex.Message);
             }
             finally

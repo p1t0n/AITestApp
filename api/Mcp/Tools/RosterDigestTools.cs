@@ -10,7 +10,7 @@ public class RosterDigestTools
 {
     [McpServerTool(Name = "roster_digest_list", ReadOnly = true, Destructive = false),
      Description(
-         "Page through compact career digests of EVERY active employee — identity (employeeId, " +
+         "Page through compact career digests of EVERY active expert — identity (expertId, " +
          "name, title) plus the same narrative text semantic search indexes (professional summary " +
          "and per-role blocks with dates and achievement bullets, truncated for prompt use). Use " +
          "this to sweep the whole roster for bulk assessment (e.g. scoring every candidate against " +
@@ -23,11 +23,11 @@ public class RosterDigestTools
          "career narrative. Returns an empty items list past the last page."),
      Authorize(Policy = McpScopes.Read)]
     public static Task<object> DigestList(
-        IEmployeeDigestService digests,
+        IExpertDigestService digests,
         CancellationToken ct,
         [Description("1-based page number (default 1).")]
         int? page = null,
-        [Description("Employees per page (default 50, capped at 100).")]
+        [Description("Experts per page (default 50, capped at 100).")]
         int? pageSize = null)
         => McpToolExecutor.RunAsync(() => digests.ListAsync(page ?? 1, pageSize, ct));
 }

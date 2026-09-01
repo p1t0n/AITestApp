@@ -5,18 +5,18 @@ namespace ExpertToJob.Application.Search;
 /// are all valid candidates (not just the closest by meaning). All are optional.
 /// </summary>
 public sealed record SemanticSearchFilters(
-    /// <summary>Keep only employees with capacity &gt; 0 on this date (availability step-function).</summary>
+    /// <summary>Keep only experts with capacity &gt; 0 on this date (availability step-function).</summary>
     DateOnly? AvailableOn = null,
-    /// <summary>Keep only employees who have every one of these catalog skills.</summary>
+    /// <summary>Keep only experts who have every one of these catalog skills.</summary>
     IReadOnlyList<Guid>? SkillIds = null,
-    /// <summary>Keep only employees whose location matches (case-insensitive).</summary>
+    /// <summary>Keep only experts whose location matches (case-insensitive).</summary>
     string? Location = null,
     /// <summary>Minimum years of experience — applied to the required skills, or to any skill if none given.</summary>
     decimal? MinYears = null);
 
-/// <summary>One matched employee: the ranking score plus the evidence snippets that matched.</summary>
+/// <summary>One matched expert: the ranking score plus the evidence snippets that matched.</summary>
 public sealed record SemanticSearchHit(
-    Guid EmployeeId,
+    Guid ExpertId,
     string Name,
     string Title,
     double Score,
@@ -39,8 +39,8 @@ public sealed record SemanticSearchResult(
 }
 
 /// <summary>
-/// Retrieval over employee career narratives: embed the query, rank chunks by cosine similarity
-/// within the (optionally) pre-filtered candidate set, and aggregate to the best-matching employees
+/// Retrieval over expert career narratives: embed the query, rank chunks by cosine similarity
+/// within the (optionally) pre-filtered candidate set, and aggregate to the best-matching experts
 /// with their evidence snippets.
 /// </summary>
 public interface ISemanticSearchService

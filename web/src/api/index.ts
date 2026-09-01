@@ -6,8 +6,8 @@
 //
 //   http               the two axios clients, the token interceptor, apiErrorMessage
 //   auth               the three passkey ceremonies + the local session helpers
-//   employees          the roster aggregate: list, detail, CV, PDF, promote
-//   employeeChildren   skills, availability, languages, qualifications, experiences
+//   experts          the roster aggregate: list, detail, CV, PDF, promote
+//   expertChildren   skills, availability, languages, qualifications, experiences
 //   catalog            the skill-catalog tree
 //   users              user administration and cap overrides
 //   agents/*           one module per agent surface, each DTO beside the hook that returns it
@@ -15,8 +15,8 @@
 // Roster domain types stay in src/types.ts; agent contracts live beside their hooks.
 export * from "./http";
 export * from "./auth";
-export * from "./employees";
-export * from "./employeeChildren";
+export * from "./experts";
+export * from "./expertChildren";
 export * from "./catalog";
 export * from "./users";
 

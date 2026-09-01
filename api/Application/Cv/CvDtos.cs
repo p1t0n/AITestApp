@@ -1,8 +1,8 @@
-using ExpertToJob.Application.Employees;
+using ExpertToJob.Application.Experts;
 
 namespace ExpertToJob.Application.Cv;
 
-/// <summary>CV-shaped projection of an employee: a full dump in a fixed, render-ready order.</summary>
+/// <summary>CV-shaped projection of an expert: a full dump in a fixed, render-ready order.</summary>
 public record CvDto(
     string FullName,
     string Title,
@@ -20,7 +20,7 @@ public record CvDto(
 
 public record CvAvailabilityDto(int CurrentCapacityPercent, IReadOnlyList<AvailabilityEntryDto> Schedule);
 
-public record CvSkillGroupDto(string Category, IReadOnlyList<EmployeeSkillDto> Skills);
+public record CvSkillGroupDto(string Category, IReadOnlyList<ExpertSkillDto> Skills);
 
 public record CvExperienceDto(
     Guid Id,

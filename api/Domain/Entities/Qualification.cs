@@ -12,8 +12,8 @@ public class Qualification
 {
     public Guid Id { get; set; }
 
-    public Guid EmployeeId { get; set; }
-    public Employee Employee { get; set; } = null!;
+    public Guid ExpertId { get; set; }
+    public Expert Expert { get; set; } = null!;
 
     public QualificationType Type { get; set; }
 

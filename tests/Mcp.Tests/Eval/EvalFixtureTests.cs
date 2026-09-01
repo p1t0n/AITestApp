@@ -6,12 +6,12 @@ namespace ExpertToJob.Mcp.Tests.Eval;
 
 /// <summary>
 /// Structural validation of the committed eval fixtures (no Docker, no embeddings). Guards the
-/// contract the live eval relies on: every golden label points at a real corpus employee, the
+/// contract the live eval relies on: every golden label points at a real corpus expert, the
 /// category mix is honoured, and the frozen corpus stays within its designed size.
 /// </summary>
 public class EvalFixtureTests
 {
-    private static readonly IReadOnlyList<EvalEmployee> Corpus = EvalFixtures.LoadCorpus();
+    private static readonly IReadOnlyList<EvalExpert> Corpus = EvalFixtures.LoadCorpus();
     private static readonly IReadOnlyList<GoldenQuery> GoldenSet = EvalFixtures.LoadGoldenSet();
 
     [Fact]
@@ -22,20 +22,20 @@ public class EvalFixtureTests
     }
 
     [Fact]
-    public void Corpus_employees_all_have_narrative_text_to_embed()
+    public void Corpus_experts_all_have_narrative_text_to_embed()
     {
-        foreach (var employee in Corpus)
+        foreach (var expert in Corpus)
         {
-            employee.Key.Should().NotBeNullOrWhiteSpace();
-            employee.FirstName.Should().NotBeNullOrWhiteSpace();
-            employee.LastName.Should().NotBeNullOrWhiteSpace();
-            employee.Title.Should().NotBeNullOrWhiteSpace();
-            employee.Summary.Should().NotBeNullOrWhiteSpace(
-                $"employee '{employee.Key}' needs a summary chunk");
-            employee.Experiences.Should().NotBeEmpty(
-                $"employee '{employee.Key}' needs at least one experience chunk");
-            employee.Experiences.Should().OnlyContain(x => !string.IsNullOrWhiteSpace(x.Summary),
-                $"every experience of '{employee.Key}' must carry narrative text");
+            expert.Key.Should().NotBeNullOrWhiteSpace();
+            expert.FirstName.Should().NotBeNullOrWhiteSpace();
+            expert.LastName.Should().NotBeNullOrWhiteSpace();
+            expert.Title.Should().NotBeNullOrWhiteSpace();
+            expert.Summary.Should().NotBeNullOrWhiteSpace(
+                $"expert '{expert.Key}' needs a summary chunk");
+            expert.Experiences.Should().NotBeEmpty(
+                $"expert '{expert.Key}' needs at least one experience chunk");
+            expert.Experiences.Should().OnlyContain(x => !string.IsNullOrWhiteSpace(x.Summary),
+                $"every experience of '{expert.Key}' must carry narrative text");
         }
     }
 
@@ -56,7 +56,7 @@ public class EvalFixtureTests
         foreach (var query in GoldenSet)
         {
             query.Expected.Should().BeSubsetOf(corpusKeys,
-                $"query '{query.Query}' must only expect employees that exist in the corpus");
+                $"query '{query.Query}' must only expect experts that exist in the corpus");
         }
     }
 
@@ -88,10 +88,10 @@ public class EvalFixtureTests
     }
 
     [Fact]
-    public void Keyword_queries_literally_appear_in_every_expected_employees_narrative()
+    public void Keyword_queries_literally_appear_in_every_expected_experts_narrative()
     {
         // A keyword query is only defensible if the acronym/product name is actually in the text
-        // the expected employee gets embedded with.
+        // the expected expert gets embedded with.
         var byKey = Corpus.ToDictionary(e => e.Key, NarrativeOf);
 
         foreach (var query in GoldenSet.Where(q => q.Category == GoldenQueryCategory.Keyword))
@@ -104,9 +104,9 @@ public class EvalFixtureTests
         }
     }
 
-    private static string NarrativeOf(EvalEmployee employee)
+    private static string NarrativeOf(EvalExpert expert)
         => string.Join('\n',
-            new[] { employee.Summary }
-                .Concat(employee.Experiences.Select(x =>
+            new[] { expert.Summary }
+                .Concat(expert.Experiences.Select(x =>
                     $"{x.Title} @ {x.Company}\n{x.Summary}\n{string.Join('\n', x.Achievements)}")));
 }

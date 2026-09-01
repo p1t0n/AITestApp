@@ -1,6 +1,6 @@
 # ExpertToJob — SPEC (base / POC)
 
-A .NET + React service to manage a roster of available employees — their skills,
+A .NET + React service to manage a roster of available experts — their skills,
 qualifications, work experience, and time-based availability — and render their CVs
 from that data. Built as a base project and now extended with an **MCP server** that
 exposes every operation on every entity to external AI agents over the same Application
@@ -8,8 +8,8 @@ layer, protected by OAuth 2.1.
 
 ## Goals
 
-- Store and fully manage employee professional data.
-- Render a CV for any employee from the stored data.
+- Store and fully manage expert professional data.
+- Render a CV for any expert from the stored data.
 - Let external AI agents perform all operations via MCP, reusing the data logic with zero duplication.
 - Be a clean training/POC foundation, not a finished product.
 
@@ -64,14 +64,14 @@ No business logic lives in controllers or MCP tools — they are thin adapters.
 
 ## Domain model
 
-### Employee (aggregate root)
+### Expert (aggregate root)
 - `FirstName`, `LastName`, `Title`, `Email`, `Phone`, `Location`
 - `Summary` / bio
 - `PhotoUrl`
 - Children:
   - **SpokenLanguage** — `Language`, `Level`
   - **AvailabilityEntry** — see capacity below
-  - **EmployeeSkill** — see skills below
+  - **ExpertSkill** — see skills below
   - **Qualification** — see below
   - **Experience** — see below
 
@@ -89,7 +89,7 @@ Example: `50%` from 2027-04-01, `75%` from 2027-07-01, `100%` from November.
 ### Skills
 - **Category** — self-referencing tree (`ParentId`), e.g. `Languages > JavaScript > React`.
 - **Skill** — `Name`, belongs to a `Category`.
-- **EmployeeSkill** (junction) — `Level` enum (Beginner → Intermediate → Advanced → Expert),
+- **ExpertSkill** (junction) — `Level` enum (Beginner → Intermediate → Advanced → Expert),
   `YearsExperience`.
 
 ### Qualification (single entity)
@@ -112,7 +112,7 @@ One table with a `Type` enum (`Degree` | `Certification`) and nullable fields pe
 
 ## Features
 
-- **Full CRUD** (UI + API) for: employees and all children, the skill catalog
+- **Full CRUD** (UI + API) for: experts and all children, the skill catalog
   (categories + skills), qualifications, experience, achievements, availability entries.
 - **MCP server**: 36 tools (1:1 over the Application services) exposing every operation on
   every entity to external AI agents. Read/write/destructive annotations; structured tool
@@ -125,7 +125,7 @@ One table with a `Type` enum (`Degree` | `Certification`) and nullable fields pe
   plus the audience mapper, so a client cannot register its way to write capability; the
   OAuth 2.1 baseline is stamped onto it at registration rather than remembered per client
   (`manuals/mcp-dcr-policy.md`).
-- **Seed data**: a seeded skill catalog + 3–5 sample employees with complete data.
+- **Seed data**: a seeded skill catalog + 3–5 sample experts with complete data.
 - **CV rendering**: React-only live view; renders **all** sections in a fixed, sensible
   order (full dump). Export via browser print → PDF for now.
 
@@ -189,16 +189,16 @@ The Agents service exposes REST endpoints; a SPA chat/action UI is deferred.
 - **In-memory threaded sessions** — a per-user thread store replays the last 10 turns of
   question/answer text (bounded, no summarizer); the REST contract takes/returns a `threadId`
   so follow-ups keep context. 30-min sliding TTL, 20 threads/user, lost on restart — fine for POC.
-- Returns a natural-language answer + `threadId`; employees are cited by name **and id** so the
+- Returns a natural-language answer + `threadId`; experts are cited by name **and id** so the
   SPA can deep-link later. Read-only scope ⇒ structurally cannot mutate data.
 
 **Recorded for future (not built):**
 - **CV Tailoring** (`mcp:read`) — target role/JD → select relevant skills/experience →
   tailored CV. Pattern: structured output + prompt design. (Realises the "AI-tailored CVs" step.)
-- **Resume Ingestion** (`mcp:write`) — raw resume/LinkedIn text → populate Employee + children.
+- **Resume Ingestion** (`mcp:write`) — raw resume/LinkedIn text → populate Expert + children.
   Pattern: structured extraction → chained tool-call writes + validation-error self-correction.
 - **Staffing / Match** (`mcp:read`) — a need (skills + level + time window) → rank available
-  employees by skill match × capacity-at-date. Pattern: multi-agent MAF orchestration
+  experts by skill match × capacity-at-date. Pattern: multi-agent MAF orchestration
   (skill-matcher + availability-checker + ranker sub-agents).
 
 ### Testing
