@@ -16,6 +16,9 @@ import SignupPage from "./pages/SignupPage";
 import SigninPage from "./pages/SigninPage";
 import RecoverPage from "./pages/RecoverPage";
 import UsersPage from "./pages/UsersPage";
+// PROTOTYPE — throwaway route for P1T-175. Dev-only; see pages/prototype/.
+import PrivacyDataPrototype from "./pages/prototype/PrivacyDataPrototype";
+import { PROTOTYPES_ENABLED } from "./pages/prototype/privacyState";
 import AgentWidget from "./components/AgentWidget";
 import AppRailNav, { BRAND } from "./components/AppRail";
 import CommandPalette from "./components/CommandPalette";
@@ -120,6 +123,10 @@ export default function App() {
             <Route path="/experts/:id/cv" element={<CvPage />} />
             <Route path="/catalog" element={<CatalogPage />} />
             <Route path="/users" element={<UsersPage />} />
+            {/* PROTOTYPE — throwaway (P1T-175). Never mounted in a production build. */}
+            {PROTOTYPES_ENABLED && (
+              <Route path="/prototype/privacy" element={<PrivacyDataPrototype />} />
+            )}
           </Route>
         </Routes>
       </RoutedArea>
