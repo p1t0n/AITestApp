@@ -75,3 +75,6 @@ web/playwright-report/
 
 /docs
 /issues
+
+# Ralph loop run logs
+ralph/logs/
