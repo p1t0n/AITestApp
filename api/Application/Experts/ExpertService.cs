@@ -4,6 +4,7 @@ using ExpertToJob.Application.Common;
 using ExpertToJob.Domain.Entities;
 using ExpertToJob.Domain.Enums;
 using FluentValidation;
+using FluentValidation.Results;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExpertToJob.Application.Experts;
@@ -157,7 +158,9 @@ public class ExpertService : IExpertService
         await _validator.ValidateAndThrowAsync(dto, ct);
         var e = await LoadScopedAsync(id, ct)
             ?? throw new NotFoundException(nameof(Expert), id);
+        var frozenEmail = await FrozenEmailAsync(e, dto.Email, ct);
         Apply(e, dto);
+        if (frozenEmail is not null) e.Email = frozenEmail;
         await SaveGuardingEmailAsync(e.Email, "Use a different address for this expert.", ct);
         return await ReadBackAsync(id, ct);
     }
@@ -167,7 +170,9 @@ public class ExpertService : IExpertService
         await _patchValidator.ValidateAndThrowAsync(dto, ct);
         var e = await LoadScopedAsync(id, ct)
             ?? throw new NotFoundException(nameof(Expert), id);
+        var frozenEmail = await FrozenEmailAsync(e, dto.Email, ct);
         ApplyPatch(e, dto);
+        if (frozenEmail is not null) e.Email = frozenEmail;
         await SaveGuardingEmailAsync(e.Email, "Use a different address for this expert.", ct);
         return await ReadBackAsync(id, ct);
     }
@@ -240,6 +245,38 @@ public class ExpertService : IExpertService
             .Include(e => e.Experiences).ThenInclude(x => x.Achievements)
             .Include(e => e.Experiences).ThenInclude(x => x.Skills).ThenInclude(s => s.Skill)
             .FirstOrDefaultAsync(e => e.Id == id && (unrestricted || e.Id == owned), ct);
+    }
+
+    /// <summary>
+    /// Email is set at registration and is Service-Manager-only thereafter (P1T-184). A security
+    /// rule, not a UX limitation: the address is login identifier, claim key and CV contact at the
+    /// same time, with no verification behind any of them — so an owner who could edit it could
+    /// point their row at a bench member's address and re-trigger claim matching, reaching the
+    /// takeover the pending-claim design exists to prevent through the my-account door instead.
+    ///
+    /// <para>Returns the address to pin the row back to when the caller is not staff, or null when
+    /// they are and it may move. A real change is <em>refused</em> rather than silently ignored —
+    /// somebody who tried needs to be told it did not happen and who can do it — while a
+    /// case-only difference is neither a change nor an error, and the stored value simply stands.</para>
+    /// </summary>
+    private async Task<string?> FrozenEmailAsync(Expert e, string? submitted, CancellationToken ct)
+    {
+        var (unrestricted, _) = await _scope.CurrentAsync(ct);
+        if (unrestricted)
+        {
+            return null;
+        }
+
+        if (submitted is not null
+            && !string.Equals(submitted.Trim(), e.Email, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ValidationException([new ValidationFailure(
+                nameof(SaveExpertDto.Email),
+                "Your email address is set when you register and can only be changed by a Service " +
+                "Manager. It identifies your account and links you to this record.")]);
+        }
+
+        return e.Email;
     }
 
     private static void Apply(Expert e, SaveExpertDto dto)

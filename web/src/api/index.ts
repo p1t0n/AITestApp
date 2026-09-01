@@ -11,6 +11,7 @@
 //   catalog            the skill-catalog tree
 //   notice             the versioned transparency notice and its acknowledgment
 //   users              user administration and cap overrides
+//   claims             the claim queue, claim codes, and revocation
 //   agents/*           one module per agent surface, each DTO beside the hook that returns it
 //
 // Roster domain types stay in src/types.ts; agent contracts live beside their hooks.
@@ -21,6 +22,7 @@ export * from "./expertChildren";
 export * from "./catalog";
 export * from "./notice";
 export * from "./users";
+export * from "./claims";
 
 export * from "./agents/usage";
 export * from "./agents/shared";

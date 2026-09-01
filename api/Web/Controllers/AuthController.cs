@@ -1,5 +1,6 @@
 using System.Text.Json;
 using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Application.Claims;
 using ExpertToJob.Application.Compliance;
 using ExpertToJob.Domain.Entities;
 using ExpertToJob.Domain.Enums;
@@ -27,6 +28,7 @@ public class AuthController(
     IControlWordHasher controlWords,
     IJwtTokenIssuer tokens,
     IAppDbContext db,
+    IClaimService claims,
     TimeProvider clock) : ControllerBase
 {
     // fido2 models carry their own enum converters (e.g. "public-key"). The app's global MVC
@@ -188,9 +190,20 @@ public class AuthController(
 
         await db.SaveChangesAsync(ct);
 
+        // Now that the account exists, work out what it means for the roster (P1T-184). An address
+        // nobody has is a fresh row owned on the spot; one that matches a bench row raises a claim
+        // for a Service Manager and grants nothing meanwhile; an ambiguous match raises a flag and
+        // binds nothing at all. Only ever done for a brand-new account: adopting an invite is an
+        // account a Service Manager already made, and its roster row is their business, not ours.
+        var binding = invite is null
+            ? await claims.BindOnRegistrationAsync(
+                user.Id, user.Email, user.AcknowledgedNoticeVersion, ct)
+            : null;
+
         var (token, expiresAt) = tokens.Issue(user);
         return Ok(new AuthSessionResponse(
-            token, expiresAt, user.Id, user.Email, user.Role, PendingNoticeFor(user)));
+            token, expiresAt, user.Id, user.Email, user.Role, PendingNoticeFor(user),
+            binding?.Outcome, binding?.ExpertId));
     }
 
     [HttpPost("signin/begin")]
@@ -463,10 +476,21 @@ public sealed record RecoverCompleteRequest(string CeremonyId, JsonElement Attes
 /// re-collected. Only Experts are told, because the notice describes what happens to the person the
 /// record is about; a Service Manager reads a row's basis on the row itself.
 /// </param>
+/// <param name="RosterBinding">
+/// What registration did about the roster (P1T-184), or null when nothing was decided — a sign-in,
+/// or an invited account whose row a Service Manager already handles. It tells the new arrival
+/// which of three landings they get: their own row, a claim waiting on a human, or a flag that
+/// needs a claim code. Absent this, "you own nothing" and "your claim is pending" look identical
+/// from the SPA — which is exactly right for authorization and useless as an explanation.
+/// </param>
+/// <param name="OwnedExpertId">The row they now own, when registration created one. Null otherwise,
+/// including while a claim is pending: a pending claim owns nothing.</param>
 public sealed record AuthSessionResponse(
     string Token,
     DateTimeOffset ExpiresAt,
     Guid UserId,
     string Email,
     UserRole Role,
-    string? PendingNoticeVersion);
+    string? PendingNoticeVersion,
+    RegistrationBinding? RosterBinding = null,
+    Guid? OwnedExpertId = null);

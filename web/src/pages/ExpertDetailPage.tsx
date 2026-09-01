@@ -48,6 +48,7 @@ import type {
   SpokenLanguage,
 } from "../types";
 import PageHeader, { PageContainer } from "../components/PageHeader";
+import ExpertOwnership from "../components/ExpertOwnership";
 import AvailabilityFormDialog from "./AvailabilityFormDialog";
 import ExpertFormDialog from "./ExpertFormDialog";
 import ExpertSkillFormDialog from "./ExpertSkillFormDialog";
@@ -190,6 +191,8 @@ export default function ExpertDetailPage() {
           <Grid item xs={12} sx={{ mt: 1 }}>{e.summary ?? "No summary."}</Grid>
         </Grid>
       </Section>
+
+      <ExpertOwnership expertId={id} />
 
       <Section
         title="Availability schedule"

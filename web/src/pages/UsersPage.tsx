@@ -23,23 +23,43 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import {
   apiErrorMessage,
+  useApproveClaim,
+  useClaimQueue,
   useDeleteUser,
+  useRejectClaim,
   useUpdateUser,
   useUsers,
+  type ClaimQueueItem,
   type UpdateUser,
   type UserStatus,
   type UserSummary,
 } from "../api";
 import { ErrorNotice } from "../components/ErrorNotice";
 import PageHeader from "../components/PageHeader";
+import ClaimQueue from "../components/ClaimQueue";
 
 const capLabel = (v: number | null) => (v === null ? "default" : v.toLocaleString());
 
 export default function UsersPage() {
   const { data: users, isLoading, isError, error } = useUsers();
+  const claims = useClaimQueue();
+  const approveClaim = useApproveClaim();
+  const rejectClaim = useRejectClaim();
   const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
   const [editing, setEditing] = useState<UserSummary | null>(null);
+
+  const approve = (claim: ClaimQueueItem) => {
+    if (
+      window.confirm(
+        `Bind ${claim.expertEmail ?? "this record"} to ${claim.claimantEmail}?\n\n` +
+          "The only evidence is a matching email address, which is never verified. " +
+          "They will be able to read and edit that record, and it becomes scannable for Jobs.",
+      )
+    ) {
+      approveClaim.mutate(claim.id);
+    }
+  };
 
   const toggleStatus = (u: UserSummary) => {
     const next: UserStatus = u.status === "Active" ? "Deactivated" : "Active";
@@ -67,6 +87,26 @@ export default function UsersPage() {
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         Anyone signed in can manage any account (flat roles). Token caps blank as "default" inherit
         the system-wide limit.
+      </Typography>
+
+      <ErrorNotice
+        message={
+          claims.isError || approveClaim.isError || rejectClaim.isError
+            ? apiErrorMessage(claims.error ?? approveClaim.error ?? rejectClaim.error)
+            : null
+        }
+        sx={{ mb: 2 }}
+      />
+      <ClaimQueue
+        claims={claims.data}
+        loading={claims.isLoading}
+        onApprove={approve}
+        onReject={(claim) => rejectClaim.mutate(claim.id)}
+        busy={approveClaim.isPending || rejectClaim.isPending}
+      />
+
+      <Typography variant="h6" component="h2" sx={{ mb: 2 }}>
+        Accounts
       </Typography>
 
       <ErrorNotice message={isError ? apiErrorMessage(error) : null} />
