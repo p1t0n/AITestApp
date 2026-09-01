@@ -40,15 +40,21 @@ public class WebSessionTokenLockstepTests
     private static string WebJwt(string key) =>
         WebSettings.RootElement.GetProperty("Auth").GetProperty("Jwt").GetProperty(key).GetString()!;
 
-    private static WebApplicationFactory<Program> AgentsHost() =>
-        new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
+    private static WebApplicationFactory<Program> AgentsHost()
+    {
+        // Named once, outside the callback: it runs per DbContext instance, and a name built inside
+        // it would give each scope its own database — so the account a token names would vanish
+        // between minting the token and validating it (P1T-181's revocation check reads that row).
+        var dbName = $"lockstep-{Guid.NewGuid()}";
+        return new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
             b.ConfigureServices(s =>
             {
                 s.RemoveAll(typeof(DbContextOptions<AppDbContext>));
                 s.RemoveAll(typeof(Microsoft.EntityFrameworkCore.Infrastructure
                     .IDbContextOptionsConfiguration<AppDbContext>));
-                s.AddDbContext<AppDbContext>(o => o.UseInMemoryDatabase($"lockstep-{Guid.NewGuid()}"));
+                s.AddDbContext<AppDbContext>(o => o.UseInMemoryDatabase(dbName));
             }));
+    }
 
     [Fact]
     public void The_two_hosts_ship_the_same_session_identity()

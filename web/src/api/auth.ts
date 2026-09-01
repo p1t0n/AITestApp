@@ -3,6 +3,7 @@
 // and each stores the returned session token on success, so a completed ceremony leaves the app
 // signed in. These are the only mutations in the data layer that touch module-global state.
 import { useMutation } from "@tanstack/react-query";
+import type { SessionRole } from "../auth/roles";
 import { clearSession, getToken, setSession } from "../auth/session";
 import { performAuthentication, performRegistration } from "../auth/webauthn";
 import { http } from "./http";
@@ -12,6 +13,8 @@ export interface AuthSession {
   expiresAt: string;
   userId: string;
   email: string;
+  /** Which audience the account belongs to — decides the landing page and the routes on offer. */
+  role: SessionRole;
 }
 
 interface CeremonyBeginResponse {
@@ -35,7 +38,7 @@ export function useSignup() {
           attestation,
         })
       ).data;
-      setSession(session.token, session.email);
+      setSession(session.token, session.email, session.role);
       return session;
     },
   });
@@ -61,7 +64,7 @@ export function useSignin() {
           assertion,
         })
       ).data;
-      setSession(session.token, session.email);
+      setSession(session.token, session.email, session.role);
       return session;
     },
   });
@@ -82,7 +85,7 @@ export function useRecover() {
           attestation,
         })
       ).data;
-      setSession(session.token, session.email);
+      setSession(session.token, session.email, session.role);
       return session;
     },
   });

@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
-import { getEmail, getToken, subscribe } from "./session";
+import type { SessionRole } from "./roles";
+import { getEmail, getRole, getToken, subscribe } from "./session";
 
 /**
  * Reactive auth state. Re-renders subscribers whenever the session token changes (sign-in,
@@ -22,6 +23,19 @@ export function useSessionEmail(): string | null {
   return useSyncExternalStore(
     subscribe,
     getEmail,
+    () => null,
+  );
+}
+
+/**
+ * The signed-in user's audience, reactively — `null` when signed out, and also `null` for a session
+ * stored before the role split (P1T-181), whose token the server refuses anyway. The router treats
+ * that absence as "not signed in" rather than picking an audience on the user's behalf.
+ */
+export function useSessionRole(): SessionRole | null {
+  return useSyncExternalStore(
+    subscribe,
+    getRole,
     () => null,
   );
 }

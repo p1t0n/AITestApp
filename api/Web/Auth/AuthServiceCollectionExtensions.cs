@@ -1,4 +1,6 @@
 using System.Text;
+using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Application.Auth;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
@@ -8,7 +10,7 @@ namespace ExpertToJob.Web.Auth;
 /// <summary>
 /// Wires passwordless auth for the Web host: WebAuthn (fido2-net-lib) for ceremonies, a challenge
 /// store, the session-token issuer, and JWT bearer validation. The Agents service mirrors only the
-/// validation half (<see cref="AddSessionJwtAuthentication"/>'s equivalent) using the same key.
+/// validation half (<c>ExpertToJob.Agents.Auth.SessionAuthExtensions</c>) using the same key.
 /// </summary>
 public static class AuthServiceCollectionExtensions
 {
@@ -50,6 +52,9 @@ public static class AuthServiceCollectionExtensions
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
+                // No inbound claim-type remapping: the token says "role" and "sub", and that is
+                // what the app reads. The legacy WS-* mapping would silently rename both.
+                options.MapInboundClaims = false;
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
@@ -60,16 +65,46 @@ public static class AuthServiceCollectionExtensions
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.SigningKey)),
                     ValidateLifetime = true,
                     ClockSkew = TimeSpan.FromSeconds(30),
+                    NameClaimType = SessionClaims.Subject,
+                    RoleClaimType = SessionClaims.Role,
+                };
+
+                // Revocation. A signature and a lifetime only say the token was minted here and
+                // has not expired; whether the session is still *current* is a fact about the
+                // account, re-read on every request. The check itself is shared with the Agents
+                // host (ExpertToJob.Application.Auth.SessionRevocation) so the two cannot drift.
+                options.Events = new JwtBearerEvents
+                {
+                    OnTokenValidated = async context =>
+                    {
+                        var db = context.HttpContext.RequestServices.GetRequiredService<IAppDbContext>();
+                        var reason = await SessionRevocation.CheckAsync(
+                            db, context.Principal!, context.HttpContext.RequestAborted);
+                        if (reason is not null)
+                        {
+                            context.Fail(reason);
+                        }
+                    },
                 };
             });
 
-        // Gate the whole app: every endpoint requires an authenticated user unless it opts out with
-        // [AllowAnonymous] (the auth ceremonies do). The SPA enforces the same rule client-side.
+        // Default-deny, and staff-by-default. The fallback policy covers an endpoint that declares
+        // no authorization at all; the default policy covers a bare [Authorize]. Both are
+        // ServiceManager, so an endpoint added later is closed to Experts until someone opts it in
+        // with [Authorize(Policy = AuthPolicies.Expert)]. The structural endpoint-classification
+        // test refuses a controller that leaves the audience implicit.
         services.AddAuthorization(options =>
         {
-            options.FallbackPolicy = new AuthorizationPolicyBuilder()
+            options.AddPolicy(AuthPolicies.ServiceManager, policy => policy
                 .RequireAuthenticatedUser()
-                .Build();
+                .RequireRole(AuthPolicies.ServiceManager));
+
+            options.AddPolicy(AuthPolicies.Expert, policy => policy
+                .RequireAuthenticatedUser()
+                .RequireRole(AuthPolicies.Expert));
+
+            options.DefaultPolicy = options.GetPolicy(AuthPolicies.ServiceManager)!;
+            options.FallbackPolicy = options.DefaultPolicy;
         });
     }
 }

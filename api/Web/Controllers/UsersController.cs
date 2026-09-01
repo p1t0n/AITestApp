@@ -1,13 +1,17 @@
+using ExpertToJob.Application.Auth;
 using ExpertToJob.Application.Users;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ExpertToJob.Web.Controllers;
 
 /// <summary>
-/// User management. Requires authentication (the app-wide fallback policy); roles are flat, so any
-/// signed-in user may manage any user. Not exposed over MCP.
+/// User management. Service Manager only, wholesale (P1T-181) — the token-cap and status fields
+/// here are staffing data, so there is no filtered Expert view of this controller; an Expert gets a
+/// separate narrow my-account surface instead. Not exposed over MCP.
 /// </summary>
 [ApiController]
+[Authorize(Policy = AuthPolicies.ServiceManager)]
 [Route("api/users")]
 public class UsersController(IUserService users) : ControllerBase
 {

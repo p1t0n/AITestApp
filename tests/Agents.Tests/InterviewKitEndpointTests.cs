@@ -47,6 +47,7 @@ public class InterviewKitEndpointTests
                 s.AddSingleton(chat);
                 s.AddKeyedSingleton<ExpertToJob.Agents.Mcp.IMcpToolSource>(
                     "interview-kit", (_, _) => new FakeToolSource(CvGetTool()));
+                s.AddInMemoryAppDb("interview-kit");
             }));
 
     [Fact]

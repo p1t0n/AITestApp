@@ -149,6 +149,12 @@ public class AppDbContext : DbContext, IAppDbContext
             e.Property(x => x.Email).HasMaxLength(256).IsRequired();
             e.HasIndex(x => x.Email).IsUnique();
             e.Property(x => x.ControlWordHash).HasMaxLength(512).IsRequired();
+            // ServiceManager is the store default because a row written without a role predates
+            // the split, and every account from then was staff. EF writes new accounts explicitly.
+            e.Property(x => x.Role).HasMaxLength(30).IsRequired()
+                .HasDefaultValue(Domain.Enums.UserRole.ServiceManager);
+            // Session generation starts at 1 so "absent" and "first" stay distinguishable.
+            e.Property(x => x.TokenVersion).HasDefaultValue(1);
 
             e.HasMany(x => x.Passkeys).WithOne(x => x.User)
                 .HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);

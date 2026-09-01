@@ -14,6 +14,7 @@ web/
     run.mjs              owns the stack for one run: container → API → playwright
     passkey.ts           the virtual authenticator, and signup through the real UI
     auth.e2e.ts          the gate, registration, the return visit, a rejected sign-in
+    roles.e2e.ts         the role split: where each audience lands, and the wrong-role redirect
     roster.e2e.ts        create a CV in the UI, list it, open it, download its PDF
 ```
 
@@ -43,6 +44,13 @@ tested more broadly.
 against `Auth:Passkey:Origins`, which lists the dev SPA at `:5173`. The runner passes
 `Auth__Passkey__Origins__0=http://localhost:5174` so the suite's own SPA port is the accepted
 origin, rather than moving the suite onto the dev port and colliding with a running stack.
+
+**`signUp` signs up staff, and says how.** Since the role split (P1T-181) a self-serve signup is an
+Expert, and most of this suite is about staff surfaces — the roster, the catalog, the dock. So
+`signUp` first writes the *invite* row the Service Manager bootstrap writes (an address with no
+credential, straight into the run's own database via `docker exec psql`) and then signs up through
+the real form, which adopts it. That is production's own first-Service-Manager path, not a test-only
+door. `signUpAsExpert` is the plain self-serve path, with nothing pre-created.
 
 **One worker, one shared roster.** The tests share a database within a run, so they keep apart by
 owning what they create — a fresh account per test (`uniqueEmail`), fresh experts — and never

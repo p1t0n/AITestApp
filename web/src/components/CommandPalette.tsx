@@ -18,7 +18,8 @@ import SmartToyIcon from "@mui/icons-material/SmartToy";
 import { useNavigate } from "react-router-dom";
 import { useExperts } from "../api";
 import { apiErrorMessage } from "../api/http";
-import { NAV } from "./AppRail";
+import { navFor } from "./AppRail";
+import { useSessionRole } from "../auth/useAuth";
 import { SURFACE_GROUPS } from "./AgentWidget";
 import { ErrorNotice } from "./ErrorNotice";
 import { openAgentSurface } from "./agent/surfaceRequest";
@@ -89,9 +90,12 @@ function PaletteBody({ dock }: { dock: AgentDock }) {
   const [active, setActive] = useState(0);
   const { data: experts, isLoading, isError, error } = useExperts();
   const listRef = useRef<HTMLUListElement | null>(null);
+  // Same list the rail shows, for the same reason: offering a place this role cannot reach would
+  // make ⌘K a way to bounce yourself back to where you started.
+  const nav = navFor(useSessionRole());
 
   const groups = useMemo<PaletteGroup[]>(() => {
-    const places: PaletteItem[] = NAV.filter((place) => matchesQuery(query, place.label)).map(
+    const places: PaletteItem[] = nav.filter((place) => matchesQuery(query, place.label)).map(
       (place) => ({
         key: `place:${place.to}`,
         label: place.label,
@@ -140,7 +144,7 @@ function PaletteBody({ dock }: { dock: AgentDock }) {
       },
       { heading: "Agent surfaces", items: surfaces },
     ].filter((group) => group.items.length > 0);
-  }, [query, experts, navigate, dock]);
+  }, [query, experts, navigate, dock, nav]);
 
   // One flat list underneath the headings: the arrow keys move through results, not through groups.
   const flat = useMemo(() => groups.flatMap((g) => g.items), [groups]);

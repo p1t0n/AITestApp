@@ -8,8 +8,10 @@ using Microsoft.EntityFrameworkCore;
 namespace ExpertToJob.Application.Users;
 
 /// <summary>
-/// User management. Roles are flat — any authenticated caller may manage any user — so there is no
-/// authorization beyond "signed in". Not exposed over MCP.
+/// User management. A Service Manager surface end to end (P1T-181): the controller above it is
+/// staff-only wholesale, because token caps and account status are staffing decisions an Expert must
+/// not make for themselves. Ownership scoping — "your own row only" — is a separate concern and
+/// arrives with the Expert's own account surface. Not exposed over MCP.
 /// </summary>
 public interface IUserService
 {

@@ -10,6 +10,14 @@ public sealed class AuthOptions
 
     public JwtOptions Jwt { get; set; } = new();
     public PasskeyOptions Passkey { get; set; } = new();
+
+    /// <summary>
+    /// The email of the first Service Manager. At startup that account is created (as an invite
+    /// awaiting its passkey) or promoted if it already exists — see
+    /// <see cref="ServiceManagerBootstrapper"/>. Empty disables the bootstrap: signup is open but
+    /// self-serve signups are Experts, so without this a fresh database has no staff at all.
+    /// </summary>
+    public string SeedServiceManagerEmail { get; set; } = string.Empty;
 }
 
 /// <summary>
@@ -23,7 +31,12 @@ public sealed class JwtOptions
     public string SigningKey { get; set; } = string.Empty;
     public string Issuer { get; set; } = "experttojob";
     public string Audience { get; set; } = "experttojob-app";
-    public int AccessTokenMinutes { get; set; } = 60;
+    /// <summary>
+    /// Session lifetime. Short on purpose: <c>User.TokenVersion</c> is the revocation mechanism,
+    /// and this is the window in which a *lifetime*-only failure (a token version check that never
+    /// ran) would still let a revoked session through.
+    /// </summary>
+    public int AccessTokenMinutes { get; set; } = 15;
 }
 
 /// <summary>WebAuthn relying-party settings for fido2-net-lib.</summary>

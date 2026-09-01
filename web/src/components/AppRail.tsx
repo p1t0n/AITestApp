@@ -18,6 +18,7 @@ import {
 } from "@mui/material";
 import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
 import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
+import BadgeOutlinedIcon from "@mui/icons-material/BadgeOutlined";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
@@ -30,7 +31,8 @@ import SettingsBrightnessOutlinedIcon from "@mui/icons-material/SettingsBrightne
 import { visuallyHidden } from "@mui/utils";
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import { signOut } from "../api";
-import { useSessionEmail } from "../auth/useAuth";
+import { useSessionEmail, useSessionRole } from "../auth/useAuth";
+import type { SessionRole } from "../auth/roles";
 import {
   followSystemMode,
   setMode,
@@ -55,11 +57,35 @@ export const BRAND = "ExpertToJob";
  * Exported because the ⌘K palette offers the same three destinations (P1T-165) and a second list of
  * them would be a place to forget the fourth.
  */
-export const NAV: { label: string; to: string; icon: ReactNode }[] = [
+export const NAV: NavPlace[] = [
   { label: "CVs", to: "/", icon: <ArticleOutlinedIcon /> },
   { label: "Skill Catalog", to: "/catalog", icon: <AccountTreeOutlinedIcon /> },
   { label: "Users", to: "/users", icon: <GroupOutlinedIcon /> },
 ];
+
+/**
+ * An Expert's places (P1T-181). One for now: the rail must not offer a signed-in Expert three
+ * destinations that all bounce them straight back here. P1T-190 fills the workspace out.
+ */
+export const EXPERT_NAV: NavPlace[] = [
+  { label: "My workspace", to: "/me", icon: <BadgeOutlinedIcon /> },
+];
+
+export interface NavPlace {
+  label: string;
+  to: string;
+  icon: ReactNode;
+}
+
+/**
+ * The places this session may go. One function, used by the rail and by ⌘K, so the two cannot
+ * disagree about what a role can reach. An unknown role (a session stored before the split) keeps
+ * the staff list: its token is refused by the server on the next call anyway, and guessing "Expert"
+ * would silently hide the app from a Service Manager mid-session.
+ */
+export function navFor(role: SessionRole | null): NavPlace[] {
+  return role === "Expert" ? EXPERT_NAV : NAV;
+}
 
 const THEME_CHOICES: { value: ThemeModeChoice; label: string; icon: ReactNode }[] = [
   { value: "light", label: "Light", icon: <LightModeOutlinedIcon /> },
@@ -219,6 +245,9 @@ function RailContents({ rail, onNavigate }: { rail: AppRail; onNavigate?: () => 
   const location = useLocation();
   const navigate = useNavigate();
   const email = useSessionEmail();
+  // The rail offers what this session's role can actually reach — a row that bounces the user
+  // straight back to where they are is worse than no row.
+  const places = navFor(useSessionRole());
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%", overflowX: "hidden" }}>
@@ -243,7 +272,7 @@ function RailContents({ rail, onNavigate }: { rail: AppRail; onNavigate?: () => 
       </List>
 
       <List component="nav" aria-label="Main" sx={{ py: 1 }}>
-        {NAV.map((item) => (
+        {places.map((item) => (
           <RailRow
             key={item.to}
             label={item.label}
