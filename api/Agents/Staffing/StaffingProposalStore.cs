@@ -1,4 +1,5 @@
 using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Application.Visibility;
 using ExpertToJob.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -101,6 +102,32 @@ public sealed class StaffingProposalStore(
         }
 
         return proposals;
+    }
+
+    /// <summary>
+    /// Which of these people are no longer available — paused themselves, or gone from the bench
+    /// (P1T-185). A pending proposal is <b>not</b> withdrawn when somebody pauses: hiding is not a
+    /// retraction of a decision already put in front of a human, and a decision ledger keeps its
+    /// rows. So the proposal stands and the candidate is badged, which is the honest middle: the
+    /// approver can still read what was recommended and can see that acting on it may no longer be
+    /// possible.
+    /// </summary>
+    public async Task<HashSet<Guid>> UnavailableAmongAsync(
+        IEnumerable<Guid> expertIds, CancellationToken ct = default)
+    {
+        var ids = expertIds.Distinct().ToList();
+        if (ids.Count == 0)
+        {
+            return [];
+        }
+
+        var available = await db.Experts
+            .OnTheBench()
+            .Where(e => ids.Contains(e.Id))
+            .Select(e => e.Id)
+            .ToListAsync(ct);
+
+        return ids.Except(available).ToHashSet();
     }
 
     /// <summary>Records a human decision. Only a pending proposal can be decided, and only once —

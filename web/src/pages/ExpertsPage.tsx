@@ -74,6 +74,17 @@ export default function ExpertsPage() {
               >
                 <TableCell>
                   {e.firstName} {e.lastName}
+                  {/* Seen and marked, never dropped (P1T-185): staff must be able to tell somebody
+                      who paused themselves from somebody who was never here. */}
+                  {e.hiddenAt && (
+                    <Chip
+                      label="Paused"
+                      size="small"
+                      variant="outlined"
+                      sx={{ ml: 1 }}
+                      title="This person paused themselves — they are not being offered for work."
+                    />
+                  )}
                 </TableCell>
                 <TableCell>{e.title}</TableCell>
                 <TableCell>{e.location ?? "—"}</TableCell>

@@ -30,6 +30,12 @@ public static class DependencyInjection
         services.AddScoped<IOwnershipChangeRecorder>(sp =>
             (ProcessingRecordService)sp.GetRequiredService<IProcessingRecordService>());
         services.AddScoped<Claims.IClaimService, Claims.ClaimService>();
+        services.AddScoped<Visibility.IExpertVisibilityService, Visibility.ExpertVisibilityService>();
+
+        // Fails closed: a host that does not say what it is looking at the roster for gets the
+        // narrower answer, so a forgotten registration hides paused people rather than exposing
+        // them (P1T-185). The Web host overrides this with the administration provider.
+        services.TryAddSingleton<Visibility.IRosterAudienceProvider, Visibility.BenchAudienceProvider>();
         services.AddScoped<Search.IExpertDigestService, Search.ExpertDigestService>();
         services.AddScoped<Search.IExpertFilterService, Search.ExpertFilterService>();
 

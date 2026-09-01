@@ -15,6 +15,8 @@ export interface ExpertSummary {
   email: string;
   currentCapacityPercent: number;
   status: ExpertStatus;
+  /** When this person paused themselves (P1T-185); absent while they are on the bench. */
+  hiddenAt?: string | null;
 }
 
 export interface SpokenLanguage {
@@ -88,6 +90,8 @@ export interface ExpertDetail {
   photoUrl: string | null;
   currentCapacityPercent: number;
   status: ExpertStatus;
+  /** When this person paused themselves (P1T-185); absent while they are on the bench. */
+  hiddenAt?: string | null;
   spokenLanguages: SpokenLanguage[];
   availabilityEntries: AvailabilityEntry[];
   skills: ExpertSkill[];

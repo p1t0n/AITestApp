@@ -1,4 +1,5 @@
 using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Application.Visibility;
 using ExpertToJob.Application.Search;
 using ExpertToJob.Domain.Enums;
 using ExpertToJob.Infrastructure.Persistence;
@@ -113,6 +114,9 @@ public sealed class ExemplarSearchService : IExemplarSearchService
                 .Where(c => c.Embedding != null
                     && c.SourceType == SearchChunkSource.Achievement
                     && c.ExpertId != bullet.OwnerId
+                    // Anonymised or not, it is still a paused person's own writing being put to
+                    // work (P1T-185). The seam decides, here as everywhere else.
+                    && _db.Experts.OnTheBench().Any(e => e.Id == c.ExpertId)
                     && c.Content.Length >= _options.ExemplarMinChars
                     && c.Content.Length <= _options.ExemplarMaxChars)
                 .Select(c => new
@@ -202,21 +206,31 @@ public sealed class ExemplarSearchService : IExemplarSearchService
     {
         var ids = expertIds.Distinct().ToList();
         return await _db.Experts
-            .Where(e => ids.Contains(e.Id) && e.Status == ExpertStatus.Active)
+            .OnTheBench()
+            .Where(e => ids.Contains(e.Id))
             .Select(e => new ExemplarSource(
                 e.Id, e.FirstName, e.LastName, e.Experiences.Select(x => x.Company).ToList()))
             .ToDictionaryAsync(e => e.Id, ct);
     }
 
+    /// <summary>
+    /// Drops a hit whose source did not come back rather than indexing into the dictionary blind.
+    /// The two queries are moments apart and somebody can pause themselves in between (P1T-185) —
+    /// and the failure mode of the blind lookup is not a leak but a 500, which is worse: the
+    /// scrub inputs are exactly the name and employers this text has to have removed, so an
+    /// exemplar with no source must not be emitted at all.
+    /// </summary>
     private static List<StyleExemplar> ToExemplars(
         IReadOnlyList<ExemplarHit> hits, IReadOnlyDictionary<Guid, ExemplarSource> sources)
-        => hits.Select(h =>
-        {
-            var source = sources[h.ExpertId];
-            return new StyleExemplar(
-                ExemplarAnonymizer.Scrub(h.Content, source.FirstName, source.LastName, source.Companies),
-                Math.Round(1.0 - h.Distance, 4));
-        }).ToList();
+        => hits
+            .Where(h => sources.ContainsKey(h.ExpertId))
+            .Select(h =>
+            {
+                var source = sources[h.ExpertId];
+                return new StyleExemplar(
+                    ExemplarAnonymizer.Scrub(h.Content, source.FirstName, source.LastName, source.Companies),
+                    Math.Round(1.0 - h.Distance, 4));
+            }).ToList();
 
     private sealed record ExemplarHit(Guid ExpertId, string Content, double Distance);
 

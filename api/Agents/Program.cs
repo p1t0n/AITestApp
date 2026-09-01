@@ -704,7 +704,9 @@ app.MapGet("/agents/staffing/proposals", async (
     string? status, StaffingProposalStore proposals, CancellationToken ct) =>
 {
     var list = await proposals.ListAsync(status, ct);
-    return Results.Ok(list.Select(ProposalResponse.From).ToList());
+    var unavailable = await proposals.UnavailableAmongAsync(
+        list.SelectMany(p => p.Candidates).Select(c => c.ExpertId), ct);
+    return Results.Ok(list.Select(p => ProposalResponse.From(p, unavailable)).ToList());
 }).RequireAuthorization();
 
 // GET /agents/staffing/proposals/{id} -> the approver drill-in (P1T-134): proposal metadata plus
@@ -725,9 +727,14 @@ app.MapGet("/agents/staffing/proposals/{id:guid}", async (
     }
 
     var proposal = await proposals.GetAsync(id, ct);
-    return proposal is null
-        ? Results.NotFound()
-        : Results.Ok(ProposalDetailResponse.From(proposal));
+    if (proposal is null)
+    {
+        return Results.NotFound();
+    }
+
+    var unavailable = await proposals.UnavailableAmongAsync(
+        proposal.Candidates.Select(c => c.ExpertId), ct);
+    return Results.Ok(ProposalDetailResponse.From(proposal, unavailable));
 }).RequireAuthorization();
 
 // POST /agents/staffing/proposals/{id}/decision  { "decision": "approved"|"rejected", "note"? }
@@ -802,7 +809,10 @@ app.MapPost("/agents/roster-scan", async (
     int candidates;
     if (scanFilters is not null)
     {
-        candidates = (await expertFilters.ResolveEligibleAsync(scanFilters, ct))?.Count ?? 0;
+        // Scannable, not merely eligible: the sweep skips rows with no Art. 22(2) route
+        // (P1T-185), so counting the eligible set here would start the progress bar on a total
+        // the run can never reach.
+        candidates = await expertFilters.CountScannableAsync(scanFilters, ct);
     }
     else
     {
@@ -886,8 +896,12 @@ internal sealed record StaffingRequest(
     decimal? MinYears = null,
     int? MatchTop = null);
 internal sealed record ProposalDecisionRequest(string? Decision, string? Note = null);
+/// <param name="Unavailable">This person has paused themselves or left the bench since the
+/// proposal was made (P1T-185). The proposal still stands — hiding is not a retraction of a
+/// decision already put to a human — so the candidate is badged rather than dropped.</param>
 internal sealed record ProposalCandidateResponse(
-    Guid ExpertId, string Name, string Title, int Rank, int? MatchScore, string? MatchBand, string Rationale);
+    Guid ExpertId, string Name, string Title, int Rank, int? MatchScore, string? MatchBand,
+    string Rationale, bool Unavailable = false);
 internal sealed record ProposalResponse(
     Guid Id,
     string JobDescription,
@@ -900,7 +914,8 @@ internal sealed record ProposalResponse(
     DateTimeOffset? DecidedAt,
     string? DecisionNote)
 {
-    public static ProposalResponse From(ExpertToJob.Domain.Entities.StaffingProposal p) => new(
+    public static ProposalResponse From(
+        ExpertToJob.Domain.Entities.StaffingProposal p, IReadOnlySet<Guid>? unavailable = null) => new(
         p.Id,
         p.JobDescription,
         p.Status,
@@ -908,7 +923,8 @@ internal sealed record ProposalResponse(
         p.RecommendedExpertId,
         p.ReportDegraded,
         p.Candidates.Select(c => new ProposalCandidateResponse(
-            c.ExpertId, c.Name, c.Title, c.Rank, c.MatchScore, c.MatchBand, c.Rationale)).ToList(),
+            c.ExpertId, c.Name, c.Title, c.Rank, c.MatchScore, c.MatchBand, c.Rationale,
+            unavailable?.Contains(c.ExpertId) ?? false)).ToList(),
         p.DecidedByUserId,
         p.DecidedAt,
         p.DecisionNote);
@@ -930,9 +946,10 @@ internal sealed record ProposalDetailResponse(
     string? DecisionNote,
     StaffingHandoffDocument? Package)
 {
-    public static ProposalDetailResponse From(ExpertToJob.Domain.Entities.StaffingProposal p)
+    public static ProposalDetailResponse From(
+        ExpertToJob.Domain.Entities.StaffingProposal p, IReadOnlySet<Guid>? unavailable = null)
     {
-        var meta = ProposalResponse.From(p);
+        var meta = ProposalResponse.From(p, unavailable);
         return new(
             meta.Id, meta.JobDescription, meta.Status, meta.CreatedAt, meta.RecommendedExpertId,
             meta.ReportDegraded, meta.Candidates, meta.DecidedByUserId, meta.DecidedAt, meta.DecisionNote,

@@ -148,6 +148,21 @@ the ownership audit quietly stop meaning what it says.
 would refuse the one action an Expert must be able to take. The rules themselves — matching, codes,
 revocation, email immutability — are in `manuals/expert-claims.md`.
 
+## Visibility is a second seam (P1T-185)
+
+Ownership answers "who is asking". It cannot answer "what does the row permit" — an agent is
+`Unrestricted` here and must still never see an Expert who paused themselves. That is
+`ExpertToJob.Application.Visibility.RosterVisibility`: two predicates (`NotHidden`, `HasArt22Route`),
+two populations composed from them (`OnTheBench()`, `Scannable()`), and nothing else in the codebase
+writes either — a source-level test fails the build if a second `HiddenAt` appears in a query.
+
+Search, digests and the scan filter unconditionally, because availability is not a question about
+the caller. The record-shaped surfaces ask `IRosterAudienceProvider`, and the answer falls along the
+host: this one registers `AdministrationAudienceProvider` (staff see paused people, marked; and an
+Expert reaches the row they themselves paused), the MCP server takes the `Bench` default. The
+default is the narrow one, so a host that forgets fails closed. Details in
+`manuals/expert-visibility.md`.
+
 ### Who reaches what
 
 | Surface | Audience |
@@ -157,6 +172,7 @@ revocation, email immutability — are in `manuals/expert-claims.md`.
 | Catalog reads | Both |
 | Catalog writes | Service Manager (a category rename rewrites every CV) |
 | `POST /api/claims/redeem` | Both — the code is the authorization |
+| `/api/me/visibility` (read, hide, unhide) | Both — and always the caller's own row: no id exists |
 | `GET /api/experts`, promote, delete, `cv`, `cv.pdf`, `/api/users` | Service Manager |
 | `/api/claims` (queue, approve, reject, codes, revoke) | Service Manager |
 

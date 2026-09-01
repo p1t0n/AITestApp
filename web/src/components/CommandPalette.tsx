@@ -106,9 +106,14 @@ function PaletteBody({ dock }: { dock: AgentDock }) {
 
     // People appear once there is something to search for. With an empty query the palette is a
     // list of places to go, and pouring the whole roster into it would bury them.
+    // Paused people are left out (P1T-185). The roster list keeps them, marked, because that page
+    // is where staff account for who is on the bench; the palette is a jump-to-a-person surface and
+    // offering somebody who has taken themselves off the bench is offering them for work.
     const people = query.trim()
-      ? (experts ?? []).filter((e) =>
-          matchesQuery(query, `${e.firstName} ${e.lastName}`, e.title, e.location, e.email),
+      ? (experts ?? []).filter(
+          (e) =>
+            !e.hiddenAt &&
+            matchesQuery(query, `${e.firstName} ${e.lastName}`, e.title, e.location, e.email),
         )
       : [];
 

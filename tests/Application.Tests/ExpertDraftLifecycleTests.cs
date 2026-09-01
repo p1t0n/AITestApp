@@ -1,4 +1,5 @@
 using ExpertToJob.Application.Auth;
+using ExpertToJob.Application.Visibility;
 using ExpertToJob.Application.Common;
 using ExpertToJob.Application.Experts;
 using ExpertToJob.Domain.Entities;
@@ -23,7 +24,7 @@ public class ExpertDraftLifecycleTests
             .Options);
 
     private static ExpertService NewService(AppDbContext db) =>
-        new(db, new SaveExpertValidator(), new UpdateExpertValidator(), new UnrestrictedOwnershipScopeProvider(), TimeProvider.System);
+        new(db, new SaveExpertValidator(), new UpdateExpertValidator(), new UnrestrictedOwnershipScopeProvider(), new AdministrationAudienceProvider(), TimeProvider.System);
 
     private static SaveExpertDto Dto(string first = "Torvald", string last = "Emberwright", string email = "t@example.com") =>
         new(first, last, "Senior Engineer", email, null, null, null, null);

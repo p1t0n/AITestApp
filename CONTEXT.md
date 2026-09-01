@@ -52,6 +52,14 @@ code *is* the proof: it is the only evidence this service can offer that is stro
 email address, and it exists precisely because email is never verified here.
 _Avoid_: invite, token (a token is a session), magic link (there is no link and no mail)
 
+**Paused**:
+An Expert who has taken themselves off the bench: they stop being offered for work — no search, no
+match, no scan reaches them — while their record and everything in it stays exactly as it was. Their
+own act and nobody else's; a Service Manager who wants somebody off the bench deactivates the
+account instead. Reversible and free: nothing is deleted, so nothing is re-embedded coming back.
+_Avoid_: inactive (status means published-or-draft), disabled, deactivated (that is the account),
+archived, soft-deleted (nothing is deleted)
+
 **Origin**:
 How a roster row came to exist — `SelfRegistered` or `StaffCreated` — and the **only** input to
 its Lawful Basis. Not a synonym for who owns the row: ownership says which Expert reaches it,

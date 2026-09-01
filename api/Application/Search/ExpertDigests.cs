@@ -1,4 +1,5 @@
 using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Application.Visibility;
 using ExpertToJob.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
@@ -28,7 +29,9 @@ public interface IExpertDigestService
 /// (<see cref="ChunkProjection"/>): the professional summary plus one block per experience
 /// (role @ company, dates, summary, achievement bullets), truncated to a prompt-friendly budget.
 /// Pure projection over the expert aggregate — no embeddings involved, so digests exist the
-/// moment an expert does. Drafts are excluded (they are hidden from search and staffing too).
+/// moment an expert does. Drafts are excluded (they are hidden from search and staffing too), and
+/// so are paused Experts and rows with no Art. 22(2) route — this page is what the Roster Scan
+/// enumerates, so the visibility seam decides its contents (P1T-185).
 /// </summary>
 public sealed class ExpertDigestService(IAppDbContext db) : IExpertDigestService
 {
@@ -45,10 +48,14 @@ public sealed class ExpertDigestService(IAppDbContext db) : IExpertDigestService
         var effectivePage = Math.Max(1, page);
         var effectiveSize = Math.Clamp(pageSize ?? DefaultPageSize, 1, MaxPageSize);
 
-        var active = db.Experts.AsNoTracking().Where(e => e.Status == ExpertStatus.Active);
-        var total = await active.CountAsync(ct);
+        // This page *is* the Roster Scan's candidate enumeration, so it carries both predicates
+        // (P1T-185): paused Experts are not available for work, and a row on legitimate interest has
+        // no Art. 22(2) route at all — scoring it would be processing with no exception to stand on,
+        // and the model call is the processing whether or not the score is kept.
+        var scannable = db.Experts.AsNoTracking().Scannable();
+        var total = await scannable.CountAsync(ct);
 
-        var experts = await active
+        var experts = await scannable
             .Include(e => e.Experiences)
             .ThenInclude(x => x.Achievements)
             .OrderBy(e => e.Id)
