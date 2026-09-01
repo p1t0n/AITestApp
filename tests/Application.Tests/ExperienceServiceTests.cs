@@ -1,3 +1,4 @@
+using ExpertToJob.Application.Auth;
 using ExpertToJob.Application.Experts;
 using ExpertToJob.Domain.Entities;
 using ExpertToJob.Domain.Enums;
@@ -16,7 +17,7 @@ public class ExperienceServiceTests
             .Options);
 
     private static ExperienceService NewService(AppDbContext db) =>
-        new(db, new SaveExperienceValidator());
+        new(db, new SaveExperienceValidator(), new UnrestrictedOwnershipScopeProvider());
 
     private static async Task<(Expert Expert, Skill Skill)> Seed(AppDbContext db)
     {

@@ -92,6 +92,61 @@ for a route they cannot have is sent to **their own landing page**, never to `/s
 signed-in person they are signed out is both false and a dead end. The server re-decides every
 request from the token; nothing stored in the browser is a boundary.
 
+## Row ownership (P1T-182)
+
+The role answers "which endpoints?". It cannot answer "which rows?" — an Expert reaches the roster's
+child endpoints, and eleven of the seventeen name a row by its own id with no expert anywhere in the
+URL (`PUT /api/languages/{id}`, `PATCH /api/achievements/{id}`). So there is a second, narrower
+question, and it is answered one layer down.
+
+`Expert.OwnerUserId` (nullable, with a **unique partial index where non-null**) is who a row belongs
+to. One person, one row, as database truth rather than service convention; any number of rows may
+stay unclaimed, and ownership is independent of role — a Service Manager can be on the bench and own
+a row too.
+
+`ExpertToJob.Application.Auth.OwnershipScope` is the caller's reach: `Unrestricted` (Service
+Managers, and every MCP agent) or `OwnedBy(expertId)` — including `OwnedBy(null)`, a legitimate
+state for someone registered whose claim is not approved yet. Each Application service applies it
+when loading. Two alternatives were rejected on purpose:
+
+* **A boundary authorization handler** guards one door. The Web API and the MCP server share these
+  services, so the check has to live where both pass through.
+* **An EF global query filter** would silently rewrite every query in the system, the agents'
+  included. A roster-wide search quietly returning one row is a far worse failure than a service that
+  forgets, because nothing would ever tell you.
+
+**Out of scope is a 404, never a 403.** A 403 confirms the id exists, and on a roster of consultants
+"that id is real" is information about a person. With the scope applied the row simply is not loaded,
+`NotFoundException` throws on its own, and `GlobalExceptionHandler` maps it. `OwnedBy(null)` therefore
+answers identically everywhere: a pending claim is structurally indistinguishable from no access.
+
+`tests/Application.Tests/OwnershipScopeCoverageTests.cs` is the audit. It reflects over every roster
+service in the Application assembly, calls **every** method that addresses a row by id as an Expert
+who owns a different row, and requires each one to behave as though the row were not there — then
+runs the same calls unrestricted, so a service cannot pass by refusing everybody. A service that
+forgets the scope is a silent hole: the call succeeds and the caller gets someone else's data. Two
+things also fail it deliberately: a new id parameter the fixture cannot seed, and a new payload type
+it cannot build. Skipping a method is exactly the hole being hunted.
+
+Services deliberately outside row ownership carry their reason in that file: accounts (no owner
+column), the skill catalog (shared vocabulary, writes refused at the endpoint), and the search
+services (agent surfaces, roster-wide by definition).
+
+### Who reaches what
+
+| Surface | Audience |
+|---|---|
+| `GET`/`PUT /api/experts/{id}` | Both — the scope decides *which* row |
+| The 17 child endpoints | Both — the scope decides, and eleven have no expert in the URL |
+| Catalog reads | Both |
+| Catalog writes | Service Manager (a category rename rewrites every CV) |
+| `GET /api/experts`, promote, delete, `cv`, `cv.pdf`, `/api/users` | Service Manager |
+
+`AuthPolicies.AnyRole` is the third explicit audience, for the endpoints both roles genuinely share.
+It is still a declaration — the endpoint-classification audit accepts it and nothing else new — and
+where two policies meet (a class-level `AnyRole` with a method-level `ServiceManager` on the writes),
+both must pass, so the narrower one wins.
+
 ## Ceremony challenge handling
 
 WebAuthn ceremonies are two round-trips (options → authenticator → verify). The pending options

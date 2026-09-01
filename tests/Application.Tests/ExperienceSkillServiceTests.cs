@@ -1,3 +1,4 @@
+using ExpertToJob.Application.Auth;
 using ExpertToJob.Application.Common;
 using ExpertToJob.Application.Experts;
 using ExpertToJob.Domain.Entities;
@@ -15,7 +16,8 @@ public class ExperienceSkillServiceTests
             .UseInMemoryDatabase($"exp-skill-{Guid.NewGuid()}")
             .Options);
 
-    private static ExperienceSkillService NewService(AppDbContext db) => new(db);
+    private static ExperienceSkillService NewService(AppDbContext db) =>
+        new(db, new UnrestrictedOwnershipScopeProvider());
 
     private static async Task<(Experience exp, Skill skill)> Seed(AppDbContext db)
     {

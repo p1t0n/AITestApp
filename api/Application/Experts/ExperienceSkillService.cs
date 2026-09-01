@@ -1,4 +1,5 @@
 using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Application.Auth;
 using ExpertToJob.Application.Common;
 using ExpertToJob.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -14,11 +15,20 @@ public interface IExperienceSkillService
 public class ExperienceSkillService : IExperienceSkillService
 {
     private readonly IAppDbContext _db;
-    public ExperienceSkillService(IAppDbContext db) => _db = db;
+    private readonly IOwnershipScopeProvider _scope;
+    public ExperienceSkillService(IAppDbContext db, IOwnershipScopeProvider scope)
+    {
+        _db = db;
+        _scope = scope;
+    }
 
     public async Task<ExperienceSkillDto> AddAsync(Guid experienceId, Guid skillId, CancellationToken ct = default)
     {
-        if (!await _db.Experiences.AnyAsync(e => e.Id == experienceId, ct))
+        var (unrestricted, owned) = await _scope.CurrentAsync(ct);
+        // Two hops to the owner (link → experience → expert); the catalog skill itself is shared
+        // reference data and is not owned by anyone.
+        if (!await _db.Experiences.AnyAsync(
+                e => e.Id == experienceId && (unrestricted || e.ExpertId == owned), ct))
             throw new NotFoundException(nameof(Experience), experienceId);
         if (!await _db.Skills.AnyAsync(s => s.Id == skillId, ct))
             throw new NotFoundException(nameof(Skill), skillId);
@@ -36,7 +46,10 @@ public class ExperienceSkillService : IExperienceSkillService
 
     public async Task DeleteAsync(Guid experienceSkillId, CancellationToken ct = default)
     {
-        var link = await _db.ExperienceSkills.FirstOrDefaultAsync(x => x.Id == experienceSkillId, ct)
+        var (unrestricted, owned) = await _scope.CurrentAsync(ct);
+        var link = await _db.ExperienceSkills
+            .FirstOrDefaultAsync(
+                x => x.Id == experienceSkillId && (unrestricted || x.Experience.ExpertId == owned), ct)
             ?? throw new NotFoundException(nameof(ExperienceSkill), experienceSkillId);
         _db.ExperienceSkills.Remove(link);
         await _db.SaveChangesAsync(ct);

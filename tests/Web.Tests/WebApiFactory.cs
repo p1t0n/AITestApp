@@ -4,6 +4,7 @@ using ExpertToJob.Application.Auth;
 using ExpertToJob.Domain.Entities;
 using ExpertToJob.Domain.Enums;
 using ExpertToJob.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -116,6 +117,41 @@ public sealed class WebApiFactory : WebApplicationFactory<Program>, IAsyncLifeti
         db.Users.Add(user);
         db.SaveChanges();
         return user;
+    }
+
+    /// <summary>
+    /// An Expert session that owns the given roster row (P1T-182) — the pairing every own-row test
+    /// needs: an account, a row, and the link between them written the way the claim flow will.
+    /// </summary>
+    public (HttpClient Client, User Account) CreateExpertClientOwning(Guid expertId)
+    {
+        var account = CreateAccount(UserRole.Expert);
+        using (var scope = Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var expert = db.Experts.Single(e => e.Id == expertId);
+            expert.OwnerUserId = account.Id;
+            db.SaveChanges();
+        }
+
+        return (ClientForAccount(account), account);
+    }
+
+    /// <summary>Points a roster row at an account, without going through any service.</summary>
+    public void SetOwner(Guid expertId, Guid? ownerUserId)
+    {
+        using var scope = Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.Experts.Single(e => e.Id == expertId).OwnerUserId = ownerUserId;
+        db.SaveChanges();
+    }
+
+    /// <summary>Who owns a roster row, straight from the column.</summary>
+    public Guid? OwnerOf(Guid expertId)
+    {
+        using var scope = Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return db.Experts.AsNoTracking().Single(e => e.Id == expertId).OwnerUserId;
     }
 
     /// <summary>Removes an account, as erasure will — the session it minted must stop working.</summary>

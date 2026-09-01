@@ -1,3 +1,4 @@
+using ExpertToJob.Application.Auth;
 using ExpertToJob.Application.Common;
 using ExpertToJob.Application.Experts;
 using ExpertToJob.Infrastructure.Persistence;
@@ -16,7 +17,7 @@ public class ExpertServiceValidationTests
             .Options);
 
     private static ExpertService NewService(AppDbContext db) =>
-        new(db, new SaveExpertValidator(), new UpdateExpertValidator());
+        new(db, new SaveExpertValidator(), new UpdateExpertValidator(), new UnrestrictedOwnershipScopeProvider());
 
     private static SaveExpertDto Invalid =>
         new("", "X", "T", "not-an-email", null, null, null, null);

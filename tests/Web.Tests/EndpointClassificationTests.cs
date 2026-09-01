@@ -21,7 +21,10 @@ namespace ExpertToJob.Web.Tests;
 [Collection(WebApiCollection.Name)]
 public class EndpointClassificationTests(WebApiFactory factory)
 {
-    private static readonly string[] Audiences = [AuthPolicies.ServiceManager, AuthPolicies.Expert];
+    // Most restrictive first: an endpoint carrying both a class-level AnyRole and a method-level
+    // ServiceManager must classify as ServiceManager, because both policies have to pass.
+    private static readonly string[] Audiences =
+        [AuthPolicies.ServiceManager, AuthPolicies.Expert, AuthPolicies.AnyRole];
 
     [Fact]
     public void Every_endpoint_declares_its_audience()
@@ -33,8 +36,9 @@ public class EndpointClassificationTests(WebApiFactory factory)
 
         unclassified.Should().BeEmpty(
             "every endpoint must declare its audience explicitly — [Authorize(Policy = " +
-            "AuthPolicies.ServiceManager)], [Authorize(Policy = AuthPolicies.Expert)], or a " +
-            "deliberate [AllowAnonymous]. Unclassified: " + string.Join(", ", unclassified));
+            "AuthPolicies.ServiceManager)], [Authorize(Policy = AuthPolicies.Expert)], " +
+            "[Authorize(Policy = AuthPolicies.AnyRole)], or a deliberate [AllowAnonymous]. " +
+            "Unclassified: " + string.Join(", ", unclassified));
     }
 
     [Fact]

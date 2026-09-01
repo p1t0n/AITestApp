@@ -44,6 +44,14 @@ builder.Services.AddOpenTelemetry()
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
+// Row ownership (P1T-182): an agent acts on the roster as a whole, so every MCP caller is
+// unrestricted. What an agent may do is decided by the tool grants on its token
+// (ExpertToJob.Mcp.Auth.McpToolGrants), not by which person a row belongs to — a scoped agent would
+// silently turn a roster-wide search into a one-row search, which is the failure nobody notices.
+builder.Services.AddScoped<
+    ExpertToJob.Application.Auth.IOwnershipScopeProvider,
+    ExpertToJob.Application.Auth.UnrestrictedOwnershipScopeProvider>();
+
 // Embedding backend for semantic roster search (reconciliation worker + search query).
 builder.Services.AddGeminiEmbeddings(builder.Configuration);
 builder.Services.AddSearchIndexing(builder.Configuration);

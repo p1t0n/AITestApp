@@ -1,3 +1,4 @@
+using ExpertToJob.Application.Auth;
 using ExpertToJob.Application.Common;
 using ExpertToJob.Application.Experts;
 using ExpertToJob.Domain.Entities;
@@ -17,7 +18,7 @@ public class AchievementServiceTests
             .Options);
 
     private static AchievementService NewService(AppDbContext db) =>
-        new(db, new SaveAchievementValidator());
+        new(db, new SaveAchievementValidator(), new UnrestrictedOwnershipScopeProvider());
 
     private static async Task<Experience> SeedExperience(AppDbContext db)
     {

@@ -1,4 +1,5 @@
 using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Application.Auth;
 using ExpertToJob.Application.Common;
 using ExpertToJob.Domain.Entities;
 using FluentValidation;
@@ -29,16 +30,21 @@ public class ExperienceService : IExperienceService
 {
     private readonly IAppDbContext _db;
     private readonly IValidator<SaveExperienceDto> _validator;
-    public ExperienceService(IAppDbContext db, IValidator<SaveExperienceDto> validator)
+    private readonly IOwnershipScopeProvider _scope;
+    public ExperienceService(
+        IAppDbContext db, IValidator<SaveExperienceDto> validator, IOwnershipScopeProvider scope)
     {
         _db = db;
         _validator = validator;
+        _scope = scope;
     }
 
     public async Task<ExperienceDto> AddAsync(Guid expertId, SaveExperienceDto dto, CancellationToken ct = default)
     {
         await _validator.ValidateAndThrowAsync(dto, ct);
-        if (!await _db.Experts.AnyAsync(e => e.Id == expertId, ct))
+        var (unrestricted, owned) = await _scope.CurrentAsync(ct);
+        // Out of scope reads as "no such expert", not as "not yours": a 403 would confirm the id.
+        if (!await _db.Experts.AnyAsync(e => e.Id == expertId && (unrestricted || e.Id == owned), ct))
             throw new NotFoundException(nameof(Expert), expertId);
         await ValidateSkillsAsync(dto.SkillIds, ct);
 
@@ -52,10 +58,11 @@ public class ExperienceService : IExperienceService
 
     public async Task<ExperienceDto> UpdateAsync(Guid experienceId, SaveExperienceDto dto, CancellationToken ct = default)
     {
+        var (unrestricted, owned) = await _scope.CurrentAsync(ct);
         var x = await _db.Experiences
             .Include(e => e.Achievements)
             .Include(e => e.Skills)
-            .FirstOrDefaultAsync(e => e.Id == experienceId, ct)
+            .FirstOrDefaultAsync(e => e.Id == experienceId && (unrestricted || e.ExpertId == owned), ct)
             ?? throw new NotFoundException(nameof(Experience), experienceId);
         await _validator.ValidateAndThrowAsync(dto, ct);
         await ValidateSkillsAsync(dto.SkillIds, ct);
@@ -70,7 +77,9 @@ public class ExperienceService : IExperienceService
 
     public async Task DeleteAsync(Guid experienceId, CancellationToken ct = default)
     {
-        var x = await _db.Experiences.FirstOrDefaultAsync(e => e.Id == experienceId, ct)
+        var (unrestricted, owned) = await _scope.CurrentAsync(ct);
+        var x = await _db.Experiences
+            .FirstOrDefaultAsync(e => e.Id == experienceId && (unrestricted || e.ExpertId == owned), ct)
             ?? throw new NotFoundException(nameof(Experience), experienceId);
         _db.Experiences.Remove(x);
         await _db.SaveChangesAsync(ct);

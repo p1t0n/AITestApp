@@ -39,13 +39,32 @@ public class AuthBoundaryTests(WebApiFactory factory)
     }
 
     /// <summary>
-    /// The role split. Every endpoint above is staff-only, and an Expert token is a *valid* session
-    /// — correct signature, live account, current token version — so 403 (or 401) here is the
-    /// authorization decision itself rather than a rejected credential. This is the criterion the
-    /// whole slice exists for: a signed-in Expert reaches none of the staff surface.
+    /// The staff-only subset. Since P1T-182 a few endpoints above are deliberately shared — the
+    /// catalog's reads, and an Expert's own row — so those move here as their own list rather than
+    /// weakening the rule for everything else. What stays is what would leak other people's data:
+    /// the whole roster, user administration, deletion, and the rendered CV of any id you name.
+    /// </summary>
+    public static TheoryData<string, string> ServiceManagerOnlyEndpoints() => new()
+    {
+        { "GET", "/api/experts" },
+        { "GET", "/api/experts/00000000-0000-0000-0000-000000000001/cv" },
+        { "GET", "/api/experts/00000000-0000-0000-0000-000000000001/cv.pdf" },
+        { "GET", "/api/users" },
+        { "DELETE", "/api/experts/00000000-0000-0000-0000-000000000001" },
+        { "POST", "/api/catalog/categories" },
+        { "POST", "/api/catalog/skills" },
+        { "PUT", "/api/catalog/skills/00000000-0000-0000-0000-000000000001" },
+        { "DELETE", "/api/catalog/categories/00000000-0000-0000-0000-000000000001" },
+    };
+
+    /// <summary>
+    /// The role split. An Expert token is a *valid* session — correct signature, live account,
+    /// current token version — so 403 (or 401) here is the authorization decision itself rather than
+    /// a rejected credential. This is the criterion the whole slice exists for: a signed-in Expert
+    /// reaches none of the staff surface.
     /// </summary>
     [Theory]
-    [MemberData(nameof(ProtectedEndpoints))]
+    [MemberData(nameof(ServiceManagerOnlyEndpoints))]
     public async Task Refuses_an_expert_token_on_every_service_manager_endpoint(string method, string path)
     {
         using var expert = factory.CreateExpertClient();

@@ -1,4 +1,5 @@
 using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Application.Auth;
 using ExpertToJob.Application.Common;
 using ExpertToJob.Domain.Entities;
 using FluentValidation;
@@ -17,20 +18,32 @@ public interface IAchievementService
     Task DeleteAsync(Guid achievementId, CancellationToken ct = default);
 }
 
+/// <summary>
+/// Achievements are two hops from their Expert — achievement → experience → expert — which is why
+/// every ownership predicate here reads through the parent navigation. It is the longest path on the
+/// roster and the easiest one to leave open: <c>PATCH /api/achievements/{id}</c> carries no expert
+/// in the URL at all.
+/// </summary>
 public class AchievementService : IAchievementService
 {
     private readonly IAppDbContext _db;
     private readonly IValidator<SaveAchievementDto> _validator;
-    public AchievementService(IAppDbContext db, IValidator<SaveAchievementDto> validator)
+    private readonly IOwnershipScopeProvider _scope;
+    public AchievementService(
+        IAppDbContext db, IValidator<SaveAchievementDto> validator, IOwnershipScopeProvider scope)
     {
         _db = db;
         _validator = validator;
+        _scope = scope;
     }
+
 
     public async Task<AchievementDto> AddAsync(Guid experienceId, SaveAchievementDto dto, CancellationToken ct = default)
     {
         await _validator.ValidateAndThrowAsync(dto, ct);
-        if (!await _db.Experiences.AnyAsync(e => e.Id == experienceId, ct))
+        var (unrestricted, owned) = await _scope.CurrentAsync(ct);
+        if (!await _db.Experiences.AnyAsync(
+                e => e.Id == experienceId && (unrestricted || e.ExpertId == owned), ct))
             throw new NotFoundException(nameof(Experience), experienceId);
 
         var a = new Achievement
@@ -48,7 +61,10 @@ public class AchievementService : IAchievementService
     public async Task<AchievementDto> UpdateAsync(Guid achievementId, SaveAchievementDto dto, CancellationToken ct = default)
     {
         await _validator.ValidateAndThrowAsync(dto, ct);
-        var a = await _db.Achievements.FirstOrDefaultAsync(x => x.Id == achievementId, ct)
+        var (unrestricted, owned) = await _scope.CurrentAsync(ct);
+        var a = await _db.Achievements
+            .FirstOrDefaultAsync(
+                x => x.Id == achievementId && (unrestricted || x.Experience.ExpertId == owned), ct)
             ?? throw new NotFoundException(nameof(Achievement), achievementId);
 
         a.Order = dto.Order;
@@ -59,7 +75,10 @@ public class AchievementService : IAchievementService
 
     public async Task<AchievementDto> PatchTextAsync(Guid achievementId, string text, CancellationToken ct = default)
     {
-        var a = await _db.Achievements.FirstOrDefaultAsync(x => x.Id == achievementId, ct)
+        var (unrestricted, owned) = await _scope.CurrentAsync(ct);
+        var a = await _db.Achievements
+            .FirstOrDefaultAsync(
+                x => x.Id == achievementId && (unrestricted || x.Experience.ExpertId == owned), ct)
             ?? throw new NotFoundException(nameof(Achievement), achievementId);
 
         // Same text rules as a full save, with the existing order standing in for the unchanged field.
@@ -72,7 +91,10 @@ public class AchievementService : IAchievementService
 
     public async Task DeleteAsync(Guid achievementId, CancellationToken ct = default)
     {
-        var a = await _db.Achievements.FirstOrDefaultAsync(x => x.Id == achievementId, ct)
+        var (unrestricted, owned) = await _scope.CurrentAsync(ct);
+        var a = await _db.Achievements
+            .FirstOrDefaultAsync(
+                x => x.Id == achievementId && (unrestricted || x.Experience.ExpertId == owned), ct)
             ?? throw new NotFoundException(nameof(Achievement), achievementId);
         _db.Achievements.Remove(a);
         await _db.SaveChangesAsync(ct);

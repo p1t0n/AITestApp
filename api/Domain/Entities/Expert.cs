@@ -9,6 +9,17 @@ public class Expert
 {
     public Guid Id { get; set; }
 
+    /// <summary>
+    /// The <see cref="User"/> account this row belongs to — the person the CV is about (P1T-182).
+    /// Null means unclaimed: the roster is full of rows nobody has signed up for, and a row a
+    /// pending claim has not been approved for is still unclaimed. A unique partial index (where
+    /// non-null) makes "one person, one row" database truth rather than service convention.
+    ///
+    /// <para>Independent of <see cref="User.Role"/>: a Service Manager can be on the bench and own
+    /// a row too. Ownership decides which row you reach, not what kind of user you are.</para>
+    /// </summary>
+    public Guid? OwnerUserId { get; set; }
+
     /// <summary>Draft = agent-staged (resume ingestion), hidden from roster/search/staffing until
     /// a human promotes it. Active = the normal, visible state.</summary>
     public ExpertStatus Status { get; set; } = ExpertStatus.Active;
