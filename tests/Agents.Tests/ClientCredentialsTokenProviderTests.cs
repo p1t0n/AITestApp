@@ -1,9 +1,9 @@
-using CvManager.Agents.Auth;
-using CvManager.Agents.Configuration;
-using CvManager.Agents.Tests.Fakes;
+using ExpertToJob.Agents.Auth;
+using ExpertToJob.Agents.Configuration;
+using ExpertToJob.Agents.Tests.Fakes;
 using FluentAssertions;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// Deterministic tests for the client-credentials token provider. A capturing HTTP handler stands
@@ -18,7 +18,7 @@ public class ClientCredentialsTokenProviderTests
         var capture = new CapturingHandler(accessToken: "tok-123");
         var options = new McpClientAuthOptions
         {
-            Authority = "http://localhost:8080/realms/cv-manager",
+            Authority = "http://localhost:8080/realms/expert-to-job",
             ClientId = "agent-cv-tailoring",
             ClientSecret = "secret-xyz",
             Scope = "mcp:read",
@@ -29,7 +29,7 @@ public class ClientCredentialsTokenProviderTests
         var token = await provider.GetTokenAsync();
 
         token.Should().Be("tok-123");
-        capture.RequestUri.Should().Be("http://localhost:8080/realms/cv-manager/protocol/openid-connect/token");
+        capture.RequestUri.Should().Be("http://localhost:8080/realms/expert-to-job/protocol/openid-connect/token");
         capture.Form["grant_type"].Should().Be("client_credentials");
         capture.Form["client_id"].Should().Be("agent-cv-tailoring");
         capture.Form["client_secret"].Should().Be("secret-xyz");

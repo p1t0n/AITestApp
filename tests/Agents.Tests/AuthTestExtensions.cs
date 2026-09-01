@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 internal static class AuthTestExtensions
 {
@@ -24,12 +24,29 @@ internal static class AuthTestExtensions
         var config = factory.Services.GetRequiredService<IConfiguration>();
         var key = config["Auth:Jwt:SigningKey"]
             ?? throw new InvalidOperationException("Auth:Jwt:SigningKey missing from test host config.");
-        var issuer = config["Auth:Jwt:Issuer"] ?? "cvmanager";
-        var audience = config["Auth:Jwt:Audience"] ?? "cvmanager-app";
+        var issuer = config["Auth:Jwt:Issuer"] ?? "experttojob";
+        var audience = config["Auth:Jwt:Audience"] ?? "experttojob-app";
 
         var client = factory.CreateClient();
         client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", MintHs256(key, issuer, audience, userId));
+        return client;
+    }
+
+    /// <summary>A client whose token carries a caller-chosen issuer and audience, for the
+    /// lockstep check: the identity comes from the Web host's shipped config (or deliberately does
+    /// not), while the signing key still comes from the Agents host under test.</summary>
+    public static HttpClient CreateClientWithToken(
+        this WebApplicationFactory<Program> factory, string issuer, string audience)
+    {
+        var config = factory.Services.GetRequiredService<IConfiguration>();
+        var key = config["Auth:Jwt:SigningKey"]
+            ?? throw new InvalidOperationException("Auth:Jwt:SigningKey missing from test host config.");
+
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue(
+                "Bearer", MintHs256(key, issuer, audience, Guid.NewGuid()));
         return client;
     }
 

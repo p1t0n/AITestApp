@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace CvManager.Agents.Agents;
+namespace ExpertToJob.Agents.Agents;
 
 /// <summary>
 /// Structured reading of one job description (P1T-116) — the single source of requirements for

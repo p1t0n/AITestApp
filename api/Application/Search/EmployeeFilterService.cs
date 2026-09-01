@@ -1,9 +1,9 @@
-using CvManager.Application.Abstractions;
-using CvManager.Domain.Entities;
-using CvManager.Domain.Enums;
+using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Domain.Entities;
+using ExpertToJob.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
-namespace CvManager.Application.Search;
+namespace ExpertToJob.Application.Search;
 
 /// <summary>Resolves retrieval filters to a deterministic eligible-employee id set — the shared
 /// semantics of semantic search's SQL prefilter, exposed for callers (Roster Scan) that filter

@@ -1,16 +1,16 @@
 using System.Net;
 using System.Text.Json;
-using CvManager.Agents.Agents;
-using CvManager.Agents.Handoff;
-using CvManager.Agents.Staffing;
-using CvManager.Agents.Tests.Fakes;
-using CvManager.Agents.Usage;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.Handoff;
+using ExpertToJob.Agents.Staffing;
+using ExpertToJob.Agents.Tests.Fakes;
+using ExpertToJob.Agents.Usage;
 using FluentAssertions;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// The handoff package accumulated by the staffing pipeline (P1T-132): one honest StageSlice per

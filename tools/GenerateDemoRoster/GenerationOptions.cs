@@ -1,4 +1,4 @@
-namespace CvManager.Tools.DemoRoster;
+namespace ExpertToJob.Tools.DemoRoster;
 
 public sealed record GenerationOptions
 {

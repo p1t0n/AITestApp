@@ -1,15 +1,15 @@
 using System.Text.Json;
-using CvManager.Application.Abstractions;
-using CvManager.Domain.Entities;
-using CvManager.Domain.Enums;
-using CvManager.Web.Auth;
+using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Domain.Entities;
+using ExpertToJob.Domain.Enums;
+using ExpertToJob.Web.Auth;
 using Fido2NetLib;
 using Fido2NetLib.Objects;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-namespace CvManager.Web.Controllers;
+namespace ExpertToJob.Web.Controllers;
 
 /// <summary>
 /// Passwordless auth endpoints. Signup is a two-step WebAuthn registration: <c>begin</c> returns

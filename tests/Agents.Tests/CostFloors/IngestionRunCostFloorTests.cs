@@ -1,9 +1,9 @@
 using System.Text.Json;
-using CvManager.Agents.Agents;
-using CvManager.Agents.Tests.Eval;
-using CvManager.Agents.Tests.Fakes;
-using CvManager.Agents.Usage;
-using CvManager.CostFloors;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.Tests.Eval;
+using ExpertToJob.Agents.Tests.Fakes;
+using ExpertToJob.Agents.Usage;
+using ExpertToJob.CostFloors;
 using FluentAssertions;
 using FluentAssertions.Execution;
 using Microsoft.Extensions.AI;
@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace CvManager.Agents.Tests.CostFloors;
+namespace ExpertToJob.Agents.Tests.CostFloors;
 
 /// <summary>
 /// The ingestion half of the deterministic Cost Floors (P1T-150): what one resume-ingestion run
@@ -90,8 +90,8 @@ public class IngestionRunCostFloorTests(ITestOutputHelper output)
             .Select((tokens, i) => new Turn(
                 i + 1,
                 tokens,
-                CvManager.CostFloors.CostFloors.BaselinePromptSize(
-                    CvManager.CostFloors.CostFloors.AgentInstructionCeilings[IngestionRunCost.AgentClass],
+                ExpertToJob.CostFloors.CostFloors.BaselinePromptSize(
+                    ExpertToJob.CostFloors.CostFloors.AgentInstructionCeilings[IngestionRunCost.AgentClass],
                     chat.ReceivedOptions[i]?.Tools?.Select(t => t.Name) ?? []),
                 tokens - (i == 0 ? 0 : conversation[i - 1]),
                 i < turns.Count ? string.Join(" + ", Distinct(turns[i])) : "— (closing report)"))
@@ -154,7 +154,7 @@ public class IngestionRunCostFloorTests(ITestOutputHelper output)
         // lookup is that it is ~35× smaller than the dump, and a stand-in that quietly shrank
         // below the real thing would be proving that argument with its own thumb on the scale.
         var lookup = TokenEstimate.Of(LookupPage);
-        var ceiling = CvManager.CostFloors.CostFloors.ReadToolResultCeilings["skill_list"];
+        var ceiling = ExpertToJob.CostFloors.CostFloors.ReadToolResultCeilings["skill_list"];
 
         using var _ = new AssertionScope();
         lookup.Should().BeLessThanOrEqualTo(ceiling, "the stand-in may not exceed the real lookup");
@@ -163,7 +163,7 @@ public class IngestionRunCostFloorTests(ITestOutputHelper output)
 
         output.WriteLine($"skill_list lookup stand-in: {lookup} estimated tokens (ratchet {ceiling}); " +
                          $"the unfiltered dump P1T-155 removed was " +
-                         $"{CvManager.CostFloors.CostFloors.SkillListUnfilteredPageCeiling}");
+                         $"{ExpertToJob.CostFloors.CostFloors.SkillListUnfilteredPageCeiling}");
     }
 
     [Fact]
@@ -323,7 +323,7 @@ public class IngestionRunCostFloorTests(ITestOutputHelper output)
     /// which matches React and React Native: the lookup that costs the most is the one that hits
     /// twice, and a floor may not flatter itself with the single-row case.
     ///
-    /// <para>Sized to sit under <see cref="CvManager.CostFloors.CostFloors.ReadToolResultCeilings"/>'s
+    /// <para>Sized to sit under <see cref="ExpertToJob.CostFloors.CostFloors.ReadToolResultCeilings"/>'s
     /// <c>skill_list</c> entry — the Ratchet <c>Mcp.Tests</c> measures against real Postgres — so
     /// this harness can never price the run lower than the tool really costs.</para>
     /// </summary>

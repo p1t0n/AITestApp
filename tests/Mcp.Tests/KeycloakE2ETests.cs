@@ -5,7 +5,7 @@ using DotNet.Testcontainers.Containers;
 using FluentAssertions;
 using Xunit;
 
-namespace CvManager.Mcp.Tests;
+namespace ExpertToJob.Mcp.Tests;
 
 /// <summary>
 /// End-to-end: a real Keycloak (imported realm) issues a token; the MCP server validates it
@@ -29,7 +29,7 @@ public class KeycloakE2ETests : IAsyncLifetime
         .WithCommand("start-dev", "--import-realm")
         .WithPortBinding(8080, true)
         .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(r =>
-            r.ForPort(8080).ForPath("/realms/cv-manager/.well-known/openid-configuration")))
+            r.ForPort(8080).ForPath("/realms/expert-to-job/.well-known/openid-configuration")))
         .Build();
 
     public Task InitializeAsync() => _keycloak.StartAsync();
@@ -39,7 +39,7 @@ public class KeycloakE2ETests : IAsyncLifetime
     [Fact]
     public async Task Real_keycloak_token_is_validated_and_scope_gated()
     {
-        var authority = $"http://{_keycloak.Hostname}:{_keycloak.GetMappedPublicPort(8080)}/realms/cv-manager";
+        var authority = $"http://{_keycloak.Hostname}:{_keycloak.GetMappedPublicPort(8080)}/realms/expert-to-job";
         var token = await GetClientCredentialsTokenAsync(authority);
 
         using var factory = McpTestHost.CreateFactoryWithAuthority(
@@ -63,7 +63,7 @@ public class KeycloakE2ETests : IAsyncLifetime
             new FormUrlEncodedContent(new Dictionary<string, string>
             {
                 ["grant_type"] = "client_credentials",
-                ["client_id"] = "cv-manager-e2e",
+                ["client_id"] = "expert-to-job-e2e",
                 ["client_secret"] = "e2e-secret",
                 ["scope"] = "mcp:read mcp:write mcp:admin",
             }));

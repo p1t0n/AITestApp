@@ -48,8 +48,8 @@ Two rules, and the second is the load-bearing one:
 2. **No grants means no narrowing.** A token carrying none is shown everything its capability
    scopes carry. This is the same rule as an absent Tool Allowlist and it exists for the same
    reason: a forgotten client-scope assignment must not quietly cripple an agent. It is also what
-   keeps `cv-manager-mcp` — the interactive PKCE client a person drives — on the whole surface,
-   and `cv-manager-e2e` able to exercise all of it. **Narrowing is opt-in.**
+   keeps `expert-to-job-mcp` — the interactive PKCE client a person drives — on the whole surface,
+   and `expert-to-job-e2e` able to exercise all of it. **Narrowing is opt-in.**
 
 ## 3. Where it is enforced, and why not on the tool
 

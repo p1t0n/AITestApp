@@ -1,4 +1,4 @@
-namespace CvManager.Agents.Handoff;
+namespace ExpertToJob.Agents.Handoff;
 
 /// <summary>
 /// The structured handoff package (P1T-132): everything the next step — another agent stage or

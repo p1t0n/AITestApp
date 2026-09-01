@@ -1,14 +1,14 @@
-using CvManager.Application.Common;
-using CvManager.Application.Users;
-using CvManager.Domain.Entities;
-using CvManager.Domain.Enums;
-using CvManager.Infrastructure.Persistence;
+using ExpertToJob.Application.Common;
+using ExpertToJob.Application.Users;
+using ExpertToJob.Domain.Entities;
+using ExpertToJob.Domain.Enums;
+using ExpertToJob.Infrastructure.Persistence;
 using FluentAssertions;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
-namespace CvManager.Application.Tests;
+namespace ExpertToJob.Application.Tests;
 
 public class UserServiceTests
 {

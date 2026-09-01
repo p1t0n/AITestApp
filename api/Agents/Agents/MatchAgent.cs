@@ -1,8 +1,8 @@
-using CvManager.Agents.Mcp;
+using ExpertToJob.Agents.Mcp;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 
-namespace CvManager.Agents.Agents;
+namespace ExpertToJob.Agents.Agents;
 
 /// <summary>
 /// Read-only agent that assesses how well one employee fits a target job description. A Microsoft
@@ -18,7 +18,7 @@ public sealed class MatchAgent : IChatAgent
 
     private const string Instructions =
         """
-        You are the Match assistant for a CV Manager. You are given an employee id and a target job
+        You are the Match assistant for ExpertToJob. You are given an employee id and a target job
         description. Call the cv_get tool to fetch that employee's full CV, then assess their fit
         for the role and reply with the structured object.
 

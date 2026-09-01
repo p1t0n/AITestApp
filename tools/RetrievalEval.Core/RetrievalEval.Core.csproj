@@ -4,8 +4,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <RootNamespace>CvManager.RetrievalEval</RootNamespace>
-    <AssemblyName>CvManager.RetrievalEval.Core</AssemblyName>
+    <RootNamespace>ExpertToJob.RetrievalEval</RootNamespace>
+    <AssemblyName>ExpertToJob.RetrievalEval.Core</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,7 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\api\Infrastructure\CvManager.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\api\Infrastructure\ExpertToJob.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

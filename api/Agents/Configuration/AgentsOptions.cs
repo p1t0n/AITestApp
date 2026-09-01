@@ -1,4 +1,4 @@
-namespace CvManager.Agents.Configuration;
+namespace ExpertToJob.Agents.Configuration;
 
 /// <summary>
 /// Chat model wiring. The code is provider-agnostic (<c>IChatClient</c>); this binds the
@@ -37,8 +37,8 @@ public sealed class McpClientAuthOptions
 {
     public const string Section = "McpAuth";
 
-    /// <summary>Keycloak realm token authority, e.g. http://localhost:8080/realms/cv-manager.</summary>
-    public string Authority { get; set; } = "http://localhost:8080/realms/cv-manager";
+    /// <summary>Keycloak realm token authority, e.g. http://localhost:8080/realms/expert-to-job.</summary>
+    public string Authority { get; set; } = "http://localhost:8080/realms/expert-to-job";
 
     public string ClientId { get; set; } = "agent-roster-qa";
 

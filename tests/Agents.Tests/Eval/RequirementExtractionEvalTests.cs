@@ -1,11 +1,11 @@
-using CvManager.Agents.Agents;
-using CvManager.Agents.Tests.Fakes;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.Tests.Fakes;
 using FluentAssertions;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit.Abstractions;
 
-namespace CvManager.Agents.Tests.Eval;
+namespace ExpertToJob.Agents.Tests.Eval;
 
 /// <summary>One JD with the capability concepts a faithful reading must surface. A concept is
 /// covered when any produced requirement mentions one of its alternative keywords.</summary>

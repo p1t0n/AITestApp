@@ -1,8 +1,8 @@
 using FluentAssertions;
 
-using CvManager.RetrievalEval;
+using ExpertToJob.RetrievalEval;
 
-namespace CvManager.Mcp.Tests.Eval;
+namespace ExpertToJob.Mcp.Tests.Eval;
 
 /// <summary>
 /// Unit tests for the pure fixture-to-entity mapping: what the eval seeds must be exactly what the

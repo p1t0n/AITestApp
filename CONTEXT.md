@@ -1,4 +1,4 @@
-# CV Manager
+# ExpertToJob
 
 Manages available employees (skills, qualifications, experience, availability), renders their
 CVs, and runs AI agents over that roster. This glossary pins the ubiquitous language; design

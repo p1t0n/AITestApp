@@ -1,11 +1,11 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using CvManager.Agents.Mcp;
-using CvManager.Application.Abstractions;
+using ExpertToJob.Agents.Mcp;
+using ExpertToJob.Application.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 
-namespace CvManager.Agents.Agents;
+namespace ExpertToJob.Agents.Agents;
 
 /// <summary>What one bench-report run produced. <see cref="Reply"/> is null when the narrative
 /// call never reached the model (fallback answer shipped) — nothing to meter then.</summary>
@@ -32,7 +32,7 @@ public sealed class BenchReportService(
 
     private const string Instructions =
         """
-        You are the Bench Report assistant for a CV Manager. You are given a JSON object of
+        You are the Bench Report assistant for ExpertToJob. You are given a JSON object of
         deterministic roster and staffing-demand aggregates. Write a concise management-facing
         markdown report with these sections:
 

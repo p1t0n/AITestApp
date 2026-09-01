@@ -1,8 +1,8 @@
-using CvManager.Application.Abstractions;
-using CvManager.Domain.Entities;
+using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace CvManager.Agents.RosterScan;
+namespace ExpertToJob.Agents.RosterScan;
 
 /// <summary>One employee slot to seed (identity + the digest captured from the sweep).</summary>
 public sealed record ScoringCandidateSeed(Guid EmployeeId, string Name, string Title, string Digest = "");

@@ -1,9 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using CvManager.Agents.Tests.Fakes;
-using CvManager.Domain.Entities;
-using CvManager.Infrastructure.Persistence;
+using ExpertToJob.Agents.Tests.Fakes;
+using ExpertToJob.Domain.Entities;
+using ExpertToJob.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +11,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// Endpoint tests for POST /agents/bench-report (P1T-104). Real host; the MCP tool source, chat
@@ -36,7 +36,7 @@ public class BenchReportEndpointTests
             {
                 s.AddSingleton(chat ?? new FakeChatClient(
                     () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "## Bench narrative"))));
-                s.AddKeyedSingleton<CvManager.Agents.Mcp.IMcpToolSource>(
+                s.AddKeyedSingleton<ExpertToJob.Agents.Mcp.IMcpToolSource>(
                     "bench-report", (_, _) => new FakeToolSource(tools.Length > 0 ? tools : [EmployeeListTool()]));
                 // Working in-memory DB so the proposals ledger is readable (and seedable) in tests.
                 s.RemoveAll(typeof(DbContextOptions<AppDbContext>));

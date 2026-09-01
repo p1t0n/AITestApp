@@ -1,4 +1,4 @@
-namespace CvManager.Infrastructure.Search;
+namespace ExpertToJob.Infrastructure.Search;
 
 /// <summary>Tuning for the semantic roster search query (ranking guardrails).</summary>
 public sealed class SemanticSearchOptions

@@ -2,7 +2,7 @@ using System.Text.Json;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 
-namespace CvManager.Agents.Agents;
+namespace ExpertToJob.Agents.Agents;
 
 /// <summary>The slice of the cv_get result the interview kit needs: the professional summary plus
 /// the experiences (reusing the tailoring experience shape) — the corpus evidence quotes are
@@ -40,7 +40,7 @@ public sealed class InterviewKitAgent
 
     private const string Instructions =
         """
-        You are the Interview Kit assistant for a CV Manager. You are given an employee id and a
+        You are the Interview Kit assistant for ExpertToJob. You are given an employee id and a
         target job description. The conversation has exactly two steps.
 
         STEP 1 — the current message. Call the cv_get tool to fetch that employee's full CV. Then

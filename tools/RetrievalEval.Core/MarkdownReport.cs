@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text;
 
-namespace CvManager.RetrievalEval;
+namespace ExpertToJob.RetrievalEval;
 
 /// <summary>What identifies one eval run in the committed report. The date is passed in by the
 /// caller (a CLI arg) rather than read from the clock, keeping rendering deterministic.</summary>

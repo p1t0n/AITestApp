@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 
-namespace CvManager.Web.Auth;
+namespace ExpertToJob.Web.Auth;
 
 /// <summary>
 /// Wires passwordless auth for the Web host: WebAuthn (fido2-net-lib) for ceremonies, a challenge

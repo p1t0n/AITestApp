@@ -1,9 +1,9 @@
-using CvManager.Agents.Mcp;
+using ExpertToJob.Agents.Mcp;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// Boots the real application host and resolves the keyed MCP tool source registered in

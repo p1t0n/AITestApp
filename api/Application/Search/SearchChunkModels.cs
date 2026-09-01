@@ -1,6 +1,6 @@
-using CvManager.Domain.Enums;
+using ExpertToJob.Domain.Enums;
 
-namespace CvManager.Application.Search;
+namespace ExpertToJob.Application.Search;
 
 /// <summary>
 /// A chunk the projection wants to exist for an employee, with its content already rendered and

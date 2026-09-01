@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
 
-namespace CvManager.Web.Tests;
+namespace ExpertToJob.Web.Tests;
 
 /// <summary>
 /// The service boundary itself. The app-wide authorization fallback policy is what makes the REST

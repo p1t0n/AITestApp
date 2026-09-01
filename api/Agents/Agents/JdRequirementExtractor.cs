@@ -1,6 +1,6 @@
 using Microsoft.Extensions.AI;
 
-namespace CvManager.Agents.Agents;
+namespace ExpertToJob.Agents.Agents;
 
 /// <summary>What one extraction produced. Exactly one of <see cref="Requirements"/> and
 /// <see cref="FaultDetail"/> is non-null; <see cref="Reply"/> is always present — tokens were

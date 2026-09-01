@@ -2,7 +2,7 @@ using System.ClientModel;
 using System.ClientModel.Primitives;
 using System.Text.Json.Nodes;
 
-namespace CvManager.Agents.Configuration;
+namespace ExpertToJob.Agents.Configuration;
 
 /// <summary>
 /// Gemini 3 models sign each function call and require the signature echoed on the next turn

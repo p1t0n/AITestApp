@@ -1,13 +1,13 @@
-using CvManager.Application.Common;
-using CvManager.Application.Employees;
-using CvManager.Domain.Entities;
-using CvManager.Domain.Enums;
-using CvManager.Infrastructure.Persistence;
+using ExpertToJob.Application.Common;
+using ExpertToJob.Application.Employees;
+using ExpertToJob.Domain.Entities;
+using ExpertToJob.Domain.Enums;
+using ExpertToJob.Infrastructure.Persistence;
 using FluentAssertions;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 
-namespace CvManager.Application.Tests;
+namespace ExpertToJob.Application.Tests;
 
 /// <summary>
 /// The draft-then-promote lifecycle (P1T-92): agent-staged drafts are invisible to the default

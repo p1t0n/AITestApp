@@ -1,10 +1,10 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
-using CvManager.Domain.Entities;
-using CvManager.Domain.Enums;
+using ExpertToJob.Domain.Entities;
+using ExpertToJob.Domain.Enums;
 
-namespace CvManager.Application.Search;
+namespace ExpertToJob.Application.Search;
 
 /// <summary>
 /// Renders an employee's free-text career narrative into the set of chunks that semantic roster

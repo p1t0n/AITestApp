@@ -3,7 +3,7 @@ using System.Text.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// Live end-to-end smoke test: hits the real chat model + the real MCP server through the

@@ -1,9 +1,9 @@
-using CvManager.CostFloors;
+using ExpertToJob.CostFloors;
 using FluentAssertions;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace CvManager.Agents.Tests.CostFloors;
+namespace ExpertToJob.Agents.Tests.CostFloors;
 
 /// <summary>
 /// The Convergence half of the deterministic Cost Floors (P1T-148): not what one call costs, but
@@ -22,19 +22,19 @@ namespace CvManager.Agents.Tests.CostFloors;
 /// </summary>
 public class ConvergenceCostFloorTests(ITestOutputHelper output)
 {
-    private const string Agent = nameof(CvManager.Agents.Agents.RosterQaAgent);
+    private const string Agent = nameof(ExpertToJob.Agents.Agents.RosterQaAgent);
 
     [Fact]
     public void The_reference_question_converges_within_its_iteration_ratchet()
     {
         // n tools is n+1 model calls: the closing call that writes the answer is an iteration too.
-        var modelCalls = CvManager.CostFloors.CostFloors.RosterQaConvergentPath.Count + 1;
+        var modelCalls = ExpertToJob.CostFloors.CostFloors.RosterQaConvergentPath.Count + 1;
         output.WriteLine(
-            $"convergent path: {string.Join(" → ", CvManager.CostFloors.CostFloors.RosterQaConvergentPath)} → answer " +
+            $"convergent path: {string.Join(" → ", ExpertToJob.CostFloors.CostFloors.RosterQaConvergentPath)} → answer " +
             $"({modelCalls} model calls; the traced run took 10)");
 
         modelCalls.Should().BeLessThanOrEqualTo(
-            CvManager.CostFloors.CostFloors.RosterQaConvergentRunIterationCeiling,
+            ExpertToJob.CostFloors.CostFloors.RosterQaConvergentRunIterationCeiling,
             "a longer path is Turn Amplification applied to every payload already in hand");
     }
 
@@ -43,27 +43,27 @@ public class ConvergenceCostFloorTests(ITestOutputHelper output)
     {
         // A path naming a tool roster-qa's token does not carry is fiction, and would quietly
         // price a run that cannot happen.
-        CvManager.CostFloors.CostFloors.RosterQaConvergentPath
-            .Should().BeSubsetOf(CvManager.CostFloors.CostFloors.ReadScopeTools);
+        ExpertToJob.CostFloors.CostFloors.RosterQaConvergentPath
+            .Should().BeSubsetOf(ExpertToJob.CostFloors.CostFloors.ReadScopeTools);
     }
 
     [Fact]
     public void The_convergent_run_stays_under_its_ratcheted_ceiling()
     {
-        var path = CvManager.CostFloors.CostFloors.RosterQaConvergentPath;
-        var baseline = CvManager.CostFloors.CostFloors.BaselinePromptSizeCeilings[Agent];
-        var cost = CvManager.CostFloors.CostFloors.ConvergentRunCost(Agent, path);
+        var path = ExpertToJob.CostFloors.CostFloors.RosterQaConvergentPath;
+        var baseline = ExpertToJob.CostFloors.CostFloors.BaselinePromptSizeCeilings[Agent];
+        var cost = ExpertToJob.CostFloors.CostFloors.ConvergentRunCost(Agent, path);
 
         output.WriteLine($"{"Baseline Prompt Size",-24} {baseline,6} ×{path.Count + 1} = {baseline * (path.Count + 1),6}");
         for (var i = 0; i < path.Count; i++)
         {
-            var size = CvManager.CostFloors.CostFloors.ResultSize(path[i]);
+            var size = ExpertToJob.CostFloors.CostFloors.ResultSize(path[i]);
             output.WriteLine($"{path[i],-24} {size,6} ×{path.Count - i} = {size * (path.Count - i),6}");
         }
         output.WriteLine($"{"convergent run",-24} {cost,20}   (target 8,000)");
 
         cost.Should().BeLessThanOrEqualTo(
-            CvManager.CostFloors.CostFloors.RosterQaConvergentRunCeiling,
+            ExpertToJob.CostFloors.CostFloors.RosterQaConvergentRunCeiling,
             "the whole reference question is what a user is billed for, not one call of it");
     }
 
@@ -73,9 +73,9 @@ public class ConvergenceCostFloorTests(ITestOutputHelper output)
         // The property the ceiling above rests on, asserted rather than assumed: the same two
         // results cost more in the order that fetches the large one first. It is why the fix for a
         // cost regression is a smaller early payload or a shorter path — never a bigger cap.
-        var early = CvManager.CostFloors.CostFloors.ConvergentRunCost(
+        var early = ExpertToJob.CostFloors.CostFloors.ConvergentRunCost(
             Agent, ["employee_list", "roster_semantic_search"]);
-        var late = CvManager.CostFloors.CostFloors.ConvergentRunCost(
+        var late = ExpertToJob.CostFloors.CostFloors.ConvergentRunCost(
             Agent, ["roster_semantic_search", "employee_list"]);
 
         early.Should().BeGreaterThan(late);
@@ -85,7 +85,7 @@ public class ConvergenceCostFloorTests(ITestOutputHelper output)
     public void A_tool_with_neither_a_measured_ceiling_nor_a_pinned_estimate_cannot_be_priced()
     {
         // Silently pricing an unknown tool at zero would let a path grow for free.
-        var act = () => CvManager.CostFloors.CostFloors.ResultSize("employee_delete");
+        var act = () => ExpertToJob.CostFloors.CostFloors.ResultSize("employee_delete");
 
         act.Should().Throw<KeyNotFoundException>();
     }

@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
-using CvManager.Agents.Staffing;
+using ExpertToJob.Agents.Staffing;
 
-namespace CvManager.Agents.Agents;
+namespace ExpertToJob.Agents.Agents;
 
 /// <summary>One candidate's JD-only match result. Identity and the retrieval score are
 /// deterministic (from the shortlist tool result); score/band are parsed from the match answer

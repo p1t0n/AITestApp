@@ -1,4 +1,4 @@
-# CV Manager — SPEC (base / POC)
+# ExpertToJob — SPEC (base / POC)
 
 A .NET + React service to manage a roster of available employees — their skills,
 qualifications, work experience, and time-based availability — and render their CVs

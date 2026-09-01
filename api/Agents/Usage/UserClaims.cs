@@ -1,6 +1,6 @@
 using System.Security.Claims;
 
-namespace CvManager.Agents.Usage;
+namespace ExpertToJob.Agents.Usage;
 
 public static class UserClaims
 {

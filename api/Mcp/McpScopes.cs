@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 
-namespace CvManager.Mcp;
+namespace ExpertToJob.Mcp;
 
 /// <summary>
 /// OAuth scope names for the MCP tools and the predicate that checks them against a token.

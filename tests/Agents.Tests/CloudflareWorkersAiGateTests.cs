@@ -1,19 +1,19 @@
 using System.ClientModel;
 using System.ClientModel.Primitives;
 using System.Threading.RateLimiting;
-using CvManager.Agents.Agents;
-using CvManager.Agents.Configuration;
-using CvManager.Agents.RosterScan;
-using CvManager.Application.Search;
-using CvManager.Domain.Entities;
-using CvManager.Infrastructure.Persistence;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.Configuration;
+using ExpertToJob.Agents.RosterScan;
+using ExpertToJob.Application.Search;
+using ExpertToJob.Domain.Entities;
+using ExpertToJob.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using OpenAI;
 using Xunit.Abstractions;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// P1T-143's **gate prototype**: does Cloudflare Workers AI hold the real

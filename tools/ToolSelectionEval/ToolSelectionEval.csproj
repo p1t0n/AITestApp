@@ -5,7 +5,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <RootNamespace>CvManager.ToolSelectionEval.Cli</RootNamespace>
+    <RootNamespace>ExpertToJob.ToolSelectionEval.Cli</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

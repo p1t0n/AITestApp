@@ -1,8 +1,8 @@
 using FluentAssertions;
 
-using CvManager.RetrievalEval;
+using ExpertToJob.RetrievalEval;
 
-namespace CvManager.Mcp.Tests.Eval;
+namespace ExpertToJob.Mcp.Tests.Eval;
 
 /// <summary>
 /// Unit tests for the pure retrieval-metric math. Every expected value is hand-computable from the

@@ -1,9 +1,9 @@
 using System.Text.Json.Serialization;
-using CvManager.Application;
-using CvManager.Infrastructure;
-using CvManager.Infrastructure.Persistence;
-using CvManager.Web.Auth;
-using CvManager.Web.Infrastructure;
+using ExpertToJob.Application;
+using ExpertToJob.Infrastructure;
+using ExpertToJob.Infrastructure.Persistence;
+using ExpertToJob.Web.Auth;
+using ExpertToJob.Web.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);

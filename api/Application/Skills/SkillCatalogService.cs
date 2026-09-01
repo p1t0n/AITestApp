@@ -1,10 +1,10 @@
-using CvManager.Application.Abstractions;
-using CvManager.Application.Common;
-using CvManager.Domain.Entities;
+using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Application.Common;
+using ExpertToJob.Domain.Entities;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 
-namespace CvManager.Application.Skills;
+namespace ExpertToJob.Application.Skills;
 
 public interface ISkillCatalogService
 {

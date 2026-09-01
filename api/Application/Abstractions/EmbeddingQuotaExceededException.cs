@@ -1,4 +1,4 @@
-namespace CvManager.Application.Abstractions;
+namespace ExpertToJob.Application.Abstractions;
 
 /// <summary>
 /// The embedding provider's quota stayed exhausted after the embedder's own bounded retries —

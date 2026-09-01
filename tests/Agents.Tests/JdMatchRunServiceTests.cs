@@ -1,10 +1,10 @@
-using CvManager.Agents.Agents;
-using CvManager.Agents.Staffing;
-using CvManager.Agents.Tests.Fakes;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.Staffing;
+using ExpertToJob.Agents.Tests.Fakes;
 using FluentAssertions;
 using Xunit;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// Unit tests for the JD-only match run (P1T-103): shortlist retrieval picks the candidates,

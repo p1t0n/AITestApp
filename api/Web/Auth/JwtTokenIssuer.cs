@@ -1,11 +1,11 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using CvManager.Domain.Entities;
+using ExpertToJob.Domain.Entities;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
-namespace CvManager.Web.Auth;
+namespace ExpertToJob.Web.Auth;
 
 /// <summary>
 /// Mints HS256 session tokens. The "sub" claim carries the user id so both the Web API and the

@@ -1,7 +1,7 @@
-using CvManager.Agents.Agents;
+using ExpertToJob.Agents.Agents;
 using FluentAssertions;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// Pure unit tests for the fabrication guard that vets each model rewrite before it ships:

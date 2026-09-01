@@ -5,12 +5,12 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <RootNamespace>CvManager.Tools.DemoRoster</RootNamespace>
+    <RootNamespace>ExpertToJob.Tools.DemoRoster</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- Only for the shared dataset model/loader; no runtime project references this tool. -->
-    <ProjectReference Include="..\..\api\Infrastructure\CvManager.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\api\Infrastructure\ExpertToJob.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,13 +1,13 @@
-using CvManager.Agents.Agents;
-using CvManager.Agents.Usage;
-using CvManager.Infrastructure.Persistence;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.Usage;
+using ExpertToJob.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 public class UsageMeterTests
 {

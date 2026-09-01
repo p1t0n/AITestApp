@@ -1,9 +1,9 @@
-using CvManager.Application.Search;
+using ExpertToJob.Application.Search;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
-namespace CvManager.Infrastructure.Search;
+namespace ExpertToJob.Infrastructure.Search;
 
 /// <summary>
 /// Registers semantic roster search: the reconciler (indexing) and the query service, plus their

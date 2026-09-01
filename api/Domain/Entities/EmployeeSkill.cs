@@ -1,6 +1,6 @@
-using CvManager.Domain.Enums;
+using ExpertToJob.Domain.Enums;
 
-namespace CvManager.Domain.Entities;
+namespace ExpertToJob.Domain.Entities;
 
 /// <summary>
 /// Junction linking an <see cref="Employee"/> to a catalog <see cref="Skill"/>,

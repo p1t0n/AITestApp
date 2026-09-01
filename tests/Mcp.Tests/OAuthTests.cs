@@ -1,7 +1,7 @@
 using FluentAssertions;
 using Xunit;
 
-namespace CvManager.Mcp.Tests;
+namespace ExpertToJob.Mcp.Tests;
 
 public class OAuthTests
 {
@@ -26,7 +26,7 @@ public class OAuthTests
         var body = await http.GetStringAsync("/.well-known/oauth-protected-resource");
 
         body.Should().Contain("authorization_servers");
-        body.Should().Contain("realms/cv-manager");
+        body.Should().Contain("realms/expert-to-job");
         body.Should().Contain("mcp:read").And.Contain("mcp:write").And.Contain("mcp:admin");
     }
 

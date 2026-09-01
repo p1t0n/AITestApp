@@ -1,4 +1,4 @@
-namespace CvManager.ExtractionEval;
+namespace ExpertToJob.ExtractionEval;
 
 /// <summary>
 /// Committed floors for the extraction-fidelity eval (P1T-119) — THE place these numbers live,

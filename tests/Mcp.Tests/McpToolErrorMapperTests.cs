@@ -1,11 +1,11 @@
-using CvManager.Application.Common;
-using CvManager.Mcp;
+using ExpertToJob.Application.Common;
+using ExpertToJob.Mcp;
 using FluentAssertions;
 using FluentValidation;
 using FluentValidation.Results;
 using Xunit;
 
-namespace CvManager.Mcp.Tests;
+namespace ExpertToJob.Mcp.Tests;
 
 public class McpToolErrorMapperTests
 {

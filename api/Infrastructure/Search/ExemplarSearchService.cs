@@ -1,7 +1,7 @@
-using CvManager.Application.Abstractions;
-using CvManager.Application.Search;
-using CvManager.Domain.Enums;
-using CvManager.Infrastructure.Persistence;
+using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Application.Search;
+using ExpertToJob.Domain.Enums;
+using ExpertToJob.Infrastructure.Persistence;
 using FluentValidation;
 using FluentValidation.Results;
 using Microsoft.EntityFrameworkCore;
@@ -10,7 +10,7 @@ using Microsoft.Extensions.Options;
 using Pgvector;
 using Pgvector.EntityFrameworkCore;
 
-namespace CvManager.Infrastructure.Search;
+namespace ExpertToJob.Infrastructure.Search;
 
 /// <summary>
 /// pgvector-backed style exemplar retrieval, in two mutually exclusive modes. Id-keyed: resolves

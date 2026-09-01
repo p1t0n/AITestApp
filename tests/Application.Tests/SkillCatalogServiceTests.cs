@@ -1,12 +1,12 @@
-using CvManager.Application.Common;
-using CvManager.Application.Skills;
-using CvManager.Domain.Entities;
-using CvManager.Infrastructure.Persistence;
+using ExpertToJob.Application.Common;
+using ExpertToJob.Application.Skills;
+using ExpertToJob.Domain.Entities;
+using ExpertToJob.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
-namespace CvManager.Application.Tests;
+namespace ExpertToJob.Application.Tests;
 
 public class SkillCatalogServiceTests
 {

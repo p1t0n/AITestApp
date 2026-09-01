@@ -1,11 +1,11 @@
-using CvManager.Application.Abstractions;
-using CvManager.Infrastructure.Embeddings;
+using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Infrastructure.Embeddings;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace CvManager.Application.Tests;
+namespace ExpertToJob.Application.Tests;
 
 /// <summary>
 /// Live smoke test: embeds a string against the real configured endpoint (Gemini by

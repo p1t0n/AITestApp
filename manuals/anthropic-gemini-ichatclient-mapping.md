@@ -235,7 +235,7 @@ commit `b10f9c0a` as its source snapshot).
 
 Our stack: `Microsoft.Agents.AI` 1.10.0 + `Microsoft.Extensions.AI` 10.7.0 +
 `Microsoft.Extensions.AI.OpenAI` 10.7.0, net10.0
-([CvManager.Agents.csproj](../api/Agents/CvManager.Agents.csproj)). Gemini is reached through its
+([ExpertToJob.Agents.csproj](../api/Agents/ExpertToJob.Agents.csproj)). Gemini is reached through its
 **OpenAI-compatibility endpoint** (`https://generativelanguage.googleapis.com/v1beta/openai`,
 default model `gemini-flash-lite-latest`) via `OpenAIClient.GetChatClient(model).AsIChatClient()`
 ([GeminiServiceCollectionExtensions.cs](../api/Agents/Configuration/GeminiServiceCollectionExtensions.cs)) —

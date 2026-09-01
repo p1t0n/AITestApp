@@ -1,4 +1,4 @@
-namespace CvManager.Domain.Entities;
+namespace ExpertToJob.Domain.Entities;
 
 /// <summary>
 /// One Roster Scan run (P1T-122): a durable Scoring Job that survives restarts and pauses.

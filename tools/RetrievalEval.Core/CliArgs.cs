@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace CvManager.RetrievalEval;
+namespace ExpertToJob.RetrievalEval;
 
 /// <summary>
 /// The sweep CLI's parsed arguments:

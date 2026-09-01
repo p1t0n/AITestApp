@@ -1,6 +1,6 @@
-@CvManager.Web_HostAddress = http://localhost:5069
+@ExpertToJob.Web_HostAddress = http://localhost:5069
 
-GET {{CvManager.Web_HostAddress}}/weatherforecast/
+GET {{ExpertToJob.Web_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###

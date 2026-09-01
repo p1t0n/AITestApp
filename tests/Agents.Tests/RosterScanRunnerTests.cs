@@ -1,16 +1,16 @@
-using CvManager.Agents.Agents;
-using CvManager.Agents.RosterScan;
-using CvManager.Agents.Tests.Fakes;
-using CvManager.Agents.Usage;
-using CvManager.Application.Search;
-using CvManager.Domain.Entities;
-using CvManager.Infrastructure.Persistence;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.RosterScan;
+using ExpertToJob.Agents.Tests.Fakes;
+using ExpertToJob.Agents.Usage;
+using ExpertToJob.Application.Search;
+using ExpertToJob.Domain.Entities;
+using ExpertToJob.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// RosterScanRunner semantics (P1T-124) over fakes: idempotent intake (one extraction, one

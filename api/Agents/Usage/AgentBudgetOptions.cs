@@ -1,4 +1,4 @@
-namespace CvManager.Agents.Usage;
+namespace ExpertToJob.Agents.Usage;
 
 /// <summary>
 /// Runtime Budgets: the per-run ceiling on what one agent run may spend (P1T-147). Design record:

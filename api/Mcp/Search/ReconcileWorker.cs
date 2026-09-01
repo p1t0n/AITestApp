@@ -1,8 +1,8 @@
-using CvManager.Application.Abstractions;
-using CvManager.Infrastructure.Search;
+using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Infrastructure.Search;
 using Microsoft.Extensions.Options;
 
-namespace CvManager.Mcp.Search;
+namespace ExpertToJob.Mcp.Search;
 
 /// <summary>
 /// Background scheduler for semantic roster search: runs one <see cref="ISearchIndexReconciler"/>

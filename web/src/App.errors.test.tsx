@@ -38,7 +38,7 @@ describe("routed-area error boundary (P1T-153)", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("This page stopped working");
     expect(screen.getByRole("alert")).toHaveTextContent("catalog page exploded");
     // The shell around the routed area is untouched — the nav is still there to navigate with.
-    expect(screen.getByText("CV Manager")).toBeInTheDocument();
+    expect(screen.getByText("ExpertToJob")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Users" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Back to CVs" }));

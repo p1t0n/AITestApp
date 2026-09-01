@@ -1,7 +1,7 @@
 using System.ClientModel;
 using System.Net.Http.Json;
 using System.Text.Json;
-using CvManager.ToolSelectionEval;
+using ExpertToJob.ToolSelectionEval;
 using Microsoft.Extensions.AI;
 using ModelContextProtocol.Client;
 using OpenAI;
@@ -9,7 +9,7 @@ using OpenAI;
 // Tool-selection eval CLI (P1T-127).
 //
 //   GEMINI_API_KEY=<key> dotnet run --project tools/ToolSelectionEval -- \
-//     [--mcp http://localhost:5100] [--authority http://localhost:8080/realms/cv-manager] \
+//     [--mcp http://localhost:5100] [--authority http://localhost:8080/realms/expert-to-job] \
 //     [--client agent-roster-qa] [--secret agent-roster-qa-secret] \
 //     [--model gemini-3.5-flash-lite] [--output report.md] [--delay 4]
 //
@@ -18,7 +18,7 @@ using OpenAI;
 // each golden prompt. Exit code 0 = floors green, 1 = a floor violated, 2 = bad usage.
 
 var mcpUrl = "http://localhost:5100";
-var authority = "http://localhost:8080/realms/cv-manager";
+var authority = "http://localhost:8080/realms/expert-to-job";
 var clientId = "agent-roster-qa";
 var clientSecret = "agent-roster-qa-secret";
 var model = "gemini-3.5-flash-lite";

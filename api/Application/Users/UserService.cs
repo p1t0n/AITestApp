@@ -1,11 +1,11 @@
-using CvManager.Application.Abstractions;
-using CvManager.Application.Common;
-using CvManager.Domain.Entities;
+using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Application.Common;
+using ExpertToJob.Domain.Entities;
 using FluentValidation;
 using FluentValidation.Results;
 using Microsoft.EntityFrameworkCore;
 
-namespace CvManager.Application.Users;
+namespace ExpertToJob.Application.Users;
 
 /// <summary>
 /// User management. Roles are flat — any authenticated caller may manage any user — so there is no

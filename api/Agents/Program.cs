@@ -2,14 +2,14 @@ using System.Security.Claims;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using CvManager.Agents.Agents;
-using CvManager.Agents.Auth;
-using CvManager.Agents.Configuration;
-using CvManager.Agents.Handoff;
-using CvManager.Agents.Mcp;
-using CvManager.Agents.Staffing;
-using CvManager.Agents.Usage;
-using CvManager.Infrastructure;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.Auth;
+using ExpertToJob.Agents.Configuration;
+using ExpertToJob.Agents.Handoff;
+using ExpertToJob.Agents.Mcp;
+using ExpertToJob.Agents.Staffing;
+using ExpertToJob.Agents.Usage;
+using ExpertToJob.Infrastructure;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 
@@ -51,7 +51,7 @@ if (builder.Environment.IsProduction())
 // via OTEL_EXPORTER_OTLP_ENDPOINT). The exporter buffers and drops when the dashboard is down —
 // the app runs unchanged without it. Sensitive content capture stays OFF (no prompts in spans).
 builder.Services.AddOpenTelemetry()
-    .ConfigureResource(r => r.AddService("cvmanager-agents"))
+    .ConfigureResource(r => r.AddService("experttojob-agents"))
     .WithTracing(t => t
         .AddAspNetCoreInstrumentation()
         .AddSource(
@@ -59,7 +59,7 @@ builder.Services.AddOpenTelemetry()
             "Experimental.Microsoft.Agents.AI",       // invoke_agent spans
             "Microsoft.Agents.AI.Workflows",          // workflow_invoke / executor.process
             "Experimental.ModelContextProtocol",      // MCP client RPCs (context propagates via _meta)
-            "CvManager.Agents.RosterScan",             // roster_scan.job spans (P1T-124/125)
+            "ExpertToJob.Agents.RosterScan",             // roster_scan.job spans (P1T-124/125)
             "System.Net.Http",
             "Npgsql")
         .AddOtlpExporter())
@@ -141,7 +141,7 @@ builder.Services.AddSingleton(sp => new InterviewKitAgent(
 builder.Services.AddScoped(sp => new BenchReportService(
     sp.GetRequiredKeyedService<IMcpToolSource>("bench-report"),
     sp.ResolveAgentChatClient("bench-report"),
-    sp.GetRequiredService<CvManager.Application.Abstractions.IAppDbContext>(),
+    sp.GetRequiredService<ExpertToJob.Application.Abstractions.IAppDbContext>(),
     sp.GetRequiredService<ILogger<BenchReportService>>()));
 
 // The first mcp:write agent (P1T-92): stages resumes as draft employees; humans promote.
@@ -168,40 +168,40 @@ builder.Services.AddSingleton<IJdRequirementExtractor>(sp => new JdRequirementEx
 // it protects the model's RPM across every concurrent scan, like the staffing throttle. The
 // runner (P1T-124) consumes both.
 builder.Services.AddSingleton(sp =>
-    builder.Configuration.GetSection(CvManager.Agents.RosterScan.RosterScanOptions.Section)
-        .Get<CvManager.Agents.RosterScan.RosterScanOptions>() ?? new CvManager.Agents.RosterScan.RosterScanOptions());
+    builder.Configuration.GetSection(ExpertToJob.Agents.RosterScan.RosterScanOptions.Section)
+        .Get<ExpertToJob.Agents.RosterScan.RosterScanOptions>() ?? new ExpertToJob.Agents.RosterScan.RosterScanOptions());
 builder.Services.AddSingleton<System.Threading.RateLimiting.RateLimiter>(sp =>
     new System.Threading.RateLimiting.FixedWindowRateLimiter(new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
     {
         Window = TimeSpan.FromMinutes(1),
-        PermitLimit = sp.GetRequiredService<CvManager.Agents.RosterScan.RosterScanOptions>().RequestsPerMinute,
+        PermitLimit = sp.GetRequiredService<ExpertToJob.Agents.RosterScan.RosterScanOptions>().RequestsPerMinute,
         QueueLimit = int.MaxValue,
         QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst,
         AutoReplenishment = true,
     }));
-builder.Services.AddSingleton<CvManager.Agents.RosterScan.IScoringTransport>(sp =>
-    new CvManager.Agents.RosterScan.QueuedSyncScoringTransport(
+builder.Services.AddSingleton<ExpertToJob.Agents.RosterScan.IScoringTransport>(sp =>
+    new ExpertToJob.Agents.RosterScan.QueuedSyncScoringTransport(
         sp.ResolveAgentChatClient("roster-scan"),
         sp.GetRequiredService<System.Threading.RateLimiting.RateLimiter>(),
-        sp.GetRequiredService<CvManager.Agents.RosterScan.RosterScanOptions>(),
+        sp.GetRequiredService<ExpertToJob.Agents.RosterScan.RosterScanOptions>(),
         sp.GetRequiredService<TimeProvider>()));
 
 // Roster Scan runner (P1T-124): jobs drain through an in-process channel; the worker also sweeps
 // for due paused jobs and restart orphans. The store/runner are scoped (EF-backed) — the worker
 // opens a scope per job pass.
-builder.Services.AddSingleton<CvManager.Agents.RosterScan.IRosterDigestSource>(sp =>
-    new CvManager.Agents.RosterScan.McpRosterDigestSource(
+builder.Services.AddSingleton<ExpertToJob.Agents.RosterScan.IRosterDigestSource>(sp =>
+    new ExpertToJob.Agents.RosterScan.McpRosterDigestSource(
         sp.GetRequiredKeyedService<IMcpToolSource>("roster-scan")));
-builder.Services.AddScoped<CvManager.Agents.RosterScan.ScoringJobStore>();
+builder.Services.AddScoped<ExpertToJob.Agents.RosterScan.ScoringJobStore>();
 // The deterministic filter resolver (shared semantics with semantic search's prefilter); the
 // Agents host doesn't pull the full Application registration, so it registers here directly.
-builder.Services.AddScoped<CvManager.Application.Search.IEmployeeFilterService,
-    CvManager.Application.Search.EmployeeFilterService>();
-builder.Services.AddScoped<CvManager.Agents.RosterScan.RosterScanRunner>();
-builder.Services.AddSingleton<CvManager.Agents.RosterScan.RosterScanQueue>();
-builder.Services.AddSingleton<CvManager.Agents.RosterScan.IRosterScanQueue>(sp =>
-    sp.GetRequiredService<CvManager.Agents.RosterScan.RosterScanQueue>());
-builder.Services.AddHostedService<CvManager.Agents.RosterScan.RosterScanWorker>();
+builder.Services.AddScoped<ExpertToJob.Application.Search.IEmployeeFilterService,
+    ExpertToJob.Application.Search.EmployeeFilterService>();
+builder.Services.AddScoped<ExpertToJob.Agents.RosterScan.RosterScanRunner>();
+builder.Services.AddSingleton<ExpertToJob.Agents.RosterScan.RosterScanQueue>();
+builder.Services.AddSingleton<ExpertToJob.Agents.RosterScan.IRosterScanQueue>(sp =>
+    sp.GetRequiredService<ExpertToJob.Agents.RosterScan.RosterScanQueue>());
+builder.Services.AddHostedService<ExpertToJob.Agents.RosterScan.RosterScanWorker>();
 // JD-only match (P1T-103): shortlist retrieval + per-candidate match fan-out, no narrative.
 builder.Services.AddSingleton(sp => new JdMatchRunService(
     sp.GetRequiredService<IShortlistRunService>(),
@@ -771,12 +771,12 @@ app.MapPost("/agents/staffing/proposals/{id:guid}/decision", async (
 // the background runner (P1T-124). Deliberately NO cap pre-check 429: the scan is a job, not a
 // blocking call — a pre-tripped cap just means the runner pauses it as paused(cap) immediately.
 app.MapPost("/agents/roster-scan", async (
-    CvManager.Agents.RosterScan.RosterScanRequest request,
-    CvManager.Agents.RosterScan.ScoringJobStore scanStore,
-    CvManager.Agents.RosterScan.IRosterScanQueue scanQueue,
-    CvManager.Agents.RosterScan.IRosterDigestSource digestSource,
-    CvManager.Application.Search.IEmployeeFilterService employeeFilters,
-    CvManager.Agents.RosterScan.RosterScanOptions scanOptions,
+    ExpertToJob.Agents.RosterScan.RosterScanRequest request,
+    ExpertToJob.Agents.RosterScan.ScoringJobStore scanStore,
+    ExpertToJob.Agents.RosterScan.IRosterScanQueue scanQueue,
+    ExpertToJob.Agents.RosterScan.IRosterDigestSource digestSource,
+    ExpertToJob.Application.Search.IEmployeeFilterService employeeFilters,
+    ExpertToJob.Agents.RosterScan.RosterScanOptions scanOptions,
     ClaimsPrincipal user,
     CancellationToken ct) =>
 {
@@ -790,7 +790,7 @@ app.MapPost("/agents/roster-scan", async (
         || !string.IsNullOrWhiteSpace(request.Location)
         || request.MinYears is not null;
     var scanFilters = hasFilters
-        ? new CvManager.Application.Search.SemanticSearchFilters(
+        ? new ExpertToJob.Application.Search.SemanticSearchFilters(
             request.AvailableOn, request.SkillIds, request.Location, request.MinYears)
         : null;
 
@@ -825,36 +825,36 @@ app.MapPost("/agents/roster-scan", async (
     var calls = (int)Math.Ceiling(candidates / (double)scanOptions.ChunkSize);
     return Results.Accepted(
         $"/agents/roster-scan/{job.Id}",
-        new CvManager.Agents.RosterScan.RosterScanAccepted(
+        new ExpertToJob.Agents.RosterScan.RosterScanAccepted(
             job.Id,
-            new CvManager.Agents.RosterScan.RosterScanEstimate(candidates, calls, scanOptions.RequestsPerDay)));
+            new ExpertToJob.Agents.RosterScan.RosterScanEstimate(candidates, calls, scanOptions.RequestsPerDay)));
 }).RequireAuthorization();
 
 // GET /agents/roster-scan/{id} — the polling contract: state, pause metadata, progress, and the
 // results so far (scored first by score desc). Requester-scoped: someone else's job is a 404.
 app.MapGet("/agents/roster-scan/{id:guid}", async (
     Guid id,
-    CvManager.Agents.RosterScan.ScoringJobStore scanStore,
+    ExpertToJob.Agents.RosterScan.ScoringJobStore scanStore,
     ClaimsPrincipal user,
     CancellationToken ct) =>
 {
     var job = await scanStore.GetAsync(id, ct);
     return job is null || job.RequestedByUserId != user.GetUserId()
         ? Results.NotFound()
-        : Results.Ok(CvManager.Agents.RosterScan.RosterScanJobView.Of(job));
+        : Results.Ok(ExpertToJob.Agents.RosterScan.RosterScanJobView.Of(job));
 }).RequireAuthorization();
 
 // GET /agents/roster-scan — the caller's jobs newest-first, light rows with progress counts.
 app.MapGet("/agents/roster-scan", async (
-    CvManager.Agents.RosterScan.ScoringJobStore scanStore,
+    ExpertToJob.Agents.RosterScan.ScoringJobStore scanStore,
     ClaimsPrincipal user,
     CancellationToken ct) =>
 {
     var jobs = await scanStore.ListAsync(user.GetUserId(), ct);
     var progress = await scanStore.GetProgressAsync(jobs.Select(j => j.Id).ToList(), ct);
-    return Results.Ok(jobs.Select(j => new CvManager.Agents.RosterScan.RosterScanJobSummary(
+    return Results.Ok(jobs.Select(j => new ExpertToJob.Agents.RosterScan.RosterScanJobSummary(
         j.Id, j.State, j.PauseReason, j.ResumeAt, j.CreatedAt, j.JobDescription,
-        progress.TryGetValue(j.Id, out var p) ? p : new CvManager.Agents.RosterScan.ScoringJobProgress(0, 0, 0, 0))));
+        progress.TryGetValue(j.Id, out var p) ? p : new ExpertToJob.Agents.RosterScan.ScoringJobProgress(0, 0, 0, 0))));
 }).RequireAuthorization();
 
 app.Run();
@@ -898,7 +898,7 @@ internal sealed record ProposalResponse(
     DateTimeOffset? DecidedAt,
     string? DecisionNote)
 {
-    public static ProposalResponse From(CvManager.Domain.Entities.StaffingProposal p) => new(
+    public static ProposalResponse From(ExpertToJob.Domain.Entities.StaffingProposal p) => new(
         p.Id,
         p.JobDescription,
         p.Status,
@@ -928,7 +928,7 @@ internal sealed record ProposalDetailResponse(
     string? DecisionNote,
     StaffingHandoffDocument? Package)
 {
-    public static ProposalDetailResponse From(CvManager.Domain.Entities.StaffingProposal p)
+    public static ProposalDetailResponse From(ExpertToJob.Domain.Entities.StaffingProposal p)
     {
         var meta = ProposalResponse.From(p);
         return new(

@@ -3,7 +3,7 @@ using FluentAssertions.Execution;
 using System.Text.RegularExpressions;
 using Xunit;
 
-namespace CvManager.Mcp.Tests;
+namespace ExpertToJob.Mcp.Tests;
 
 /// <summary>
 /// Pins the description bar (P1T-128 read clusters, P1T-129 writes): every rewritten tool must say

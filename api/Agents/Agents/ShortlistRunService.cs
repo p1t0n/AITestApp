@@ -1,4 +1,4 @@
-namespace CvManager.Agents.Agents;
+namespace ExpertToJob.Agents.Agents;
 
 /// <summary>
 /// What one shortlist run produced, shaped for any caller (the HTTP endpoint today, the staffing

@@ -1,9 +1,9 @@
 using System.Security.Claims;
-using CvManager.Mcp.Auth;
+using ExpertToJob.Mcp.Auth;
 using FluentAssertions;
 using Xunit;
 
-namespace CvManager.Mcp.Tests;
+namespace ExpertToJob.Mcp.Tests;
 
 /// <summary>
 /// Tool Grants (P1T-149): the per-tool half of MCP authorization, carried by the token as
@@ -27,7 +27,7 @@ public class ToolGrantTests
     public void A_token_with_no_grants_narrows_nothing()
     {
         // The same rule as an absent Tool Allowlist, and for the same reason: a forgotten
-        // client-scope assignment must not quietly cripple an agent. cv-manager-mcp — the
+        // client-scope assignment must not quietly cripple an agent. expert-to-job-mcp — the
         // interactive human client — is the identity that legitimately lives here.
         var grants = McpToolGrants.Of(Principal(McpScopes.Read, McpScopes.Write));
 
@@ -141,12 +141,12 @@ public class ToolGrantTests
     public async Task An_ungranted_token_is_still_shown_its_whole_capability_surface()
     {
         // The regression guard for every identity that has no grants: adding this feature must
-        // not have narrowed cv-manager-mcp, the e2e client, or anything else by omission.
+        // not have narrowed expert-to-job-mcp, the e2e client, or anything else by omission.
         using var factory = McpTestHost.CreateFactory(nameof(An_ungranted_token_is_still_shown_its_whole_capability_surface));
         await using var client = await McpTestHost.ConnectAsync(factory, McpTestHost.MintToken(McpScopes.Read));
 
         var names = (await client.ListToolsAsync()).Select(t => t.Name);
 
-        names.Should().BeEquivalentTo(CvManager.CostFloors.CostFloors.ReadScopeTools);
+        names.Should().BeEquivalentTo(ExpertToJob.CostFloors.CostFloors.ReadScopeTools);
     }
 }

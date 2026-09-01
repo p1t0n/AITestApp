@@ -1,9 +1,9 @@
-using CvManager.Application.Availability;
-using CvManager.Application.Employees;
+using ExpertToJob.Application.Availability;
+using ExpertToJob.Application.Employees;
 using FluentAssertions;
 using Xunit;
 
-namespace CvManager.Application.Tests;
+namespace ExpertToJob.Application.Tests;
 
 public class ValidatorTests
 {

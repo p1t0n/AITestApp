@@ -1,4 +1,4 @@
-namespace CvManager.Web.Auth;
+namespace ExpertToJob.Web.Auth;
 
 /// <summary>
 /// Auth configuration. Bound from the "Auth" section. The JWT settings are the contract shared
@@ -21,8 +21,8 @@ public sealed class JwtOptions
 {
     /// <summary>HS256 signing key. Must be at least 32 bytes.</summary>
     public string SigningKey { get; set; } = string.Empty;
-    public string Issuer { get; set; } = "cvmanager";
-    public string Audience { get; set; } = "cvmanager-app";
+    public string Issuer { get; set; } = "experttojob";
+    public string Audience { get; set; } = "experttojob-app";
     public int AccessTokenMinutes { get; set; } = 60;
 }
 

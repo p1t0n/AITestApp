@@ -1,6 +1,6 @@
-using CvManager.Agents.Agents;
-using CvManager.Agents.Tests.Eval;
-using CvManager.CostFloors;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.Tests.Eval;
+using ExpertToJob.CostFloors;
 using FluentAssertions;
 using FluentAssertions.Execution;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace CvManager.Agents.Tests.CostFloors;
+namespace ExpertToJob.Agents.Tests.CostFloors;
 
 /// <summary>
 /// The live half of the ingestion Convergence floor (P1T-155) — the sibling of

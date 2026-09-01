@@ -1,4 +1,4 @@
-namespace CvManager.Domain.Entities;
+namespace ExpertToJob.Domain.Entities;
 
 /// <summary>
 /// An ordered bullet point under a work <see cref="Experience"/>, rendered directly on the CV.

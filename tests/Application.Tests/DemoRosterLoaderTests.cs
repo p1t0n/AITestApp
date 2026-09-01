@@ -1,9 +1,9 @@
-using CvManager.Domain.Enums;
-using CvManager.Infrastructure.Persistence.SeedData;
+using ExpertToJob.Domain.Enums;
+using ExpertToJob.Infrastructure.Persistence.SeedData;
 using FluentAssertions;
 using Xunit;
 
-namespace CvManager.Application.Tests;
+namespace ExpertToJob.Application.Tests;
 
 public class DemoRosterLoaderTests
 {

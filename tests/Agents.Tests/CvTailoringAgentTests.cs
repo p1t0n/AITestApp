@@ -1,10 +1,10 @@
-using CvManager.Agents.Agents;
-using CvManager.Agents.Tests.Fakes;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.Tests.Fakes;
 using FluentAssertions;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// Deterministic tests for the CV Tailoring agent's 2-turn rewrite flow using a fake chat client

@@ -1,13 +1,13 @@
 using System.Net;
-using CvManager.Agents.Agents;
-using CvManager.Agents.Staffing;
-using CvManager.Agents.Tests.Fakes;
-using CvManager.Agents.Usage;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.Staffing;
+using ExpertToJob.Agents.Tests.Fakes;
+using ExpertToJob.Agents.Usage;
 using FluentAssertions;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// Unit tests for the staffing pipeline (Prepare → Shortlist → Match×N → Aggregate → Narrative →

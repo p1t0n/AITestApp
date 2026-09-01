@@ -1,13 +1,13 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using CvManager.Agents.Tests.Fakes;
+using ExpertToJob.Agents.Tests.Fakes;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// Endpoint tests for POST /agents/interview-kit (P1T-102). Real host, fake chat model + tool
@@ -45,7 +45,7 @@ public class InterviewKitEndpointTests
             b.ConfigureServices(s =>
             {
                 s.AddSingleton(chat);
-                s.AddKeyedSingleton<CvManager.Agents.Mcp.IMcpToolSource>(
+                s.AddKeyedSingleton<ExpertToJob.Agents.Mcp.IMcpToolSource>(
                     "interview-kit", (_, _) => new FakeToolSource(CvGetTool()));
             }));
 

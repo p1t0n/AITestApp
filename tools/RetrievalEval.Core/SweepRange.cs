@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace CvManager.RetrievalEval;
+namespace ExpertToJob.RetrievalEval;
 
 /// <summary>
 /// Threshold-list generation for the eval sweep. All arithmetic is done on integer multiples of the

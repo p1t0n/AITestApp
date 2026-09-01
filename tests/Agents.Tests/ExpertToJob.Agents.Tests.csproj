@@ -25,10 +25,17 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\api\Agents\CvManager.Agents.csproj" />
+    <!-- The Web host's shipped session identity, read as data by the lockstep test. Agents does
+         not reference the Web project, and that separation is precisely what can drift. -->
+    <None Include="..\..\api\Web\appsettings.json" Link="web-appsettings.json"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\api\Agents\ExpertToJob.Agents.csproj" />
     <!-- Eval-only: the ingestion eval's fake MCP tools validate with the REAL Application
          validators so the self-correction loop sees production error shapes. -->
-    <ProjectReference Include="..\..\api\Application\CvManager.Application.csproj" />
+    <ProjectReference Include="..\..\api\Application\ExpertToJob.Application.csproj" />
     <ProjectReference Include="..\..\tools\ExtractionEval.Core\ExtractionEval.Core.csproj" />
     <ProjectReference Include="..\..\tools\CostFloors.Core\CostFloors.Core.csproj" />
   </ItemGroup>

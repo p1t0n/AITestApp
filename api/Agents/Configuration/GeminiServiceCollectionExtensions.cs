@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using OpenAI;
 
-namespace CvManager.Agents.Configuration;
+namespace ExpertToJob.Agents.Configuration;
 
 /// <summary>
 /// Registers the Gemini chat clients: one shared default <see cref="IChatClient"/> on the

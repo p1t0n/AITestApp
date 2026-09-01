@@ -22,7 +22,7 @@ web/
 ## Decisions
 
 **The run owns its stack, on its own ports.** `e2e/run.mjs` starts a throwaway `pgvector` container
-on `:55433` with its own `cvmanager_e2e` database, then the Web API on `:5079`, then Playwright,
+on `:55433` with its own `experttojob_e2e` database, then the Web API on `:5079`, then Playwright,
 which starts the SPA on `:5174`. A dev stack on the usual ports (5432 / 5069 / 5173) is untouched,
 and so is the dev database — a suite that could delete a developer's roster would be a suite people
 turn off. The container is removed on every exit path, including Ctrl-C, and a leftover from an

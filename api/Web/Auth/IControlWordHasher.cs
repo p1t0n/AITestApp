@@ -1,4 +1,4 @@
-namespace CvManager.Web.Auth;
+namespace ExpertToJob.Web.Auth;
 
 /// <summary>
 /// Hashes and verifies the account-recovery control word. Same one-way-hash treatment a password

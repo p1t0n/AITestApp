@@ -1,7 +1,7 @@
 using System.ClientModel;
 using Microsoft.Extensions.AI;
 
-namespace CvManager.ToolSelectionEval;
+namespace ExpertToJob.ToolSelectionEval;
 
 /// <summary>
 /// Runs the golden prompts against the real model with the REAL tool definitions (the live MCP

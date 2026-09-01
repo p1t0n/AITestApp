@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace CvManager.Agents.Agents;
+namespace ExpertToJob.Agents.Agents;
 
 /// <summary>
 /// The Match agent's structured verdict (P1T-118): the deterministic facts (score, band) as typed

@@ -2,12 +2,12 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
-namespace CvManager.Agents.Auth;
+namespace ExpertToJob.Agents.Auth;
 
 /// <summary>
 /// Validates the shared session JWT issued by the Web host. The Agents service is a separate
 /// process that does not reference the Web project, so the validation parameters are duplicated
-/// here — they MUST stay in sync with CvManager.Web.Auth (same signing key, issuer, audience,
+/// here — they MUST stay in sync with ExpertToJob.Web.Auth (same signing key, issuer, audience,
 /// read from the same "Auth:Jwt" configuration section). Validation only; the Agents service never
 /// issues session tokens.
 /// </summary>
@@ -18,8 +18,8 @@ public static class SessionAuthExtensions
     {
         var signingKey = config["Auth:Jwt:SigningKey"]
             ?? throw new InvalidOperationException("Auth:Jwt:SigningKey is not configured.");
-        var issuer = config["Auth:Jwt:Issuer"] ?? "cvmanager";
-        var audience = config["Auth:Jwt:Audience"] ?? "cvmanager-app";
+        var issuer = config["Auth:Jwt:Issuer"] ?? "experttojob";
+        var audience = config["Auth:Jwt:Audience"] ?? "experttojob-app";
 
         services
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

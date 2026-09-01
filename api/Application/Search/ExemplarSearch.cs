@@ -1,4 +1,4 @@
-namespace CvManager.Application.Search;
+namespace ExpertToJob.Application.Search;
 
 /// <summary>One anonymized strong-phrasing exemplar: the scrubbed bullet text and how close it
 /// sits to the requested bullet or theme (cosine similarity, 0–1).</summary>

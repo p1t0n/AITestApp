@@ -1,8 +1,8 @@
-using CvManager.Agents.Mcp;
+using ExpertToJob.Agents.Mcp;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 
-namespace CvManager.Agents.Agents;
+namespace ExpertToJob.Agents.Agents;
 
 /// <summary>
 /// Read-only conversational agent over the employee roster. A Microsoft Agent Framework
@@ -14,7 +14,7 @@ public sealed class RosterQaAgent : IChatAgent
 {
     private const string Instructions =
         """
-        You are the Roster Q&A assistant for a CV Manager. Answer questions about the roster of
+        You are the Roster Q&A assistant for ExpertToJob. Answer questions about the roster of
         employees — skills, qualifications, experience, languages, availability — using ONLY the
         provided tools. Never invent employees, skills, or facts.
 

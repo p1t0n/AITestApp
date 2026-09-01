@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace CvManager.Agents.Staffing;
+namespace ExpertToJob.Agents.Staffing;
 
 /// <summary>The deterministic facts lifted out of one Match answer: the overall score (0-100) and
 /// the band, either null when the answer didn't state them readably.</summary>

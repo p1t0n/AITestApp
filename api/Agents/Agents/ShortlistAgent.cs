@@ -2,7 +2,7 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.AI;
 
-namespace CvManager.Agents.Agents;
+namespace ExpertToJob.Agents.Agents;
 
 /// <summary>The typed shortlist request: the job description plus the optional retrieval filters
 /// that are passed through verbatim to the <c>roster_shortlist_search</c> tool.</summary>

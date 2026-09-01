@@ -1,4 +1,4 @@
-namespace CvManager.CostFloors;
+namespace ExpertToJob.CostFloors;
 
 /// <summary>
 /// The resume-ingestion half of the Cost Floors (P1T-150). Sibling of <see cref="CostFloors"/>,

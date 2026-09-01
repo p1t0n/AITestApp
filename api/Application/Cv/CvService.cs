@@ -1,8 +1,8 @@
 using System.Globalization;
-using CvManager.Application.Employees;
-using CvManager.Domain.Enums;
+using ExpertToJob.Application.Employees;
+using ExpertToJob.Domain.Enums;
 
-namespace CvManager.Application.Cv;
+namespace ExpertToJob.Application.Cv;
 
 public interface ICvService
 {

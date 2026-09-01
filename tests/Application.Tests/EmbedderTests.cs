@@ -1,11 +1,11 @@
 using System.ClientModel;
-using CvManager.Application.Abstractions;
-using CvManager.Infrastructure.Embeddings;
+using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Infrastructure.Embeddings;
 using FluentAssertions;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 
-namespace CvManager.Application.Tests;
+namespace ExpertToJob.Application.Tests;
 
 /// <summary>
 /// Unit tests for <see cref="GeminiEmbedder"/> using a deterministic fake generator — no

@@ -1,4 +1,4 @@
-using CvManager.Agents.Agents;
+using ExpertToJob.Agents.Agents;
 using FluentAssertions;
 using FluentAssertions.Execution;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace CvManager.Agents.Tests.CostFloors;
+namespace ExpertToJob.Agents.Tests.CostFloors;
 
 /// <summary>
 /// The live half of the Convergence floor (P1T-148) — the deterministic one in
@@ -33,7 +33,7 @@ public class RosterQaConvergenceLiveFloorTests(ITestOutputHelper output)
 
     /// <summary>Model calls, the same ratchet the deterministic floor holds the declared path to.</summary>
     private const int IterationCeiling =
-        CvManager.CostFloors.CostFloors.RosterQaConvergentRunIterationCeiling;
+        ExpertToJob.CostFloors.CostFloors.RosterQaConvergentRunIterationCeiling;
 
     [SkippableFact]
     public async Task The_reference_question_converges_inside_its_cost_floor()

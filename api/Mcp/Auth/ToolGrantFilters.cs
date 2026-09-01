@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
-namespace CvManager.Mcp.Auth;
+namespace ExpertToJob.Mcp.Auth;
 
 /// <summary>
 /// Enforces <see cref="McpToolGrants"/> on the two requests that can reach a tool: <c>tools/list</c>

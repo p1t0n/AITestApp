@@ -1,13 +1,13 @@
-using CvManager.Agents.Agents;
-using CvManager.Agents.Configuration;
-using CvManager.Agents.Tests.Fakes;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.Configuration;
+using ExpertToJob.Agents.Tests.Fakes;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit.Abstractions;
 
-namespace CvManager.Agents.Tests.Eval;
+namespace ExpertToJob.Agents.Tests.Eval;
 
 /// <summary>
 /// Live ingestion-extraction eval (P1T-97), graduated from the P1T-81 gate prototype. Runs the

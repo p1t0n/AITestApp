@@ -2,13 +2,13 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
-using CvManager.Agents.Agents;
-using CvManager.Agents.Handoff;
-using CvManager.Agents.Usage;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.Handoff;
+using ExpertToJob.Agents.Usage;
 using Microsoft.Agents.AI.Workflows;
 using Microsoft.Extensions.AI;
 
-namespace CvManager.Agents.Staffing;
+namespace ExpertToJob.Agents.Staffing;
 
 /// <summary>
 /// The staffing pipeline: Prepare → Shortlist → Match×N → Aggregate → Narrative → Report, built as

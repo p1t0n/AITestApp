@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\Domain\CvManager.Domain.csproj" />
+    <ProjectReference Include="..\Domain\ExpertToJob.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

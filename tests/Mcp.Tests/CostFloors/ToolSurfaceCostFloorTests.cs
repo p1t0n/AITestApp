@@ -1,11 +1,11 @@
 using System.Text.Json;
-using CvManager.CostFloors;
+using ExpertToJob.CostFloors;
 using FluentAssertions;
 using FluentAssertions.Execution;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace CvManager.Mcp.Tests.CostFloors;
+namespace ExpertToJob.Mcp.Tests.CostFloors;
 
 /// <summary>
 /// The schema half of the Cost Floors (P1T-144): what the read surface costs merely by being
@@ -26,10 +26,10 @@ public class ToolSurfaceCostFloorTests(ITestOutputHelper output)
             var tokens = TokenEstimate.Of(text);
             output.WriteLine($"{tool,-28} {tokens,6} tokens");
 
-            CvManager.CostFloors.CostFloors.ToolSchemaCeilings.Should().ContainKey(
+            ExpertToJob.CostFloors.CostFloors.ToolSchemaCeilings.Should().ContainKey(
                 tool,
                 "a tool with no ratcheted schema ceiling ships unmeasured — pin it in CostFloors");
-            if (CvManager.CostFloors.CostFloors.ToolSchemaCeilings.TryGetValue(tool, out var ceiling))
+            if (ExpertToJob.CostFloors.CostFloors.ToolSchemaCeilings.TryGetValue(tool, out var ceiling))
             {
                 tokens.Should().BeLessThanOrEqualTo(
                     ceiling,
@@ -47,7 +47,7 @@ public class ToolSurfaceCostFloorTests(ITestOutputHelper output)
         output.WriteLine($"read surface: {schemas.Count} tools, {total} tokens");
 
         // roster-qa is still shown all of this, so this total IS its schema cost per iteration.
-        total.Should().BeLessThanOrEqualTo(CvManager.CostFloors.CostFloors.ReadToolSurfaceCeiling);
+        total.Should().BeLessThanOrEqualTo(ExpertToJob.CostFloors.CostFloors.ReadToolSurfaceCeiling);
     }
 
     [Fact]
@@ -66,8 +66,8 @@ public class ToolSurfaceCostFloorTests(ITestOutputHelper output)
         var write = (await writeClient.ListToolsAsync()).Select(t => t.Name);
 
         using var _ = new AssertionScope();
-        read.Should().BeEquivalentTo(CvManager.CostFloors.CostFloors.ReadScopeTools);
-        write.Should().BeEquivalentTo(CvManager.CostFloors.CostFloors.WriteScopeTools);
+        read.Should().BeEquivalentTo(ExpertToJob.CostFloors.CostFloors.ReadScopeTools);
+        write.Should().BeEquivalentTo(ExpertToJob.CostFloors.CostFloors.WriteScopeTools);
     }
 
     /// <summary>Every tool the token is shown, serialized the way the model sees it. EF InMemory is

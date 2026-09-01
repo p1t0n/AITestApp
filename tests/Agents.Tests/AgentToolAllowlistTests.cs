@@ -1,5 +1,5 @@
-using CvManager.Agents.Configuration;
-using CvManager.Agents.Mcp;
+using ExpertToJob.Agents.Configuration;
+using ExpertToJob.Agents.Mcp;
 using FluentAssertions;
 using FluentAssertions.Execution;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -7,7 +7,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// The Tool Allowlist (P1T-146): each agent identity is shown only the tools it uses, so an unused
@@ -16,7 +16,7 @@ namespace CvManager.Agents.Tests;
 /// <para>Two halves, and both matter. The filter itself is a pure function over a tool list. The
 /// shipped <c>appsettings.json</c> is what the agents actually run on — and it is also what the
 /// Baseline Prompt Size floor measures against, via
-/// <see cref="CvManager.CostFloors.CostFloors.AgentToolAllowlists"/>. If config and that
+/// <see cref="ExpertToJob.CostFloors.CostFloors.AgentToolAllowlists"/>. If config and that
 /// declaration drift, the committed cost ceilings stop describing the running system, so the drift
 /// is what this asserts.</para>
 /// </summary>
@@ -25,7 +25,7 @@ public class AgentToolAllowlistTests
     private static AITool Tool(string name) => AIFunctionFactory.Create(() => "{}", name);
 
     private static readonly AITool[] ReadSurface =
-        CvManager.CostFloors.CostFloors.ReadScopeTools.Order().Select(Tool).ToArray();
+        ExpertToJob.CostFloors.CostFloors.ReadScopeTools.Order().Select(Tool).ToArray();
 
     // ---- the filter ----
 
@@ -79,7 +79,7 @@ public class AgentToolAllowlistTests
     public static TheoryData<string> AgentKeys()
     {
         var data = new TheoryData<string>();
-        foreach (var key in CvManager.CostFloors.CostFloors.AgentToolAllowlists.Keys.Order())
+        foreach (var key in ExpertToJob.CostFloors.CostFloors.AgentToolAllowlists.Keys.Order())
         {
             data.Add(key);
         }
@@ -95,7 +95,7 @@ public class AgentToolAllowlistTests
         var options = factory.Services.GetRequiredService<IOptionsMonitor<McpClientAuthOptions>>().Get(agentKey);
 
         options.Tools.Should().BeEquivalentTo(
-            CvManager.CostFloors.CostFloors.AgentToolAllowlists[agentKey],
+            ExpertToJob.CostFloors.CostFloors.AgentToolAllowlists[agentKey],
             $"the Baseline Prompt Size ceiling for {agentKey} is measured against this set");
     }
 
@@ -106,8 +106,8 @@ public class AgentToolAllowlistTests
         using var factory = new WebApplicationFactory<Program>();
         var options = factory.Services.GetRequiredService<IOptionsMonitor<McpClientAuthOptions>>().Get(agentKey);
         var carried = options.Scope.Contains("mcp:write")
-            ? CvManager.CostFloors.CostFloors.WriteScopeTools
-            : CvManager.CostFloors.CostFloors.ReadScopeTools;
+            ? ExpertToJob.CostFloors.CostFloors.WriteScopeTools
+            : ExpertToJob.CostFloors.CostFloors.ReadScopeTools;
 
         // Capability is enforced by the token, so the allowlist can only ever narrow what the
         // scope already grants. A name outside it would be a tool the agent never receives —
@@ -124,7 +124,7 @@ public class AgentToolAllowlistTests
         var monitor = factory.Services.GetRequiredService<IOptionsMonitor<McpClientAuthOptions>>();
 
         using var _ = new AssertionScope();
-        foreach (var key in CvManager.CostFloors.CostFloors.AgentToolAllowlists.Keys)
+        foreach (var key in ExpertToJob.CostFloors.CostFloors.AgentToolAllowlists.Keys)
         {
             monitor.Get(key).Tools.Should().NotBeEmpty($"{key} is a registered MCP identity");
         }
@@ -140,6 +140,6 @@ public class AgentToolAllowlistTests
 
         options.Tools.Should().BeEquivalentTo(
             ["roster_semantic_search", "skill_list", "employee_list", "cv_get"]);
-        CvManager.CostFloors.CostFloors.ReadScopeTools.Should().HaveCount(11);
+        ExpertToJob.CostFloors.CostFloors.ReadScopeTools.Should().HaveCount(11);
     }
 }

@@ -1,16 +1,16 @@
-using CvManager.Application.Abstractions;
-using CvManager.Application.Search;
-using CvManager.Domain.Entities;
-using CvManager.Domain.Enums;
-using CvManager.Infrastructure.Persistence;
-using CvManager.Infrastructure.Search;
+using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Application.Search;
+using ExpertToJob.Domain.Entities;
+using ExpertToJob.Domain.Enums;
+using ExpertToJob.Infrastructure.Persistence;
+using ExpertToJob.Infrastructure.Search;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Testcontainers.PostgreSql;
 
-namespace CvManager.Mcp.Tests;
+namespace ExpertToJob.Mcp.Tests;
 
 /// <summary>
 /// Integration tests for <see cref="SemanticSearchService"/> against real pgvector. A keyword-based

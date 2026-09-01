@@ -45,7 +45,7 @@ import {
 import { RAIL_COLLAPSED_WIDTH, RAIL_WIDTH, useRailPush, type AppRail } from "./useAppRail";
 
 /** The product name. Frozen: `App.errors.test.tsx` reads it to prove the shell survived a page throw. */
-export const BRAND = "CV Manager";
+export const BRAND = "ExpertToJob";
 
 /**
  * The three places. Accessible names are frozen (`manuals/spa-design-system.md` §9) — the e2e and

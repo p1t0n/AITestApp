@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace CvManager.ToolSelectionEval;
+namespace ExpertToJob.ToolSelectionEval;
 
 /// <summary>One prompt's observed outcome: which tool the model called first and everything it
 /// called in that single response. <see cref="Error"/> holds a transport/model fault (counts as

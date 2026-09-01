@@ -1,8 +1,8 @@
-using CvManager.Agents.Agents;
-using CvManager.ExtractionEval;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.ExtractionEval;
 using FluentAssertions;
 
-namespace CvManager.Agents.Tests.Eval;
+namespace ExpertToJob.Agents.Tests.Eval;
 
 /// <summary>
 /// Deterministic tests for the extraction-fidelity scoring (P1T-119): the recall/precision math,

@@ -1,9 +1,9 @@
-using CvManager.Agents.Agents;
-using CvManager.ExtractionEval;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.ExtractionEval;
 using FluentAssertions;
 using Xunit.Abstractions;
 
-namespace CvManager.Agents.Tests.Eval;
+namespace ExpertToJob.Agents.Tests.Eval;
 
 /// <summary>
 /// Live extraction-fidelity regression gate (P1T-119): runs the REAL

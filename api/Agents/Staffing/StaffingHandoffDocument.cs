@@ -1,7 +1,7 @@
 using System.Text.Json;
-using CvManager.Agents.Handoff;
+using ExpertToJob.Agents.Handoff;
 
-namespace CvManager.Agents.Staffing;
+namespace ExpertToJob.Agents.Staffing;
 
 /// <summary>
 /// The persisted shape of a staffing run's handoff (P1T-133): the accumulated

@@ -1,6 +1,6 @@
 using System.Security.Claims;
 
-namespace CvManager.Mcp.Auth;
+namespace ExpertToJob.Mcp.Auth;
 
 /// <summary>
 /// The <b>Tool Grants</b> one token carries (P1T-149): the per-tool half of MCP authorization,
@@ -17,7 +17,7 @@ namespace CvManager.Mcp.Auth;
 ///   <item><description><b>No grants means no narrowing.</b> A token carrying none is shown
 ///   everything its capability scopes carry — the same rule as an absent Tool Allowlist, for the
 ///   same reason: a forgotten client-scope assignment must not quietly cripple an agent, and the
-///   interactive human client (<c>cv-manager-mcp</c>) legitimately wants the whole surface.
+///   interactive human client (<c>expert-to-job-mcp</c>) legitimately wants the whole surface.
 ///   Narrowing is always something an identity opts into.</description></item>
 /// </list>
 ///

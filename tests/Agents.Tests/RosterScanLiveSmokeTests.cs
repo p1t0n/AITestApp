@@ -5,7 +5,7 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// Live end-to-end smoke for Roster Scan (P1T-126): submits a real scan through the HTTP
@@ -34,8 +34,8 @@ public class RosterScanLiveSmokeTests
         var userId = Guid.NewGuid();
         using (var scope = factory.Services.CreateScope())
         {
-            var db = scope.ServiceProvider.GetRequiredService<CvManager.Infrastructure.Persistence.AppDbContext>();
-            db.Users.Add(new CvManager.Domain.Entities.User
+            var db = scope.ServiceProvider.GetRequiredService<ExpertToJob.Infrastructure.Persistence.AppDbContext>();
+            db.Users.Add(new ExpertToJob.Domain.Entities.User
             {
                 Id = userId,
                 Email = $"roster-scan-smoke-{userId:N}@example.com",

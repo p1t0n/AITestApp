@@ -1,4 +1,4 @@
-namespace CvManager.Application.Search;
+namespace ExpertToJob.Application.Search;
 
 /// <summary>
 /// Optional hard constraints AND-ed into a semantic search before ranking, so the returned people

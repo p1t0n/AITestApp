@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace CvManager.Application.Search;
+namespace ExpertToJob.Application.Search;
 
 /// <summary>
 /// The quality gate deciding whether an achievement bullet is a usable style exemplar: it must be

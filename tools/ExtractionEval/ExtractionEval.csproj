@@ -5,7 +5,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <RootNamespace>CvManager.ExtractionEval.Cli</RootNamespace>
+    <RootNamespace>ExpertToJob.ExtractionEval.Cli</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

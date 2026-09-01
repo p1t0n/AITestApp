@@ -8,7 +8,7 @@ using FluentAssertions;
 using FluentAssertions.Execution;
 using Xunit;
 
-namespace CvManager.Mcp.Tests;
+namespace ExpertToJob.Mcp.Tests;
 
 /// <summary>
 /// The Dynamic Client Registration ceiling (P1T-157) against a real Keycloak.
@@ -37,14 +37,14 @@ public class KeycloakDcrE2ETests : IAsyncLifetime
         .WithCommand("start-dev", "--import-realm")
         .WithPortBinding(8080, true)
         .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(r =>
-            r.ForPort(8080).ForPath("/realms/cv-manager/.well-known/openid-configuration")))
+            r.ForPort(8080).ForPath("/realms/expert-to-job/.well-known/openid-configuration")))
         .Build();
 
     private readonly HttpClient _http = new();
 
     private string BaseUrl => $"http://{_keycloak.Hostname}:{_keycloak.GetMappedPublicPort(8080)}";
 
-    private string RegisterUrl => $"{BaseUrl}/realms/cv-manager/clients-registrations/default";
+    private string RegisterUrl => $"{BaseUrl}/realms/expert-to-job/clients-registrations/default";
 
     public Task InitializeAsync() => _keycloak.StartAsync();
 
@@ -58,7 +58,7 @@ public class KeycloakDcrE2ETests : IAsyncLifetime
     public async Task Anonymous_registration_is_refused()
     {
         var response = await _http.PostAsync(
-            $"{BaseUrl}/realms/cv-manager/clients-registrations/openid-connect",
+            $"{BaseUrl}/realms/expert-to-job/clients-registrations/openid-connect",
             JsonContent.Create(new
             {
                 client_name = "walk-in",
@@ -159,7 +159,7 @@ public class KeycloakDcrE2ETests : IAsyncLifetime
         // ByAuthenticatedUser or ran at runtime, secure-client-authenticator-style rules would
         // break every agent identity — this is the test that would catch it.
         var response = await TokenAsync(
-            "cv-manager-e2e", "e2e-secret", $"{McpScopes.Read} {McpScopes.Write} {McpScopes.Admin}");
+            "expert-to-job-e2e", "e2e-secret", $"{McpScopes.Read} {McpScopes.Write} {McpScopes.Admin}");
 
         using var _ = new AssertionScope();
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -181,7 +181,7 @@ public class KeycloakDcrE2ETests : IAsyncLifetime
 
     private Task<HttpResponseMessage> TokenAsync(string clientId, string secret, string scope) =>
         _http.PostAsync(
-            $"{BaseUrl}/realms/cv-manager/protocol/openid-connect/token",
+            $"{BaseUrl}/realms/expert-to-job/protocol/openid-connect/token",
             new FormUrlEncodedContent(new Dictionary<string, string>
             {
                 ["grant_type"] = "client_credentials",
@@ -193,7 +193,7 @@ public class KeycloakDcrE2ETests : IAsyncLifetime
     private async Task<JsonElement> GetClientAsync(string clientId)
     {
         var request = new HttpRequestMessage(
-            HttpMethod.Get, $"{BaseUrl}/admin/realms/cv-manager/clients?clientId={clientId}");
+            HttpMethod.Get, $"{BaseUrl}/admin/realms/expert-to-job/clients?clientId={clientId}");
         request.Headers.Authorization =
             new AuthenticationHeaderValue("Bearer", await AdminTokenAsync());
 
@@ -223,7 +223,7 @@ public class KeycloakDcrE2ETests : IAsyncLifetime
     private async Task<string> InitialAccessTokenAsync()
     {
         var request = new HttpRequestMessage(
-            HttpMethod.Post, $"{BaseUrl}/admin/realms/cv-manager/clients-initial-access")
+            HttpMethod.Post, $"{BaseUrl}/admin/realms/expert-to-job/clients-initial-access")
         {
             Content = JsonContent.Create(new { expiration = 0, count = 1 }),
         };

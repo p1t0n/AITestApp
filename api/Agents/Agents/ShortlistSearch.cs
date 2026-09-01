@@ -1,8 +1,8 @@
 using System.Text.Json;
-using CvManager.Agents.Mcp;
+using ExpertToJob.Agents.Mcp;
 using Microsoft.Extensions.AI;
 
-namespace CvManager.Agents.Agents;
+namespace ExpertToJob.Agents.Agents;
 
 /// <summary>The deterministic retrieval seam (P1T-117): the run service invokes the
 /// <c>roster_shortlist_search</c> MCP tool directly with the extractor's requirement texts —

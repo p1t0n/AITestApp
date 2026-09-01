@@ -1,11 +1,11 @@
-using CvManager.Agents.RosterScan;
-using CvManager.Domain.Entities;
-using CvManager.Infrastructure.Persistence;
+using ExpertToJob.Agents.RosterScan;
+using ExpertToJob.Domain.Entities;
+using ExpertToJob.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Time.Testing;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// ScoringJobStore semantics (P1T-122) over the in-memory provider: creation seeds pending rows,

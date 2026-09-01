@@ -4,7 +4,7 @@ using FluentAssertions;
 using ModelContextProtocol.Protocol;
 using Xunit;
 
-namespace CvManager.Mcp.Tests;
+namespace ExpertToJob.Mcp.Tests;
 
 public class EmployeeToolsTests
 {

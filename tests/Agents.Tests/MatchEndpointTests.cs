@@ -1,14 +1,14 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using CvManager.Agents.Agents;
-using CvManager.Agents.Tests.Fakes;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.Tests.Fakes;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// Endpoint tests for POST /agents/match. They run against the real host but swap the chat model
@@ -26,7 +26,7 @@ public class MatchEndpointTests
             {
                 s.AddSingleton<IChatClient>(new FakeChatClient(
                     () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "Fit: MODERATE (60/100)"))));
-                s.AddKeyedSingleton<CvManager.Agents.Mcp.IMcpToolSource>(
+                s.AddKeyedSingleton<ExpertToJob.Agents.Mcp.IMcpToolSource>(
                     "match", (_, _) => new FakeToolSource());
                 extra?.Invoke(s);
             }));

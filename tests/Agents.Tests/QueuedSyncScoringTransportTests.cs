@@ -1,14 +1,14 @@
 using System.Threading.RateLimiting;
-using CvManager.Agents.Agents;
-using CvManager.Agents.RosterScan;
-using CvManager.Application.Search;
-using CvManager.Domain.Entities;
-using CvManager.Agents.Tests.Fakes;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.RosterScan;
+using ExpertToJob.Application.Search;
+using ExpertToJob.Domain.Entities;
+using ExpertToJob.Agents.Tests.Fakes;
 using FluentAssertions;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Time.Testing;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// QueuedSyncScoringTransport semantics (P1T-123) over a scripted chat client: the

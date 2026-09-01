@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text;
 
-namespace CvManager.Application.Cv;
+namespace ExpertToJob.Application.Cv;
 
 /// <summary>
 /// Headless render of an assembled <see cref="CvDto"/> to a PDF byte array. The seam lives in the

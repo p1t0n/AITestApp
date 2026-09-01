@@ -1,9 +1,9 @@
 using System.Reflection;
-using CvManager.Domain.Entities;
-using CvManager.Infrastructure.Persistence.SeedData;
+using ExpertToJob.Domain.Entities;
+using ExpertToJob.Infrastructure.Persistence.SeedData;
 using Microsoft.EntityFrameworkCore;
 
-namespace CvManager.Infrastructure.Persistence;
+namespace ExpertToJob.Infrastructure.Persistence;
 
 /// <summary>Outcome of a demo roster seed pass: how many employees were inserted vs. already present.</summary>
 public sealed record DemoRosterSeedResult(int Seeded, int Skipped);
@@ -23,7 +23,7 @@ public static class DemoRosterSeeder
     public static DemoRosterDataset LoadCommittedDataset()
     {
         var assembly = Assembly.GetExecutingAssembly();
-        const string resourceName = "CvManager.Infrastructure.Persistence.SeedData.demo-roster.json";
+        const string resourceName = "ExpertToJob.Infrastructure.Persistence.SeedData.demo-roster.json";
         using var stream = assembly.GetManifestResourceStream(resourceName)
             ?? throw new InvalidOperationException($"Embedded demo roster asset '{resourceName}' not found.");
         return DemoRosterLoader.Load(stream);

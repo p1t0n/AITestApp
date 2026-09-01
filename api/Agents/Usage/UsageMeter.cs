@@ -1,8 +1,8 @@
-using CvManager.Agents.Agents;
-using CvManager.Application.Abstractions;
-using CvManager.Domain.Entities;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Domain.Entities;
 
-namespace CvManager.Agents.Usage;
+namespace ExpertToJob.Agents.Usage;
 
 public interface IUsageMeter
 {

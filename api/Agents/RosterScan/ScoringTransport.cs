@@ -2,13 +2,13 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
-using CvManager.Agents.Agents;
-using CvManager.Agents.Staffing;
-using CvManager.Application.Search;
-using CvManager.Domain.Entities;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.Staffing;
+using ExpertToJob.Application.Search;
+using ExpertToJob.Domain.Entities;
 using Microsoft.Extensions.AI;
 
-namespace CvManager.Agents.RosterScan;
+namespace ExpertToJob.Agents.RosterScan;
 
 /// <summary>One settled chunk: per-candidate results (every chunk member accounted for) plus the
 /// reply the caller meters under <c>roster-scan</c>.</summary>

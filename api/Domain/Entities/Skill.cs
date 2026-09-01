@@ -1,4 +1,4 @@
-namespace CvManager.Domain.Entities;
+namespace ExpertToJob.Domain.Entities;
 
 /// <summary>
 /// A skill in the shared catalog. Employees link to it via <see cref="EmployeeSkill"/>.

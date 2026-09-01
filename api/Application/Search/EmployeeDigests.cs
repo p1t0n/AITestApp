@@ -1,8 +1,8 @@
-using CvManager.Application.Abstractions;
-using CvManager.Domain.Enums;
+using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
-namespace CvManager.Application.Search;
+namespace ExpertToJob.Application.Search;
 
 /// <summary>One employee's compact career Digest (see CONTEXT.md): identity plus the narrative
 /// text semantic search embeds — deterministic from the employee's own data.</summary>

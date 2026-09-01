@@ -1,8 +1,8 @@
-using CvManager.Agents.Configuration;
+using ExpertToJob.Agents.Configuration;
 using FluentAssertions;
 using System.Text.Json.Nodes;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// The pure JSON transform behind <see cref="GeminiThoughtSignaturePolicy"/>: Gemini 3 rejects

@@ -1,4 +1,4 @@
-namespace CvManager.Mcp.Tests.Eval;
+namespace ExpertToJob.Mcp.Tests.Eval;
 
 /// <summary>
 /// Committed retrieval-quality baselines the live regression test asserts against. This is THE

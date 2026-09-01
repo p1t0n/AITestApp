@@ -2,12 +2,12 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
-using CvManager.Application.Employees;
-using CvManager.Application.Skills;
+using ExpertToJob.Application.Employees;
+using ExpertToJob.Application.Skills;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 
-namespace CvManager.Web.Tests;
+namespace ExpertToJob.Web.Tests;
 
 /// <summary>
 /// What a caller sees when it gets things wrong. The REST error shapes are the sibling of the MCP

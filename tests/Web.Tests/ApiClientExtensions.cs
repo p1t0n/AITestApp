@@ -1,7 +1,7 @@
 using System.Net.Http.Json;
-using CvManager.Application.Employees;
+using ExpertToJob.Application.Employees;
 
-namespace CvManager.Web.Tests;
+namespace ExpertToJob.Web.Tests;
 
 /// <summary>Small helpers so a test reads as the story it tells, not as HTTP plumbing.</summary>
 internal static class ApiClientExtensions

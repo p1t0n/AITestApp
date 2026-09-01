@@ -4,7 +4,7 @@ using Pgvector;
 
 #nullable disable
 
-namespace CvManager.Infrastructure.Persistence.Migrations
+namespace ExpertToJob.Infrastructure.Persistence.Migrations
 {
     /// <inheritdoc />
     public partial class AddEmployeeSearchChunk : Migration

@@ -151,7 +151,7 @@ Add `aspire-dashboard` to `docker-compose.yml` next to postgres/keycloak; both s
 ## Recommended wiring plan
 
 **Item 1 — Tracing spine + dashboard (the demo-able slice).** Add the three OTel packages to
-`CvManager.Agents` and `CvManager.Mcp`; register tracing+metrics with OTLP export subscribing to
+`ExpertToJob.Agents` and `ExpertToJob.Mcp`; register tracing+metrics with OTLP export subscribing to
 `Experimental.Microsoft.Extensions.AI`, `Experimental.Microsoft.Agents.AI`,
 `Microsoft.Agents.AI.Workflows`, `Experimental.ModelContextProtocol`, `System.Net.Http`, `Npgsql`
 + ASP.NET Core instrumentation; wrap the default and keyed chat clients with `UseOpenTelemetry`

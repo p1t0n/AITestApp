@@ -1,35 +1,35 @@
 <Solution>
   <Folder Name="/api/" />
   <Folder Name="/api/Agents/">
-    <Project Path="api/Agents/CvManager.Agents.csproj" />
+    <Project Path="api/Agents/ExpertToJob.Agents.csproj" />
   </Folder>
   <Folder Name="/api/Application/">
-    <Project Path="api/Application/CvManager.Application.csproj" />
+    <Project Path="api/Application/ExpertToJob.Application.csproj" />
   </Folder>
   <Folder Name="/api/Domain/">
-    <Project Path="api/Domain/CvManager.Domain.csproj" />
+    <Project Path="api/Domain/ExpertToJob.Domain.csproj" />
   </Folder>
   <Folder Name="/api/Infrastructure/">
-    <Project Path="api/Infrastructure/CvManager.Infrastructure.csproj" />
+    <Project Path="api/Infrastructure/ExpertToJob.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/api/Mcp/">
-    <Project Path="api/Mcp/CvManager.Mcp.csproj" />
+    <Project Path="api/Mcp/ExpertToJob.Mcp.csproj" />
   </Folder>
   <Folder Name="/api/Web/">
-    <Project Path="api/Web/CvManager.Web.csproj" />
+    <Project Path="api/Web/ExpertToJob.Web.csproj" />
   </Folder>
   <Folder Name="/tests/" />
   <Folder Name="/tests/Agents.Tests/">
-    <Project Path="tests/Agents.Tests/CvManager.Agents.Tests.csproj" />
+    <Project Path="tests/Agents.Tests/ExpertToJob.Agents.Tests.csproj" />
   </Folder>
   <Folder Name="/tests/Application.Tests/">
-    <Project Path="tests/Application.Tests/CvManager.Application.Tests.csproj" />
+    <Project Path="tests/Application.Tests/ExpertToJob.Application.Tests.csproj" />
   </Folder>
   <Folder Name="/tests/Mcp.Tests/">
-    <Project Path="tests/Mcp.Tests/CvManager.Mcp.Tests.csproj" />
+    <Project Path="tests/Mcp.Tests/ExpertToJob.Mcp.Tests.csproj" />
   </Folder>
   <Folder Name="/tests/Web.Tests/">
-    <Project Path="tests/Web.Tests/CvManager.Web.Tests.csproj" />
+    <Project Path="tests/Web.Tests/ExpertToJob.Web.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/CostFloors.Core/CostFloors.Core.csproj" />

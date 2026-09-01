@@ -1,5 +1,5 @@
 {
-  "realm": "cv-manager",
+  "realm": "expert-to-job",
   "enabled": true,
   "accessTokenLifespan": 3600,
   "clientScopes": [
@@ -162,8 +162,8 @@
   ],
   "clients": [
     {
-      "clientId": "cv-manager-mcp",
-      "name": "CV Manager MCP (public PKCE client)",
+      "clientId": "expert-to-job-mcp",
+      "name": "ExpertToJob MCP (public PKCE client)",
       "enabled": true,
       "publicClient": true,
       "standardFlowEnabled": true,
@@ -188,8 +188,8 @@
       ]
     },
     {
-      "clientId": "cv-manager-e2e",
-      "name": "CV Manager e2e (confidential, test only)",
+      "clientId": "expert-to-job-e2e",
+      "name": "ExpertToJob e2e (confidential, test only)",
       "enabled": true,
       "publicClient": false,
       "secret": "e2e-secret",

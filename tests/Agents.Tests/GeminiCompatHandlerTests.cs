@@ -1,8 +1,8 @@
-using CvManager.Agents.Configuration;
+using ExpertToJob.Agents.Configuration;
 using FluentAssertions;
 using System.Text.Json.Nodes;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>Gemini reports nonstandard finish_reason values the OpenAI SDK's enum parser throws
 /// on; the compat handler rewrites unknown values to "stop" and leaves standard ones alone.</summary>

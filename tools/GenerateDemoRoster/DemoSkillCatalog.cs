@@ -1,6 +1,6 @@
-using CvManager.Infrastructure.Persistence.SeedData;
+using ExpertToJob.Infrastructure.Persistence.SeedData;
 
-namespace CvManager.Tools.DemoRoster;
+namespace ExpertToJob.Tools.DemoRoster;
 
 /// <summary>
 /// The dataset's own skill catalog (~80 skills across the ten industry clusters). Carried

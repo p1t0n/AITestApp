@@ -1,9 +1,9 @@
 using System.ComponentModel;
-using CvManager.Application.Search;
+using ExpertToJob.Application.Search;
 using Microsoft.AspNetCore.Authorization;
 using ModelContextProtocol.Server;
 
-namespace CvManager.Mcp.Tools;
+namespace ExpertToJob.Mcp.Tools;
 
 [McpServerToolType]
 public class RosterSearchTools

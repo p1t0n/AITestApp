@@ -1,11 +1,11 @@
-using CvManager.Application.Abstractions;
-using CvManager.Infrastructure.Persistence;
-using CvManager.RetrievalEval;
+using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Infrastructure.Persistence;
+using ExpertToJob.RetrievalEval;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
 
-namespace CvManager.Mcp.Tests.Eval;
+namespace ExpertToJob.Mcp.Tests.Eval;
 
 /// <summary>
 /// Plumbing test for <see cref="EvalRunner"/> against real pgvector with a deterministic keyword

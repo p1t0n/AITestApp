@@ -1,7 +1,7 @@
-using CvManager.RetrievalEval;
+using ExpertToJob.RetrievalEval;
 using FluentAssertions;
 
-namespace CvManager.Mcp.Tests.Eval;
+namespace ExpertToJob.Mcp.Tests.Eval;
 
 /// <summary>
 /// Proves the sweep's core efficiency trick is sound: results captured once at the sweep floor and

@@ -22,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\api\Web\CvManager.Web.csproj" />
+    <ProjectReference Include="..\..\api\Web\ExpertToJob.Web.csproj" />
   </ItemGroup>
 
 </Project>

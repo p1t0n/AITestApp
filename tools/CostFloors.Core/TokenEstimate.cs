@@ -1,4 +1,4 @@
-namespace CvManager.CostFloors;
+namespace ExpertToJob.CostFloors;
 
 /// <summary>
 /// The deterministic token yardstick the Cost Floors are measured in (P1T-144).

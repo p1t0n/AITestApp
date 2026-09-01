@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.AI;
 
-namespace CvManager.Agents.Agents;
+namespace ExpertToJob.Agents.Agents;
 
 /// <summary>What a thread lookup produced: the id to answer with (fresh when the requested one
 /// was unknown or expired — the client detects context loss by the id changing) and the bounded

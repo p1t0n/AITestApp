@@ -1,4 +1,4 @@
-namespace CvManager.Application.Search;
+namespace ExpertToJob.Application.Search;
 
 /// <summary>
 /// How one shortlist candidate fared against one requirement: matched or not, and when matched,

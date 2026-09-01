@@ -1,9 +1,9 @@
-using CvManager.Agents.Agents;
+using ExpertToJob.Agents.Agents;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// Unit tests for the interview-kit composition (P1T-102): the markdown kit ships verbatim, the

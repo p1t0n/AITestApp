@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace CvManager.Infrastructure.Persistence.SeedData;
+namespace ExpertToJob.Infrastructure.Persistence.SeedData;
 
 /// <summary>
 /// (De)serializes the <c>demo-roster.json</c> asset. Shared by the generation tool

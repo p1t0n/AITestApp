@@ -1,6 +1,6 @@
-using CvManager.Domain.Entities;
+using ExpertToJob.Domain.Entities;
 
-namespace CvManager.Web.Auth;
+namespace ExpertToJob.Web.Auth;
 
 /// <summary>Issues session JWTs after a successful passkey ceremony.</summary>
 public interface IJwtTokenIssuer

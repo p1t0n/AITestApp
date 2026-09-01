@@ -1,11 +1,11 @@
 using System.Text.Json;
-using CvManager.Application.Employees;
-using CvManager.Domain.Enums;
+using ExpertToJob.Application.Employees;
+using ExpertToJob.Domain.Enums;
 using FluentValidation;
 using FluentValidation.Results;
 using Microsoft.Extensions.AI;
 
-namespace CvManager.Agents.Tests.Eval;
+namespace ExpertToJob.Agents.Tests.Eval;
 
 /// <summary>Everything one eval run staged, captured from the fake MCP tools' arguments.</summary>
 public sealed class IngestionWriteLog
