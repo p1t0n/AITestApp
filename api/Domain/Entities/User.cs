@@ -6,7 +6,8 @@ namespace ExpertToJob.Domain.Entities;
 /// An authenticated account. Auth is passwordless: the only login credential is a
 /// passkey (see <see cref="PasskeyCredential"/>). The <see cref="ControlWordHash"/> is
 /// the sole account-recovery secret — used to register a new passkey after device loss.
-/// Roles are flat (no admin); any signed-in user may manage any user.
+/// <see cref="Role"/> splits staff (<c>ServiceManager</c>) from the people the CVs are about
+/// (<c>Expert</c>); <see cref="TokenVersion"/> is how a live session is revoked.
 /// </summary>
 public class User
 {
@@ -22,6 +23,22 @@ public class User
     public string ControlWordHash { get; set; } = string.Empty;
 
     public UserStatus Status { get; set; } = UserStatus.Active;
+
+    /// <summary>
+    /// What the account may reach. Defaults to <see cref="UserRole.Expert"/> because signup is
+    /// open self-serve — staff are made deliberately (bootstrap config, or promotion), never by
+    /// signing up. Existing accounts were migrated to <see cref="UserRole.ServiceManager"/>: they
+    /// were all staff before the split existed.
+    /// </summary>
+    public UserRole Role { get; set; } = UserRole.Expert;
+
+    /// <summary>
+    /// Session generation. Minted into every token and re-checked against this column on every
+    /// request, so bumping it refuses every token already issued for this account. Without it a
+    /// deactivated or erased person keeps working until their token expires — which is why erasure
+    /// depends on this field rather than on a short lifetime.
+    /// </summary>
+    public int TokenVersion { get; set; } = 1;
 
     /// <summary>Per-user daily token cap. Null = inherit the system default from config.</summary>
     public long? DailyTokenCap { get; set; }

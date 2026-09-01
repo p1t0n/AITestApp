@@ -16,6 +16,7 @@ import SignupPage from "./pages/SignupPage";
 import SigninPage from "./pages/SigninPage";
 import RecoverPage from "./pages/RecoverPage";
 import UsersPage from "./pages/UsersPage";
+import MyWorkspacePage from "./pages/MyWorkspacePage";
 import AgentWidget from "./components/AgentWidget";
 import AppRailNav, { BRAND } from "./components/AppRail";
 import CommandPalette from "./components/CommandPalette";
@@ -23,12 +24,31 @@ import { ErrorBoundary, PageErrorFallback, WidgetErrorFallback } from "./compone
 import { PageContainer } from "./components/PageHeader";
 import { DOCK_PUSH_VAR, dockPushWidth, useAgentDock } from "./components/useAgentDock";
 import { RAIL_PUSH_VAR, useAppRail } from "./components/useAppRail";
-import { useIsAuthenticated } from "./auth/useAuth";
+import { useIsAuthenticated, useSessionRole } from "./auth/useAuth";
+import { landingFor, type SessionRole } from "./auth/roles";
 
-/** Guards the protected area: renders children when signed in, else bounces to sign-in. */
-function RequireAuth() {
+/**
+ * Guards a routed area, and says who it is for (P1T-181). Every protected route now declares its
+ * audience, mirroring the server, where the audience is declared per endpoint and the fallback is
+ * staff-only.
+ *
+ * Three outcomes, and the third is the one that matters: a signed-in user who asks for a route
+ * their role cannot have goes to **their own landing page**, never to `/signin`. Sending them to
+ * the gate would claim they are signed out — they are not — and offer them a sign-in they have no
+ * second account for.
+ *
+ * A session with no stored role predates the split; its token carries neither claim the server now
+ * requires, so the gate is the honest destination.
+ */
+function RequireAuth({ role }: { role: SessionRole }) {
   const authed = useIsAuthenticated();
-  return authed ? <Outlet /> : <Navigate to="/signin" replace />;
+  const actual = useSessionRole();
+
+  if (!authed || actual === null) {
+    return <Navigate to="/signin" replace />;
+  }
+
+  return actual === role ? <Outlet /> : <Navigate to={landingFor(actual)} replace />;
 }
 
 /**
@@ -113,13 +133,20 @@ export default function App() {
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/recover" element={<RecoverPage />} />
 
-          {/* Everything else requires authentication */}
-          <Route element={<RequireAuth />}>
+          {/* Staff surfaces. The roster, the catalog and user administration are all staffing
+              data — an Expert reaching any of them would be reading other people's CVs. */}
+          <Route element={<RequireAuth role="ServiceManager" />}>
             <Route path="/" element={<ExpertsPage />} />
             <Route path="/experts/:id" element={<ExpertDetailPage />} />
             <Route path="/experts/:id/cv" element={<CvPage />} />
             <Route path="/catalog" element={<CatalogPage />} />
             <Route path="/users" element={<UsersPage />} />
+          </Route>
+
+          {/* The Expert's own space. Thin on purpose — P1T-190 builds the workspace; this slice
+              needs a landing page that exists, so a wrong-role redirect has somewhere to go. */}
+          <Route element={<RequireAuth role="Expert" />}>
+            <Route path="/me" element={<MyWorkspacePage />} />
           </Route>
         </Routes>
       </RoutedArea>

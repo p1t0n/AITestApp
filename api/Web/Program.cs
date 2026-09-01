@@ -77,6 +77,19 @@ if (app.Environment.IsDevelopment())
     }
 }
 
+// The first Service Manager (P1T-181). Runs in every environment: signup only makes Experts, so
+// without this a fresh database has no account that can reach the roster. No-op when unconfigured.
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var seedEmail = app.Configuration[$"{AuthOptions.Section}:SeedServiceManagerEmail"];
+    var outcome = await ServiceManagerBootstrapper.EnsureAsync(db, seedEmail, TimeProvider.System);
+    if (outcome != BootstrapOutcome.NotConfigured)
+    {
+        app.Logger.LogInformation("Service Manager bootstrap for {Email}: {Outcome}.", seedEmail, outcome);
+    }
+}
+
 app.UseCors(SpaCors);
 app.UseAuthentication();
 app.UseAuthorization();

@@ -38,6 +38,18 @@ public enum UserStatus
 }
 
 /// <summary>
+/// What an account is allowed to be. <see cref="ServiceManager"/> is staff: the roster, the skill
+/// catalog, user administration, the agent surfaces. <see cref="Expert"/> is the person the CV is
+/// about — they reach their own data and nothing else. Signup creates an Expert; staff are made,
+/// not self-declared (bootstrap config or promotion by another Service Manager).
+/// </summary>
+public enum UserRole
+{
+    ServiceManager = 1,
+    Expert = 2
+}
+
+/// <summary>
 /// What a <see cref="Entities.ExpertSearchChunk"/> was rendered from: one work
 /// <see cref="Entities.Experience"/>, an expert's professional <c>Summary</c>, or a single
 /// <see cref="Entities.Achievement"/> bullet.

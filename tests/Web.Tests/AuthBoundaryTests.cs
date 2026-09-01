@@ -1,13 +1,15 @@
 using System.Net;
 using System.Net.Http.Json;
+using ExpertToJob.Domain.Enums;
 using FluentAssertions;
 
 namespace ExpertToJob.Web.Tests;
 
 /// <summary>
-/// The service boundary itself. The app-wide authorization fallback policy is what makes the REST
-/// API authenticated; nothing on a controller says so, so only a request without a token proves it.
-/// These are the executable answer to "is the Web API protected at the boundary?".
+/// The service boundary itself. Authorization is declared per controller and backed by a
+/// staff-only fallback policy, so only a real request proves what each rule does: a request without
+/// a token, a request with an Expert's token, and a request with a token whose generation has been
+/// superseded. These are the executable answer to "who can reach the Web API?".
 /// </summary>
 [Collection(WebApiCollection.Name)]
 public class AuthBoundaryTests(WebApiFactory factory)
@@ -34,6 +36,56 @@ public class AuthBoundaryTests(WebApiFactory factory)
         var response = await anonymous.SendAsync(new HttpRequestMessage(new HttpMethod(method), path));
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    /// <summary>
+    /// The role split. Every endpoint above is staff-only, and an Expert token is a *valid* session
+    /// — correct signature, live account, current token version — so 403 (or 401) here is the
+    /// authorization decision itself rather than a rejected credential. This is the criterion the
+    /// whole slice exists for: a signed-in Expert reaches none of the staff surface.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ProtectedEndpoints))]
+    public async Task Refuses_an_expert_token_on_every_service_manager_endpoint(string method, string path)
+    {
+        using var expert = factory.CreateExpertClient();
+
+        var response = await expert.SendAsync(new HttpRequestMessage(new HttpMethod(method), path));
+
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Forbidden, HttpStatusCode.Unauthorized);
+    }
+
+    /// <summary>
+    /// Revocation. The same token, unchanged and unexpired, stops working the moment the account's
+    /// token version moves — which is what makes "sign this person out now" possible at all. The
+    /// Agents host is held to the same rule by its own test.
+    /// </summary>
+    [Fact]
+    public async Task A_superseded_token_version_refuses_a_previously_valid_token()
+    {
+        var (client, account) = factory.CreateClientFor(UserRole.ServiceManager);
+        using var _ = client;
+
+        (await client.GetAsync("/api/experts")).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        factory.RevokeSessions(account.Id);
+
+        (await client.GetAsync("/api/experts")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    /// <summary>
+    /// A token the host cannot check for revocation is not accepted — otherwise dropping the claim
+    /// would be a way to opt out of revocation entirely.
+    /// </summary>
+    [Fact]
+    public async Task Refuses_a_token_whose_account_no_longer_exists()
+    {
+        var (client, account) = factory.CreateClientFor(UserRole.ServiceManager);
+        using var _ = client;
+
+        factory.DeleteAccount(account.Id);
+
+        (await client.GetAsync("/api/experts")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]

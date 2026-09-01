@@ -52,6 +52,7 @@ public class ShortlistEndpointTests
                 s.AddSingleton(chat);
                 s.AddKeyedSingleton<ExpertToJob.Agents.Mcp.IMcpToolSource>(
                     "shortlist", (_, _) => tool is null ? new FakeToolSource() : new FakeToolSource(tool));
+                s.AddInMemoryAppDb("shortlist");
                 extra?.Invoke(s);
             }));
 

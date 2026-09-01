@@ -1,5 +1,9 @@
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
+using ExpertToJob.Application.Auth;
+using ExpertToJob.Domain.Entities;
+using ExpertToJob.Domain.Enums;
+using ExpertToJob.Infrastructure.Persistence;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -53,11 +57,29 @@ public sealed class WebApiFactory : WebApplicationFactory<Program>, IAsyncLifeti
     }
 
     /// <summary>
-    /// A client carrying a valid session bearer token, minted from the host's own Auth:Jwt config so
-    /// it passes the same JWT validation the running app enforces. Mirrors
+    /// A client carrying a valid session bearer token for a Service Manager, minted from the host's
+    /// own Auth:Jwt config so it passes the same JWT validation the running app enforces. Mirrors
     /// <c>Agents.Tests/AuthTestExtensions</c> — the two hosts share one session token by design.
     /// </summary>
-    public HttpClient CreateAuthenticatedClient()
+    public HttpClient CreateAuthenticatedClient() => CreateClientFor(UserRole.ServiceManager).Client;
+
+    /// <summary>A client whose session belongs to an Expert — the role a self-serve signup gets.</summary>
+    public HttpClient CreateExpertClient() => CreateClientFor(UserRole.Expert).Client;
+
+    /// <summary>
+    /// A client plus the account it belongs to. The account is a real row: the session token names
+    /// it and the host re-reads its <c>TokenVersion</c> on every request, so a token for a user that
+    /// does not exist is refused — which is exactly the revocation mechanism and means tests can no
+    /// longer wave a bare signature at the API.
+    /// </summary>
+    public (HttpClient Client, User Account) CreateClientFor(UserRole role)
+    {
+        var account = CreateAccount(role);
+        return (ClientForAccount(account), account);
+    }
+
+    /// <summary>A client for an account that already exists — used after its token version moves.</summary>
+    public HttpClient ClientForAccount(User account)
     {
         var config = Services.GetRequiredService<IConfiguration>();
         var key = config["Auth:Jwt:SigningKey"]
@@ -66,11 +88,57 @@ public sealed class WebApiFactory : WebApplicationFactory<Program>, IAsyncLifeti
         var client = CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
             "Bearer",
-            MintHs256(key, config["Auth:Jwt:Issuer"] ?? "experttojob", config["Auth:Jwt:Audience"] ?? "experttojob-app"));
+            MintHs256(
+                key,
+                config["Auth:Jwt:Issuer"] ?? "experttojob",
+                config["Auth:Jwt:Audience"] ?? "experttojob-app",
+                account));
         return client;
     }
 
-    private static string MintHs256(string key, string issuer, string audience)
+    /// <summary>Inserts an account in the given role. Passkey-less: no ceremony is run here.</summary>
+    public User CreateAccount(UserRole role, UserStatus status = UserStatus.Active)
+    {
+        using var scope = Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var now = DateTimeOffset.UtcNow;
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Email = $"{role.ToString().ToLowerInvariant()}-{Guid.NewGuid():N}@example.com",
+            ControlWordHash = "test-not-a-real-hash",
+            Role = role,
+            Status = status,
+            TokenVersion = 1,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        db.Users.Add(user);
+        db.SaveChanges();
+        return user;
+    }
+
+    /// <summary>Removes an account, as erasure will — the session it minted must stop working.</summary>
+    public void DeleteAccount(Guid userId)
+    {
+        using var scope = Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.Users.RemoveRange(db.Users.Where(u => u.Id == userId));
+        db.SaveChanges();
+    }
+
+    /// <summary>Bumps an account's token version — the revocation switch — and returns the new value.</summary>
+    public int RevokeSessions(Guid userId)
+    {
+        using var scope = Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var user = db.Users.Single(u => u.Id == userId);
+        user.TokenVersion++;
+        db.SaveChanges();
+        return user.TokenVersion;
+    }
+
+    private static string MintHs256(string key, string issuer, string audience, User account)
     {
         static string B64(byte[] b) =>
             Convert.ToBase64String(b).TrimEnd('=').Replace('+', '-').Replace('/', '_');
@@ -79,7 +147,9 @@ public sealed class WebApiFactory : WebApplicationFactory<Program>, IAsyncLifeti
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var payload = B64(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new Dictionary<string, object>
         {
-            ["sub"] = Guid.NewGuid().ToString(),
+            ["sub"] = account.Id.ToString(),
+            [SessionClaims.Role] = account.Role.ToString(),
+            [SessionClaims.TokenVersion] = account.TokenVersion,
             ["iss"] = issuer,
             ["aud"] = audience,
             ["nbf"] = now,

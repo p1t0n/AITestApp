@@ -1,10 +1,13 @@
+using ExpertToJob.Application.Auth;
 using ExpertToJob.Application.Availability;
 using ExpertToJob.Application.Experts;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ExpertToJob.Web.Controllers;
 
 [ApiController]
+[Authorize(Policy = AuthPolicies.ServiceManager)]
 public class LanguagesController : ControllerBase
 {
     private readonly ILanguageService _svc;
@@ -27,6 +30,7 @@ public class LanguagesController : ControllerBase
 }
 
 [ApiController]
+[Authorize(Policy = AuthPolicies.ServiceManager)]
 public class AvailabilityController : ControllerBase
 {
     private readonly IAvailabilityService _svc;
@@ -53,6 +57,7 @@ public class AvailabilityController : ControllerBase
 }
 
 [ApiController]
+[Authorize(Policy = AuthPolicies.ServiceManager)]
 public class ExpertSkillsController : ControllerBase
 {
     private readonly IExpertSkillService _svc;
@@ -75,6 +80,7 @@ public class ExpertSkillsController : ControllerBase
 }
 
 [ApiController]
+[Authorize(Policy = AuthPolicies.ServiceManager)]
 public class QualificationsController : ControllerBase
 {
     private readonly IQualificationService _svc;
@@ -97,6 +103,7 @@ public class QualificationsController : ControllerBase
 }
 
 [ApiController]
+[Authorize(Policy = AuthPolicies.ServiceManager)]
 public class AchievementsController : ControllerBase
 {
     private readonly IAchievementService _svc;
@@ -112,6 +119,7 @@ public class AchievementsController : ControllerBase
 }
 
 [ApiController]
+[Authorize(Policy = AuthPolicies.ServiceManager)]
 public class ExperiencesController : ControllerBase
 {
     private readonly IExperienceService _svc;

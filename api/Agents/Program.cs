@@ -238,7 +238,9 @@ var app = builder.Build();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+// Liveness, deliberately anonymous: an orchestrator has no session token, and the fallback policy
+// is staff-only, so without this the health probe would 401 and the service would look dead.
+app.MapGet("/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 
 // Structured 429 the SPA renders in the Usage tab: which window, how much, and when it resets.
 static IResult CapReached(WindowUsage w) => Results.Json(

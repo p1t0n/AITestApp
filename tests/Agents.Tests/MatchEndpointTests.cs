@@ -28,6 +28,7 @@ public class MatchEndpointTests
                     () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "Fit: MODERATE (60/100)"))));
                 s.AddKeyedSingleton<ExpertToJob.Agents.Mcp.IMcpToolSource>(
                     "match", (_, _) => new FakeToolSource());
+                s.AddInMemoryAppDb("match");
                 extra?.Invoke(s);
             }));
 

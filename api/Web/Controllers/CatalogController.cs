@@ -1,9 +1,12 @@
+using ExpertToJob.Application.Auth;
 using ExpertToJob.Application.Skills;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ExpertToJob.Web.Controllers;
 
 [ApiController]
+[Authorize(Policy = AuthPolicies.ServiceManager)]
 [Route("api/catalog")]
 public class CatalogController : ControllerBase
 {

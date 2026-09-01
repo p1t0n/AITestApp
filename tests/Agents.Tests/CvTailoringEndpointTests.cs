@@ -56,6 +56,7 @@ public class CvTailoringEndpointTests
                 s.AddSingleton(chat);
                 s.AddKeyedSingleton<ExpertToJob.Agents.Mcp.IMcpToolSource>(
                     "cv-tailoring", (_, _) => new FakeToolSource(tools));
+                s.AddInMemoryAppDb("cv-tailoring");
                 extra?.Invoke(s);
             }));
 

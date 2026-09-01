@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using ExpertToJob.Application.Auth;
 using ExpertToJob.Domain.Entities;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -9,7 +10,9 @@ namespace ExpertToJob.Web.Auth;
 
 /// <summary>
 /// Mints HS256 session tokens. The "sub" claim carries the user id so both the Web API and the
-/// Agents service can attribute requests to a user (token-usage caps depend on this).
+/// Agents service can attribute requests to a user (token-usage caps depend on this); "role" is
+/// what every authorization policy reads, and "tv" pins the session to a generation of the account
+/// so bumping <c>User.TokenVersion</c> refuses every token already out there.
 /// </summary>
 public sealed class JwtTokenIssuer(IOptions<AuthOptions> options, TimeProvider clock) : IJwtTokenIssuer
 {
@@ -28,6 +31,8 @@ public sealed class JwtTokenIssuer(IOptions<AuthOptions> options, TimeProvider c
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new Claim(SessionClaims.Role, user.Role.ToString()),
+            new Claim(SessionClaims.TokenVersion, user.TokenVersion.ToString()),
         };
 
         var token = new JwtSecurityToken(

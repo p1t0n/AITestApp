@@ -1,10 +1,13 @@
+using ExpertToJob.Application.Auth;
 using ExpertToJob.Application.Cv;
 using ExpertToJob.Application.Experts;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ExpertToJob.Web.Controllers;
 
 [ApiController]
+[Authorize(Policy = AuthPolicies.ServiceManager)]
 [Route("api/experts")]
 public class ExpertsController : ControllerBase
 {
