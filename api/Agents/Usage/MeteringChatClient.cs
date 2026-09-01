@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using Microsoft.Extensions.AI;
 
-namespace CvManager.Agents.Usage;
+namespace ExpertToJob.Agents.Usage;
 
 /// <summary>
 /// Per-run capture cell for chat-call telemetry (P1T-95). An agent opens a scope around its run;

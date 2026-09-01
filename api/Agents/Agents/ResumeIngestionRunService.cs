@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace CvManager.Agents.Agents;
+namespace ExpertToJob.Agents.Agents;
 
 /// <summary>Counts of successfully created children, composed from captured tool calls.</summary>
 public sealed record IngestionCreated(int Languages, int Skills, int Qualifications, int Experiences);

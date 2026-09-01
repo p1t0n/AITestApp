@@ -1,8 +1,8 @@
-using CvManager.Application.Search;
-using CvManager.Domain.Enums;
+using ExpertToJob.Application.Search;
+using ExpertToJob.Domain.Enums;
 using FluentAssertions;
 
-namespace CvManager.Application.Tests;
+namespace ExpertToJob.Application.Tests;
 
 public class ReconcilerTests
 {

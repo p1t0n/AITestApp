@@ -1,8 +1,8 @@
 using System.ClientModel;
 using System.ClientModel.Primitives;
-using CvManager.Agents.Agents;
-using CvManager.Agents.Configuration;
-using CvManager.ExtractionEval;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.Configuration;
+using ExpertToJob.ExtractionEval;
 using Microsoft.Extensions.AI;
 using OpenAI;
 

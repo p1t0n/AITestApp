@@ -1,4 +1,4 @@
-namespace CvManager.RetrievalEval;
+namespace ExpertToJob.RetrievalEval;
 
 /// <summary>One returned employee with the similarity the search scored it at.</summary>
 public sealed record ScoredHit(string Key, double Similarity);

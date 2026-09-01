@@ -1,7 +1,7 @@
-using CvManager.Application.Skills;
+using ExpertToJob.Application.Skills;
 using Microsoft.AspNetCore.Mvc;
 
-namespace CvManager.Web.Controllers;
+namespace ExpertToJob.Web.Controllers;
 
 [ApiController]
 [Route("api/catalog")]

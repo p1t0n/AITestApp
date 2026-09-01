@@ -1,9 +1,9 @@
 using System.Globalization;
-using CvManager.Application.Search;
+using ExpertToJob.Application.Search;
 using FluentAssertions;
 using Xunit;
 
-namespace CvManager.Application.Tests;
+namespace ExpertToJob.Application.Tests;
 
 /// <summary>
 /// Unit tests for the pure coverage-first merge: candidates are ranked by how many requirements

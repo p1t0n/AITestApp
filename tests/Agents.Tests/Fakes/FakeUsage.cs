@@ -1,7 +1,7 @@
-using CvManager.Agents.Agents;
-using CvManager.Agents.Usage;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.Usage;
 
-namespace CvManager.Agents.Tests.Fakes;
+namespace ExpertToJob.Agents.Tests.Fakes;
 
 /// <summary>An <see cref="IUsageService"/> stand-in with a fixed cap verdict, so endpoint tests
 /// can exercise the 429 path without a database.</summary>

@@ -1,6 +1,6 @@
-using CvManager.Agents.Agents;
+using ExpertToJob.Agents.Agents;
 
-namespace CvManager.Agents.Staffing;
+namespace ExpertToJob.Agents.Staffing;
 
 /// <summary>The typed staffing request: the job description plus the optional shortlist filters,
 /// and how many top candidates to fan the match step out over (default 3, clamped to 1..5).</summary>
@@ -67,7 +67,7 @@ public sealed record StaffingReport(
     Guid? ProposalId = null,
     [property: System.Text.Json.Serialization.JsonIgnore(
         Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    CvManager.Agents.Agents.JdRequirements? Extraction = null);
+    ExpertToJob.Agents.Agents.JdRequirements? Extraction = null);
 
 /// <summary>One ordered progress event from a pipeline run. This is the streaming seam: the
 /// pipeline emits these in order (via <see cref="IProgress{T}"/> and on the outcome) and the SSE

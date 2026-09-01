@@ -1,4 +1,4 @@
-namespace CvManager.Domain.Entities;
+namespace ExpertToJob.Domain.Entities;
 
 /// <summary>
 /// A staffing run's outcome held for human decision (P1T-100). The pipeline only ever proposes;

@@ -1,6 +1,6 @@
 using Microsoft.Extensions.AI;
 
-namespace CvManager.Agents.Agents;
+namespace ExpertToJob.Agents.Agents;
 
 /// <summary>
 /// The Capture-Verify Guard's capture half (P1T-130, see CONTEXT.md: Capture-Verify Guard): an

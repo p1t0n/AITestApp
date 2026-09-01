@@ -4,14 +4,14 @@ using System.Text.Json.Serialization.Metadata;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using CvManager.Application;
-using CvManager.Infrastructure;
-using CvManager.Infrastructure.Embeddings;
-using CvManager.Infrastructure.Search;
-using CvManager.Mcp;
-using CvManager.Mcp.Auth;
-using CvManager.Mcp.Search;
-using CvManager.Mcp.Tools;
+using ExpertToJob.Application;
+using ExpertToJob.Infrastructure;
+using ExpertToJob.Infrastructure.Embeddings;
+using ExpertToJob.Infrastructure.Search;
+using ExpertToJob.Mcp;
+using ExpertToJob.Mcp.Auth;
+using ExpertToJob.Mcp.Search;
+using ExpertToJob.Mcp.Tools;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using ModelContextProtocol.AspNetCore.Authentication;
 using ModelContextProtocol.Authentication;
@@ -23,7 +23,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Target is the Aspire dashboard from docker-compose (OTLP gRPC localhost:4317 by default);
 // the app runs unchanged when the dashboard is down.
 builder.Services.AddOpenTelemetry()
-    .ConfigureResource(r => r.AddService("cvmanager-mcp"))
+    .ConfigureResource(r => r.AddService("experttojob-mcp"))
     .WithTracing(t => t
         .AddAspNetCoreInstrumentation()
         .AddSource(
@@ -51,7 +51,7 @@ builder.Services.AddHostedService<ReconcileWorker>();
 
 // OAuth 2.1: this server is the Resource Server. Keycloak (the Authorization Server) issues
 // tokens and runs the PKCE auth-code flow; here we only validate JWTs and advertise the AS.
-var authority = builder.Configuration["Mcp:Authority"] ?? "http://localhost:8080/realms/cv-manager";
+var authority = builder.Configuration["Mcp:Authority"] ?? "http://localhost:8080/realms/expert-to-job";
 var resource = builder.Configuration["Mcp:Resource"] ?? "https://localhost/mcp";
 
 builder.Services

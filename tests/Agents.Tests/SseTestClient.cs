@@ -2,7 +2,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>One parsed SSE frame: the event name plus its data payload (JSON in this contract).</summary>
 internal sealed record SseFrame(string Event, string Data)

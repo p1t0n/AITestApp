@@ -1,4 +1,4 @@
-namespace CvManager.Agents.Handoff;
+namespace ExpertToJob.Agents.Handoff;
 
 /// <summary>An agent's MCP identity as provenance: the OAuth client id it authenticates as and
 /// the scopes it requests. Deliberately has no secret field — this type exists to travel inside

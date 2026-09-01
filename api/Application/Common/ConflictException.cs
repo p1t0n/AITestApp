@@ -1,4 +1,4 @@
-namespace CvManager.Application.Common;
+namespace ExpertToJob.Application.Common;
 
 /// <summary>Thrown when an operation conflicts with current state. Mapped to HTTP 409 in the Web layer.</summary>
 public class ConflictException : Exception

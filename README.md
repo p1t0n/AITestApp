@@ -1,4 +1,4 @@
-# CV Manager
+# ExpertToJob
 
 A .NET 10 + React (Vite) service to manage available employees — skills, qualifications,
 work experience, and time-based availability — and render their CVs. An MCP server exposes
@@ -132,8 +132,8 @@ Opens on `http://localhost:5173` and proxies `/api/*` to the backend.
 ### 4. Start the MCP server (optional)
 
 The MCP server is an **OAuth 2.1 Resource Server**. Keycloak (the Authorization Server)
-runs in `docker compose up -d` and imports a `cv-manager` realm with a public PKCE client
-(`cv-manager-mcp`), the `mcp:read` / `mcp:write` / `mcp:admin` scopes, and an audience mapper.
+runs in `docker compose up -d` and imports an `expert-to-job` realm with a public PKCE client
+(`expert-to-job-mcp`), the `mcp:read` / `mcp:write` / `mcp:admin` scopes, and an audience mapper.
 
 ```bash
 cd api/Mcp
@@ -308,8 +308,8 @@ gate (`--filter "Category=eval"`, ~3 min, 39 model calls).
 
 ```bash
 dotnet ef migrations add <Name> \
-  --project api/Infrastructure/CvManager.Infrastructure.csproj \
-  --startup-project api/Web/CvManager.Web.csproj \
+  --project api/Infrastructure/ExpertToJob.Infrastructure.csproj \
+  --startup-project api/Web/ExpertToJob.Web.csproj \
   --output-dir Persistence/Migrations
 ```
 

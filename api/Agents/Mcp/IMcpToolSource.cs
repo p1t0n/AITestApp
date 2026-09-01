@@ -1,6 +1,6 @@
 using Microsoft.Extensions.AI;
 
-namespace CvManager.Agents.Mcp;
+namespace ExpertToJob.Agents.Mcp;
 
 /// <summary>
 /// Supplies the MCP tools an agent may use, as Microsoft.Extensions.AI <see cref="AITool"/>s.

@@ -1,4 +1,4 @@
-namespace CvManager.Agents.Usage;
+namespace ExpertToJob.Agents.Usage;
 
 /// <summary>
 /// System-default token caps, inherited by any user whose per-user cap is null. Bound from the

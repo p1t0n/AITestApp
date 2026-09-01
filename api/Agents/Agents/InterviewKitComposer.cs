@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace CvManager.Agents.Agents;
+namespace ExpertToJob.Agents.Agents;
 
 /// <summary>One vetted interview question. <see cref="Evidence"/> is non-null only when the
 /// model's quote was verified verbatim against the captured CV — checked, never trusted.</summary>

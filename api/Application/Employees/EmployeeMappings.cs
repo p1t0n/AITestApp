@@ -1,7 +1,7 @@
-using CvManager.Application.Availability;
-using CvManager.Domain.Entities;
+using ExpertToJob.Application.Availability;
+using ExpertToJob.Domain.Entities;
 
-namespace CvManager.Application.Employees;
+namespace ExpertToJob.Application.Employees;
 
 internal static class EmployeeMappings
 {

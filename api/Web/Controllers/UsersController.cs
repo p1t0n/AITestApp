@@ -1,7 +1,7 @@
-using CvManager.Application.Users;
+using ExpertToJob.Application.Users;
 using Microsoft.AspNetCore.Mvc;
 
-namespace CvManager.Web.Controllers;
+namespace ExpertToJob.Web.Controllers;
 
 /// <summary>
 /// User management. Requires authentication (the app-wide fallback policy); roles are flat, so any

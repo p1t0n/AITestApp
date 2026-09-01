@@ -1,7 +1,7 @@
-using CvManager.Domain.Enums;
-using CvManager.Infrastructure.Persistence.SeedData;
+using ExpertToJob.Domain.Enums;
+using ExpertToJob.Infrastructure.Persistence.SeedData;
 
-namespace CvManager.Tools.DemoRoster;
+namespace ExpertToJob.Tools.DemoRoster;
 
 /// <summary>
 /// Deterministically assembles the demo roster: names, emails, industries, careers, skills,

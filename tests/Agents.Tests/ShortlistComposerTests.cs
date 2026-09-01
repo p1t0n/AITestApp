@@ -1,7 +1,7 @@
-using CvManager.Agents.Agents;
+using ExpertToJob.Agents.Agents;
 using FluentAssertions;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// Tests for the endpoint-side composition of the shortlist response: deterministic fields

@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace CvManager.Tools.DemoRoster;
+namespace ExpertToJob.Tools.DemoRoster;
 
 /// <summary>
 /// Offline narrative writer: picks a hand-authored template from <see cref="NarrativeFragments"/>

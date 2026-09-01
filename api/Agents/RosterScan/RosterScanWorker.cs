@@ -1,7 +1,7 @@
 using System.Threading.Channels;
-using CvManager.Domain.Entities;
+using ExpertToJob.Domain.Entities;
 
-namespace CvManager.Agents.RosterScan;
+namespace ExpertToJob.Agents.RosterScan;
 
 /// <summary>The submit endpoint's hand-off to the background runner: enqueue and return.</summary>
 public interface IRosterScanQueue

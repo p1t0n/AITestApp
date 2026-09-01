@@ -1,10 +1,10 @@
-using CvManager.Application.Cv;
-using CvManager.Application.Employees;
-using CvManager.Domain.Enums;
+using ExpertToJob.Application.Cv;
+using ExpertToJob.Application.Employees;
+using ExpertToJob.Domain.Enums;
 using FluentAssertions;
 using Xunit;
 
-namespace CvManager.Application.Tests;
+namespace ExpertToJob.Application.Tests;
 
 public class CvServiceTests
 {

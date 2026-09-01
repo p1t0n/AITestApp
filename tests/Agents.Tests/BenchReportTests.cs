@@ -1,10 +1,10 @@
 using System.Text.Json.Nodes;
-using CvManager.Agents.Agents;
-using CvManager.Domain.Entities;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.Domain.Entities;
 using FluentAssertions;
 using Xunit;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// Unit tests for the bench report's deterministic pieces (P1T-104): the pure stats composer,

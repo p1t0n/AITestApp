@@ -1,6 +1,6 @@
-using CvManager.Domain.Entities;
+using ExpertToJob.Domain.Entities;
 
-namespace CvManager.Application.Availability;
+namespace ExpertToJob.Application.Availability;
 
 /// <summary>
 /// Pure availability step-function logic. Capacity at a target date is the

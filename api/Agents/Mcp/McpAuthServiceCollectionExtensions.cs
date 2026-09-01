@@ -1,10 +1,10 @@
-using CvManager.Agents.Auth;
-using CvManager.Agents.Configuration;
+using ExpertToJob.Agents.Auth;
+using ExpertToJob.Agents.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
-namespace CvManager.Agents.Mcp;
+namespace ExpertToJob.Agents.Mcp;
 
 /// <summary>
 /// Registers a per-agent MCP identity: its own client-credentials token provider and MCP tool

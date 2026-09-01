@@ -1,8 +1,8 @@
-using CvManager.Application.Abstractions;
+using ExpertToJob.Application.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
-namespace CvManager.Agents.Usage;
+namespace ExpertToJob.Agents.Usage;
 
 /// <summary>Usage for one cap window: how much spent, the cap, and when it resets (UTC).</summary>
 public sealed record WindowUsage(string Window, long Used, long Cap, DateTimeOffset ResetAt)

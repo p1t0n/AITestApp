@@ -1,6 +1,6 @@
 using System.Text.Json;
-using CvManager.CostFloors;
-using CvManager.Infrastructure.Persistence;
+using ExpertToJob.CostFloors;
+using ExpertToJob.Infrastructure.Persistence;
 using FluentAssertions;
 using FluentAssertions.Execution;
 using Microsoft.EntityFrameworkCore;
@@ -10,7 +10,7 @@ using Testcontainers.PostgreSql;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace CvManager.Mcp.Tests.CostFloors;
+namespace ExpertToJob.Mcp.Tests.CostFloors;
 
 /// <summary>
 /// The result half of the Cost Floors (P1T-144). A read tool's result is charged once when it is
@@ -43,7 +43,7 @@ public sealed class ReadToolResultCostFloorTests(ITestOutputHelper output) : IAs
         // The same roster shape the 2026-08-30 measurement ran on: the first 45 dataset employees
         // over the full 79-skill catalog. A different count would make the ceilings incomparable.
         await DemoRosterSeeder.SeedAsync(
-            db, DemoRosterSeeder.LoadCommittedDataset(), CvManager.CostFloors.CostFloors.DemoRosterEmployees);
+            db, DemoRosterSeeder.LoadCommittedDataset(), ExpertToJob.CostFloors.CostFloors.DemoRosterEmployees);
 
         // A deterministic subject for the per-employee tools: lowest email wins, so the ceilings
         // measure the same person on every run.
@@ -84,7 +84,7 @@ public sealed class ReadToolResultCostFloorTests(ITestOutputHelper output) : IAs
             output.WriteLine($"{tool,-22} {tokens,6} tokens");
 
             tokens.Should().BeLessThanOrEqualTo(
-                CvManager.CostFloors.CostFloors.ReadToolResultCeilings[tool],
+                ExpertToJob.CostFloors.CostFloors.ReadToolResultCeilings[tool],
                 $"{tool}'s result is re-sent on every model call that follows it");
         }
     }
@@ -105,7 +105,7 @@ public sealed class ReadToolResultCostFloorTests(ITestOutputHelper output) : IAs
         var tokens = TokenEstimate.Of(text);
         output.WriteLine($"skill_list (unfiltered) {tokens,6} tokens");
 
-        tokens.Should().BeLessThanOrEqualTo(CvManager.CostFloors.CostFloors.SkillListUnfilteredPageCeiling);
+        tokens.Should().BeLessThanOrEqualTo(ExpertToJob.CostFloors.CostFloors.SkillListUnfilteredPageCeiling);
 
         // One page, and the whole catalog fits in it: ResumeIngestionAgent loads the catalog with
         // a single unfiltered call and matches resume skills against what comes back.
@@ -130,8 +130,8 @@ public sealed class ReadToolResultCostFloorTests(ITestOutputHelper output) : IAs
         using var _ = new AssertionScope();
         foreach (var tool in readTools)
         {
-            (CvManager.CostFloors.CostFloors.ReadToolResultCeilings.ContainsKey(tool)
-             || CvManager.CostFloors.CostFloors.ModelBackedReadTools.Contains(tool))
+            (ExpertToJob.CostFloors.CostFloors.ReadToolResultCeilings.ContainsKey(tool)
+             || ExpertToJob.CostFloors.CostFloors.ModelBackedReadTools.Contains(tool))
                 .Should().BeTrue(
                     $"{tool} needs a ratcheted result ceiling in CostFloors, or an entry in " +
                     "ModelBackedReadTools saying why it cannot have one");

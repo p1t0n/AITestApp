@@ -1,6 +1,6 @@
-using CvManager.Domain.Enums;
+using ExpertToJob.Domain.Enums;
 
-namespace CvManager.Tools.DemoRoster;
+namespace ExpertToJob.Tools.DemoRoster;
 
 /// <summary>
 /// Industry-agnostic pools: names, places, spoken languages, degrees. Surnames are invented

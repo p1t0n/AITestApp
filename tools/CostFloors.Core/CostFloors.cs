@@ -1,4 +1,4 @@
-namespace CvManager.CostFloors;
+namespace ExpertToJob.CostFloors;
 
 /// <summary>
 /// The committed Cost Floors (P1T-144) — Ratchets, in <see cref="TokenEstimate"/> tokens. THE

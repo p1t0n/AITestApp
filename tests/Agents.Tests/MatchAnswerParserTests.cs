@@ -1,7 +1,7 @@
-using CvManager.Agents.Staffing;
+using ExpertToJob.Agents.Staffing;
 using FluentAssertions;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// Unit tests for the pure parser that lifts the overall score and band out of the Match agent's

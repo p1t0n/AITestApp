@@ -1,14 +1,14 @@
-using CvManager.Agents.Agents;
-using CvManager.Agents.Configuration;
-using CvManager.Agents.Tests.Fakes;
-using CvManager.Agents.Usage;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.Configuration;
+using ExpertToJob.Agents.Tests.Fakes;
+using ExpertToJob.Agents.Usage;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.AI;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// The Runtime Budget seam (P1T-147): a run that would blow past its ceiling still returns a real

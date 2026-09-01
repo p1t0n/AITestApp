@@ -1,8 +1,8 @@
-using CvManager.Application.Cv;
-using CvManager.Application.Employees;
+using ExpertToJob.Application.Cv;
+using ExpertToJob.Application.Employees;
 using Microsoft.AspNetCore.Mvc;
 
-namespace CvManager.Web.Controllers;
+namespace ExpertToJob.Web.Controllers;
 
 [ApiController]
 [Route("api/employees")]

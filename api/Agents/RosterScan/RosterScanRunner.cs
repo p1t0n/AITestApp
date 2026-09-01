@@ -1,10 +1,10 @@
 using System.Text.Json;
-using CvManager.Agents.Agents;
-using CvManager.Agents.Usage;
-using CvManager.Application.Search;
-using CvManager.Domain.Entities;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.Usage;
+using ExpertToJob.Application.Search;
+using ExpertToJob.Domain.Entities;
 
-namespace CvManager.Agents.RosterScan;
+namespace ExpertToJob.Agents.RosterScan;
 
 /// <summary>What one runner pass over a job ended as.</summary>
 public enum RosterScanRunResult
@@ -38,7 +38,7 @@ public sealed class RosterScanRunner(
     public const string AgentName = "roster-scan";
 
     /// <summary>One span per job pass, so a scan reads as one trace in the Aspire dashboard.</summary>
-    public static readonly System.Diagnostics.ActivitySource Tracing = new("CvManager.Agents.RosterScan");
+    public static readonly System.Diagnostics.ActivitySource Tracing = new("ExpertToJob.Agents.RosterScan");
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {

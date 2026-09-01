@@ -1,10 +1,10 @@
-using CvManager.Application.Search;
+using ExpertToJob.Application.Search;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Xunit;
 
-namespace CvManager.Mcp.Tests;
+namespace ExpertToJob.Mcp.Tests;
 
 /// <summary>
 /// Tests the roster_shortlist_search MCP tool wiring — exposure, scope, and param binding —

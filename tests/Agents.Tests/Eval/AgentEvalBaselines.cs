@@ -1,4 +1,4 @@
-namespace CvManager.Agents.Tests.Eval;
+namespace ExpertToJob.Agents.Tests.Eval;
 
 /// <summary>
 /// Committed baseline floors for the live agent evals (P1T-97) — THE place these numbers live,

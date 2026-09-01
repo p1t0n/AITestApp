@@ -9,7 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Testcontainers.PostgreSql;
 
-namespace CvManager.Web.Tests;
+namespace ExpertToJob.Web.Tests;
 
 /// <summary>
 /// The real Web API host over a throwaway Postgres. Only the connection string is overridden — the
@@ -66,7 +66,7 @@ public sealed class WebApiFactory : WebApplicationFactory<Program>, IAsyncLifeti
         var client = CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
             "Bearer",
-            MintHs256(key, config["Auth:Jwt:Issuer"] ?? "cvmanager", config["Auth:Jwt:Audience"] ?? "cvmanager-app"));
+            MintHs256(key, config["Auth:Jwt:Issuer"] ?? "experttojob", config["Auth:Jwt:Audience"] ?? "experttojob-app"));
         return client;
     }
 

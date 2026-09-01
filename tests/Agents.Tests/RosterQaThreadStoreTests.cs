@@ -1,8 +1,8 @@
-using CvManager.Agents.Agents;
+using ExpertToJob.Agents.Agents;
 using FluentAssertions;
 using Microsoft.Extensions.AI;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>The P1T-82 thread-lifecycle decisions: sliding 30-minute TTL, LRU cap of 20 threads
 /// per user, silent fresh thread on unknown/expired/foreign ids, history bounded to 10 turns.</summary>

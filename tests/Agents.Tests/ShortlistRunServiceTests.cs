@@ -1,9 +1,9 @@
-using CvManager.Agents.Agents;
-using CvManager.Agents.Tests.Fakes;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.Tests.Fakes;
 using FluentAssertions;
 using Microsoft.Extensions.AI;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// Seam-level tests for <see cref="ShortlistRunService"/> (P1T-117 orchestration): extraction →

@@ -1,6 +1,6 @@
-using CvManager.Domain.Enums;
+using ExpertToJob.Domain.Enums;
 
-namespace CvManager.Application.Users;
+namespace ExpertToJob.Application.Users;
 
 /// <summary>Row in the user-management list.</summary>
 public sealed record UserSummaryDto(

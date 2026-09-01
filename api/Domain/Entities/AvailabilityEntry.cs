@@ -1,4 +1,4 @@
-namespace CvManager.Domain.Entities;
+namespace ExpertToJob.Domain.Entities;
 
 /// <summary>
 /// One step in an employee's availability step-function. The entry's <see cref="CapacityPercent"/>

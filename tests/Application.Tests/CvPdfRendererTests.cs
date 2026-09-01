@@ -1,12 +1,12 @@
 using System.Text;
-using CvManager.Application.Cv;
-using CvManager.Application.Employees;
-using CvManager.Domain.Enums;
-using CvManager.Infrastructure.Documents;
+using ExpertToJob.Application.Cv;
+using ExpertToJob.Application.Employees;
+using ExpertToJob.Domain.Enums;
+using ExpertToJob.Infrastructure.Documents;
 using FluentAssertions;
 using Xunit;
 
-namespace CvManager.Application.Tests;
+namespace ExpertToJob.Application.Tests;
 
 /// <summary>
 /// The PDF render is a headless path with no golden output to diff against, so these tests hold the

@@ -1,8 +1,8 @@
-using CvManager.Application.Abstractions;
-using CvManager.Domain.Entities;
+using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace CvManager.Agents.Staffing;
+namespace ExpertToJob.Agents.Staffing;
 
 /// <summary>What a decision attempt produced. Exactly one case applies.</summary>
 public enum ProposalDecisionResult
@@ -30,7 +30,7 @@ public sealed class StaffingProposalStore(
         Guid? requestedBy,
         string jobDescription,
         StaffingReport report,
-        CvManager.Agents.Handoff.HandoffPackage package,
+        ExpertToJob.Agents.Handoff.HandoffPackage package,
         CancellationToken ct = default)
     {
         try

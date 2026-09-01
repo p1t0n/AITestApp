@@ -1,10 +1,10 @@
 using System.Text.Json;
-using CvManager.Agents.Agents;
-using CvManager.Agents.Mcp;
-using CvManager.Application.Search;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.Mcp;
+using ExpertToJob.Application.Search;
 using Microsoft.Extensions.AI;
 
-namespace CvManager.Agents.RosterScan;
+namespace ExpertToJob.Agents.RosterScan;
 
 /// <summary>The intake sweep's seam over the <c>roster_digest_list</c> MCP tool: the runner pages
 /// the roster deterministically (no model involved). Tests substitute a fake.</summary>

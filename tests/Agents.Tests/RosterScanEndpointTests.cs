@@ -1,17 +1,17 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using CvManager.Agents.Agents;
-using CvManager.Agents.RosterScan;
-using CvManager.Agents.Tests.Fakes;
-using CvManager.Application.Search;
-using CvManager.Domain.Entities;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.RosterScan;
+using ExpertToJob.Agents.Tests.Fakes;
+using ExpertToJob.Application.Search;
+using ExpertToJob.Domain.Entities;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// The roster-scan endpoints (P1T-125) against the real host with fakes for the extractor, digest
@@ -69,11 +69,11 @@ public class RosterScanEndpointTests
                 s.AddSingleton<IScoringTransport>(new FakeTransport());
                 // Working in-memory DB so jobs persist (and users need not exist for the FK-less
                 // provider) — the BenchReportEndpointTests pattern.
-                s.RemoveAll(typeof(Microsoft.EntityFrameworkCore.DbContextOptions<CvManager.Infrastructure.Persistence.AppDbContext>));
+                s.RemoveAll(typeof(Microsoft.EntityFrameworkCore.DbContextOptions<ExpertToJob.Infrastructure.Persistence.AppDbContext>));
                 s.RemoveAll(typeof(Microsoft.EntityFrameworkCore.Infrastructure
-                    .IDbContextOptionsConfiguration<CvManager.Infrastructure.Persistence.AppDbContext>));
+                    .IDbContextOptionsConfiguration<ExpertToJob.Infrastructure.Persistence.AppDbContext>));
                 var dbName = $"roster-scan-endpoints-{Guid.NewGuid()}";
-                s.AddDbContext<CvManager.Infrastructure.Persistence.AppDbContext>(o =>
+                s.AddDbContext<ExpertToJob.Infrastructure.Persistence.AppDbContext>(o =>
                     Microsoft.EntityFrameworkCore.InMemoryDbContextOptionsExtensions.UseInMemoryDatabase(o, dbName));
             }));
 
@@ -129,11 +129,11 @@ public class RosterScanEndpointTests
     {
         // The deliberate contract decision: no 429 pre-check — a scan is a job, not a blocking
         // call. With the cap tripped the runner parks it as paused(cap) instead.
-        var exceeded = new CvManager.Agents.Usage.WindowUsage("daily", 50000, 50000, DateTimeOffset.UtcNow.AddHours(2));
+        var exceeded = new ExpertToJob.Agents.Usage.WindowUsage("daily", 50000, 50000, DateTimeOffset.UtcNow.AddHours(2));
         using var factory = FakedHost().WithWebHostBuilder(b => b.ConfigureServices(s =>
         {
-            s.RemoveAll<CvManager.Agents.Usage.IUsageService>();
-            s.AddSingleton<CvManager.Agents.Usage.IUsageService>(new FakeUsageService(exceeded));
+            s.RemoveAll<ExpertToJob.Agents.Usage.IUsageService>();
+            s.AddSingleton<ExpertToJob.Agents.Usage.IUsageService>(new FakeUsageService(exceeded));
         }));
         using var client = factory.CreateAuthenticatedClient();
 

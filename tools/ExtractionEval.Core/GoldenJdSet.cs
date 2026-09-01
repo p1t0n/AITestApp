@@ -1,6 +1,6 @@
-using CvManager.Agents.Agents;
+using ExpertToJob.Agents.Agents;
 
-namespace CvManager.ExtractionEval;
+namespace ExpertToJob.ExtractionEval;
 
 /// <summary>
 /// One hand-labeled JD in the frozen golden set (P1T-119). Labels encode what a faithful,

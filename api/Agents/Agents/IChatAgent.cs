@@ -1,7 +1,7 @@
-namespace CvManager.Agents.Agents;
+namespace ExpertToJob.Agents.Agents;
 
 /// <summary>
-/// A conversational agent over the CV Manager. This is the extension seam: future agents
+/// A conversational agent over ExpertToJob. This is the extension seam: future agents
 /// (CV Tailoring, Resume Ingestion, Staffing/Match) implement the same shape and get their own
 /// endpoint. Issue #15 ships a single-turn Roster Q&amp;A; threaded sessions arrive in #16.
 /// </summary>

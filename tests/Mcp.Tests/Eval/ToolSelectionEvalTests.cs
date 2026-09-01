@@ -1,6 +1,6 @@
 using System.ClientModel;
 using System.ClientModel.Primitives;
-using CvManager.ToolSelectionEval;
+using ExpertToJob.ToolSelectionEval;
 using FluentAssertions;
 using Microsoft.Extensions.AI;
 using OpenAI;
@@ -8,7 +8,7 @@ using System.ClientModel;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace CvManager.Mcp.Tests.Eval;
+namespace ExpertToJob.Mcp.Tests.Eval;
 
 /// <summary>Deterministic scoring tests for the tool-selection eval (P1T-127).</summary>
 public class ToolSelectionScoringTests

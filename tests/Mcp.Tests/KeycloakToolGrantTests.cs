@@ -3,7 +3,7 @@ using FluentAssertions;
 using FluentAssertions.Execution;
 using Xunit;
 
-namespace CvManager.Mcp.Tests;
+namespace ExpertToJob.Mcp.Tests;
 
 /// <summary>
 /// The provisioning half of Tool Grants (P1T-149): each agent's grants are client scopes on its
@@ -46,7 +46,7 @@ public class KeycloakToolGrantTests
     public static TheoryData<string> AgentKeys()
     {
         var data = new TheoryData<string>();
-        foreach (var key in CvManager.CostFloors.CostFloors.AgentToolAllowlists.Keys.Order())
+        foreach (var key in ExpertToJob.CostFloors.CostFloors.AgentToolAllowlists.Keys.Order())
         {
             data.Add(key);
         }
@@ -61,7 +61,7 @@ public class KeycloakToolGrantTests
         var client = Client($"agent-{agentKey}");
 
         GrantedTools(client).Should().BeEquivalentTo(
-            CvManager.CostFloors.CostFloors.AgentToolAllowlists[agentKey],
+            ExpertToJob.CostFloors.CostFloors.AgentToolAllowlists[agentKey],
             $"agent-{agentKey}'s token is what the MCP server narrows on — if the realm and the "
             + "declared allowlist disagree, the agent runs on a surface nothing measured");
     }
@@ -72,8 +72,8 @@ public class KeycloakToolGrantTests
     {
         var client = Client($"agent-{agentKey}");
         var carried = DefaultScopes(client).Contains(McpScopes.Write)
-            ? CvManager.CostFloors.CostFloors.WriteScopeTools
-            : CvManager.CostFloors.CostFloors.ReadScopeTools;
+            ? ExpertToJob.CostFloors.CostFloors.WriteScopeTools
+            : ExpertToJob.CostFloors.CostFloors.ReadScopeTools;
 
         // Grants only ever narrow. A grant outside the capability surface is a dead scope that
         // reads as capability the agent does not have — exactly the confusion the two separate
@@ -121,11 +121,11 @@ public class KeycloakToolGrantTests
     [Fact]
     public void The_human_and_e2e_clients_carry_no_grants_and_so_keep_the_whole_surface()
     {
-        // cv-manager-mcp is the interactive PKCE client a person drives, and cv-manager-e2e
+        // expert-to-job-mcp is the interactive PKCE client a person drives, and expert-to-job-e2e
         // exercises the whole tool surface on purpose. Narrowing is opt-in, and neither opts in.
         using var _ = new AssertionScope();
-        GrantedTools(Client("cv-manager-mcp")).Should().BeEmpty();
-        GrantedTools(Client("cv-manager-e2e")).Should().BeEmpty();
+        GrantedTools(Client("expert-to-job-mcp")).Should().BeEmpty();
+        GrantedTools(Client("expert-to-job-e2e")).Should().BeEmpty();
     }
 
     [Fact]

@@ -1,11 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
-using CvManager.Application.Availability;
-using CvManager.Application.Employees;
-using CvManager.Domain.Enums;
+using ExpertToJob.Application.Availability;
+using ExpertToJob.Application.Employees;
+using ExpertToJob.Domain.Enums;
 using FluentAssertions;
 
-namespace CvManager.Web.Tests;
+namespace ExpertToJob.Web.Tests;
 
 /// <summary>
 /// The employee resource end to end over real Postgres: the round trip, the two update verbs, the

@@ -1,11 +1,11 @@
-using CvManager.Application.Abstractions;
-using CvManager.Application.Common;
-using CvManager.Domain.Entities;
-using CvManager.Domain.Enums;
+using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Application.Common;
+using ExpertToJob.Domain.Entities;
+using ExpertToJob.Domain.Enums;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 
-namespace CvManager.Application.Employees;
+namespace ExpertToJob.Application.Employees;
 
 public record SaveQualificationDto(
     QualificationType Type,

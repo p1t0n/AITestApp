@@ -1,9 +1,9 @@
 using System.ComponentModel;
-using CvManager.Application.Cv;
+using ExpertToJob.Application.Cv;
 using Microsoft.AspNetCore.Authorization;
 using ModelContextProtocol.Server;
 
-namespace CvManager.Mcp.Tools;
+namespace ExpertToJob.Mcp.Tools;
 
 [McpServerToolType]
 public class CvTools

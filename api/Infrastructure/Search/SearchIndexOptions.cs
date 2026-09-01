@@ -1,4 +1,4 @@
-namespace CvManager.Infrastructure.Search;
+namespace ExpertToJob.Infrastructure.Search;
 
 /// <summary>
 /// Tuning for the semantic-search reconciliation worker. The first run finds every chunk

@@ -1,6 +1,6 @@
-using CvManager.Agents.Agents;
+using ExpertToJob.Agents.Agents;
 
-namespace CvManager.ExtractionEval;
+namespace ExpertToJob.ExtractionEval;
 
 /// <summary>One JD's score against its labels. <see cref="Fabrications"/> is the hard-gate list:
 /// invented values on silent slots (seniority/location/minYears) and MustHave requirements with

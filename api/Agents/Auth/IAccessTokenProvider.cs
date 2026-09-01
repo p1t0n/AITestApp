@@ -1,4 +1,4 @@
-namespace CvManager.Agents.Auth;
+namespace ExpertToJob.Agents.Auth;
 
 /// <summary>
 /// Supplies a bearer token for calling the MCP server. The Roster Q&amp;A implementation uses

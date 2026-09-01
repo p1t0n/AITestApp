@@ -1,12 +1,12 @@
 using System.ClientModel;
-using CvManager.Application.Abstractions;
+using ExpertToJob.Application.Abstractions;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OpenAI;
 
-namespace CvManager.Infrastructure.Embeddings;
+namespace ExpertToJob.Infrastructure.Embeddings;
 
 /// <summary>
 /// Registers the embedding backend for semantic roster search. Opt-in (not part of

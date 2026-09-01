@@ -1,6 +1,6 @@
 using FluentValidation;
 
-namespace CvManager.Application.Employees;
+namespace ExpertToJob.Application.Employees;
 
 public class UpdateEmployeeValidator : AbstractValidator<UpdateEmployeeDto>
 {

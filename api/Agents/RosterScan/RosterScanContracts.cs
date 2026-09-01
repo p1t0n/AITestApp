@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
-using CvManager.Domain.Entities;
+using ExpertToJob.Domain.Entities;
 
-namespace CvManager.Agents.RosterScan;
+namespace ExpertToJob.Agents.RosterScan;
 
 /// <summary>POST /agents/roster-scan body — same optional filters as shortlist/staffing.</summary>
 public sealed record RosterScanRequest(

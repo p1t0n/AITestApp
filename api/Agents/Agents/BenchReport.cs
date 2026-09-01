@@ -1,6 +1,6 @@
-using CvManager.Domain.Entities;
+using ExpertToJob.Domain.Entities;
 
-namespace CvManager.Agents.Agents;
+namespace ExpertToJob.Agents.Agents;
 
 /// <summary>One employee's slice of the roster stats, as captured from the MCP
 /// <c>employee_list</c> result. Only the fields the aggregates need.</summary>

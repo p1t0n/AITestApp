@@ -59,7 +59,7 @@ describe("the rail, expanded", () => {
   it("carries the brand and the three places", () => {
     renderRail(railWith());
 
-    expect(screen.getByText("CV Manager")).toBeInTheDocument();
+    expect(screen.getByText("ExpertToJob")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "CVs" })).toHaveAttribute("href", "/");
     expect(screen.getByRole("link", { name: "Skill Catalog" })).toHaveAttribute("href", "/catalog");
     expect(screen.getByRole("link", { name: "Users" })).toHaveAttribute("href", "/users");

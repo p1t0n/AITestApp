@@ -1,8 +1,8 @@
 using System.Globalization;
-using CvManager.Application.Abstractions;
-using CvManager.Infrastructure.Embeddings;
-using CvManager.Infrastructure.Persistence;
-using CvManager.RetrievalEval;
+using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Infrastructure.Embeddings;
+using ExpertToJob.Infrastructure.Persistence;
+using ExpertToJob.RetrievalEval;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

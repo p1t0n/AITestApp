@@ -1,4 +1,4 @@
-namespace CvManager.Application.Search;
+namespace ExpertToJob.Application.Search;
 
 /// <summary>One requirement's best chunk hit for an employee: similarity plus the evidence snippet.</summary>
 public readonly record struct ShortlistMatch(double Similarity, string Snippet);

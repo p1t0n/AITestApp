@@ -1,11 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
-using CvManager.Application.Cv;
-using CvManager.Application.Employees;
-using CvManager.Domain.Enums;
+using ExpertToJob.Application.Cv;
+using ExpertToJob.Application.Employees;
+using ExpertToJob.Domain.Enums;
 using FluentAssertions;
 
-namespace CvManager.Web.Tests;
+namespace ExpertToJob.Web.Tests;
 
 /// <summary>
 /// The two CV surfaces over the wire: the JSON projection the SPA renders, and the server-side PDF

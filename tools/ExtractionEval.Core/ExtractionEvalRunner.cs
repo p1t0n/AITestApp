@@ -1,7 +1,7 @@
 using System.Text;
-using CvManager.Agents.Agents;
+using ExpertToJob.Agents.Agents;
 
-namespace CvManager.ExtractionEval;
+namespace ExpertToJob.ExtractionEval;
 
 /// <summary>Runs the extractor over the golden set with free-tier-friendly pacing and scores
 /// each JD. Shared by the CLI and the live regression gate.</summary>

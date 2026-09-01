@@ -1,9 +1,9 @@
-using CvManager.Application.Abstractions;
-using CvManager.Infrastructure.Search;
-using CvManager.Mcp.Search;
+using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Infrastructure.Search;
+using ExpertToJob.Mcp.Search;
 using FluentAssertions;
 
-namespace CvManager.Mcp.Tests;
+namespace ExpertToJob.Mcp.Tests;
 
 /// <summary>
 /// Unit tests for the worker's pass-to-pass delay decision (pure, tested directly — same pattern

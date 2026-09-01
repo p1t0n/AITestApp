@@ -1,8 +1,8 @@
-using CvManager.Application.Abstractions;
-using CvManager.Domain.Entities;
+using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace CvManager.Infrastructure.Persistence;
+namespace ExpertToJob.Infrastructure.Persistence;
 
 public class AppDbContext : DbContext, IAppDbContext
 {

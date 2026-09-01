@@ -1,4 +1,4 @@
-namespace CvManager.Infrastructure.Embeddings;
+namespace ExpertToJob.Infrastructure.Embeddings;
 
 /// <summary>
 /// Embedding backend wiring for semantic roster search. Reuses the same OpenAI-compatible

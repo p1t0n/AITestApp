@@ -1,7 +1,7 @@
-using CvManager.Domain.Entities;
+using ExpertToJob.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace CvManager.Application.Abstractions;
+namespace ExpertToJob.Application.Abstractions;
 
 /// <summary>
 /// Persistence seam the Application layer depends on. Implemented by Infrastructure's

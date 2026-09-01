@@ -1,6 +1,6 @@
 using Microsoft.Extensions.AI;
 
-namespace CvManager.Agents.Usage;
+namespace ExpertToJob.Agents.Usage;
 
 /// <summary>
 /// The Runtime Budget seam (P1T-147): bounds what one agent run may spend, and degrades instead of

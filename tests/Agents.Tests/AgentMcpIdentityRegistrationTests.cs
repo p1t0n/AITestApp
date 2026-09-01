@@ -1,12 +1,12 @@
-using CvManager.Agents.Auth;
-using CvManager.Agents.Configuration;
-using CvManager.Agents.Mcp;
-using CvManager.Agents.Tests.Fakes;
+using ExpertToJob.Agents.Auth;
+using ExpertToJob.Agents.Configuration;
+using ExpertToJob.Agents.Mcp;
+using ExpertToJob.Agents.Tests.Fakes;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// Tests the keyed multi-identity wiring: each agent registers its own MCP identity from a named
@@ -24,7 +24,7 @@ public class AgentMcpIdentityRegistrationTests
         };
         foreach (var (key, clientId, tools) in agents)
         {
-            settings[$"McpAuth:{key}:Authority"] = "http://localhost:8080/realms/cv-manager";
+            settings[$"McpAuth:{key}:Authority"] = "http://localhost:8080/realms/expert-to-job";
             settings[$"McpAuth:{key}:ClientId"] = clientId;
             settings[$"McpAuth:{key}:ClientSecret"] = $"{clientId}-secret";
             settings[$"McpAuth:{key}:Scope"] = "mcp:read";

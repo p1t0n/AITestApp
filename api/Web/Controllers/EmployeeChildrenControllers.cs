@@ -1,8 +1,8 @@
-using CvManager.Application.Availability;
-using CvManager.Application.Employees;
+using ExpertToJob.Application.Availability;
+using ExpertToJob.Application.Employees;
 using Microsoft.AspNetCore.Mvc;
 
-namespace CvManager.Web.Controllers;
+namespace ExpertToJob.Web.Controllers;
 
 [ApiController]
 public class LanguagesController : ControllerBase

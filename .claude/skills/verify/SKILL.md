@@ -3,7 +3,7 @@ name: verify
 description: Build, launch, and drive this app (Postgres+Keycloak, Web, MCP, Agents, SPA) to verify changes at the real surface — including passkey sign-in and the agent widget.
 ---
 
-# Verifying CvManager end-to-end
+# Verifying ExpertToJob end-to-end
 
 ## Launch the stack
 
@@ -12,7 +12,7 @@ docker compose up -d                       # pgvector Postgres (:5432) + Keycloa
 # If keycloak/realm-export.json changed since the container was created, the realm is STALE:
 docker compose up -d --force-recreate keycloak
 
-dotnet build CvManager.slnx          # build ONCE, then run with --no-build
+dotnet build ExpertToJob.slnx          # build ONCE, then run with --no-build
                                            # (three parallel `dotnet run` builds clash on obj/)
 GEMINI_API_KEY=<key> ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5069 dotnet run --project api/Web --no-launch-profile --no-build &
 GEMINI_API_KEY=<key> ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5100 dotnet run --project api/Mcp --no-launch-profile --no-build &
@@ -26,7 +26,7 @@ Health probes: Web `GET /swagger/index.html` = 200; Mcp `/` = 401; Agents `/` = 
 ## Traces & metrics
 
 Open http://localhost:18888 (Aspire dashboard, anonymous). Every agent request renders as one
-trace across `cvmanager-agents` and `cvmanager-mcp` (workflow executors, chat spans, MCP RPCs,
+trace across `experttojob-agents` and `experttojob-mcp` (workflow executors, chat spans, MCP RPCs,
 SQL); the Metrics page has `gen_ai.client.token.usage` by model. In-memory — restarting the
 container clears history. The services run fine when it is down.
 
@@ -35,7 +35,7 @@ container clears history. The services run fine when it is down.
 ```bash
 dotnet run --project tools/SeedDemoRoster --no-build -- --count 40   # idempotent; --wipe to remove
 # The Mcp service's reconcile worker embeds new employees every ~30s. Watch progress:
-docker exec cvmanager-db psql -U postgres -d cvmanager -tAc \
+docker exec experttojob-db psql -U postgres -d experttojob -tAc \
   'SELECT count(*) FILTER (WHERE "Embedding" IS NOT NULL) || \'/\' || count(*) FROM "EmployeeSearchChunks";'
 ```
 
@@ -74,7 +74,7 @@ Agents endpoints validate the dev HS256 JWT. Mint one (dev key from `Auth:Jwt` i
 `sub` must be a real Users.Id for usage metering):
 
 ```python
-# HS256 over {"sub":<user-guid>,"email":…,"jti":…,"iss":"cvmanager","aud":"cvmanager-app",exp,iat,nbf}
+# HS256 over {"sub":<user-guid>,"email":…,"jti":…,"iss":"experttojob","aud":"experttojob-app",exp,iat,nbf}
 # key: dev-only-insecure-signing-key-change-me-at-least-32-bytes
 ```
 

@@ -1,6 +1,6 @@
 using Microsoft.Extensions.AI;
 
-namespace CvManager.Agents.Mcp;
+namespace ExpertToJob.Agents.Mcp;
 
 /// <summary>
 /// One agent's <b>Tool Allowlist</b> (P1T-146): the subset of the tools its token carries that it

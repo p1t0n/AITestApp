@@ -1,12 +1,12 @@
-using CvManager.Application.Search;
-using CvManager.Domain.Entities;
-using CvManager.Domain.Enums;
-using CvManager.Infrastructure.Persistence;
+using ExpertToJob.Application.Search;
+using ExpertToJob.Domain.Entities;
+using ExpertToJob.Domain.Enums;
+using ExpertToJob.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace CvManager.Mcp.Tests;
+namespace ExpertToJob.Mcp.Tests;
 
 /// <summary>
 /// The roster_digest_list MCP tool (P1T-121) end-to-end over the MCP transport against the

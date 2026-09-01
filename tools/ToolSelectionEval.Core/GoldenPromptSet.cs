@@ -1,4 +1,4 @@
-namespace CvManager.ToolSelectionEval;
+namespace ExpertToJob.ToolSelectionEval;
 
 /// <summary>One labeled prompt: the tool a well-described toolset should make the model call
 /// FIRST, plus (sparingly) alternatives that are genuinely also-correct — first-tool credit is

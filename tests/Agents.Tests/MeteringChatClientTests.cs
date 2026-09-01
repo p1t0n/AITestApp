@@ -1,8 +1,8 @@
-using CvManager.Agents.Usage;
+using ExpertToJob.Agents.Usage;
 using FluentAssertions;
 using Microsoft.Extensions.AI;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>The chat-seam capture (P1T-95): real response model id + summed latency land in the
 /// ambient scope; concurrent scopes stay isolated (the staffing match fan-out relies on it).</summary>

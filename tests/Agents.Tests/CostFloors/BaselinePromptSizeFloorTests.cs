@@ -1,9 +1,9 @@
 using System.Reflection;
-using CvManager.Agents.Agents;
-using CvManager.Agents.Mcp;
-using CvManager.Agents.RosterScan;
-using CvManager.Agents.Tests.Fakes;
-using CvManager.CostFloors;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.Mcp;
+using ExpertToJob.Agents.RosterScan;
+using ExpertToJob.Agents.Tests.Fakes;
+using ExpertToJob.CostFloors;
 using FluentAssertions;
 using FluentAssertions.Execution;
 using Microsoft.Extensions.AI;
@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace CvManager.Agents.Tests.CostFloors;
+namespace ExpertToJob.Agents.Tests.CostFloors;
 
 /// <summary>
 /// The agent half of the deterministic Cost Floors (P1T-144): Baseline Prompt Size — what one
@@ -46,8 +46,8 @@ public class BaselinePromptSizeFloorTests(ITestOutputHelper output)
             var tokens = TokenEstimate.Of(InstructionsOf(type));
             output.WriteLine($"{type.Name,-28} {tokens,5} instruction tokens");
 
-            CvManager.CostFloors.CostFloors.AgentInstructionCeilings.Should().ContainKey(type.Name);
-            if (CvManager.CostFloors.CostFloors.AgentInstructionCeilings.TryGetValue(type.Name, out var ceiling))
+            ExpertToJob.CostFloors.CostFloors.AgentInstructionCeilings.Should().ContainKey(type.Name);
+            if (ExpertToJob.CostFloors.CostFloors.AgentInstructionCeilings.TryGetValue(type.Name, out var ceiling))
             {
                 tokens.Should().BeLessThanOrEqualTo(
                     ceiling, $"{type.Name}'s instructions are re-sent on every iteration it runs");
@@ -60,7 +60,7 @@ public class BaselinePromptSizeFloorTests(ITestOutputHelper output)
     {
         // A ceiling for a deleted agent is a floor guarding nothing — and it would quietly make
         // the coverage assertion above pass for the wrong reason.
-        CvManager.CostFloors.CostFloors.AgentInstructionCeilings.Keys
+        ExpertToJob.CostFloors.CostFloors.AgentInstructionCeilings.Keys
             .Should().BeSubsetOf(PromptedAgents.Select(t => t.Name));
     }
 
@@ -73,7 +73,7 @@ public class BaselinePromptSizeFloorTests(ITestOutputHelper output)
         // McpToolSource applies before any agent sees a tool (P1T-146). Measuring against the
         // whole scope surface would be measuring fiction now that no agent is offered it. Names
         // only: the schema sizes come from the Mcp.Tests floor, which is what holds them true.
-        var offered = CvManager.CostFloors.CostFloors.AgentToolAllowlists[configKey]
+        var offered = ExpertToJob.CostFloors.CostFloors.AgentToolAllowlists[configKey]
             .Select(name => (AITool)AIFunctionFactory.Create(() => "{}", name))
             .ToArray();
         var chat = new FakeChatClient(() => new ChatResponse(new ChatMessage(ChatRole.Assistant, "{}")));
@@ -84,16 +84,16 @@ public class BaselinePromptSizeFloorTests(ITestOutputHelper output)
         // partway through, and Baseline Prompt Size is what a call costs at its worst.
         var shown = chat.ReceivedOptions
             .Select(o => o?.Tools?.Select(t => t.Name).ToList() ?? [])
-            .OrderByDescending(names => CvManager.CostFloors.CostFloors.BaselinePromptSize(0, names))
+            .OrderByDescending(names => ExpertToJob.CostFloors.CostFloors.BaselinePromptSize(0, names))
             .First();
         var instructions = TokenEstimate.Of(InstructionsOf(PromptedAgents.Single(t => t.Name == agentName)));
-        var baseline = CvManager.CostFloors.CostFloors.BaselinePromptSize(instructions, shown);
+        var baseline = ExpertToJob.CostFloors.CostFloors.BaselinePromptSize(instructions, shown);
         output.WriteLine(
             $"{agentName,-24} {baseline,5} tokens = {instructions} instructions + " +
             $"{shown.Count} tool schemas ({string.Join(", ", shown)})");
 
         baseline.Should().BeLessThanOrEqualTo(
-            CvManager.CostFloors.CostFloors.BaselinePromptSizeCeilings[agentName],
+            ExpertToJob.CostFloors.CostFloors.BaselinePromptSizeCeilings[agentName],
             $"{agentName} pays this on every iteration, before any tool result");
     }
 

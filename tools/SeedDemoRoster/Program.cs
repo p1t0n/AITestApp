@@ -1,7 +1,7 @@
-using CvManager.Infrastructure.Persistence;
+using ExpertToJob.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
-namespace CvManager.Tools.SeedDemoRoster;
+namespace ExpertToJob.Tools.SeedDemoRoster;
 
 /// <summary>
 /// Repo tool (P1T-51): seeds the committed 500-employee demo roster into a database, or wipes it
@@ -38,7 +38,7 @@ public static class Program
 
         // Same fallback chain as DesignTimeDbContextFactory.
         connection ??= Environment.GetEnvironmentVariable("ConnectionStrings__Default")
-            ?? "Host=localhost;Port=5432;Database=cvmanager;Username=postgres;Password=postgres";
+            ?? "Host=localhost;Port=5432;Database=experttojob;Username=postgres;Password=postgres";
 
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(connection, npgsql => npgsql.UseVector())

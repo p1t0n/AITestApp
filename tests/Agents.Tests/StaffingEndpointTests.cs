@@ -1,10 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using CvManager.Agents.Agents;
-using CvManager.Agents.Staffing;
-using CvManager.Agents.Tests.Fakes;
-using CvManager.Agents.Usage;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.Staffing;
+using ExpertToJob.Agents.Tests.Fakes;
+using ExpertToJob.Agents.Usage;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -12,7 +12,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// Endpoint tests for POST /agents/staffing (SSE slice, P1T-76). They run against the real host
@@ -81,11 +81,11 @@ public class StaffingEndpointTests
                 s.AddSingleton(new StaffingThrottle(1));
                 // Working in-memory DB so the proposal ledger (P1T-100) persists in tests — the
                 // production registration points at Postgres, which isn't running here.
-                s.RemoveAll(typeof(DbContextOptions<CvManager.Infrastructure.Persistence.AppDbContext>));
+                s.RemoveAll(typeof(DbContextOptions<ExpertToJob.Infrastructure.Persistence.AppDbContext>));
                 s.RemoveAll(typeof(Microsoft.EntityFrameworkCore.Infrastructure
-                    .IDbContextOptionsConfiguration<CvManager.Infrastructure.Persistence.AppDbContext>));
+                    .IDbContextOptionsConfiguration<ExpertToJob.Infrastructure.Persistence.AppDbContext>));
                 var dbName = $"staffing-endpoint-{Guid.NewGuid()}";
-                s.AddDbContext<CvManager.Infrastructure.Persistence.AppDbContext>(
+                s.AddDbContext<ExpertToJob.Infrastructure.Persistence.AppDbContext>(
                     o => o.UseInMemoryDatabase(dbName));
                 extra?.Invoke(s);
             }));

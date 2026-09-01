@@ -13,7 +13,7 @@ import path from "node:path";
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 export const PORTS = { db: 55433, api: 5079, spa: 5174 };
-const CONTAINER = "cvmanager-e2e-db";
+const CONTAINER = "experttojob-e2e-db";
 const IMAGE = "pgvector/pgvector:pg17";
 
 function run(command, args, options = {}) {
@@ -35,7 +35,7 @@ async function startDatabase() {
     "--name", CONTAINER,
     "-e", "POSTGRES_USER=postgres",
     "-e", "POSTGRES_PASSWORD=postgres",
-    "-e", "POSTGRES_DB=cvmanager_e2e",
+    "-e", "POSTGRES_DB=experttojob_e2e",
     "-p", `${PORTS.db}:5432`,
     IMAGE,
   ]);
@@ -44,7 +44,7 @@ async function startDatabase() {
   }
 
   await waitFor("postgres", 60_000, () =>
-    run("docker", ["exec", CONTAINER, "pg_isready", "-U", "postgres", "-d", "cvmanager_e2e"])
+    run("docker", ["exec", CONTAINER, "pg_isready", "-U", "postgres", "-d", "experttojob_e2e"])
       .status === 0);
 }
 
@@ -69,7 +69,7 @@ async function startApi() {
       ASPNETCORE_ENVIRONMENT: "Development",
       ASPNETCORE_URLS: `http://localhost:${PORTS.api}`,
       ConnectionStrings__Default:
-        `Host=localhost;Port=${PORTS.db};Database=cvmanager_e2e;Username=postgres;Password=postgres`,
+        `Host=localhost;Port=${PORTS.db};Database=experttojob_e2e;Username=postgres;Password=postgres`,
       // The passkey relying party checks the browser's origin against this list, and the suite
       // serves the SPA on its own port.
       Auth__Passkey__Origins__0: `http://localhost:${PORTS.spa}`,

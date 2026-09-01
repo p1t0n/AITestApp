@@ -1,8 +1,8 @@
-using CvManager.Agents.Agents;
-using CvManager.Agents.Handoff;
-using CvManager.Agents.Usage;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.Handoff;
+using ExpertToJob.Agents.Usage;
 
-namespace CvManager.Agents.Tests.Fakes;
+namespace ExpertToJob.Agents.Tests.Fakes;
 
 /// <summary>An <see cref="IAgentIdentitySource"/> for tests that don't assert identity facts:
 /// every agent resolves as tool-less.</summary>

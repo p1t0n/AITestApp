@@ -1,4 +1,4 @@
-namespace CvManager.Application.Abstractions;
+namespace ExpertToJob.Application.Abstractions;
 
 /// <summary>
 /// Turns text into embedding vectors for semantic roster search. Provider-neutral on purpose:

@@ -1,7 +1,7 @@
-using CvManager.Agents.Agents;
+using ExpertToJob.Agents.Agents;
 using FluentAssertions;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// Seam-level tests for <see cref="MatchRunService"/>: the extracted core of POST /agents/match.

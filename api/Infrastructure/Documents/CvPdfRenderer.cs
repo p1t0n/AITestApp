@@ -1,11 +1,11 @@
 using System.Globalization;
-using CvManager.Application.Cv;
-using CvManager.Application.Employees;
+using ExpertToJob.Application.Cv;
+using ExpertToJob.Application.Employees;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 
-namespace CvManager.Infrastructure.Documents;
+namespace ExpertToJob.Infrastructure.Documents;
 
 /// <summary>
 /// Renders a <see cref="CvDto"/> to PDF with QuestPDF. Chosen over a headless-browser print of the SPA

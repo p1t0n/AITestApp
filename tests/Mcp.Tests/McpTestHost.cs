@@ -2,8 +2,8 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
-using CvManager.Domain.Entities;
-using CvManager.Infrastructure.Persistence;
+using ExpertToJob.Domain.Entities;
+using ExpertToJob.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -15,7 +15,7 @@ using Microsoft.IdentityModel.Tokens;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 
-namespace CvManager.Mcp.Tests;
+namespace ExpertToJob.Mcp.Tests;
 
 /// <summary>
 /// Shared in-memory MCP host for integration tests. Swaps the database to EF InMemory and
@@ -32,7 +32,7 @@ internal static class McpTestHost
     public const string AdminScope = "mcp:admin";
 
     private static readonly SymmetricSecurityKey SigningKey =
-        new(Encoding.UTF8.GetBytes("cv-manager-mcp-test-signing-key-which-is-long-enough"));
+        new(Encoding.UTF8.GetBytes("expert-to-job-mcp-test-signing-key-which-is-long-enough"));
 
     private static void UseInMemoryDatabase(IServiceCollection services, string dbName)
     {

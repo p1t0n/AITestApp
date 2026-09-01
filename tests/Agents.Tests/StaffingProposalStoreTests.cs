@@ -1,14 +1,14 @@
-using CvManager.Agents.Agents;
-using CvManager.Agents.Handoff;
-using CvManager.Agents.Staffing;
-using CvManager.Domain.Entities;
-using CvManager.Infrastructure.Persistence;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.Handoff;
+using ExpertToJob.Agents.Staffing;
+using ExpertToJob.Domain.Entities;
+using ExpertToJob.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// Unit tests for the proposal ledger (P1T-100): creation snapshots the report deterministically,

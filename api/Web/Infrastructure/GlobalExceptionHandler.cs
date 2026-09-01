@@ -1,9 +1,9 @@
-using CvManager.Application.Common;
+using ExpertToJob.Application.Common;
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
-namespace CvManager.Web.Infrastructure;
+namespace ExpertToJob.Web.Infrastructure;
 
 /// <summary>Maps Application-layer exceptions to RFC7807 problem responses.</summary>
 public class GlobalExceptionHandler : IExceptionHandler

@@ -50,7 +50,7 @@ The identical request on the *anonymous* path would have been forced to `fullSco
 The protection was on the door nobody could open.
 
 **No PKCE.** The registered client carried no `pkce.code.challenge.method` at all, so it could run
-authorization-code without a challenge. The shipped `cv-manager-mcp` pins `S256` in its own
+authorization-code without a challenge. The shipped `expert-to-job-mcp` pins `S256` in its own
 attributes, which means PKCE here was a *remembered attribute* — the exact failure mode P1T-149
 rejected when it chose request filters over a per-tool `[Authorize]`: forgetting it on client 11
 is a silently unprotected client, and an attribute does not know how many clients exist.
@@ -158,7 +158,7 @@ and is there as a guard on the statically-shipped half of the realm, not as a ch
 2. `dotnet test --filter "FullyQualifiedName~KeycloakDcrPolicyTests"` — fast, no Docker.
 3. `dotnet test --filter "FullyQualifiedName~KeycloakDcrE2ETests"` — ~50s, needs Docker, and is
    the only thing that will tell you Keycloak agrees.
-4. Recreate the local container: the realm is imported once, so a running `cvmanager-keycloak`
+4. Recreate the local container: the realm is imported once, so a running `experttojob-keycloak`
    keeps the old policy until `docker compose down -v && docker compose up -d`.
 
 ## Still open

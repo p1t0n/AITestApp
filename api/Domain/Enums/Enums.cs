@@ -1,4 +1,4 @@
-namespace CvManager.Domain.Enums;
+namespace ExpertToJob.Domain.Enums;
 
 /// <summary>Draft employees are agent-staged (resume ingestion) and invisible to the roster,
 /// search index, and staffing until a human promotes them. Humans hold publication authority.</summary>

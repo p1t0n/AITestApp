@@ -1,4 +1,4 @@
-namespace CvManager.Domain.Entities;
+namespace ExpertToJob.Domain.Entities;
 
 /// <summary>
 /// Self-referencing skill category tree, e.g. Languages &gt; JavaScript &gt; React.

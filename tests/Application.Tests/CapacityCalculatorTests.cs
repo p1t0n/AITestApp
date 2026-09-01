@@ -1,9 +1,9 @@
-using CvManager.Application.Availability;
-using CvManager.Domain.Entities;
+using ExpertToJob.Application.Availability;
+using ExpertToJob.Domain.Entities;
 using FluentAssertions;
 using Xunit;
 
-namespace CvManager.Application.Tests;
+namespace ExpertToJob.Application.Tests;
 
 public class CapacityCalculatorTests
 {

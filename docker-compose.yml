@@ -3,24 +3,24 @@ services:
     # pgvector/pgvector ships the stock postgres:17 image plus the `vector` extension,
     # which the semantic roster search (RAG) feature enables via migration.
     image: pgvector/pgvector:pg17
-    container_name: cvmanager-db
+    container_name: experttojob-db
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: cvmanager
+      POSTGRES_DB: experttojob
     ports:
       - "5432:5432"
     volumes:
-      - cvmanager-pgdata:/var/lib/postgresql/data
+      - experttojob-pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d cvmanager"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d experttojob"]
       interval: 5s
       timeout: 5s
       retries: 5
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.0
-    container_name: cvmanager-keycloak
+    container_name: experttojob-keycloak
     command: ["start-dev", "--import-realm"]
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
@@ -35,7 +35,7 @@ services:
   # The app runs unchanged when this service is down.
   aspire-dashboard:
     image: mcr.microsoft.com/dotnet/aspire-dashboard:latest
-    container_name: cvmanager-aspire
+    container_name: experttojob-aspire
     environment:
       ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS: "true"
     ports:
@@ -43,4 +43,4 @@ services:
       - "4317:18889"  # OTLP gRPC ingest
 
 volumes:
-  cvmanager-pgdata:
+  experttojob-pgdata:

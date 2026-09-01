@@ -1,9 +1,9 @@
 using System.Text.Json;
-using CvManager.Agents.Mcp;
+using ExpertToJob.Agents.Mcp;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 
-namespace CvManager.Agents.Agents;
+namespace ExpertToJob.Agents.Agents;
 
 /// <summary>One write-tool invocation as observed on the agent side: which tool, whether the MCP
 /// layer reported success, and the structured error text when it did not.</summary>
@@ -53,7 +53,7 @@ public sealed class ResumeIngestionAgent
 
     private const string Instructions =
         """
-        You are the Resume Ingestion assistant for a CV Manager. The user message is the raw text
+        You are the Resume Ingestion assistant for ExpertToJob. The user message is the raw text
         of one resume. Stage it as a DRAFT employee by calling tools, then report.
 
         Extraction rules — honesty above completeness:

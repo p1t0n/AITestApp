@@ -1,10 +1,10 @@
 using System.ComponentModel;
-using CvManager.Application.Availability;
-using CvManager.Application.Employees;
+using ExpertToJob.Application.Availability;
+using ExpertToJob.Application.Employees;
 using Microsoft.AspNetCore.Authorization;
 using ModelContextProtocol.Server;
 
-namespace CvManager.Mcp.Tools;
+namespace ExpertToJob.Mcp.Tools;
 
 [McpServerToolType]
 public class AvailabilityTools

@@ -1,6 +1,6 @@
 using FluentValidation;
 
-namespace CvManager.Application.Skills;
+namespace ExpertToJob.Application.Skills;
 
 public record CategoryDto(Guid Id, string Name, Guid? ParentId);
 

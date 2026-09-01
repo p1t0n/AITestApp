@@ -1,10 +1,10 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using CvManager.Agents.Mcp;
+using ExpertToJob.Agents.Mcp;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 
-namespace CvManager.Agents.Agents;
+namespace ExpertToJob.Agents.Agents;
 
 /// <summary>One anonymized strong-phrasing exemplar as captured from the exemplar tool.</summary>
 public sealed record TailoringExemplar(string Text, double Similarity);
@@ -73,7 +73,7 @@ public sealed class CvTailoringAgent
 
     private const string Instructions =
         """
-        You are the CV Tailoring assistant for a CV Manager. You are given a target job
+        You are the CV Tailoring assistant for ExpertToJob. You are given a target job
         description and the employee's full CV — the verbatim result of the cv_get tool, already
         fetched for you and included in the message. The conversation has exactly two steps.
 

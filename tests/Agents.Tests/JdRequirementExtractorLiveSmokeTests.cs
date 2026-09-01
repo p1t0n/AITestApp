@@ -1,12 +1,12 @@
 using System.ClientModel;
 using System.ClientModel.Primitives;
-using CvManager.Agents.Agents;
-using CvManager.Agents.Configuration;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.Configuration;
 using FluentAssertions;
 using Microsoft.Extensions.AI;
 using OpenAI;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// Live smoke for the JD requirement extractor (P1T-116): one real extraction on the pinned

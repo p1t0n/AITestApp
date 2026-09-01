@@ -1,9 +1,9 @@
 using System.ClientModel;
-using CvManager.Application.Abstractions;
+using ExpertToJob.Application.Abstractions;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 
-namespace CvManager.Infrastructure.Embeddings;
+namespace ExpertToJob.Infrastructure.Embeddings;
 
 /// <summary>
 /// <see cref="IEmbedder"/> over an OpenAI-compatible <see cref="IEmbeddingGenerator{TInput,TEmbedding}"/>.

@@ -1,12 +1,12 @@
 using System.ClientModel;
 using System.ClientModel.Primitives;
 using System.Text.Json.Serialization;
-using CvManager.Agents.Configuration;
+using ExpertToJob.Agents.Configuration;
 using FluentAssertions;
 using Microsoft.Extensions.AI;
 using OpenAI;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// Live probes of the Gemini OpenAI-compatibility endpoint (P1T-115): which structured-output

@@ -1,7 +1,7 @@
-using CvManager.Domain.Enums;
+using ExpertToJob.Domain.Enums;
 using Pgvector;
 
-namespace CvManager.Infrastructure.Persistence;
+namespace ExpertToJob.Infrastructure.Persistence;
 
 /// <summary>
 /// A derived read-model row for semantic roster search (RAG): one embeddable chunk of an

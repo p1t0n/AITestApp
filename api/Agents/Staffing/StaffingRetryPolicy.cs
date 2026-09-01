@@ -1,7 +1,7 @@
 using System.ClientModel;
 using System.Net;
 
-namespace CvManager.Agents.Staffing;
+namespace ExpertToJob.Agents.Staffing;
 
 /// <summary>
 /// How a match run rides out model rate limiting (mirrors the retrieval eval's QueryRetryPolicy

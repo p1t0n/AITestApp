@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.Json.Nodes;
 
-namespace CvManager.Agents.Configuration;
+namespace ExpertToJob.Agents.Configuration;
 
 /// <summary>
 /// Response-side compatibility shim for Gemini's OpenAI-compatible endpoint. Gemini reports

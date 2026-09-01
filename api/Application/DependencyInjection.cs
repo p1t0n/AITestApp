@@ -1,12 +1,12 @@
-using CvManager.Application.Availability;
-using CvManager.Application.Cv;
-using CvManager.Application.Employees;
-using CvManager.Application.Skills;
-using CvManager.Application.Users;
+using ExpertToJob.Application.Availability;
+using ExpertToJob.Application.Cv;
+using ExpertToJob.Application.Employees;
+using ExpertToJob.Application.Skills;
+using ExpertToJob.Application.Users;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace CvManager.Application;
+namespace ExpertToJob.Application;
 
 public static class DependencyInjection
 {

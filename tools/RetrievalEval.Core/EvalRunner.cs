@@ -1,11 +1,11 @@
-using CvManager.Application.Abstractions;
-using CvManager.Application.Search;
-using CvManager.Infrastructure.Persistence;
-using CvManager.Infrastructure.Search;
+using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Application.Search;
+using ExpertToJob.Infrastructure.Persistence;
+using ExpertToJob.Infrastructure.Search;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
-namespace CvManager.RetrievalEval;
+namespace ExpertToJob.RetrievalEval;
 
 /// <summary>One golden query's raw result (corpus keys, best first) for diagnostics.</summary>
 public sealed record EvalQueryTrace(GoldenQuery Query, IReadOnlyList<string> ReturnedKeys);

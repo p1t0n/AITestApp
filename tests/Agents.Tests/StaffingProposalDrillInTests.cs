@@ -1,10 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using CvManager.Agents.Agents;
-using CvManager.Agents.Staffing;
-using CvManager.Agents.Tests.Fakes;
-using CvManager.Infrastructure.Persistence;
+using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.Staffing;
+using ExpertToJob.Agents.Tests.Fakes;
+using ExpertToJob.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -12,7 +12,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace CvManager.Agents.Tests;
+namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// The approver drill-in (P1T-134): GET /agents/staffing/proposals/{id} serves the proposal
@@ -178,11 +178,11 @@ public class StaffingProposalDrillInTests
         using (var scope = factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            db.StaffingProposals.Add(new CvManager.Domain.Entities.StaffingProposal
+            db.StaffingProposals.Add(new ExpertToJob.Domain.Entities.StaffingProposal
             {
                 Id = id,
                 JobDescription = "Legacy JD",
-                Status = CvManager.Domain.Entities.StaffingProposalStatus.Pending,
+                Status = ExpertToJob.Domain.Entities.StaffingProposalStatus.Pending,
                 CreatedAt = DateTimeOffset.UtcNow,
                 PackageJson = null,
             });

@@ -1,16 +1,16 @@
-using CvManager.Application.Abstractions;
-using CvManager.Application.Search;
-using CvManager.Infrastructure.Persistence;
-using CvManager.Infrastructure.Search;
+using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Application.Search;
+using ExpertToJob.Infrastructure.Persistence;
+using ExpertToJob.Infrastructure.Search;
 using FluentAssertions;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Testcontainers.PostgreSql;
-using Entities = CvManager.Domain.Entities;
+using Entities = ExpertToJob.Domain.Entities;
 
-namespace CvManager.Mcp.Tests;
+namespace ExpertToJob.Mcp.Tests;
 
 /// <summary>
 /// Integration tests for the style exemplar retrieval path against real pgvector, using the same

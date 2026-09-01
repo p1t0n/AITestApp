@@ -1,7 +1,7 @@
 using System.Text.Json;
-using CvManager.Agents.Staffing;
+using ExpertToJob.Agents.Staffing;
 
-namespace CvManager.Agents.Agents;
+namespace ExpertToJob.Agents.Agents;
 
 /// <summary>What one match run produced: the gap-analysis markdown, the parsed deterministic
 /// facts (score/band — from the structured verdict, or the legacy regex fallback; null when the
