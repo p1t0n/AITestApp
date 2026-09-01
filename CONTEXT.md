@@ -30,6 +30,27 @@ with the role split (P1T-167) rather than with the Expert rename, so the term is
 first and the type follows.
 _Avoid_: staffer, recruiter, admin (admin is an MCP scope), approver (says the one act, not the role)
 
+**Processing Record**:
+One append-only row stating why the service may hold one Expert's data at one moment: the
+**Origin** the row came from, the **Lawful Basis** that follows from it, the transparency-notice
+version the person acknowledged, and when. A change appends a new record and leaves the previous
+one exactly as written — the history is the artefact, because "this row was on legitimate interest
+until March" has consequences (see `manuals/gdpr-processing-basis.md`).
+_Avoid_: consent record (there is no consent here), audit log, basis flag
+
+**Origin**:
+How a roster row came to exist — `SelfRegistered` or `StaffCreated` — and the **only** input to
+its Lawful Basis. Not a synonym for who owns the row: ownership says which Expert reaches it,
+origin says why the service may hold it at all.
+_Avoid_: source, provenance (provenance is a staffing-run term)
+
+**Transparency Notice**:
+The versioned text shown before registration saying what the service holds, who sees it, that AI
+scores and ranks the person, how long it is kept, and their rights. Acknowledging it is required
+to register, and the version acknowledged is recorded. **It is not a consent**: under Art. 6(1)(b)
+necessity does the legal work, and a consent control where another basis applies is misleading.
+_Avoid_: consent, terms, privacy policy (a policy is a document, this is a versioned artefact)
+
 ### Staffing & approval
 
 **Proposal**:

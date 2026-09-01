@@ -3,6 +3,8 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
+  FormControlLabel,
   Link,
   Paper,
   Stack,
@@ -10,24 +12,40 @@ import {
   Typography,
 } from "@mui/material";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
-import { apiErrorMessage, useSignup } from "../api";
+import { apiErrorMessage, useSignup, useTransparencyNotice } from "../api";
 import { isPasskeySupported } from "../auth/webauthn";
 import { ErrorNotice } from "../components/ErrorNotice";
+import { TransparencyNoticeText } from "../components/TransparencyNoticeText";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [controlWord, setControlWord] = useState("");
+  // Not a consent checkbox, and the label does not pretend to be one (P1T-183). Under
+  // Art. 6(1)(b) necessity does the legal work; what this records is that the person read the
+  // notice, and the version they read. Offering a consent control where another basis applies is
+  // misleading (EDPB GL 05/2020) — so this says "I have read", never "I agree to".
+  const [acknowledged, setAcknowledged] = useState(false);
   const navigate = useNavigate();
   const signup = useSignup();
+  const notice = useTransparencyNotice();
   const supported = isPasskeySupported();
 
-  const canSubmit = email.trim().length > 0 && controlWord.trim().length > 0 && supported;
+  const canSubmit =
+    email.trim().length > 0 &&
+    controlWord.trim().length > 0 &&
+    supported &&
+    acknowledged &&
+    notice.data !== undefined;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canSubmit) return;
+    if (!canSubmit || !notice.data) return;
     signup.mutate(
-      { email: email.trim(), controlWord: controlWord.trim() },
+      {
+        email: email.trim(),
+        controlWord: controlWord.trim(),
+        acknowledgedNoticeVersion: notice.data.version,
+      },
       { onSuccess: () => navigate("/") },
     );
   };
@@ -74,6 +92,28 @@ export default function SignupPage() {
             required
             fullWidth
             helperText="A secret word you'll need to recover your account if you lose this device. Choose something memorable and keep it safe — it cannot be reset for you."
+          />
+
+          <Box>
+            <Typography variant="subtitle2" gutterBottom>
+              Before you register, read this
+            </Typography>
+            <TransparencyNoticeText />
+          </Box>
+
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={acknowledged}
+                onChange={(e) => setAcknowledged(e.target.checked)}
+                inputProps={{ "aria-label": "I have read the notice above" }}
+              />
+            }
+            label={
+              <Typography variant="body2">
+                I have read the notice above{notice.data ? ` (version ${notice.data.version})` : ""}.
+              </Typography>
+            }
           />
 
           <Button

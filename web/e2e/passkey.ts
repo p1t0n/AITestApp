@@ -70,6 +70,10 @@ async function signUpThroughTheForm(page: Page, email: string): Promise<void> {
   await page.goto("/signup");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Control word").fill("correct horse battery staple");
+  // Acknowledging the transparency notice is a condition of registering (P1T-183): the button
+  // stays disabled without it and the server refuses `signup/begin` anyway. Doing it here rather
+  // than in each test keeps the gate on the real path — every e2e signup goes through it.
+  await page.getByLabel("I have read the notice above").check();
   await page.getByRole("button", { name: /sign up with a passkey/i }).click();
 }
 

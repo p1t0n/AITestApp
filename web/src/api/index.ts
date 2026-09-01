@@ -9,6 +9,7 @@
 //   experts          the roster aggregate: list, detail, CV, PDF, promote
 //   expertChildren   skills, availability, languages, qualifications, experiences
 //   catalog            the skill-catalog tree
+//   notice             the versioned transparency notice and its acknowledgment
 //   users              user administration and cap overrides
 //   agents/*           one module per agent surface, each DTO beside the hook that returns it
 //
@@ -18,6 +19,7 @@ export * from "./auth";
 export * from "./experts";
 export * from "./expertChildren";
 export * from "./catalog";
+export * from "./notice";
 export * from "./users";
 
 export * from "./agents/usage";

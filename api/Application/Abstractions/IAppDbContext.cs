@@ -27,6 +27,7 @@ public interface IAppDbContext
     DbSet<StaffingProposalCandidate> StaffingProposalCandidates { get; }
     DbSet<ScoringJob> ScoringJobs { get; }
     DbSet<ScoringJobCandidate> ScoringJobCandidates { get; }
+    DbSet<ProcessingRecord> ProcessingRecords { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

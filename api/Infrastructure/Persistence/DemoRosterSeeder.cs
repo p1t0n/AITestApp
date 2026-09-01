@@ -1,5 +1,6 @@
 using System.Reflection;
 using ExpertToJob.Domain.Entities;
+using ExpertToJob.Domain.Enums;
 using ExpertToJob.Infrastructure.Persistence.SeedData;
 using Microsoft.EntityFrameworkCore;
 
@@ -111,9 +112,28 @@ public static class DemoRosterSeeder
         return skillsByName;
     }
 
-    private static Expert BuildExpert(DemoRosterExpert source, Dictionary<string, Skill> skillsByName) => new()
+    /// <summary>
+    /// The seeded demo roster is staff-created data by construction — nobody in it registered, and
+    /// none of them was shown a notice, which is exactly the Art. 14 population. Each row therefore
+    /// carries its lawful-basis record from the moment it is inserted (P1T-183); without it the
+    /// structural "every Expert has a ProcessingRecord" check would fail on a dev database, which is
+    /// the correct outcome for a row with no recorded basis.
+    /// </summary>
+    private static Expert BuildExpert(DemoRosterExpert source, Dictionary<string, Skill> skillsByName)
     {
-        Id = Guid.NewGuid(),
+        var id = Guid.NewGuid();
+        var expert = BuildExpertCore(id, source, skillsByName);
+        expert.ProcessingRecords.Add(ProcessingRecord.For(
+            id, sequence: 1, ProcessingOrigin.StaffCreated, noticeVersion: null,
+            "Seeded onto the bench as demo data; nobody registered and no notice was shown.",
+            DateTimeOffset.UtcNow));
+        return expert;
+    }
+
+    private static Expert BuildExpertCore(
+        Guid id, DemoRosterExpert source, Dictionary<string, Skill> skillsByName) => new()
+    {
+        Id = id,
         FirstName = source.FirstName,
         LastName = source.LastName,
         Title = source.Title,

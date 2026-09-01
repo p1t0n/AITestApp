@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import App from "./App";
 import { setSession } from "./auth/session";
@@ -10,8 +11,7 @@ vi.mock("./pages/ExpertsPage", () => ({ default: () => <div>the roster page</div
 vi.mock("./pages/UsersPage", () => ({ default: () => <div>the users page</div> }));
 vi.mock("./pages/CatalogPage", () => ({ default: () => <div>the catalog page</div> }));
 vi.mock("./components/AgentWidget", () => ({ default: () => null }));
-// The real sign-in page drives a React Query mutation; this file mounts no client, and the gate is
-// only ever asserted here as a destination.
+// The gate is only ever asserted here as a destination, never driven.
 vi.mock("./pages/SigninPage", () => ({ default: () => <div>the sign-in gate</div> }));
 
 function signedInAs(role: "ServiceManager" | "Expert") {
@@ -19,15 +19,28 @@ function signedInAs(role: "ServiceManager" | "Expert") {
   setSession("a-token", `${role}@example.com`, role);
 }
 
+/**
+ * The app under a throwaway query client. The Expert landing page asks the server whether a newer
+ * transparency notice is waiting (P1T-183), so a client has to exist — but nothing here is about
+ * that answer, and with no server the query simply fails and the banner renders nothing. Retries
+ * are off so a failing query does not keep the test alive for three backoffs.
+ */
+function renderApp(path: string) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={[path]}>
+        <App />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
 describe("route audiences (P1T-181)", () => {
   it("lands a Service Manager on the roster", () => {
     signedInAs("ServiceManager");
 
-    render(
-      <MemoryRouter initialEntries={["/"]}>
-        <App />
-      </MemoryRouter>,
-    );
+    renderApp("/");
 
     expect(screen.getByText("the roster page")).toBeInTheDocument();
   });
@@ -39,11 +52,7 @@ describe("route audiences (P1T-181)", () => {
     (path) => {
       signedInAs("Expert");
 
-      render(
-        <MemoryRouter initialEntries={[path]}>
-          <App />
-        </MemoryRouter>,
-      );
+      renderApp(path);
 
       expect(screen.getByRole("heading", { name: "My workspace" })).toBeInTheDocument();
       expect(screen.queryByText("the sign-in gate")).not.toBeInTheDocument();
@@ -54,11 +63,7 @@ describe("route audiences (P1T-181)", () => {
   it("sends a Service Manager asking for the Expert page to the roster", () => {
     signedInAs("ServiceManager");
 
-    render(
-      <MemoryRouter initialEntries={["/me"]}>
-        <App />
-      </MemoryRouter>,
-    );
+    renderApp("/me");
 
     expect(screen.getByText("the roster page")).toBeInTheDocument();
   });
@@ -66,11 +71,7 @@ describe("route audiences (P1T-181)", () => {
   it("offers an Expert only the places an Expert can reach", () => {
     signedInAs("Expert");
 
-    render(
-      <MemoryRouter initialEntries={["/me"]}>
-        <App />
-      </MemoryRouter>,
-    );
+    renderApp("/me");
 
     expect(screen.getByRole("link", { name: "My workspace" })).toBeInTheDocument();
     for (const staffPlace of ["CVs", "Skill Catalog", "Users"]) {
@@ -84,11 +85,7 @@ describe("route audiences (P1T-181)", () => {
     localStorage.clear();
     localStorage.setItem("em.session.token", "a-pre-split-token");
 
-    render(
-      <MemoryRouter initialEntries={["/"]}>
-        <App />
-      </MemoryRouter>,
-    );
+    renderApp("/");
 
     expect(screen.getByText("the sign-in gate")).toBeInTheDocument();
   });

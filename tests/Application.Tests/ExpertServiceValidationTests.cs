@@ -17,7 +17,7 @@ public class ExpertServiceValidationTests
             .Options);
 
     private static ExpertService NewService(AppDbContext db) =>
-        new(db, new SaveExpertValidator(), new UpdateExpertValidator(), new UnrestrictedOwnershipScopeProvider());
+        new(db, new SaveExpertValidator(), new UpdateExpertValidator(), new UnrestrictedOwnershipScopeProvider(), TimeProvider.System);
 
     private static SaveExpertDto Invalid =>
         new("", "X", "T", "not-an-email", null, null, null, null);
