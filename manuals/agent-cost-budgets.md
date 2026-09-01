@@ -7,7 +7,7 @@
 > shown 4 of the 11 read tools. P1T-147: every agent run is bounded by a Runtime Budget (§3.2).
 > P1T-148: roster-qa's instructions and `roster_semantic_search`'s description point at the
 > Convergent Path, and a Convergence floor prices the whole reference run model-free (§6) —
-> **6,993**, inside the 8,000 target. The Tool-Selection Eval re-baseline is still owed. Values
+> **6,984**, inside the 8,000 target. Values
 > and how to re-measure them: `manuals/agent-eval-baselines.md` §4. P1T-150: resume-ingestion's
 > 157,252-token call is decomposed and its iteration ceiling fixed (§7). Measurements below are real —
 > taken from the `AgentUsages` ledger and from one live traced run of the roster-qa endpoint on
@@ -287,11 +287,11 @@ Sequential, each landing on its own:
    `ResolveAgentChatClient`. resume-ingestion is covered for free. Budgets are configuration
    (`AgentBudgets` in `api/Agents/appsettings.json`), not constants.
 5. ~~**Convergence**~~ (P1T-148) — **landed**, except the two live re-runs. Instructions and
-   descriptions now point at the Convergent Path, and §6's floor prices the whole run at **6,993**
-   (1,873 × 3 calls + 87 × 2 + 1,200), inside the 8,000 target. The real-token 8,000 Cost Floor is
+   descriptions now point at the Convergent Path, and §6's floor prices the whole run at **6,984**
+   (1,870 × 3 calls + 87 × 2 + 1,200), inside the 8,000 target. The real-token 8,000 Cost Floor is
    committed as a live ceiling (`RosterQaConvergenceLiveFloorTests`, `Category=live`) rather than a
    deterministic one, because a real-token number cannot be measured without a model. The
-   Tool-Selection Eval re-baseline is still owed.
+   Tool-Selection Eval re-baseline landed in P1T-178 — see `manuals/mcp-tool-descriptions.md`.
 
 ### Two things worth saying out loud
 
@@ -510,7 +510,7 @@ priced by the same floor, and both landed in §8:
 Both are instruction rewrites whose effect depends on what a model actually does, so both need a
 live confirmation this ticket could not run — the same shape as P1T-148. That is **P1T-155**.
 
-## 8. Turn Batching: 111,638 → 31,247, on a path that got LONGER (P1T-155)
+## 8. Turn Batching: 111,638 → 31,027, on a path that got LONGER (P1T-155)
 
 §7 left two levers and an ordering claim: batch first, because filtering the catalog "buys tokens
 with iterations". Doing both showed the ordering claim was right and its reasoning was wrong. The
@@ -547,7 +547,7 @@ one dump. Its declared turns are six:
    → qualification_add → 2× experience_add → answer
 ```
 
-**7 model calls, 31,247 estimated tokens.** Both are declared in `IngestionRunCost` and measured
+**7 model calls, 31,027 estimated tokens.** Both are declared in `IngestionRunCost` and measured
 end to end by `IngestionRunCostFloorTests`, the same instrument that priced §7.1.
 
 | # | called after this call | adds | × re-sends | total |
@@ -574,8 +574,8 @@ end to end by `IngestionRunCostFloorTests`, the same instrument that priced §7.
    `CONTEXT.md` gained **Turn Batching** for exactly this, and Structural Path Length was amended:
    twenty-three calls, seven turns, and the second number is the one that bills.
 2. **The levers compound.** Batching alone was 44,001 (§7.5); filtering alone, measured on the way
-   through, is 103,865 over 24 calls — a 7% cut for seven more calls, barely worth doing. Together
-   they are 31,247. Batching cuts how many times anything is re-sent; filtering cuts what there is
+   through, is 103,142 over 24 calls — a 7% cut for seven more calls, barely worth doing. Together
+   they are 31,027. Batching cuts how many times anything is re-sent; filtering cuts what there is
    to re-send. Neither multiplies without the other.
 3. **What is left is the prompt.** 70.9% of the declared run is now the Baseline Prompt Size, and
    the remaining terms are 1,603 of resume and 2,845 of the agent's actual work. There is no third
@@ -591,7 +591,7 @@ rather than for being expensive, and §3.2 is explicit that the token ceiling is
 should bind.
 
 Whether an ordinary ingestion now *finishes* inside 40,000 rather than degrading is the ticket's
-actual goal and this measurement **cannot answer it**: 31,247 is `TokenEstimate` tokens and
+actual goal and this measurement **cannot answer it**: 31,027 is `TokenEstimate` tokens and
 `MaxInputTokens` counts real ones, roughly 2.4× apart on the GUID-dense payloads a write loop
 carries. Quoting the estimate against the budget would be the error §7.1 warns about, one section
 after warning about it.

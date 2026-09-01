@@ -121,7 +121,7 @@ public static class IngestionRunCost
     /// <para>These are ESTIMATED tokens and the ledger row was 155,668 REAL ones; see
     /// <see cref="TokenEstimate"/> on why the two differ, and never quote an estimate as a bill.</para>
     /// </summary>
-    public const int SerialRunCeiling = 103_865;
+    public const int SerialRunCeiling = 103_142;
 
     /// <summary>
     /// Ceiling on the DECLARED reference ingestion — <see cref="ReferenceIngestionTurns"/>, same
@@ -145,7 +145,7 @@ public static class IngestionRunCost
     /// roughly 2.4× apart on GUID-dense payloads, in the wrong direction. Only
     /// <c>IngestionConvergenceLiveFloorTests</c> can answer that, and it needs a key.</para>
     /// </summary>
-    public const int BatchedRunCeiling = 31_247;
+    public const int BatchedRunCeiling = 31_027;
 
     /// <summary>
     /// Ceiling on what the resume text itself contributes across the DECLARED run — it is in the
@@ -153,7 +153,7 @@ public static class IngestionRunCost
     /// that is NOT waste, and because measuring it is what disproved the premise P1T-150 opened
     /// with: that ingestion is expensive because a pasted resume is large input.
     ///
-    /// <para>1,603 of 31,247 — <b>5.1%</b>, and P1T-155 ratcheted it down from 3,893 without
+    /// <para>1,603 of 31,027 — <b>5.2%</b>, and P1T-155 ratcheted it down from 3,893 without
     /// touching the resume, by removing calls that were re-sending it. The document was never the
     /// bill; the loop was, and it still is.</para>
     /// </summary>

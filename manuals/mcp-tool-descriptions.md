@@ -145,11 +145,63 @@ descriptions had never once shifted — `style` off a flat 0% across six runs, `
 The instrument's real finding was never "the wording is wrong"; it was "these tool contracts force
 a read the prompt cannot satisfy". Fixing the contracts is what paid.
 
-**Floors NOT tightened yet — deliberately.** The floor policy above wants three runs and a floor at
-the minimum minus headroom. The day's free-tier quota (500 requests, 39 per run) ran out after two
-clean runs, and this eval has been misled by two agreeing runs twice already. Two is exactly the
-trap the policy exists for, so the committed floors stay where pass 2 left them until a third clean
-run lands. Tighten then, from the minimum of three.
+### Re-baseline after the `expert_*` rename (P1T-178, measured 2026-09-01)
+
+P1T-177 changed **both halves of this instrument at once** — the tool names and descriptions the
+model chooses between, and the golden prompt wording it chooses from (`"List all employees…"` →
+`"List all experts…"`). The floors were deliberately left untouched in that PR because they no
+longer described what was being measured. Three runs, `gemini-3.5-flash-lite`, Temperature = 0:
+
+| Cluster | prompts | before (pin runs A / B) | run 1 | run 2 | run 3 | floor: was → now |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| capability | 6 | 100% / 100% | 100% | 100% | 100% | 100% → 100% |
+| exact-fact | 7 | 100% / 100% | 100% | 100% | 100% | 100% → 100% |
+| bulk-sweep | 3 | 100% / 100% | 100% | 100% | 100% | 100% → 100% |
+| catalog | 4 | 100% / 100% | 100% | 100% | 100% | 100% → 100% |
+| shortlist | 4 | 75% / 100% | 100% | 100% | 100% | 0.75 → 0.75 |
+| style | 3 | 100% / 100% | 100% | 100% | 100% | ungated → **0.66** |
+| writes | 12 | 100% / 100% | 100% | 100% | 100% | 0.75 → **0.91** |
+| **overall first-tool** | 39 | **0.974 / 1.000** | **1.000** | **1.000** | **1.000** | 0.79 → **0.92** |
+
+0 transport errors in all three. **No cluster regressed and no prompt missed in any run**, so there
+is no confusable pair to report: the rename moved nothing. If anything the shorter names are
+marginally easier to tell apart, and every tool schema got smaller (see
+`manuals/agent-eval-baselines.md` for the cost side).
+
+**These are also the third, fourth and fifth clean runs under the Temperature = 0 pin**, which
+makes them the re-baseline P1T-138 was waiting for and the reason the floors move now. The post-pin
+population is five runs — 0.974, 1.000, 1.000, 1.000, 1.000 — and the floors come from that, not
+from the pre-pin eight: the pin changed the instrument, so pre-pin runs measure a different thing.
+
+How each floor was set:
+
+- **Global 0.79 → 0.92.** Post-pin minimum 0.974, minus about two prompts of headroom (0.051).
+- **The four read clusters stay pinned at 1.0**, no headroom. 100% in every run ever recorded,
+  pre-pin and post, so a dip there is signal rather than variance.
+- **`writes` 0.75 → 0.91** (11 of 12). Five post-pin runs at 100%; the old 0.75 was pre-pin
+  variance that the temperature pin removed.
+- **`style` ungated → 0.66** (2 of 3). It gains a floor for the first time: it read a flat 0%
+  across six runs before P1T-136's Theme Mode affordance and 100% in all five since. It sits a
+  prompt looser than the other read clusters on purpose — five runs of history rather than
+  thirteen — and can be pinned to 1.0 once it has earned that.
+- **`shortlist` stays at 0.75.** The formula would say 1.0; the history says do not. `sl-jd-paste`
+  is the one prompt that has never settled across any run of this eval, and it missed as recently
+  as the first pin run.
+
+**A fourth run, taken to validate the tightened floors, immediately earned that caution.** It read
+**0.974** — `sl-jd-paste` missed again, landing on `roster_digest_list` this time (it has previously
+gone to `skill_list`), putting `shortlist` at exactly 75%. Every floor held: global 0.974 ≥ 0.92,
+shortlist 75% ≥ 0.75, style 100% ≥ 0.66, writes 100% ≥ 0.91, 0 errors. Had `shortlist` been
+tightened to 1.0 on the strength of three perfect runs — which is what "minimum minus headroom"
+mechanically prescribed — this run would have been red. Four of six post-rename runs are perfect
+and the fifth is one prompt short; that is the shape of this instrument.
+
+**The confusable pair, named.** `sl-jd-paste` pastes a full job description and expects
+`roster_shortlist_search`. Its misses land on whichever tool also plausibly consumes a long text
+blob about many people — `skill_list` historically, `roster_digest_list` now. This is not the
+rename's doing: the prompt predates it and has missed under every description revision. It is the
+open item on this eval, and it is an affordance question (what a JD-shaped input should bind to),
+not a wording one.
 
 **A run past the error ceiling is not a measurement.** Two of the day's five runs died partway
 through on quota and rendered as `writes 0%` / near-total collapse — indistinguishable, in the
@@ -172,17 +224,20 @@ clean 0.846 until run 3 read 0.821; pass 2 looked like 0.846/0.872 until run 3 r
 **Take at least three runs. Floor at the minimum observed, minus headroom. Never tighten a floor to
 express a hope.**
 
-Committed floors: global **0.79** (min observed 0.821 across ten runs, minus one prompt), and
-per-cluster first-tool floors — capability / exact-fact / bulk-sweep / catalog at **100%**,
-shortlist and writes at **0.75**, style ungated.
+Committed floors, after the P1T-178 re-baseline above: global **0.92** (post-pin min 0.974 across
+five runs, minus about two prompts), and per-cluster first-tool floors — capability / exact-fact /
+bulk-sweep / catalog at **100%**, `writes` at **0.91**, `shortlist` at **0.75**, `style` at
+**0.66**. No cluster is ungated any more.
 
-The uncomfortable consequence, stated plainly: run-to-run variance here is worth about two prompts,
-which is **larger than either pass's aggregate gain**, so the global floor cannot detect losing that
-gain. The four read clusters — 100% in all ten runs — are the only gate worth its name, and the
-write/shortlist floors catch a collapse, not a slip. P1T-138 is the fix for the instrument itself
-(pin temperature, re-baseline; optionally score a majority over N samples per prompt), and until it
-lands the typical figures in the table above are the honest description of the pass, while the
-floors are the honest description of what can be *enforced*.
+The uncomfortable consequence, as it stood before the pin: run-to-run variance was worth about two
+prompts, **larger than either description pass's aggregate gain**, so the global floor could not
+detect losing that gain, and the four read clusters were the only gate worth its name.
+
+P1T-138 was the fix for the instrument itself — pin `Temperature = 0` (a seed is not settable; the
+Gemini OpenAI-compat endpoint 400s on an unrecognized `seed` field). Five post-pin runs are now on
+record and four of the five are perfect, so the variance the paragraph above describes is largely
+gone and the global floor has been tightened 0.79 → 0.92 accordingly. Scoring a majority over N
+samples per prompt remains available if it ever comes back.
 
 ### What is left is not wording: required arguments the prompt cannot supply
 

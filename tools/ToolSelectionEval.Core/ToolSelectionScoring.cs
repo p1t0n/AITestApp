@@ -79,11 +79,24 @@ public sealed record SelectionAggregate(
 /// <c>skill_create</c>'s prerequisite reads now scored as correct). Aggregate moved 0.821–0.872
 /// → 0.974–1.000.</para>
 ///
-/// <para><b>Floors NOT tightened yet, deliberately.</b> The policy below wants three runs; the
-/// day's free-tier quota (500 requests, 39 per run) ran out after two clean ones. Two agreeing
-/// runs have misled this eval twice already — that is exactly the trap the policy exists for, so
-/// the floors stay where they are until a third clean run lands. Tighten then, from the minimum
-/// of three, not from the two above.</para>
+/// <para><b>Re-baselined after the <c>expert_*</c> rename (P1T-178, measured 2026-09-01,
+/// <c>gemini-3.5-flash-lite</c>, Temperature = 0):</b> three runs, <b>1.000 / 1.000 / 1.000</b>
+/// (39/39 each), 0 errors, every cluster 100% in all three. P1T-177 changed both halves of this
+/// instrument at once — the tool names and descriptions the model chooses between, and the prompt
+/// wording it chooses from ("employees" → "experts") — and the answer is that it moved nothing:
+/// no cluster regressed, and no prompt missed in any run. The shorter names are marginally easier
+/// to tell apart, not harder.</para>
+///
+/// <para>These are also the third, fourth and fifth clean runs under the Temperature = 0 pin, so
+/// they are the re-baseline P1T-138 was waiting for. The post-pin population is five runs:
+/// 0.974, 1.000, 1.000, 1.000, 1.000. Floors below move from that, not from the pre-pin eight —
+/// the pin changed the instrument, so pre-pin runs measure a different thing.</para>
+///
+/// <para>A fourth run, taken to validate the tightened floors, read <b>0.974</b>: <c>sl-jd-paste</c>
+/// missed again — <c>roster_digest_list</c> this time, <c>skill_list</c> before — putting shortlist
+/// at exactly its 0.75 floor. Every floor held. Had shortlist been tightened to 1.0 on three perfect
+/// runs, as "minimum minus headroom" mechanically prescribes, that run would have been red. The
+/// history is why it did not move.</para>
 ///
 /// <para><b>Reading a red run:</b> a run past the error ceiling is not a measurement. Two runs on
 /// 2026-08-29 rendered as <c>writes 0%</c> / total collapse purely because the transport died
@@ -102,15 +115,25 @@ public sealed record SelectionAggregate(
 /// </summary>
 public static class ToolSelectionBaselines
 {
-    public const double FirstToolAccuracyFloor = 0.79;  // min observed 0.821 over 8 runs, minus headroom
-    public const double AnyCallAccuracyFloor = 0.79;    // tracks first-tool on this set
+    public const double FirstToolAccuracyFloor = 0.92;  // post-pin min 0.974 over 5 runs, minus ~2 prompts
+    public const double AnyCallAccuracyFloor = 0.92;    // tracks first-tool on this set
     public const int ErrorCeiling = 2;                  // measured 0; headroom for transport flakes
 
-    /// <summary>Per-cluster first-tool floors. The four read clusters at 1.0 are the real gate —
-    /// 100% in every run measured, so any dip is signal. shortlist and writes sit at the lowest
-    /// figure each has held (0.75), which is where variance put them, not where the pass left them
-    /// (typically 100% and 83%): they catch a collapse, not a slip. style is absent on purpose
-    /// (0% throughout — an affordance gap, P1T-136).</summary>
+    /// <summary>Per-cluster first-tool floors, one prompt of headroom below the post-pin minimum
+    /// except where a cluster has actually held lower. Cluster sizes: writes 12, exact-fact 7,
+    /// capability 6, shortlist 4, catalog 4, style 3, bulk-sweep 3.
+    ///
+    /// <para>The four read clusters stay pinned at 1.0 with no headroom — 100% in every run ever
+    /// measured, pre-pin and post, so any dip there is signal rather than variance. shortlist stays
+    /// at 0.75 because that is a figure it has actually held post-pin (<c>sl-jd-paste</c> landing on
+    /// <c>skill_list</c>); the formula would say 1.0 and the history says do not.</para>
+    ///
+    /// <para>Two clusters move. <c>writes</c> 0.75 → 0.91 (11/12): five post-pin runs at 100%,
+    /// where the 0.75 was pre-pin variance the Temperature pin removed. <c>style</c> gains a floor
+    /// at all for the first time, 0.66 (2/3) — it was ungated because it read 0% throughout before
+    /// P1T-136's Theme Mode affordance, and has read 100% in all five runs since. It sits a prompt
+    /// looser than the other read clusters deliberately: it has five runs of history behind it
+    /// rather than thirteen, and can be pinned to 1.0 once it has earned that.</para></summary>
     public static readonly IReadOnlyDictionary<string, double> ClusterFirstToolFloors =
         new Dictionary<string, double>
         {
@@ -119,7 +142,8 @@ public static class ToolSelectionBaselines
             [GoldenPromptSet.BulkSweep] = 1.0,
             [GoldenPromptSet.Catalog] = 1.0,
             [GoldenPromptSet.Shortlist] = 0.75,
-            [GoldenPromptSet.Writes] = 0.75,
+            [GoldenPromptSet.Writes] = 0.91,
+            [GoldenPromptSet.Style] = 0.66,
         };
 }
 
