@@ -27,6 +27,8 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<ScoringJobCandidate> ScoringJobCandidates => Set<ScoringJobCandidate>();
     public DbSet<ExpertSearchChunk> ExpertSearchChunks => Set<ExpertSearchChunk>();
     public DbSet<ProcessingRecord> ProcessingRecords => Set<ProcessingRecord>();
+    public DbSet<PendingClaim> PendingClaims => Set<PendingClaim>();
+    public DbSet<ClaimCode> ClaimCodes => Set<ClaimCode>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -109,6 +111,38 @@ public class AppDbContext : DbContext, IAppDbContext
                     "(\"Origin\" = 'SelfRegistered' AND \"Basis\" = 'ContractNecessity') "
                     + "OR (\"Origin\" = 'StaffCreated' AND \"Basis\" = 'LegitimateInterest')"));
             }
+        });
+
+        b.Entity<PendingClaim>(e =>
+        {
+            e.Property(x => x.ClaimantEmail).HasMaxLength(256).IsRequired();
+
+            e.HasOne(x => x.Claimant).WithMany()
+                .HasForeignKey(x => x.ClaimantUserId).OnDelete(DeleteBehavior.Cascade);
+            // Deleting the row takes its claim history with it — erasure (P1T-186) removes the
+            // request along with the data it was a request for.
+            e.HasOne(x => x.Expert).WithMany()
+                .HasForeignKey(x => x.ExpertId).OnDelete(DeleteBehavior.Cascade);
+
+            // One open claim per person, and one open claim per row. Both are database truths for
+            // the same reason the owner index is: a second approval racing the first would bind a
+            // row twice, and "at most one" enforced only in a service is enforced only until the
+            // next code path forgets. Filtered, because resolved rows are kept forever.
+            e.HasIndex(x => x.ClaimantUserId).IsUnique()
+                .HasFilter("\"State\" = 'Pending'");
+            e.HasIndex(x => x.ExpertId).IsUnique()
+                .HasFilter("\"State\" = 'Pending'");
+        });
+
+        b.Entity<ClaimCode>(e =>
+        {
+            e.Property(x => x.CodeHash).HasMaxLength(64).IsRequired();
+            // The lookup a redemption does. Unique because a hash collision here would redeem the
+            // wrong row, and because two identical codes cannot both be single-use.
+            e.HasIndex(x => x.CodeHash).IsUnique();
+
+            e.HasOne(x => x.Expert).WithMany()
+                .HasForeignKey(x => x.ExpertId).OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<SpokenLanguage>(e =>

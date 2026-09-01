@@ -129,8 +129,24 @@ things also fail it deliberately: a new id parameter the fixture cannot seed, an
 it cannot build. Skipping a method is exactly the hole being hunted.
 
 Services deliberately outside row ownership carry their reason in that file: accounts (no owner
-column), the skill catalog (shared vocabulary, writes refused at the endpoint), and the search
-services (agent surfaces, roster-wide by definition).
+column), the skill catalog (shared vocabulary, writes refused at the endpoint), the search services
+(agent surfaces, roster-wide by definition), and the claim service (below).
+
+## Claims: writing the owner column (P1T-184)
+
+`OwnerUserId` has to be written by somebody, and whoever writes it cannot be scoped by it. Staff act
+on rows nobody owns; a person redeeming a claim code reaches the row *because* they do not own it
+yet. So `IClaimService` sits outside the ownership scope on purpose, with its reason recorded in the
+audit's exemption list, and what guards it is the endpoint policy above it plus the code itself.
+
+For the same reason the unscoped append lives on its own seam, `IOwnershipChangeRecorder`, rather
+than as a method on `IProcessingRecordService` — an exception hidden among scoped methods would make
+the ownership audit quietly stop meaning what it says.
+
+`ClaimsController` is `AnyRole` at the class with `ServiceManager` on every action except
+`POST /api/claims/redeem`. That layering is forced: both policies must pass, so a staff-only class
+would refuse the one action an Expert must be able to take. The rules themselves — matching, codes,
+revocation, email immutability — are in `manuals/expert-claims.md`.
 
 ### Who reaches what
 
@@ -140,7 +156,9 @@ services (agent surfaces, roster-wide by definition).
 | The 17 child endpoints | Both — the scope decides, and eleven have no expert in the URL |
 | Catalog reads | Both |
 | Catalog writes | Service Manager (a category rename rewrites every CV) |
+| `POST /api/claims/redeem` | Both — the code is the authorization |
 | `GET /api/experts`, promote, delete, `cv`, `cv.pdf`, `/api/users` | Service Manager |
+| `/api/claims` (queue, approve, reject, codes, revoke) | Service Manager |
 
 `AuthPolicies.AnyRole` is the third explicit audience, for the endpoints both roles genuinely share.
 It is still a declaration — the endpoint-classification audit accepts it and nothing else new — and

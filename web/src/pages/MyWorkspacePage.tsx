@@ -1,6 +1,7 @@
 import { Paper, Stack, Typography } from "@mui/material";
 import PageHeader from "../components/PageHeader";
 import NoticeUpdateBanner from "../components/NoticeUpdateBanner";
+import RedeemClaimCode from "../components/RedeemClaimCode";
 import { useSessionEmail } from "../auth/useAuth";
 
 /**
@@ -32,6 +33,12 @@ export default function MyWorkspacePage() {
           </Typography>
         </Stack>
       </Paper>
+
+      {/* The way out of owning nothing (P1T-184). Shown to everybody rather than only to people
+          with a pending claim: a session that owns no row is deliberately indistinguishable from
+          one whose claim is waiting, so this page cannot tell which it is looking at — and
+          somebody who was handed a code needs the field either way. */}
+      <RedeemClaimCode />
     </PageHeader>
   );
 }

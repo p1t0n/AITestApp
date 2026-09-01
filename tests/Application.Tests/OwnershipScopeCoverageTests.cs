@@ -44,6 +44,11 @@ public class OwnershipScopeCoverageTests
     private static readonly Dictionary<Type, string> NotRosterOwned = new()
     {
         [typeof(IUserService)] = "accounts, not roster rows: a staff-only surface with no owner column",
+        [typeof(Claims.IClaimService)] =
+            "the surface that decides ownership: staff act on rows nobody owns yet, and a claim " +
+            "code is redeemed by somebody precisely because they do not own the row yet. Scoping it " +
+            "to the owner column would make the column a precondition for writing itself. What " +
+            "guards it is the endpoint policy above it and the code itself (P1T-184).",
         [typeof(ISkillCatalogService)] =
             "the catalog is shared vocabulary — nobody's personal data; its writes are refused at the endpoint",
         [typeof(Search.IExpertDigestService)] = "an agent surface: roster-wide by definition",

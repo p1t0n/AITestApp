@@ -102,3 +102,30 @@ public enum LawfulBasis
     /// Art. 22(2) exceptions, so a row on this basis has no route to automated decision-making.</summary>
     LegitimateInterest = 2
 }
+
+/// <summary>
+/// Where one <see cref="Entities.PendingClaim"/> stands (P1T-184). Resolved rows are kept, never
+/// deleted: "rejected, and then claimed again by somebody else" is a sequence a state flag on the
+/// <see cref="Entities.Expert"/> cannot express, and it is the sequence an audit asks about.
+/// </summary>
+public enum ClaimState
+{
+    /// <summary>Raised, waiting for a Service Manager. Grants nothing in the meantime — an Expert
+    /// with an open claim owns no row, so every own-row endpoint 404s for them exactly as it does
+    /// for somebody who never claimed anything (P1T-182).</summary>
+    Pending = 1,
+
+    /// <summary>A Service Manager bound the row to the claimant, or a claim code was redeemed.</summary>
+    Approved = 2,
+
+    /// <summary>A Service Manager refused it, or dismissed the flag below.</summary>
+    Rejected = 3,
+
+    /// <summary>
+    /// The address matched more than one non-Draft row, so no claim on any row was created and this
+    /// row is the flag raised for a Service Manager. <c>Expert.Email</c> is unique only among Active
+    /// rows, so duplicates are a real state rather than a theoretical one, and auto-picking between
+    /// them would hand one person another person's CV on a coin flip.
+    /// </summary>
+    Ambiguous = 4
+}

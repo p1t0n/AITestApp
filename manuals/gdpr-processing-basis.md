@@ -1,6 +1,7 @@
 # Lawful basis, the transparency notice, and the Art. 9 stance
 
-> **Status (2026-09-01):** shipped as P1T-183. `ProcessingRecord` is append-only and per Expert;
+> **Status (2026-09-01):** shipped as P1T-183; the claim transitions landed with P1T-184.
+> `ProcessingRecord` is append-only and per Expert;
 > basis is derived from origin and pinned by a database CHECK constraint; the versioned
 > transparency notice is acknowledged at registration and the version acknowledged is recoverable.
 > Decision: [P1T-171](https://linear.app/p1t0ns-nest/issue/P1T-171). Ownership model:
@@ -87,18 +88,22 @@ applies right now" is a question the Art. 22 route filter has to answer unambigu
 | Event | Appends | Where it lives |
 | --- | --- | --- |
 | Expert row created by staff or by an ingestion agent | `StaffCreated` / LI, no notice version | `ExpertService`, in the same transaction as the row |
-| Claim on a row approved | `SelfRegistered` / 6(1)(b), with the notice version the claimant acknowledged | P1T-184, via `IProcessingRecordService.AppendAsync` |
-| Ownership revoked | `StaffCreated` / LI again | P1T-184 |
+| Registration matches nothing | `SelfRegistered` / 6(1)(b), with the acknowledged notice version | `ClaimService.BindOnRegistrationAsync`, in the same graph as the row |
+| Claim on a row approved | `SelfRegistered` / 6(1)(b), with the notice version the claimant acknowledged | `ClaimService.ApproveAsync`, via `IOwnershipChangeRecorder` |
+| Claim code redeemed | the same, with no approval step — the code is the proof | `ClaimService.RedeemCodeAsync` |
+| Ownership revoked | `StaffCreated` / LI again | `ClaimService.RevokeAsync` |
 | A new notice version acknowledged | the **same** origin, new notice version | `POST /api/notice/acknowledge` |
 
 The last row is the easy mistake: reading an updated notice is not a change in the relationship, so
 it must not move the basis. `AcknowledgeNoticeAsync` reads the record in force and appends on the
 same origin.
 
-> **Registering does not create a roster row.** Signup makes a `User`; the bench row is staff-created
-> and the person *claims* it (P1T-173). So `SelfRegistered` is reached by an approved claim, not by
-> a create — which is why every creation path writes `StaffCreated` and that is an origin rather
-> than a default.
+> **Registering creates a roster row only when nothing matched** (P1T-184). An address that matches
+> a bench row raises a claim and creates nothing; an address that matches none creates a fresh row
+> owned on the spot. So `SelfRegistered` is reached three ways — that create, an approved claim, a
+> redeemed claim code — and never by a *staff* create, which is why `ExpertService`'s two creation
+> paths write `StaffCreated` and that is an origin rather than a default. The claim rules are in
+> `manuals/expert-claims.md`.
 
 ## 5. Every Expert has a recorded basis
 
@@ -106,8 +111,10 @@ An `Expert` with no `ProcessingRecord` is a compliance defect, so it fails the b
 audit. Two checks, at two altitudes:
 
 - `Application.Tests/ProcessingRecordTests` reflects over `IExpertService` and calls **every** method
-  that creates an Expert, requiring each to have written exactly one record. A new creation path is
-  covered the moment it exists — the property a hand-kept list cannot have.
+  that creates an Expert, requiring each to have written exactly one record. A new creation path on
+  that interface is covered the moment it exists — the property a hand-kept list cannot have.
+  Registration's own creation path lives on `IClaimService` instead and is covered by
+  `Application.Tests/ClaimServiceTests`.
 - `Web.Tests/ProcessingRecordDatabaseTests` asserts it over the whole live Postgres database: the
   dev seed, the demo roster, and every row the suite created.
 

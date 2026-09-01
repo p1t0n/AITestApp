@@ -38,6 +38,20 @@ one exactly as written — the history is the artefact, because "this row was on
 until March" has consequences (see `manuals/gdpr-processing-basis.md`).
 _Avoid_: consent record (there is no consent here), audit log, basis flag
 
+**Claim**:
+One person's request to be recognised as the subject of one roster row. Raised when the address they
+registered with matches a bench row, decided by a Service Manager, and **kept after it is decided** —
+the history has to be able to say "rejected, then claimed again by somebody else". A claim grants
+nothing while it waits: the claimant owns no row, which is indistinguishable from owning none at all.
+_Avoid_: request, application (an application is for a Job), verification (nothing is verified here)
+
+**Claim Code**:
+A single-use secret a Service Manager generates for one roster row and hands over out of band — in
+person or by phone, never by email. Redeeming it binds ownership with no approval step, because the
+code *is* the proof: it is the only evidence this service can offer that is stronger than a matching
+email address, and it exists precisely because email is never verified here.
+_Avoid_: invite, token (a token is a session), magic link (there is no link and no mail)
+
 **Origin**:
 How a roster row came to exist — `SelfRegistered` or `StaffCreated` — and the **only** input to
 its Lawful Basis. Not a synonym for who owns the row: ownership says which Expert reaches it,

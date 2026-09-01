@@ -54,8 +54,27 @@ public interface IProcessingRecordService
     Task<IReadOnlyList<ProcessingRecordDto>> HistoryAsync(Guid expertId, CancellationToken ct = default);
 }
 
+/// <summary>
+/// Appending a basis at the one moment the ownership check cannot apply: when ownership itself is
+/// what changes (P1T-184). A claim approved, a claim code redeemed, ownership revoked — staff act on
+/// a row nobody owns, and a redeemer reaches the row precisely because they do not own it yet.
+///
+/// <para>Its own interface rather than a method on <see cref="IProcessingRecordService"/>, so that
+/// the ownership audit keeps meaning what it says: every id-taking method on a roster service
+/// refuses a foreign owner, with no exception hidden among them. What authorizes these two callers
+/// is the endpoint policy above them and the claim code — not the owner column, which is the very
+/// thing being written.</para>
+/// </summary>
+public interface IOwnershipChangeRecorder
+{
+    Task<ProcessingRecordDto> AppendForOwnershipChangeAsync(
+        Guid expertId, ProcessingOrigin origin, string? noticeVersion, string reason,
+        CancellationToken ct = default);
+}
+
 public class ProcessingRecordService(
-    IAppDbContext db, IOwnershipScopeProvider scope, TimeProvider clock) : IProcessingRecordService
+    IAppDbContext db, IOwnershipScopeProvider scope, TimeProvider clock)
+    : IProcessingRecordService, IOwnershipChangeRecorder
 {
     public async Task<ProcessingRecordDto> AppendAsync(
         Guid expertId, ProcessingOrigin origin, string? noticeVersion, string reason,
@@ -80,6 +99,11 @@ public class ProcessingRecordService(
 
         return await AppendUncheckedAsync(expertId, origin, noticeVersion, reason, ct);
     }
+
+    public Task<ProcessingRecordDto> AppendForOwnershipChangeAsync(
+        Guid expertId, ProcessingOrigin origin, string? noticeVersion, string reason,
+        CancellationToken ct = default) =>
+        AppendUncheckedAsync(expertId, origin, noticeVersion, reason, ct);
 
     public async Task<ProcessingRecordDto> AcknowledgeNoticeAsync(
         Guid expertId, string noticeVersion, CancellationToken ct = default)

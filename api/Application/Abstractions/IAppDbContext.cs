@@ -28,6 +28,8 @@ public interface IAppDbContext
     DbSet<ScoringJob> ScoringJobs { get; }
     DbSet<ScoringJobCandidate> ScoringJobCandidates { get; }
     DbSet<ProcessingRecord> ProcessingRecords { get; }
+    DbSet<PendingClaim> PendingClaims { get; }
+    DbSet<ClaimCode> ClaimCodes { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
