@@ -53,6 +53,7 @@ export default function PrototypeSwitcher({
 
   return (
     <Box
+      data-prototype-switcher
       sx={{
         position: "fixed",
         bottom: 16,
