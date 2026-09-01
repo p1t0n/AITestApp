@@ -151,7 +151,7 @@ Baseline Prompt Size:
 Instructions only (no tools reach the model): shortlist 121, bench-report 199, roster-scan
 scorer 199, JD-requirement extractor 237.
 
-The read surface totals **3,991** across 11 tools; the widest single schemas are
+The read surface totals **3,962** across 11 tools; the widest single schemas are
 `style_exemplar_search` 689, `roster_shortlist_search` 635 and `roster_semantic_search` 611. Since
 P1T-146 no agent is shown all of it — each identity's Tool Allowlist is declared in
 `CostFloors.AgentToolAllowlists` and configured under `McpAuth:<agent>:Tools`.
@@ -197,7 +197,7 @@ description that does not change what comes back — is not.
 
 ### Convergent run (P1T-148)
 
-The reference question *"who knows react and lives in London"* prices at **6,993** along
+The reference question *"who knows react and lives in London"* prices at **6,984** along
 `skill_list` → `roster_semantic_search` → answer: 1,873 × 3 model calls, plus 87 × 2 and 1,200 × 1
 for the results each following call re-sends. Its iteration ratchet is **4** model calls; the
 traced run took 10. This ceiling is composed from the two tables above rather than pinned

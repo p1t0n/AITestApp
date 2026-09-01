@@ -98,56 +98,56 @@ public static class CostFloors
         new Dictionary<string, int>
         {
             // ---- read surface (mcp:read) ----
-            ["availability_list"] = 223,
-            ["category_list"] = 165,
-            ["category_tree"] = 163,
-            ["cv_get"] = 296,
-            ["expert_get"] = 357,
-            ["expert_list"] = 243,
-            ["roster_digest_list"] = 301,
+            ["availability_list"] = 219,
+            ["category_list"] = 164,
+            ["category_tree"] = 162,
+            ["cv_get"] = 292,
+            ["expert_get"] = 353,
+            ["expert_list"] = 241,
+            ["roster_digest_list"] = 299,
             // P1T-148 made its filters read as the primary path for a compound question and
             // paid for the words by cutting elaboration — a ratchet down, not a trade.
-            ["roster_semantic_search"] = 611,
-            ["roster_shortlist_search"] = 635,
+            ["roster_semantic_search"] = 607,
+            ["roster_shortlist_search"] = 632,
             // RAISED 176 → 308 by P1T-145, the one deliberate re-baseline in this chain. Three
             // optional parameters and the sentence that teaches the filter cost +132 per
             // iteration; the filter they buy cuts the result from 3,080 to 87, and that result
             // is re-sent on every call after it. On the traced run the trade is +1,320 (132 × 10
             // iterations) against -26,937 (2,993 × 9 re-sends). Down from here, never back up.
-            ["skill_list"] = 308,
-            ["style_exemplar_search"] = 689,
+            ["skill_list"] = 305,
+            ["style_exemplar_search"] = 688,
 
             // ---- write + destructive surface: resume-ingestion holds mcp:write ----
-            ["achievement_add"] = 359,
+            ["achievement_add"] = 357,
             ["achievement_delete"] = 113,
-            ["achievement_update"] = 238,
-            ["availability_add"] = 367,
+            ["achievement_update"] = 237,
+            ["availability_add"] = 363,
             ["availability_delete"] = 172,
-            ["availability_update"] = 274,
+            ["availability_update"] = 272,
             ["category_create"] = 251,
-            ["category_delete"] = 158,
+            ["category_delete"] = 157,
             ["category_update"] = 241,
-            ["expert_create"] = 421,
-            ["expert_create_draft"] = 379,
-            ["expert_delete"] = 216,
-            ["expert_skill_add"] = 428,
-            ["expert_skill_delete"] = 149,
-            ["expert_skill_update"] = 351,
-            ["expert_update"] = 482,
-            ["experience_add"] = 564,
+            ["expert_create"] = 417,
+            ["expert_create_draft"] = 375,
+            ["expert_delete"] = 213,
+            ["expert_skill_add"] = 422,
+            ["expert_skill_delete"] = 146,
+            ["expert_skill_update"] = 347,
+            ["expert_update"] = 478,
+            ["experience_add"] = 561,
             ["experience_delete"] = 152,
-            ["experience_skill_add"] = 275,
-            ["experience_skill_delete"] = 146,
-            ["experience_update"] = 445,
-            ["language_add"] = 314,
-            ["language_delete"] = 122,
-            ["language_update"] = 248,
-            ["qualification_add"] = 509,
+            ["experience_skill_add"] = 274,
+            ["experience_skill_delete"] = 145,
+            ["experience_update"] = 443,
+            ["language_add"] = 310,
+            ["language_delete"] = 121,
+            ["language_update"] = 246,
+            ["qualification_add"] = 506,
             ["qualification_delete"] = 121,
-            ["qualification_update"] = 381,
-            ["skill_create"] = 310,
-            ["skill_delete"] = 155,
-            ["skill_update"] = 268,
+            ["qualification_update"] = 379,
+            ["skill_create"] = 308,
+            ["skill_delete"] = 154,
+            ["skill_update"] = 265,
         };
 
     /// <summary>
@@ -189,7 +189,7 @@ public static class CostFloors
     /// paid per iteration. P1T-146 takes what any one agent pays down by removing tools from its
     /// allowlist, not by shortening the surface.</para>
     /// </summary>
-    public const int ReadToolSurfaceCeiling = 3_991;
+    public const int ReadToolSurfaceCeiling = 3_962;
 
     /// <summary>
     /// Each agent's <b>Tool Allowlist</b> (P1T-146), keyed by the agent's <c>McpAuth:&lt;agent&gt;</c>
@@ -242,8 +242,8 @@ public static class CostFloors
         {
             // P1T-148 rewrote this for Convergence — filter-first search, stop once a result
             // answers — and paid for the new rules out of the old prose rather than growing.
-            ["RosterQaAgent"] = 415,
-            ["CvTailoringAgent"] = 498,
+            ["RosterQaAgent"] = 412,
+            ["CvTailoringAgent"] = 497,
             // RAISED 523 -> 663 by P1T-155, and the second deliberate re-baseline in this chain
             // (skill_list's schema was the first). Two new rules: batch every call that does not
             // need another's result into one turn, and resolve skills through nameContains rather
@@ -251,13 +251,13 @@ public static class CostFloors
             // that was re-sent on every call after the first and a turn count of 24 rather than 7.
             // The batched reference run pays 980 for the words and IngestionRunCost.BatchedRunCeiling
             // is 62% lower than the serial one it replaces. Down from here, never back up.
-            ["ResumeIngestionAgent"] = 663,
-            ["MatchAgent"] = 328,
-            ["ShortlistAgent"] = 121,
-            ["InterviewKitAgent"] = 371,
+            ["ResumeIngestionAgent"] = 660,
+            ["MatchAgent"] = 326,
+            ["ShortlistAgent"] = 120,
+            ["InterviewKitAgent"] = 369,
             ["BenchReportService"] = 199,
             ["JdRequirementExtractor"] = 237,
-            ["QueuedSyncScoringTransport"] = 199,
+            ["QueuedSyncScoringTransport"] = 198,
         };
 
     /// <summary>
@@ -278,15 +278,15 @@ public static class CostFloors
             // never used. P1T-146's allowlist shows it 4 tools instead; P1T-148 then rewrote the
             // instructions for Convergence (416 → 415) and trimmed roster_semantic_search's
             // schema (613 → 611), which is the last 3 tokens off it.
-            ["RosterQaAgent"] = 1_873,
-            ["CvTailoringAgent"] = 1_187,
+            ["RosterQaAgent"] = 1_870,
+            ["CvTailoringAgent"] = 1_186,
             // +132 for P1T-145's skill_list schema, which this agent is also shown, then +140 for
             // P1T-155's Batching and lookup rules. The one baseline in this table that went UP:
             // on a write loop the instructions are what buy the turn count down, and the turns are
             // what multiply the baseline. Priced end to end by IngestionRunCostFloorTests.
-            ["ResumeIngestionAgent"] = 3_165,
-            ["MatchAgent"] = 624,
-            ["InterviewKitAgent"] = 667,
+            ["ResumeIngestionAgent"] = 3_162,
+            ["MatchAgent"] = 622,
+            ["InterviewKitAgent"] = 665,
         };
 
     /// <summary>Composes the number: instructions the agent sent, plus the pinned schema ceiling of
@@ -351,7 +351,7 @@ public static class CostFloors
     /// on its own as those ratchet — the remaining term worth moving is the baseline, which is
     /// re-sent on all three calls.</para>
     /// </summary>
-    public const int RosterQaConvergentRunCeiling = 6_993;
+    public const int RosterQaConvergentRunCeiling = 6_984;
 
     /// <summary>
     /// Prices one agent run along a declared tool path, model-free — Turn Amplification made
