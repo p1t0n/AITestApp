@@ -15,6 +15,12 @@ export interface AuthSession {
   email: string;
   /** Which audience the account belongs to — decides the landing page and the routes on offer. */
   role: SessionRole;
+  /**
+   * A transparency-notice version this account has not acknowledged, or null (P1T-183). The
+   * service never sends email, so a sign-in is the only channel there is for telling somebody the
+   * notice changed. It notifies — nothing is gated on it.
+   */
+  pendingNoticeVersion: string | null;
 }
 
 interface CeremonyBeginResponse {
@@ -26,10 +32,19 @@ interface CeremonyBeginResponse {
  * Self-serve signup. Two-step WebAuthn registration: the server returns credential-creation
  * options, the browser drives the authenticator, and the server verifies + creates the account,
  * returning a session token. The control word is the account's recovery secret (P1T-20).
+ *
+ * Acknowledging the transparency notice is a condition of registering (P1T-183) and the server
+ * refuses `signup/begin` without it — so there is no "shown but not acknowledged" half-state for a
+ * later surface to interpret.
  */
 export function useSignup() {
   return useMutation({
-    mutationFn: async (input: { email: string; controlWord: string }): Promise<AuthSession> => {
+    mutationFn: async (input: {
+      email: string;
+      controlWord: string;
+      /** The notice version the person acknowledged. Required — declining refuses the signup. */
+      acknowledgedNoticeVersion: string;
+    }): Promise<AuthSession> => {
       const begin = (await http.post<CeremonyBeginResponse>("/auth/signup/begin", input)).data;
       const attestation = await performRegistration(begin.optionsJson);
       const session = (

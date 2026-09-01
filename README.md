@@ -51,6 +51,12 @@ See [SPEC.md](SPEC.md).
 - **AI agent widget** — dockable in-app assistant with Roster Q&A / Tailor CV / Match / Interview /
   Shortlist / Staffing / Scan / Bench / Usage tabs; per-user token caps enforced server-side.
 - **Auth** — passkey (WebAuthn) sign-in for the app; OAuth 2.1 service accounts for agents.
+- **Lawful basis on the record** — every roster row carries an append-only `ProcessingRecord`
+  stating why the service may hold it (self-registered → Art. 6(1)(b), staff-created → 6(1)(f)),
+  with the version of the transparency notice the person acknowledged. Acknowledging the notice is
+  required to register; a new version notifies at next sign-in and gates nothing. Basis is derived
+  from origin and pinned by a database CHECK constraint, and rewriting a record is refused by a
+  trigger (see `manuals/gdpr-processing-basis.md`).
 - **Extraction-fidelity eval** — frozen golden JD set (incl. deliberately sparse/ambiguous
   honesty cases) + CLI + live regression gate with a hard fabrication-rate=0 ceiling: no invented
   must-haves, seniority, location, or years when the JD is silent.

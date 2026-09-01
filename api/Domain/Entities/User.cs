@@ -40,6 +40,21 @@ public class User
     /// </summary>
     public int TokenVersion { get; set; } = 1;
 
+    /// <summary>
+    /// The transparency-notice version this account acknowledged, most recently (P1T-183).
+    /// Acknowledging is required to register, so a self-serve account always has one; the
+    /// pre-existing staff accounts and the bootstrap invite carry null, which is honest — nobody
+    /// showed them anything.
+    ///
+    /// <para>Kept on the account rather than only on <see cref="ProcessingRecord"/> because a person
+    /// acknowledges before any roster row is theirs: signup creates no <see cref="Expert"/>, and the
+    /// row they will eventually own may not exist yet. The record is written when the two meet.</para>
+    /// </summary>
+    public string? AcknowledgedNoticeVersion { get; set; }
+
+    /// <summary>When <see cref="AcknowledgedNoticeVersion"/> was acknowledged. Null with it.</summary>
+    public DateTimeOffset? NoticeAcknowledgedAt { get; set; }
+
     /// <summary>Per-user daily token cap. Null = inherit the system default from config.</summary>
     public long? DailyTokenCap { get; set; }
 

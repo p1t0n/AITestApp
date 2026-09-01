@@ -60,12 +60,26 @@ public static class DbInitializer
 
         // --- Sample experts ---
         db.Experts.AddRange(
-            BuildAlice(skills),
-            BuildBob(skills),
-            BuildCarol(skills)
+            StaffCreated(BuildAlice(skills)),
+            StaffCreated(BuildBob(skills)),
+            StaffCreated(BuildCarol(skills))
         );
 
         await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Attaches the row's lawful-basis record (P1T-183). The dev samples are staff-created by
+    /// definition — nobody registered them and nobody was shown a notice — and an Expert with no
+    /// recorded basis is a compliance defect, so the seed does not get to skip it.
+    /// </summary>
+    private static Expert StaffCreated(Expert e)
+    {
+        e.ProcessingRecords.Add(ProcessingRecord.For(
+            e.Id, sequence: 1, ProcessingOrigin.StaffCreated, noticeVersion: null,
+            "Seeded as a development sample; nobody registered and no notice was shown.",
+            DateTimeOffset.UtcNow));
+        return e;
     }
 
     private static ExpertSkill ES(Skill skill, SkillLevel level, decimal years) =>

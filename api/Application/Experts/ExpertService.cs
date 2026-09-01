@@ -35,16 +35,19 @@ public class ExpertService : IExpertService
     private readonly IValidator<SaveExpertDto> _validator;
     private readonly IValidator<UpdateExpertDto> _patchValidator;
     private readonly IOwnershipScopeProvider _scope;
+    private readonly TimeProvider _clock;
     public ExpertService(
         IAppDbContext db,
         IValidator<SaveExpertDto> validator,
         IValidator<UpdateExpertDto> patchValidator,
-        IOwnershipScopeProvider scope)
+        IOwnershipScopeProvider scope,
+        TimeProvider clock)
     {
         _db = db;
         _validator = validator;
         _patchValidator = patchValidator;
         _scope = scope;
+        _clock = clock;
     }
 
     private static DateOnly Today => DateOnly.FromDateTime(DateTime.UtcNow);
@@ -91,6 +94,7 @@ public class ExpertService : IExpertService
         await _validator.ValidateAndThrowAsync(dto, ct);
         var e = new Expert { Id = Guid.NewGuid() };
         Apply(e, dto);
+        RecordCreation(e, "Added to the bench by a Service Manager.");
         _db.Experts.Add(e);
         await SaveGuardingEmailAsync(e.Email, "Use the existing expert, or give this one a different address.", ct);
         return await ReadBackAsync(e.Id, ct);
@@ -101,6 +105,7 @@ public class ExpertService : IExpertService
         await _validator.ValidateAndThrowAsync(dto, ct);
         var e = new Expert { Id = Guid.NewGuid(), Status = ExpertStatus.Draft };
         Apply(e, dto);
+        RecordCreation(e, "Staged from a resume by an ingestion agent, on behalf of a Service Manager.");
         _db.Experts.Add(e);
         await _db.SaveChangesAsync(ct);
 
@@ -174,6 +179,25 @@ public class ExpertService : IExpertService
         _db.Experts.Remove(e);
         await _db.SaveChangesAsync(ct);
     }
+
+    /// <summary>
+    /// Attaches the row's first <see cref="ProcessingRecord"/> (P1T-183) — in the same graph, so it
+    /// is written in the same transaction as the Expert. A roster row that exists for even one
+    /// commit without a recorded lawful basis is a compliance defect, so this is not a follow-up
+    /// call that could fail on its own.
+    ///
+    /// <para>The origin is <see cref="ProcessingOrigin.StaffCreated"/> on both creation paths
+    /// because both of them <em>are</em> staff creating a row — the API's POST is Service-Manager
+    /// only, and an ingestion agent stages drafts for a Service Manager to promote. This is not a
+    /// default standing in for an unknown: registering does not create a roster row at all, so the
+    /// self-registered origin is reached by an approved claim appending a record (P1T-184), never by
+    /// a create. The basis itself is not chosen here — <see cref="ProcessingRecord.BasisFor"/> and
+    /// the table's CHECK constraint decide it from the origin.</para>
+    /// </summary>
+    private void RecordCreation(Expert e, string reason) =>
+        e.ProcessingRecords.Add(ProcessingRecord.For(
+            e.Id, sequence: 1, ProcessingOrigin.StaffCreated,
+            noticeVersion: null, reason, _clock.GetUtcNow()));
 
     /// <summary>
     /// Saves, translating the roster's one database-level uniqueness rule into a Conflict. Email

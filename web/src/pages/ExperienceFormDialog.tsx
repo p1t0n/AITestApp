@@ -20,6 +20,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import type { SaveExperience, SkillDto } from "../types";
 import { apiErrorMessage, useSkills } from "../api";
 import { ErrorNotice } from "../components/ErrorNotice";
+import { SPECIAL_CATEGORY_GUIDANCE } from "./cvGuidance";
 
 interface Props {
   open: boolean;
@@ -158,10 +159,16 @@ export default function ExperienceFormDialog({ open, title, initial, onClose, on
             fullWidth
             multiline
             minRows={2}
+            helperText={SPECIAL_CATEGORY_GUIDANCE}
           />
 
           <Divider />
           <Typography variant="subtitle2">Achievements</Typography>
+          {/* The bullets are the other free-text field an achievement can carry an Art. 9 detail
+              into, so the same ask is made once above them rather than repeated per bullet. */}
+          <Typography variant="caption" color="text.secondary">
+            {SPECIAL_CATEGORY_GUIDANCE}
+          </Typography>
           {form.achievements.length === 0 && (
             <Typography variant="body2" color="text.secondary">
               No bullets yet.

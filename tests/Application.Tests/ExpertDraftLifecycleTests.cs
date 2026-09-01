@@ -23,7 +23,7 @@ public class ExpertDraftLifecycleTests
             .Options);
 
     private static ExpertService NewService(AppDbContext db) =>
-        new(db, new SaveExpertValidator(), new UpdateExpertValidator(), new UnrestrictedOwnershipScopeProvider());
+        new(db, new SaveExpertValidator(), new UpdateExpertValidator(), new UnrestrictedOwnershipScopeProvider(), TimeProvider.System);
 
     private static SaveExpertDto Dto(string first = "Torvald", string last = "Emberwright", string email = "t@example.com") =>
         new(first, last, "Senior Engineer", email, null, null, null, null);

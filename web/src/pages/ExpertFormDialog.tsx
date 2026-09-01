@@ -11,6 +11,7 @@ import {
 import type { SaveExpert } from "../types";
 import { apiErrorMessage } from "../api";
 import { ErrorNotice } from "../components/ErrorNotice";
+import { SPECIAL_CATEGORY_GUIDANCE } from "./cvGuidance";
 
 interface Props {
   open: boolean;
@@ -77,6 +78,11 @@ export default function ExpertFormDialog({ open, title, initial, onClose, onSave
             fullWidth
             multiline
             minRows={3}
+            // Art. 9 minimisation, said where the free text is actually typed (P1T-183). This is a
+            // mitigation and not a solution — nothing stops somebody writing it anyway — but asking
+            // is the only honest control available, since classifying the text on save would create
+            // the very special-category inference it aims to avoid.
+            helperText={SPECIAL_CATEGORY_GUIDANCE}
           />
           <TextField label="Photo URL" value={form.photoUrl ?? ""} onChange={field("photoUrl")} fullWidth />
         </Stack>

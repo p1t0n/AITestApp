@@ -26,6 +26,7 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<ScoringJob> ScoringJobs => Set<ScoringJob>();
     public DbSet<ScoringJobCandidate> ScoringJobCandidates => Set<ScoringJobCandidate>();
     public DbSet<ExpertSearchChunk> ExpertSearchChunks => Set<ExpertSearchChunk>();
+    public DbSet<ProcessingRecord> ProcessingRecords => Set<ProcessingRecord>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -72,6 +73,11 @@ public class AppDbContext : DbContext, IAppDbContext
             e.HasOne<User>().WithMany()
                 .HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.SetNull);
 
+            // Cascade, because deleting the row is erasure (P1T-186) — a different act from
+            // rewriting the basis, which the append-only trigger below refuses outright.
+            e.HasMany(x => x.ProcessingRecords).WithOne(x => x.Expert)
+                .HasForeignKey(x => x.ExpertId).OnDelete(DeleteBehavior.Cascade);
+
             e.HasMany(x => x.SpokenLanguages).WithOne(x => x.Expert)
                 .HasForeignKey(x => x.ExpertId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(x => x.AvailabilityEntries).WithOne(x => x.Expert)
@@ -82,6 +88,27 @@ public class AppDbContext : DbContext, IAppDbContext
                 .HasForeignKey(x => x.ExpertId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(x => x.Experiences).WithOne(x => x.Expert)
                 .HasForeignKey(x => x.ExpertId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<ProcessingRecord>(e =>
+        {
+            e.Property(x => x.NoticeVersion).HasMaxLength(32);
+            e.Property(x => x.Reason).HasMaxLength(400).IsRequired();
+            // "Which basis is in force" has to have exactly one answer, and timestamps tie.
+            e.HasIndex(x => new { x.ExpertId, x.Sequence }).IsUnique();
+
+            if (isNpgsql)
+            {
+                // Basis is a function of origin (ProcessingRecord.BasisFor) and this is the database
+                // saying so. It is what makes "no global default path exists" structural rather than
+                // a promise: no service, no seeder, no hand-written INSERT and no future code path
+                // can land a row on a ground its origin does not carry. Enums store as their names,
+                // so the constraint reads as the table in manuals/gdpr-processing-basis.md does.
+                e.ToTable(t => t.HasCheckConstraint(
+                    "CK_ProcessingRecords_BasisMatchesOrigin",
+                    "(\"Origin\" = 'SelfRegistered' AND \"Basis\" = 'ContractNecessity') "
+                    + "OR (\"Origin\" = 'StaffCreated' AND \"Basis\" = 'LegitimateInterest')"));
+            }
         });
 
         b.Entity<SpokenLanguage>(e =>
@@ -159,6 +186,7 @@ public class AppDbContext : DbContext, IAppDbContext
             e.Property(x => x.Email).HasMaxLength(256).IsRequired();
             e.HasIndex(x => x.Email).IsUnique();
             e.Property(x => x.ControlWordHash).HasMaxLength(512).IsRequired();
+            e.Property(x => x.AcknowledgedNoticeVersion).HasMaxLength(32);
             // ServiceManager is the store default because a row written without a role predates
             // the split, and every account from then was staff. EF writes new accounts explicitly.
             e.Property(x => x.Role).HasMaxLength(30).IsRequired()

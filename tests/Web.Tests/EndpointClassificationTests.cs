@@ -60,7 +60,13 @@ public class EndpointClassificationTests(WebApiFactory factory)
             .Select(Route)
             .ToList();
 
-        anonymous.Should().OnlyContain(route => route.StartsWith("api/auth/"));
+        // The auth ceremonies, and the transparency notice's reads (P1T-183). The notice is
+        // anonymous by necessity, not convenience: acknowledging it is a condition of registering,
+        // and demanding somebody acknowledge a text they need an account to read would be an
+        // Art. 13 failure wearing an auth rule. Acknowledging it is not on this list — that needs
+        // a session, because it is recorded against one.
+        anonymous.Should().OnlyContain(route =>
+            route.StartsWith("api/auth/") || route == "api/notice" || route == "api/notice/{version}");
     }
 
     /// <summary>

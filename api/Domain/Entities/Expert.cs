@@ -39,6 +39,13 @@ public class Expert
 
     public string? PhotoUrl { get; set; }
 
+    /// <summary>
+    /// Why we are allowed to hold this row, and how that changed over time (P1T-183). Append-only,
+    /// and never empty: a roster row with no recorded basis is a compliance defect, so every path
+    /// that creates an Expert writes the first record in the same transaction.
+    /// </summary>
+    public ICollection<ProcessingRecord> ProcessingRecords { get; set; } = new List<ProcessingRecord>();
+
     public ICollection<SpokenLanguage> SpokenLanguages { get; set; } = new List<SpokenLanguage>();
     public ICollection<AvailabilityEntry> AvailabilityEntries { get; set; } = new List<AvailabilityEntry>();
     public ICollection<ExpertSkill> Skills { get; set; } = new List<ExpertSkill>();

@@ -1,6 +1,7 @@
 using System.Reflection;
 using ExpertToJob.Application.Auth;
 using ExpertToJob.Application.Availability;
+using ExpertToJob.Application.Compliance;
 using ExpertToJob.Application.Common;
 using ExpertToJob.Application.Cv;
 using ExpertToJob.Application.Experts;
@@ -178,6 +179,14 @@ public class OwnershipScopeCoverageTests
                 return CancellationToken.None;
             }
 
+            // A published notice version, because the compliance service validates the string it is
+            // handed. "Some text" would fail validation rather than ownership, and a method that
+            // threw for the wrong reason would look audited without being audited.
+            if (parameter.ParameterType == typeof(string) && parameter.Name == "noticeVersion")
+            {
+                return TransparencyNotice.CurrentVersion;
+            }
+
             if (parameter.ParameterType == typeof(Guid))
             {
                 // An unknown id name is a failure, not a skip: a method nobody thought to seed for
@@ -197,6 +206,7 @@ public class OwnershipScopeCoverageTests
         {
             _ when type == typeof(string) => "Some text",
             _ when type == typeof(bool) => false,
+            _ when type == typeof(ProcessingOrigin) => ProcessingOrigin.StaffCreated,
             _ when type == typeof(SaveSpokenLanguageDto) => new SaveSpokenLanguageDto("Welsh", LanguageLevel.Fluent),
             _ when type == typeof(SaveExpertSkillDto) => new SaveExpertSkillDto(_ids["skillId"], SkillLevel.Advanced, 3),
             _ when type == typeof(SaveQualificationDto) => new SaveQualificationDto(
@@ -263,6 +273,12 @@ public class OwnershipScopeCoverageTests
             {
                 Id = Guid.NewGuid(), ExperienceId = experience.Id, SkillId = skill.Id,
             };
+            // Every roster row carries its lawful basis from the moment it exists (P1T-183), so a
+            // fixture without one is not a roster row this audit should be reasoning about — and
+            // the reads on IProcessingRecordService would 404 for the wrong reason.
+            var basis = ProcessingRecord.For(
+                expert.Id, sequence: 1, ProcessingOrigin.StaffCreated, noticeVersion: null,
+                "Seeded by the ownership audit.", DateTimeOffset.UtcNow);
 
             db.Categories.Add(category);
             db.Skills.Add(skill);
@@ -274,6 +290,7 @@ public class OwnershipScopeCoverageTests
             db.ExpertSkills.Add(expertSkill);
             db.Qualifications.Add(qualification);
             db.ExperienceSkills.Add(experienceSkill);
+            db.ProcessingRecords.Add(basis);
             await db.SaveChangesAsync();
 
             // Keyed by parameter name, because that is what the reflection has to go on.

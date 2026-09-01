@@ -1,5 +1,6 @@
 import { Paper, Stack, Typography } from "@mui/material";
 import PageHeader from "../components/PageHeader";
+import NoticeUpdateBanner from "../components/NoticeUpdateBanner";
 import { useSessionEmail } from "../auth/useAuth";
 
 /**
@@ -14,6 +15,11 @@ export default function MyWorkspacePage() {
 
   return (
     <PageHeader title="My workspace" width="content">
+      {/* Where a changed transparency notice reaches an Expert (P1T-183): this is where they land
+          after signing in, and a sign-in is the only channel a service that sends no email has.
+          It notifies — everything below it stays readable and editable regardless. */}
+      <NoticeUpdateBanner />
+
       <Paper variant="outlined" sx={{ p: 3 }}>
         <Stack spacing={1.5}>
           <Typography variant="body1">
