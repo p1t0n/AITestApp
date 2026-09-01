@@ -20,14 +20,14 @@ namespace ExpertToJob.Agents.Tests;
 /// </summary>
 public class BenchReportEndpointTests
 {
-    private const string EmployeesPayload =
+    private const string ExpertsPayload =
         """
         [{"id":"11111111-1111-1111-1111-111111111111","firstName":"Ada","lastName":"Lovelace","title":"Engineer","location":"London","email":"a@x.com","currentCapacityPercent":100,"status":"Active"},
          {"id":"22222222-2222-2222-2222-222222222222","firstName":"Grace","lastName":"Hopper","title":"Engineer","location":"Berlin","email":"g@x.com","currentCapacityPercent":0,"status":"Active"}]
         """;
 
-    private static AIFunction EmployeeListTool() =>
-        AIFunctionFactory.Create(() => EmployeesPayload, "employee_list");
+    private static AIFunction ExpertListTool() =>
+        AIFunctionFactory.Create(() => ExpertsPayload, "expert_list");
 
     private static WebApplicationFactory<Program> FakedHost(
         IChatClient? chat = null, params AIFunction[] tools) =>
@@ -37,7 +37,7 @@ public class BenchReportEndpointTests
                 s.AddSingleton(chat ?? new FakeChatClient(
                     () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "## Bench narrative"))));
                 s.AddKeyedSingleton<ExpertToJob.Agents.Mcp.IMcpToolSource>(
-                    "bench-report", (_, _) => new FakeToolSource(tools.Length > 0 ? tools : [EmployeeListTool()]));
+                    "bench-report", (_, _) => new FakeToolSource(tools.Length > 0 ? tools : [ExpertListTool()]));
                 // Working in-memory DB so the proposals ledger is readable (and seedable) in tests.
                 s.RemoveAll(typeof(DbContextOptions<AppDbContext>));
                 s.RemoveAll(typeof(Microsoft.EntityFrameworkCore.Infrastructure
@@ -60,7 +60,7 @@ public class BenchReportEndpointTests
             [
                 new StaffingProposalCandidate
                 {
-                    Id = Guid.NewGuid(), EmployeeId = Guid.NewGuid(), Name = "Ada Lovelace", Rank = 1,
+                    Id = Guid.NewGuid(), ExpertId = Guid.NewGuid(), Name = "Ada Lovelace", Rank = 1,
                 },
             ],
         });
@@ -81,7 +81,7 @@ public class BenchReportEndpointTests
         body.GetProperty("answer").GetString().Should().Be("## Bench narrative");
 
         var stats = body.GetProperty("stats");
-        stats.GetProperty("activeEmployees").GetInt32().Should().Be(2);
+        stats.GetProperty("activeExperts").GetInt32().Should().Be(2);
         stats.GetProperty("fullyAvailable").GetInt32().Should().Be(1);
         stats.GetProperty("fullyBooked").GetInt32().Should().Be(1);
         stats.GetProperty("proposals").GetProperty("pending").GetInt32().Should().Be(1);
@@ -102,7 +102,7 @@ public class BenchReportEndpointTests
         response.StatusCode.Should().Be(HttpStatusCode.OK, "a model fault degrades, never 500s");
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("answer").GetString().Should().Contain("deterministic summary");
-        body.GetProperty("stats").GetProperty("activeEmployees").GetInt32().Should().Be(2);
+        body.GetProperty("stats").GetProperty("activeExperts").GetInt32().Should().Be(2);
         body.GetProperty("notes").EnumerateArray().Select(n => n.GetString())
             .Should().ContainSingle(n => n!.Contains("Narrative unavailable"));
     }
@@ -117,7 +117,7 @@ public class BenchReportEndpointTests
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        body.GetProperty("stats").GetProperty("activeEmployees").GetInt32().Should().Be(0);
+        body.GetProperty("stats").GetProperty("activeExperts").GetInt32().Should().Be(0);
         body.GetProperty("notes").EnumerateArray().Select(n => n.GetString())
             .Should().ContainSingle(n => n!.Contains("Roster stats unavailable"));
     }

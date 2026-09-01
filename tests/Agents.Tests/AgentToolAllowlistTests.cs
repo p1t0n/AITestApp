@@ -52,10 +52,10 @@ public class AgentToolAllowlistTests
     [Fact]
     public void Preserves_the_order_the_server_advertised()
     {
-        var offered = new[] { Tool("cv_get"), Tool("skill_list"), Tool("employee_list") };
+        var offered = new[] { Tool("cv_get"), Tool("skill_list"), Tool("expert_list") };
 
-        new AgentToolAllowlist(["employee_list", "cv_get"]).Apply(offered).Select(t => t.Name)
-            .Should().Equal("cv_get", "employee_list");
+        new AgentToolAllowlist(["expert_list", "cv_get"]).Apply(offered).Select(t => t.Name)
+            .Should().Equal("cv_get", "expert_list");
     }
 
     [Fact]
@@ -63,9 +63,9 @@ public class AgentToolAllowlistTests
     {
         // A typo, or a scope that no longer carries the tool. Either way the surface is narrower
         // than configured, and McpToolSource logs it rather than shipping the agent quietly short.
-        var allowlist = new AgentToolAllowlist(["cv_get", "cv_gte", "employee_creat"]);
+        var allowlist = new AgentToolAllowlist(["cv_get", "cv_gte", "expert_creat"]);
 
-        allowlist.MissingFrom(ReadSurface).Should().Equal("cv_gte", "employee_creat");
+        allowlist.MissingFrom(ReadSurface).Should().Equal("cv_gte", "expert_creat");
     }
 
     [Fact]
@@ -139,7 +139,7 @@ public class AgentToolAllowlistTests
         var options = factory.Services.GetRequiredService<IOptionsMonitor<McpClientAuthOptions>>().Get("roster-qa");
 
         options.Tools.Should().BeEquivalentTo(
-            ["roster_semantic_search", "skill_list", "employee_list", "cv_get"]);
+            ["roster_semantic_search", "skill_list", "expert_list", "cv_get"]);
         ExpertToJob.CostFloors.CostFloors.ReadScopeTools.Should().HaveCount(11);
     }
 }

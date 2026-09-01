@@ -14,12 +14,12 @@ public sealed record MatchRunOutcome(
 /// tests substitute a fake (the real service needs a live agent stack).</summary>
 public interface IMatchRunService
 {
-    /// <summary>Runs the agent for one employee/job-description pair. When the caller already
+    /// <summary>Runs the agent for one expert/job-description pair. When the caller already
     /// holds the JD's structured extraction (P1T-117: one extraction per JD), it rides into the
     /// prompt so the model assesses against the extracted requirements instead of re-reading
     /// the raw JD from scratch.</summary>
     Task<MatchRunOutcome> RunAsync(
-        Guid employeeId, string jobDescription, JdRequirements? requirements = null, CancellationToken ct = default);
+        Guid expertId, string jobDescription, JdRequirements? requirements = null, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -38,11 +38,11 @@ public sealed class MatchRunService : IMatchRunService
 
     public MatchRunService(IChatAgent agent) => _agent = agent;
 
-    /// <summary>Runs the agent for one employee/job-description pair.</summary>
+    /// <summary>Runs the agent for one expert/job-description pair.</summary>
     public async Task<MatchRunOutcome> RunAsync(
-        Guid employeeId, string jobDescription, JdRequirements? requirements = null, CancellationToken ct = default)
+        Guid expertId, string jobDescription, JdRequirements? requirements = null, CancellationToken ct = default)
     {
-        var prompt = $"Assess employee {employeeId} against this job description:\n\n{jobDescription}";
+        var prompt = $"Assess expert {expertId} against this job description:\n\n{jobDescription}";
         if (requirements is not null)
         {
             prompt += $"\n\n{requirements.ToPromptBlock()}";

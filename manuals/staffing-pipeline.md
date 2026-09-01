@@ -55,7 +55,7 @@ bodies into `ShortlistRunService` / `MatchRunService` (`api/Agents/Agents/`):
   degrade and the corruption guard included). Exactly one of `Response`/`FaultDetail` is non-null;
   `Reply` (token usage) is always present because tokens were spent either way — the caller meters
   before deciding what to do with a fault.
-- **`IMatchRunService.RunAsync(employeeId, jobDescription)`** → `MatchRunOutcome`: owns the match
+- **`IMatchRunService.RunAsync(expertId, jobDescription)`** → `MatchRunOutcome`: owns the match
   prompt template (single source of truth) and runs the `MatchAgent`.
 
 The run services carry **no HTTP types, no cap-checks, no metering** — those stay with the caller,
@@ -170,7 +170,7 @@ aggregate step (shortlist coverage + evidence, plus each candidate's match markd
 leniently (direct parse, then a retry on the outermost `{…}` span). Corruption guards keep model
 output honest:
 
-- rationales for **unknown employee ids are dropped** — the deterministic template covers those
+- rationales for **unknown expert ids are dropped** — the deterministic template covers those
   candidates (`Matched m/t shortlist requirements; match score s/100 (band).`);
 - the recommendation **must name one of the report's candidates** or it degrades to none
   (note + `degraded: true`) — the report never carries an invented pick.
@@ -210,7 +210,7 @@ when absent.
 In run order:
 
 - **`event: step`** — `{ "stage": "shortlist|match|narrative", "status": "started|completed",
-  "candidate"?: { "employeeId", "name" }, "completedCount"?, "totalCount"? }`. Enough for a
+  "candidate"?: { "expertId", "name" }, "completedCount"?, "totalCount"? }`. Enough for a
   stepper UI: shortlist started/completed, match started/completed per candidate (name + k/N
   counters — `completedCount` counts every *finished* match run, failed ones included, so progress
   always ends at N/N), narrative started/completed.
@@ -254,7 +254,7 @@ The terminal `report` event's data (camelCase; shapes pinned in
   "requirements": ["event streaming", "cloud infrastructure"],  // how the JD was read (shortlist step)
   "candidates": [                                               // ranked as the shortlist returned them
     {
-      "employeeId": "…",
+      "expertId": "…",
       "name": "…",
       "title": "…",
       "shortlist": {                       // deterministic, from the captured tool result
@@ -273,7 +273,7 @@ The terminal `report` event's data (camelCase; shapes pinned in
     }
   ],
   "recommendation": {                      // null when the narrative degraded — never invented
-    "employeeId": "…",
+    "expertId": "…",
     "narrative": "…"
   },
   "degraded": false,                       // true on any partial result
@@ -299,13 +299,13 @@ responses, so streaming goes through `fetch` + `ReadableStream`; pre-stream HTTP
   warning icon when that run failed — a failed match warns inline but never fails the stage, and
   cap-skipped stages simply stay pending until the report settles everything).
 - **Recommendation-first report**: the recommendation block renders first (highlighted border,
-  linked employee, narrative; an explicit "no recommendation for this run" body when it degraded),
+  linked expert, narrative; an explicit "no recommendation for this run" body when it degraded),
   then the requirement chips ("how the JD was read"), then ranked candidate cards.
 - **Candidate cards**: shortlist similarity + coverage chips, the match verdict chip
   (`Band · score`) or an error/skipped chip, the rationale, collapsible per-requirement **Evidence**
   (verdict icons + snippets) and collapsible **Match details** (the full match markdown), and two
   drill-ins — **Open in Match** and **Tailor CV** — that jump to those tabs pre-filled with the
-  employee and the *submitted* JD (not the live field).
+  expert and the *submitted* JD (not the live field).
 - **Degrade rendering**: `degraded: true` shows an amber "Partial results" banner listing the
   report's notes; terminal `error` frames and pre-stream failures render as the standard error
   panel. Switching tabs, closing the widget, or resubmitting aborts the in-flight stream (which
@@ -323,7 +323,7 @@ Postgres + Keycloak + MCP + Agents + SPA, real GitHub Models calls:
 - SSE streams **incrementally** through the Vite dev proxy — verified with a timestamped probe
   (frames arrive as steps complete, not buffered into one flush).
 - Per-step metering rows observed in the Usage tab: `match` / `shortlist` / `staffing`.
-- Drill-in prefill works: Open in Match / Tailor CV land on those tabs with the employee and the
+- Drill-in prefill works: Open in Match / Tailor CV land on those tabs with the expert and the
   submitted JD filled in.
 
 ---

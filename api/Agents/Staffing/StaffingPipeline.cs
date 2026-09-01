@@ -185,7 +185,7 @@ public sealed class StaffingPipeline
         private void Emit(
             string stage,
             string message,
-            Guid? employeeId = null,
+            Guid? expertId = null,
             string? status = null,
             string? candidateName = null,
             int? totalCount = null,
@@ -197,7 +197,7 @@ public sealed class StaffingPipeline
             {
                 var completedCount = countsMatchRun ? ++_matchesFinished : (int?)null;
                 evt = new StaffingProgressEvent(
-                    ++_sequence, stage, message, employeeId, status, candidateName,
+                    ++_sequence, stage, message, expertId, status, candidateName,
                     completedCount, totalCount, error);
                 _events.Add(evt);
             }
@@ -465,14 +465,14 @@ public sealed class StaffingPipeline
             {
                 // "Started" only once a throttle slot is held: the event marks real work, not a
                 // queued task, so the SSE stepper's per-candidate ticks reflect actual progress.
-                Emit("match", $"Match started for {candidate.Name}.", candidate.EmployeeId,
+                Emit("match", $"Match started for {candidate.Name}.", candidate.ExpertId,
                     status: StaffingStepStatus.Started, candidateName: candidate.Name, totalCount: totalCount);
                 var run = await RunWithRateLimitRetryAsync(
-                    candidate.EmployeeId, jobDescription, extraction, () => retries++, ct);
+                    candidate.ExpertId, jobDescription, extraction, () => retries++, ct);
                 AddSlice(Slice(
                     "match", "match", run.Reply, startedAt, StageSliceStatus.Completed,
                     retryCount: retries));
-                Emit("match", $"Match completed for {candidate.Name}.", candidate.EmployeeId,
+                Emit("match", $"Match completed for {candidate.Name}.", candidate.ExpertId,
                     status: StaffingStepStatus.Completed, candidateName: candidate.Name,
                     totalCount: totalCount, countsMatchRun: true);
                 return (new CandidateMatch(candidate, new StaffingMatchDetail(
@@ -480,12 +480,12 @@ public sealed class StaffingPipeline
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                pipeline._logger.LogError(ex, "Staffing match step failed for {EmployeeId}.", candidate.EmployeeId);
+                pipeline._logger.LogError(ex, "Staffing match step failed for {ExpertId}.", candidate.ExpertId);
                 AddSlice(Slice(
                     "match", "match", reply: null, startedAt, StageSliceStatus.Failed,
                     degradeReason: ex.Message, retryCount: retries));
                 AddDegradation("match", $"The match assessment for {candidate.Name}", ex.Message);
-                Emit("match", $"Match failed for {candidate.Name}.", candidate.EmployeeId,
+                Emit("match", $"Match failed for {candidate.Name}.", candidate.ExpertId,
                     status: StaffingStepStatus.Failed, candidateName: candidate.Name,
                     totalCount: totalCount, error: ex.Message, countsMatchRun: true);
                 return (new CandidateMatch(candidate, new StaffingMatchDetail(
@@ -498,14 +498,14 @@ public sealed class StaffingPipeline
         }
 
         private async Task<MatchRunOutcome> RunWithRateLimitRetryAsync(
-            Guid employeeId, string jobDescription, Agents.JdRequirements? extraction,
+            Guid expertId, string jobDescription, Agents.JdRequirements? extraction,
             Action onRetry, CancellationToken ct)
         {
             for (var failures = 1; ; failures++)
             {
                 try
                 {
-                    return await pipeline._match.RunAsync(employeeId, jobDescription, extraction, ct);
+                    return await pipeline._match.RunAsync(expertId, jobDescription, extraction, ct);
                 }
                 catch (Exception ex) when (
                     StaffingRetryPolicy.IsRateLimit(ex) && failures < pipeline._retry.MaxAttempts)
@@ -538,7 +538,7 @@ public sealed class StaffingPipeline
                 var missing = candidate.Requirements.Where(r => !r.Matched).Select(r => r.Text).ToList();
 
                 evidence.AppendLine();
-                evidence.AppendLine($"## {candidate.Name} — {candidate.Title} (employeeId: {candidate.EmployeeId})");
+                evidence.AppendLine($"## {candidate.Name} — {candidate.Title} (expertId: {candidate.ExpertId})");
                 evidence.AppendLine(
                     $"- Shortlist: score {candidate.Score:0.##}, matched {candidate.Coverage.Matched}/{candidate.Coverage.Total} requirements."
                     + $" Matched: {Join(matched)}. Missing: {Join(missing)}.");
@@ -562,7 +562,7 @@ public sealed class StaffingPipeline
             You write the closing narrative for a staffing report. You are given a job description
             and per-candidate evidence: shortlist requirement coverage and (when available) a match
             assessment. Reply with the structured object: one rationale (one or two sentences) per
-            candidate, using exactly the employeeId values given, and a recommendation (two to four
+            candidate, using exactly the expertId values given, and a recommendation (two to four
             sentences) that picks exactly one of the given candidates. Ground every statement
             strictly in the evidence provided — never invent skills, experience, or facts.
             """;
@@ -670,12 +670,12 @@ public sealed class StaffingPipeline
 
             AddSlice(Slice("narrative", PipelineAgentName, reply, startedAt, StageSliceStatus.Completed));
 
-            var knownIds = match.Matches.Select(m => m.Candidate.EmployeeId).ToHashSet();
+            var knownIds = match.Matches.Select(m => m.Candidate.ExpertId).ToHashSet();
 
             var rationales = new Dictionary<Guid, string>();
             foreach (var entry in parsed.Rationales ?? [])
             {
-                if (entry?.EmployeeId is { } idText
+                if (entry?.ExpertId is { } idText
                     && Guid.TryParse(idText, out var id)
                     && knownIds.Contains(id)
                     && !string.IsNullOrWhiteSpace(entry.Rationale))
@@ -684,7 +684,7 @@ public sealed class StaffingPipeline
                 }
             }
 
-            if (parsed.Recommendation?.EmployeeId is { } recIdText
+            if (parsed.Recommendation?.ExpertId is { } recIdText
                 && Guid.TryParse(recIdText, out var recId)
                 && knownIds.Contains(recId)
                 && !string.IsNullOrWhiteSpace(parsed.Recommendation.Narrative))
@@ -720,12 +720,12 @@ public sealed class StaffingPipeline
 
             var candidates = match.Matches
                 .Select(m => new StaffingCandidate(
-                    m.Candidate.EmployeeId,
+                    m.Candidate.ExpertId,
                     m.Candidate.Name,
                     m.Candidate.Title,
                     new StaffingShortlistDetail(m.Candidate.Score, m.Candidate.Coverage, m.Candidate.Requirements),
                     m.Detail,
-                    stage.Rationales.TryGetValue(m.Candidate.EmployeeId, out var rationale)
+                    stage.Rationales.TryGetValue(m.Candidate.ExpertId, out var rationale)
                         ? rationale
                         : TemplatedRationale(m)))
                 .ToList();
@@ -801,7 +801,7 @@ public sealed class StaffingPipeline
         }
     }
 
-    private sealed record NarrativeRationale(string? EmployeeId, string? Rationale);
+    private sealed record NarrativeRationale(string? ExpertId, string? Rationale);
 
-    private sealed record NarrativeRecommendation(string? EmployeeId, string? Narrative);
+    private sealed record NarrativeRecommendation(string? ExpertId, string? Narrative);
 }

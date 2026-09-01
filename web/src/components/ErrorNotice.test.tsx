@@ -25,8 +25,8 @@ describe("ErrorNotice (P1T-153)", () => {
   });
 
   it("renders the message as an announced alert", () => {
-    render(<ErrorNotice message="Employee not found." />);
-    expect(screen.getByRole("alert")).toHaveTextContent("Employee not found.");
+    render(<ErrorNotice message="Expert not found." />);
+    expect(screen.getByRole("alert")).toHaveTextContent("Expert not found.");
   });
 
   it("renders a detail line under the message when the transport carries both", () => {

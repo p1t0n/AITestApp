@@ -33,7 +33,7 @@ export async function decideStaffingProposal(
 
 /** One candidate snapshot on an inbox row (deterministic, from the report at creation). */
 export interface StaffingProposalCandidateSummary {
-  employeeId: string;
+  expertId: string;
   name: string;
   title: string;
   rank: number;
@@ -48,7 +48,7 @@ export interface StaffingProposalSummary {
   jobDescription: string;
   status: "pending" | "approved" | "rejected";
   createdAt: string;
-  recommendedEmployeeId?: string | null;
+  recommendedExpertId?: string | null;
   reportDegraded: boolean;
   candidates: StaffingProposalCandidateSummary[];
   decidedByUserId?: string | null;

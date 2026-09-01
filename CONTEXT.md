@@ -1,10 +1,34 @@
 # ExpertToJob
 
-Manages available employees (skills, qualifications, experience, availability), renders their
+Manages available experts (skills, qualifications, experience, availability), renders their
 CVs, and runs AI agents over that roster. This glossary pins the ubiquitous language; design
 detail lives in `/manuals` and the Linear decision trail.
 
 ## Language
+
+### The domain
+
+**Expert**:
+A person the system holds a CV for: their skills, qualifications, experience and availability.
+The roster is a set of Experts, and every agent that reads the roster is reading Experts. Named
+for what the product sells rather than for an employment relationship — an Expert need not be
+employed by whoever runs the instance, and the word has to survive contractors and bench.
+_Avoid_: employee, candidate (a candidate is an Expert in the context of one Job), resource
+
+**Job**:
+The work an Expert is being considered for, as described by the job description a Service Manager
+brings in. The unit a Match, a Shortlist and a Proposal are all _about_: none of them mean
+anything without the Job they were run against. Not yet a persisted entity — today a Job arrives
+as JD text on the request and lives only for that run.
+_Avoid_: position, vacancy, role (role means authorization here), requisition
+
+**Service Manager**:
+The staff user who selects Experts for a Job and holds the decision. The only actor who can
+approve or reject a Proposal — agents propose, a Service Manager disposes — and the identity
+behind the session token the Web host mints. The code still calls this `User`; the rename rides
+with the role split (P1T-167) rather than with the Expert rename, so the term is pinned here
+first and the type follows.
+_Avoid_: staffer, recruiter, admin (admin is an MCP scope), approver (says the one act, not the role)
 
 ### Staffing & approval
 
@@ -72,9 +96,9 @@ hold is left ungated.
 _Avoid_: per-group threshold
 
 **Partial Update**:
-`employee_update`'s write semantics: only the fields present in the request change; an omitted or
-null field keeps its current value. Complement to the full-replace `SaveEmployeeDto` path used by
-`employee_create` and REST's `PUT`, which still requires every field on every call. An empty string
+`expert_update`'s write semantics: only the fields present in the request change; an omitted or
+null field keeps its current value. Complement to the full-replace `SaveExpertDto` path used by
+`expert_create` and REST's `PUT`, which still requires every field on every call. An empty string
 clears an optional field; null does not (P1T-137). Exists to remove a forced read-before-write, so
 it is measured by the Tool-Selection Eval like any other affordance.
 _Avoid_: patch, partial replace
@@ -96,8 +120,8 @@ _Avoid_: theme result, generic exemplars
 ### CV rendering
 
 **CV Projection**:
-The render-ready dump of one employee in fixed order (`CvDto`), assembled by `CvService` as a pure
-function of the employee detail. Every renderer — the SPA page, the server-side PDF — consumes this
+The render-ready dump of one expert in fixed order (`CvDto`), assembled by `CvService` as a pure
+function of the expert detail. Every renderer — the SPA page, the server-side PDF — consumes this
 same projection, so they cannot drift apart in content.
 _Avoid_: CV model, CV view model
 
@@ -115,12 +139,12 @@ The write shape of an Experience: its achievements and its skill links travel in
 payload, and a save replaces both lists wholesale rather than diffing them. So an editor for one is
 a nested-collection form, not three resources — a bullet removed in the form is a bullet gone on
 save, and nothing is written until the save. Contrast the child resources with their own endpoints
-(languages, qualifications, availability, employee skills), each addressed and saved on its own.
+(languages, qualifications, availability, expert skills), each addressed and saved on its own.
 _Avoid_: nested update, cascade save
 
 **Fixed Catalog Link**:
-The `SkillId` on an employee-skill row: set when the row is added and never reassigned afterwards.
-`PUT /api/employee-skills/{id}` validates it and then writes the level and the years only, so
+The `SkillId` on an expert-skill row: set when the row is added and never reassigned afterwards.
+`PUT /api/expert-skills/{id}` validates it and then writes the level and the years only, so
 pointing a row at a different catalog skill is a remove and an add. The edit form shows the skill
 disabled rather than editable — a control that appears to work and changes nothing is worse than one
 that plainly cannot.
@@ -176,7 +200,7 @@ Survives restarts; pausable on quota or cap exhaustion.
 _Avoid_: batch job
 
 **Digest**:
-A compact, deterministic career summary of one employee (the RAG narrative text), served over
+A compact, deterministic career summary of one expert (the RAG narrative text), served over
 MCP for scoring prompts.
 _Avoid_: profile blob, CV summary
 

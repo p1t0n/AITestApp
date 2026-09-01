@@ -28,7 +28,7 @@ public class ShortlistRankerTests
 
         var ranked = ShortlistRanker.Rank(Requirements(5), matches, topK: 10);
 
-        ranked.Select(c => c.EmployeeId).Should().ContainInOrder(broad, narrow);
+        ranked.Select(c => c.ExpertId).Should().ContainInOrder(broad, narrow);
         ranked[0].MatchedCount.Should().Be(4);
         ranked[0].Score.Should().BeGreaterThan(ranked[1].Score);
     }
@@ -48,15 +48,15 @@ public class ShortlistRankerTests
 
         var ranked = ShortlistRanker.Rank(Requirements(3), matches, topK: 10);
 
-        ranked.Select(c => c.EmployeeId).Should().ContainInOrder(strong, weak);
+        ranked.Select(c => c.ExpertId).Should().ContainInOrder(strong, weak);
         ranked[0].Score.Should().BeGreaterThan(ranked[1].Score);
     }
 
     [Fact]
     public void TopK_limits_the_number_of_candidates_returned()
     {
-        var employees = Enumerable.Range(0, 5).Select(_ => Guid.NewGuid()).ToArray();
-        var matches = new[] { Matches(employees.Select(e => (e, 0.6)).ToArray()) };
+        var experts = Enumerable.Range(0, 5).Select(_ => Guid.NewGuid()).ToArray();
+        var matches = new[] { Matches(experts.Select(e => (e, 0.6)).ToArray()) };
 
         var ranked = ShortlistRanker.Rank(Requirements(1), matches, topK: 2);
 
@@ -74,10 +74,10 @@ public class ShortlistRankerTests
     [Fact]
     public void Evidence_lists_every_requirement_and_leaves_missed_ones_without_snippets()
     {
-        var employee = Guid.NewGuid();
+        var expert = Guid.NewGuid();
         var matches = new[]
         {
-            Matches((employee, 0.8)),
+            Matches((expert, 0.8)),
             Matches(), // missed
         };
 
@@ -94,8 +94,8 @@ public class ShortlistRankerTests
     private static IReadOnlyList<string> Requirements(int count) =>
         Enumerable.Range(1, count).Select(i => $"requirement {i}").ToList();
 
-    /// <summary>One requirement's matches: employee -> best chunk (similarity, snippet).</summary>
-    private static IReadOnlyDictionary<Guid, ShortlistMatch> Matches(params (Guid Employee, double Similarity)[] entries) =>
-        entries.ToDictionary(e => e.Employee, e => new ShortlistMatch(
+    /// <summary>One requirement's matches: expert -> best chunk (similarity, snippet).</summary>
+    private static IReadOnlyDictionary<Guid, ShortlistMatch> Matches(params (Guid Expert, double Similarity)[] entries) =>
+        entries.ToDictionary(e => e.Expert, e => new ShortlistMatch(
             e.Similarity, string.Create(CultureInfo.InvariantCulture, $"snippet {e.Similarity}")));
 }

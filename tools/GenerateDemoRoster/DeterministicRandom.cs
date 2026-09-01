@@ -8,7 +8,7 @@ public sealed class DeterministicRandom(ulong seed)
 {
     private ulong _state = seed;
 
-    /// <summary>Stable way to derive independent per-employee streams from one roster seed.</summary>
+    /// <summary>Stable way to derive independent per-expert streams from one roster seed.</summary>
     public static DeterministicRandom ForSubStream(int seed, int index) =>
         new(Mix(((ulong)(uint)seed << 32) | (uint)index));
 

@@ -62,7 +62,7 @@ export default function CvPage() {
     // which three specs use to prove the sheet rendered.
     <PageHeader
       title="CV"
-      backTo={`/employees/${id}`}
+      backTo={`/experts/${id}`}
       // The sheet caps itself at 820px (§7, frozen); this is the toolbar's own measure, sized to
       // sit close to the sheet's edges rather than float 200px outside them as `lg` did.
       width="content"

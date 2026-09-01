@@ -22,7 +22,7 @@ public class InterviewKitEndpointTests
         """;
 
     private static AIFunction CvGetTool() =>
-        AIFunctionFactory.Create((Guid employeeId) => CvPayload, "cv_get");
+        AIFunctionFactory.Create((Guid expertId) => CvPayload, "cv_get");
 
     /// <summary>Scripted happy path: the extractor's reply (call 1 since P1T-117), then cv_get
     /// call, markdown kit, questions JSON.</summary>
@@ -31,7 +31,7 @@ public class InterviewKitEndpointTests
             """{"requirements":[{"text":"platform engineering","kind":"Skill","priority":"Unspecified","minYears":null,"evidenceSpan":null,"inferred":true}],"seniority":"Unspecified","location":null,"ambiguities":[]}""")),
         () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
             [new FunctionCallContent("call-1", "cv_get",
-                new Dictionary<string, object?> { ["employeeId"] = Guid.NewGuid() })])),
+                new Dictionary<string, object?> { ["expertId"] = Guid.NewGuid() })])),
         () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "## Interview kit\n\nQuestions below.")),
         () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
             questionsJson
@@ -57,7 +57,7 @@ public class InterviewKitEndpointTests
 
         var response = await client.PostAsJsonAsync(
             "/agents/interview-kit",
-            new { employeeId = Guid.NewGuid(), jobDescription = "Platform engineer role." });
+            new { expertId = Guid.NewGuid(), jobDescription = "Platform engineer role." });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -80,7 +80,7 @@ public class InterviewKitEndpointTests
 
         var response = await client.PostAsJsonAsync(
             "/agents/interview-kit",
-            new { employeeId = Guid.NewGuid(), jobDescription = "Role." });
+            new { expertId = Guid.NewGuid(), jobDescription = "Role." });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -95,10 +95,10 @@ public class InterviewKitEndpointTests
         using var client = factory.CreateAuthenticatedClient();
 
         (await client.PostAsJsonAsync("/agents/interview-kit",
-                new { employeeId = Guid.Empty, jobDescription = "Role." }))
+                new { expertId = Guid.Empty, jobDescription = "Role." }))
             .StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await client.PostAsJsonAsync("/agents/interview-kit",
-                new { employeeId = Guid.NewGuid(), jobDescription = " " }))
+                new { expertId = Guid.NewGuid(), jobDescription = " " }))
             .StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
@@ -110,7 +110,7 @@ public class InterviewKitEndpointTests
 
         var response = await client.PostAsJsonAsync(
             "/agents/interview-kit",
-            new { employeeId = Guid.NewGuid(), jobDescription = "Role." });
+            new { expertId = Guid.NewGuid(), jobDescription = "Role." });
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }

@@ -36,12 +36,12 @@ public class ShortlistComposerTests
         Payload());
 
     [Fact]
-    public void Joins_model_rationales_onto_tool_candidates_by_employee_id()
+    public void Joins_model_rationales_onto_tool_candidates_by_expert_id()
     {
         var response = ShortlistComposer.Compose(Outcome(
             """
-            [{"employeeId":"11111111-1111-1111-1111-111111111111","rationale":"Strong Kafka and K8s evidence."},
-             {"employeeId":"33333333-3333-3333-3333-333333333333","rationale":"Proven team leadership."}]
+            [{"expertId":"11111111-1111-1111-1111-111111111111","rationale":"Strong Kafka and K8s evidence."},
+             {"expertId":"33333333-3333-3333-3333-333333333333","rationale":"Proven team leadership."}]
             """));
 
         response.Requirements.Should().Equal(
@@ -49,7 +49,7 @@ public class ShortlistComposerTests
         response.Candidates.Should().HaveCount(2);
 
         var ada = response.Candidates[0];
-        ada.EmployeeId.Should().Be(AdaId);
+        ada.ExpertId.Should().Be(AdaId);
         ada.Name.Should().Be("Ada Lovelace");
         ada.Title.Should().Be("Platform Lead");
         ada.Score.Should().BeApproximately(0.91, 0.0001);
@@ -67,17 +67,17 @@ public class ShortlistComposerTests
     }
 
     [Fact]
-    public void Ignores_unknown_employee_ids_so_the_candidate_list_is_exactly_the_tools()
+    public void Ignores_unknown_expert_ids_so_the_candidate_list_is_exactly_the_tools()
     {
         // The model hallucinated an id: it must not appear, and Ada (no rationale from the
         // model) gets the templated fallback.
         var response = ShortlistComposer.Compose(Outcome(
             """
-            [{"employeeId":"99999999-9999-9999-9999-999999999999","rationale":"Invented person."},
-             {"employeeId":"33333333-3333-3333-3333-333333333333","rationale":"Proven team leadership."}]
+            [{"expertId":"99999999-9999-9999-9999-999999999999","rationale":"Invented person."},
+             {"expertId":"33333333-3333-3333-3333-333333333333","rationale":"Proven team leadership."}]
             """));
 
-        response.Candidates.Select(c => c.EmployeeId).Should().Equal(AdaId, GraceId);
+        response.Candidates.Select(c => c.ExpertId).Should().Equal(AdaId, GraceId);
         response.Candidates[0].Rationale.Should().Be(
             "Matched 2/3 requirements: event streaming with Kafka, Kubernetes operations; missing: team leadership.");
         response.Candidates[1].Rationale.Should().Be("Proven team leadership.");
@@ -102,7 +102,7 @@ public class ShortlistComposerTests
         var response = ShortlistComposer.Compose(Outcome(
             """
             ```json
-            [{"employeeId":"11111111-1111-1111-1111-111111111111","rationale":"Strong Kafka evidence."}]
+            [{"expertId":"11111111-1111-1111-1111-111111111111","rationale":"Strong Kafka evidence."}]
             ```
             """));
 
@@ -113,7 +113,7 @@ public class ShortlistComposerTests
     public void Blank_or_missing_rationales_fall_back_to_the_template()
     {
         var response = ShortlistComposer.Compose(Outcome(
-            """[{"employeeId":"11111111-1111-1111-1111-111111111111","rationale":"   "}]"""));
+            """[{"expertId":"11111111-1111-1111-1111-111111111111","rationale":"   "}]"""));
 
         response.Candidates[0].Rationale.Should().StartWith("Matched 2/3 requirements");
     }

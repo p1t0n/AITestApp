@@ -4,12 +4,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ExpertToJob.Agents.RosterScan;
 
-/// <summary>One employee slot to seed (identity + the digest captured from the sweep).</summary>
-public sealed record ScoringCandidateSeed(Guid EmployeeId, string Name, string Title, string Digest = "");
+/// <summary>One expert slot to seed (identity + the digest captured from the sweep).</summary>
+public sealed record ScoringCandidateSeed(Guid ExpertId, string Name, string Title, string Digest = "");
 
 /// <summary>One candidate's settled result from a scoring chunk.</summary>
 public sealed record ScoringCandidateResult(
-    Guid EmployeeId,
+    Guid ExpertId,
     string Status,
     int? Score,
     string? Band,
@@ -104,18 +104,18 @@ public sealed class ScoringJobStore(IAppDbContext db, TimeProvider clock)
         await db.SaveChangesAsync(ct);
     }
 
-    /// <summary>Adds pending candidate rows from an intake sweep (idempotent per employee — a
+    /// <summary>Adds pending candidate rows from an intake sweep (idempotent per expert — a
     /// re-run intake never duplicates a row).</summary>
     public async Task AddCandidatesAsync(
         Guid jobId, IReadOnlyList<ScoringCandidateSeed> candidates, CancellationToken ct = default)
     {
         var existing = await db.ScoringJobCandidates
             .Where(c => c.JobId == jobId)
-            .Select(c => c.EmployeeId)
+            .Select(c => c.ExpertId)
             .ToListAsync(ct);
         var known = existing.ToHashSet();
 
-        foreach (var seed in candidates.Where(s => !known.Contains(s.EmployeeId)))
+        foreach (var seed in candidates.Where(s => !known.Contains(s.ExpertId)))
         {
             var row = ToPendingRow(seed);
             row.JobId = jobId;
@@ -130,14 +130,14 @@ public sealed class ScoringJobStore(IAppDbContext db, TimeProvider clock)
         Guid jobId, int take, CancellationToken ct = default)
         => await db.ScoringJobCandidates.AsNoTracking()
             .Where(c => c.JobId == jobId && c.Status == ScoringCandidateStatus.Pending)
-            .OrderBy(c => c.EmployeeId)
+            .OrderBy(c => c.ExpertId)
             .Take(take)
             .ToListAsync(ct);
 
     private static ScoringJobCandidate ToPendingRow(ScoringCandidateSeed seed) => new()
     {
         Id = Guid.NewGuid(),
-        EmployeeId = seed.EmployeeId,
+        ExpertId = seed.ExpertId,
         Name = seed.Name,
         Title = seed.Title,
         Digest = seed.Digest,
@@ -183,20 +183,20 @@ public sealed class ScoringJobStore(IAppDbContext db, TimeProvider clock)
         return true;
     }
 
-    /// <summary>Batch-writes one settled chunk. Rows are matched by employee id within the job;
-    /// results for unknown employees are ignored (checked, never trusted).</summary>
+    /// <summary>Batch-writes one settled chunk. Rows are matched by expert id within the job;
+    /// results for unknown experts are ignored (checked, never trusted).</summary>
     public async Task WriteChunkResultsAsync(
         Guid jobId, IReadOnlyList<ScoringCandidateResult> results, CancellationToken ct = default)
     {
-        var ids = results.Select(r => r.EmployeeId).ToList();
+        var ids = results.Select(r => r.ExpertId).ToList();
         var rows = await db.ScoringJobCandidates
-            .Where(c => c.JobId == jobId && ids.Contains(c.EmployeeId))
+            .Where(c => c.JobId == jobId && ids.Contains(c.ExpertId))
             .ToListAsync(ct);
-        var byEmployee = rows.ToDictionary(r => r.EmployeeId);
+        var byExpert = rows.ToDictionary(r => r.ExpertId);
 
         foreach (var result in results)
         {
-            if (!byEmployee.TryGetValue(result.EmployeeId, out var row))
+            if (!byExpert.TryGetValue(result.ExpertId, out var row))
             {
                 continue;
             }

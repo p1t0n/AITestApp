@@ -48,7 +48,7 @@ public class RuntimeBudgetChatClientTests
         public void Dispose() { }
     }
 
-    private static AIFunction Tool() => AIFunctionFactory.Create(() => "rows", "employee_list");
+    private static AIFunction Tool() => AIFunctionFactory.Create(() => "rows", "expert_list");
 
     private static ChatOptions WithTools() => new()
     {
@@ -238,7 +238,7 @@ public class RuntimeBudgetAgentLoopTests
             var message = options?.ToolMode is NoneChatToolMode
                 ? new ChatMessage(ChatRole.Assistant, "Ada Lovelace (id-1) knows React.")
                 : new ChatMessage(ChatRole.Assistant,
-                    [new FunctionCallContent($"call-{Calls}", "employee_list", new Dictionary<string, object?>())]);
+                    [new FunctionCallContent($"call-{Calls}", "expert_list", new Dictionary<string, object?>())]);
 
             return Task.FromResult(new ChatResponse(message)
             {
@@ -265,7 +265,7 @@ public class RuntimeBudgetAgentLoopTests
             new MeteringChatClient(model),
             "roster-qa",
             new AgentBudget { MaxInputTokens = 15_000, MaxIterations = 6 });
-        var tool = AIFunctionFactory.Create(() => "Ada Lovelace;id-1;React", "employee_list");
+        var tool = AIFunctionFactory.Create(() => "Ada Lovelace;id-1;React", "expert_list");
         var agent = new RosterQaAgent(
             budgeted, new FakeToolSource(tool), NullLoggerFactory.Instance);
 

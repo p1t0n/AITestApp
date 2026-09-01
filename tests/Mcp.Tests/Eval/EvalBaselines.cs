@@ -5,7 +5,7 @@ namespace ExpertToJob.Mcp.Tests.Eval;
 /// place baseline numbers live.
 ///
 /// <para>Measured 2026-08-01 with <c>gemini-embedding-001</c> (1536 dims) over the frozen
-/// 24-employee corpus and 39-query golden set at the production threshold 0.55 (see
+/// 24-expert corpus and 39-query golden set at the production threshold 0.55 (see
 /// <c>manuals/retrieval-eval-baseline.md</c> for the full sweep — the 0.30 floor tuned for the
 /// retired OpenAI model let every negative query through on Gemini): recall@5 = 1.0000,
 /// MRR = 1.0000, negative-FP rate = 0.0000. Re-measure with

@@ -15,7 +15,7 @@ namespace ExpertToJob.Infrastructure.Search;
 /// <summary>
 /// pgvector-backed style exemplar retrieval, in two mutually exclusive modes. Id-keyed: resolves
 /// each requested achievement bullet's stored text server-side (unknown ids skipped), embeds all
-/// bullets in one batch, and per bullet ranks OTHER employees' achievement-bullet chunks by cosine
+/// bullets in one batch, and per bullet ranks OTHER experts' achievement-bullet chunks by cosine
 /// similarity. Themed: embeds the free-text theme itself and ranks the whole achievement-bullet
 /// pool against it (no owner to exclude). Both modes keep only quantified bullets inside the
 /// configured length band, never repeat a source bullet within one request, and anonymize each
@@ -75,7 +75,7 @@ public sealed class ExemplarSearchService : IExemplarSearchService
         // Resolve the stored bullet text + owner server-side; ids that don't exist drop out here.
         var found = await _db.Achievements
             .Where(a => requested.Contains(a.Id))
-            .Select(a => new { a.Id, a.Text, OwnerId = a.Experience.EmployeeId })
+            .Select(a => new { a.Id, a.Text, OwnerId = a.Experience.ExpertId })
             .ToListAsync(ct);
         var foundById = found.ToDictionary(b => b.Id);
         var bullets = requested.Where(foundById.ContainsKey).Select(id => foundById[id]).ToList();
@@ -109,16 +109,16 @@ public sealed class ExemplarSearchService : IExemplarSearchService
 
             // Over-fetch: the quantified-quality gate and the cross-request dedupe run in memory.
             var fetch = perBullet * 5 + 20;
-            var rows = await _db.EmployeeSearchChunks
+            var rows = await _db.ExpertSearchChunks
                 .Where(c => c.Embedding != null
                     && c.SourceType == SearchChunkSource.Achievement
-                    && c.EmployeeId != bullet.OwnerId
+                    && c.ExpertId != bullet.OwnerId
                     && c.Content.Length >= _options.ExemplarMinChars
                     && c.Content.Length <= _options.ExemplarMaxChars)
                 .Select(c => new
                 {
                     c.SourceId,
-                    c.EmployeeId,
+                    c.ExpertId,
                     c.Content,
                     Distance = c.Embedding!.CosineDistance(bulletVector),
                 })
@@ -132,13 +132,13 @@ public sealed class ExemplarSearchService : IExemplarSearchService
                 .Where(x => ExemplarQualityFilter.Passes(x.Content, _options.ExemplarMinChars, _options.ExemplarMaxChars))
                 .Where(x => usedSourceIds.Add(x.SourceId))
                 .Take(perBullet)
-                .Select(x => new ExemplarHit(x.EmployeeId, x.Content, x.Distance))
+                .Select(x => new ExemplarHit(x.ExpertId, x.Content, x.Distance))
                 .ToList();
 
             picks.Add((bullet.Id, hits));
         }
 
-        var sources = await LoadSourcesAsync(picks.SelectMany(p => p.Hits).Select(h => h.EmployeeId), ct);
+        var sources = await LoadSourcesAsync(picks.SelectMany(p => p.Hits).Select(h => h.ExpertId), ct);
 
         var groups = picks
             .Select(p => new BulletExemplars(p.AchievementId, ToExemplars(p.Hits, sources)))
@@ -162,10 +162,10 @@ public sealed class ExemplarSearchService : IExemplarSearchService
         }
 
         var maxDistance = 1.0 - _options.MinSimilarity;
-        // No requesting employee, so there is no owner to exclude — every employee's bullets are
+        // No requesting expert, so there is no owner to exclude — every expert's bullets are
         // eligible, unlike the id-keyed path.
         var fetch = topK * 5 + 20;
-        var rows = await _db.EmployeeSearchChunks
+        var rows = await _db.ExpertSearchChunks
             .Where(c => c.Embedding != null
                 && c.SourceType == SearchChunkSource.Achievement
                 && c.Content.Length >= _options.ExemplarMinChars
@@ -173,7 +173,7 @@ public sealed class ExemplarSearchService : IExemplarSearchService
             .Select(c => new
             {
                 c.SourceId,
-                c.EmployeeId,
+                c.ExpertId,
                 c.Content,
                 Distance = c.Embedding!.CosineDistance(themeVector),
             })
@@ -187,22 +187,22 @@ public sealed class ExemplarSearchService : IExemplarSearchService
             .Where(x => ExemplarQualityFilter.Passes(x.Content, _options.ExemplarMinChars, _options.ExemplarMaxChars))
             .Where(x => usedSourceIds.Add(x.SourceId))
             .Take(topK)
-            .Select(x => new ExemplarHit(x.EmployeeId, x.Content, x.Distance))
+            .Select(x => new ExemplarHit(x.ExpertId, x.Content, x.Distance))
             .ToList();
 
-        var sources = await LoadSourcesAsync(hits.Select(h => h.EmployeeId), ct);
+        var sources = await LoadSourcesAsync(hits.Select(h => h.ExpertId), ct);
 
         return new ExemplarSearchResult([], new ThemeExemplars(theme, ToExemplars(hits, sources)));
     }
 
-    // Anonymization inputs for every source employee we are about to quote: their name and all
+    // Anonymization inputs for every source expert we are about to quote: their name and all
     // their employers' names. The scrub runs before any text leaves this service.
     private async Task<Dictionary<Guid, ExemplarSource>> LoadSourcesAsync(
-        IEnumerable<Guid> employeeIds, CancellationToken ct)
+        IEnumerable<Guid> expertIds, CancellationToken ct)
     {
-        var ids = employeeIds.Distinct().ToList();
-        return await _db.Employees
-            .Where(e => ids.Contains(e.Id) && e.Status == EmployeeStatus.Active)
+        var ids = expertIds.Distinct().ToList();
+        return await _db.Experts
+            .Where(e => ids.Contains(e.Id) && e.Status == ExpertStatus.Active)
             .Select(e => new ExemplarSource(
                 e.Id, e.FirstName, e.LastName, e.Experiences.Select(x => x.Company).ToList()))
             .ToDictionaryAsync(e => e.Id, ct);
@@ -212,13 +212,13 @@ public sealed class ExemplarSearchService : IExemplarSearchService
         IReadOnlyList<ExemplarHit> hits, IReadOnlyDictionary<Guid, ExemplarSource> sources)
         => hits.Select(h =>
         {
-            var source = sources[h.EmployeeId];
+            var source = sources[h.ExpertId];
             return new StyleExemplar(
                 ExemplarAnonymizer.Scrub(h.Content, source.FirstName, source.LastName, source.Companies),
                 Math.Round(1.0 - h.Distance, 4));
         }).ToList();
 
-    private sealed record ExemplarHit(Guid EmployeeId, string Content, double Distance);
+    private sealed record ExemplarHit(Guid ExpertId, string Content, double Distance);
 
     private sealed record ExemplarSource(Guid Id, string FirstName, string LastName, List<string> Companies);
 }

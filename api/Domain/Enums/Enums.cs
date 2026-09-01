@@ -1,8 +1,8 @@
 namespace ExpertToJob.Domain.Enums;
 
-/// <summary>Draft employees are agent-staged (resume ingestion) and invisible to the roster,
+/// <summary>Draft experts are agent-staged (resume ingestion) and invisible to the roster,
 /// search index, and staffing until a human promotes them. Humans hold publication authority.</summary>
-public enum EmployeeStatus
+public enum ExpertStatus
 {
     Draft = 1,
     Active = 2
@@ -38,8 +38,8 @@ public enum UserStatus
 }
 
 /// <summary>
-/// What a <see cref="Entities.EmployeeSearchChunk"/> was rendered from: one work
-/// <see cref="Entities.Experience"/>, an employee's professional <c>Summary</c>, or a single
+/// What a <see cref="Entities.ExpertSearchChunk"/> was rendered from: one work
+/// <see cref="Entities.Experience"/>, an expert's professional <c>Summary</c>, or a single
 /// <see cref="Entities.Achievement"/> bullet.
 /// </summary>
 public enum SearchChunkSource

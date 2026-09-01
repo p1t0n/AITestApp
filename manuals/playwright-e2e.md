@@ -45,7 +45,7 @@ against `Auth:Passkey:Origins`, which lists the dev SPA at `:5173`. The runner p
 origin, rather than moving the suite onto the dev port and colliding with a running stack.
 
 **One worker, one shared roster.** The tests share a database within a run, so they keep apart by
-owning what they create — a fresh account per test (`uniqueEmail`), fresh employees — and never
+owning what they create — a fresh account per test (`uniqueEmail`), fresh experts — and never
 assert on roster totals. Parallel workers would need a database each; that is a trade worth making
 only when the suite is slow enough to care.
 

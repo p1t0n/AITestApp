@@ -14,7 +14,7 @@ namespace ExpertToJob.Infrastructure.Search;
 /// <summary>
 /// pgvector-backed semantic roster search. Embeds the query, applies the optional hard filters as a
 /// SQL pre-filter (so the top-K are all valid candidates), ranks chunks by cosine similarity, and
-/// aggregates chunk hits to employees (best similarity + evidence snippets).
+/// aggregates chunk hits to experts (best similarity + evidence snippets).
 /// </summary>
 public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSearchService
 {
@@ -65,7 +65,7 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
             return SemanticSearchResult.Failed("The semantic search backend is unavailable.");
         }
 
-        var eligibleIds = await ResolveEligibleEmployeesAsync(filters, ct);
+        var eligibleIds = await ResolveEligibleExpertsAsync(filters, ct);
         if (eligibleIds is { Count: 0 })
         {
             return SemanticSearchResult.Empty; // filters excluded everyone
@@ -78,14 +78,14 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
             return SemanticSearchResult.Empty;
         }
 
-        var byEmployee = ranked
-            .GroupBy(x => x.EmployeeId)
+        var byExpert = ranked
+            .GroupBy(x => x.ExpertId)
             .Select(g => new
             {
-                EmployeeId = g.Key,
+                ExpertId = g.Key,
                 BestDistance = g.Min(x => x.Distance),
                 Snippets = g.OrderBy(x => x.Distance)
-                    .Take(_options.MaxSnippetsPerEmployee)
+                    .Take(_options.MaxSnippetsPerExpert)
                     .Select(x => Truncate(x.Content))
                     .ToList(),
             })
@@ -93,19 +93,19 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
             .Take(limit)
             .ToList();
 
-        var ids = byEmployee.Select(x => x.EmployeeId).ToList();
-        var employees = await _db.Employees
-            .Where(e => ids.Contains(e.Id) && e.Status == EmployeeStatus.Active)
+        var ids = byExpert.Select(x => x.ExpertId).ToList();
+        var experts = await _db.Experts
+            .Where(e => ids.Contains(e.Id) && e.Status == ExpertStatus.Active)
             .Select(e => new { e.Id, e.FirstName, e.LastName, e.Title })
             .ToDictionaryAsync(e => e.Id, ct);
 
-        var hits = byEmployee
-            .Where(x => employees.ContainsKey(x.EmployeeId))
+        var hits = byExpert
+            .Where(x => experts.ContainsKey(x.ExpertId))
             .Select(x =>
             {
-                var e = employees[x.EmployeeId];
+                var e = experts[x.ExpertId];
                 return new SemanticSearchHit(
-                    x.EmployeeId,
+                    x.ExpertId,
                     $"{e.FirstName} {e.LastName}".Trim(),
                     e.Title,
                     Math.Round(1.0 - x.BestDistance, 4),
@@ -149,20 +149,20 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
             return ShortlistSearchResult.Failed("The semantic search backend is unavailable.");
         }
 
-        var eligibleIds = await ResolveEligibleEmployeesAsync(filters, ct);
+        var eligibleIds = await ResolveEligibleExpertsAsync(filters, ct);
         if (eligibleIds is { Count: 0 })
         {
             return ShortlistSearchResult.Empty; // filters excluded everyone
         }
 
-        // One cosine query per requirement; keep each employee's best chunk as that requirement's match.
+        // One cosine query per requirement; keep each expert's best chunk as that requirement's match.
         var matchesPerRequirement = new List<IReadOnlyDictionary<Guid, ShortlistMatch>>(cleaned.Count);
         foreach (var requirementVector in requirementVectors)
         {
             var ranked = await RankChunksAsync(requirementVector, eligibleIds, Fetch(limit), ct);
 
             matchesPerRequirement.Add(ranked
-                .GroupBy(x => x.EmployeeId)
+                .GroupBy(x => x.ExpertId)
                 .ToDictionary(
                     g => g.Key,
                     g =>
@@ -178,19 +178,19 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
             return ShortlistSearchResult.Empty;
         }
 
-        var ids = merged.Select(x => x.EmployeeId).ToList();
-        var employees = await _db.Employees
-            .Where(e => ids.Contains(e.Id) && e.Status == EmployeeStatus.Active)
+        var ids = merged.Select(x => x.ExpertId).ToList();
+        var experts = await _db.Experts
+            .Where(e => ids.Contains(e.Id) && e.Status == ExpertStatus.Active)
             .Select(e => new { e.Id, e.FirstName, e.LastName, e.Title })
             .ToDictionaryAsync(e => e.Id, ct);
 
         var candidatesRanked = merged
-            .Where(x => employees.ContainsKey(x.EmployeeId))
+            .Where(x => experts.ContainsKey(x.ExpertId))
             .Select(x =>
             {
-                var e = employees[x.EmployeeId];
+                var e = experts[x.ExpertId];
                 return new ShortlistCandidate(
-                    x.EmployeeId,
+                    x.ExpertId,
                     $"{e.FirstName} {e.LastName}".Trim(),
                     e.Title,
                     x.Score,
@@ -210,23 +210,23 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
     /// <summary>
     /// Keyword fallback while the embedding quota is exhausted: Postgres full-text search over the
     /// same chunk pool (achievement bullets excluded), same hard pre-filters, aggregated to
-    /// employees the same way. Scores are ts_rank values — comparable within one result, not with
+    /// experts the same way. Scores are ts_rank values — comparable within one result, not with
     /// semantic similarities — and the result is flagged degraded so the agent can say so.
     /// </summary>
     private async Task<SemanticSearchResult> LexicalSearchAsync(
         string query, SemanticSearchFilters? filters, int limit, CancellationToken ct)
     {
-        var eligibleIds = await ResolveEligibleEmployeesAsync(filters, ct);
+        var eligibleIds = await ResolveEligibleExpertsAsync(filters, ct);
         if (eligibleIds is { Count: 0 })
         {
             return SemanticSearchResult.Empty; // filters excluded everyone
         }
 
-        var candidates = _db.EmployeeSearchChunks
+        var candidates = _db.ExpertSearchChunks
             .Where(c => c.SourceType != SearchChunkSource.Achievement);
         if (eligibleIds is not null)
         {
-            candidates = candidates.Where(c => eligibleIds.Contains(c.EmployeeId));
+            candidates = candidates.Where(c => eligibleIds.Contains(c.ExpertId));
         }
 
         var rows = await candidates
@@ -234,7 +234,7 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
                 .Matches(EF.Functions.WebSearchToTsQuery("english", query)))
             .Select(c => new
             {
-                c.EmployeeId,
+                c.ExpertId,
                 c.Content,
                 Rank = (double)EF.Functions.ToTsVector("english", c.Content)
                     .Rank(EF.Functions.WebSearchToTsQuery("english", query)),
@@ -248,14 +248,14 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
             return new SemanticSearchResult([], null, LexicalDegradedReason);
         }
 
-        var byEmployee = rows
-            .GroupBy(x => x.EmployeeId)
+        var byExpert = rows
+            .GroupBy(x => x.ExpertId)
             .Select(g => new
             {
-                EmployeeId = g.Key,
+                ExpertId = g.Key,
                 BestRank = g.Max(x => x.Rank),
                 Snippets = g.OrderByDescending(x => x.Rank)
-                    .Take(_options.MaxSnippetsPerEmployee)
+                    .Take(_options.MaxSnippetsPerExpert)
                     .Select(x => Truncate(x.Content))
                     .ToList(),
             })
@@ -263,19 +263,19 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
             .Take(limit)
             .ToList();
 
-        var ids = byEmployee.Select(x => x.EmployeeId).ToList();
-        var employees = await _db.Employees
-            .Where(e => ids.Contains(e.Id) && e.Status == EmployeeStatus.Active)
+        var ids = byExpert.Select(x => x.ExpertId).ToList();
+        var experts = await _db.Experts
+            .Where(e => ids.Contains(e.Id) && e.Status == ExpertStatus.Active)
             .Select(e => new { e.Id, e.FirstName, e.LastName, e.Title })
             .ToDictionaryAsync(e => e.Id, ct);
 
-        var hits = byEmployee
-            .Where(x => employees.ContainsKey(x.EmployeeId))
+        var hits = byExpert
+            .Where(x => experts.ContainsKey(x.ExpertId))
             .Select(x =>
             {
-                var e = employees[x.EmployeeId];
+                var e = experts[x.ExpertId];
                 return new SemanticSearchHit(
-                    x.EmployeeId,
+                    x.ExpertId,
                     $"{e.FirstName} {e.LastName}".Trim(),
                     e.Title,
                     Math.Round(x.BestRank, 4),
@@ -287,7 +287,7 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
     }
 
     /// <summary>Chunks ranked by cosine distance to one query vector, capped and thresholded.</summary>
-    private sealed record ChunkHit(Guid EmployeeId, string Content, double Distance);
+    private sealed record ChunkHit(Guid ExpertId, string Content, double Distance);
 
     /// <summary>
     /// Ranks the (optionally pre-filtered) chunk set against one query vector: closest first,
@@ -299,38 +299,38 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
     {
         var maxDistance = 1.0 - _options.MinSimilarity;
 
-        // Achievement bullet chunks are excluded from the employee-level retrieval pool: they are
+        // Achievement bullet chunks are excluded from the expert-level retrieval pool: they are
         // the fine-grained unit for exemplar retrieval, and the live eval showed they raise the
         // negative-false-positive rate when they compete here (their narrative already reaches
         // these paths rolled into the parent experience chunk).
-        var candidates = _db.EmployeeSearchChunks
+        var candidates = _db.ExpertSearchChunks
             .Where(c => c.Embedding != null && c.SourceType != SearchChunkSource.Achievement);
         if (eligibleIds is not null)
         {
-            candidates = candidates.Where(c => eligibleIds.Contains(c.EmployeeId));
+            candidates = candidates.Where(c => eligibleIds.Contains(c.ExpertId));
         }
 
         // Project to an anonymous type inside the query (EF can't translate record constructors).
         var rows = await candidates
-            .Select(c => new { c.EmployeeId, c.Content, Distance = c.Embedding!.CosineDistance(queryVector) })
+            .Select(c => new { c.ExpertId, c.Content, Distance = c.Embedding!.CosineDistance(queryVector) })
             .Where(x => x.Distance <= maxDistance)
             .OrderBy(x => x.Distance)
             .Take(fetch)
             .ToListAsync(ct);
 
-        return rows.Select(x => new ChunkHit(x.EmployeeId, x.Content, x.Distance)).ToList();
+        return rows.Select(x => new ChunkHit(x.ExpertId, x.Content, x.Distance)).ToList();
     }
 
-    /// <summary>Over-fetch chunk rows relative to the requested employee count, since several
-    /// chunks can belong to the same employee.</summary>
+    /// <summary>Over-fetch chunk rows relative to the requested expert count, since several
+    /// chunks can belong to the same expert.</summary>
     private static int Fetch(int limit) => Math.Max(limit * 10, 50);
 
     /// <summary>
-    /// Ids of employees passing the hard filters, or null when no filter is set (no restriction).
+    /// Ids of experts passing the hard filters, or null when no filter is set (no restriction).
     /// Everything here is SQL-translatable, including the availability step-function
     /// (latest entry on/before the date, capacity &gt; 0).
     /// </summary>
-    private async Task<HashSet<Guid>?> ResolveEligibleEmployeesAsync(SemanticSearchFilters? filters, CancellationToken ct)
+    private async Task<HashSet<Guid>?> ResolveEligibleExpertsAsync(SemanticSearchFilters? filters, CancellationToken ct)
     {
         if (filters is null)
         {
@@ -347,7 +347,7 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
             return null;
         }
 
-        IQueryable<Employee> q = _db.Employees.Where(e => e.Status == EmployeeStatus.Active);
+        IQueryable<Expert> q = _db.Experts.Where(e => e.Status == ExpertStatus.Active);
 
         if (!string.IsNullOrWhiteSpace(filters.Location))
         {

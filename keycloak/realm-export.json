@@ -61,8 +61,8 @@
       }
     },
     {
-      "name": "mcp:tool:employee_create_draft",
-      "description": "Grants the employee_create_draft MCP tool.",
+      "name": "mcp:tool:expert_create_draft",
+      "description": "Grants the expert_create_draft MCP tool.",
       "protocol": "openid-connect",
       "attributes": {
         "include.in.token.scope": "true",
@@ -70,8 +70,8 @@
       }
     },
     {
-      "name": "mcp:tool:employee_list",
-      "description": "Grants the employee_list MCP tool.",
+      "name": "mcp:tool:expert_list",
+      "description": "Grants the expert_list MCP tool.",
       "protocol": "openid-connect",
       "attributes": {
         "include.in.token.scope": "true",
@@ -79,8 +79,8 @@
       }
     },
     {
-      "name": "mcp:tool:employee_skill_add",
-      "description": "Grants the employee_skill_add MCP tool.",
+      "name": "mcp:tool:expert_skill_add",
+      "description": "Grants the expert_skill_add MCP tool.",
       "protocol": "openid-connect",
       "attributes": {
         "include.in.token.scope": "true",
@@ -216,7 +216,7 @@
         "mcp-audience",
         "mcp:read",
         "mcp:tool:cv_get",
-        "mcp:tool:employee_list",
+        "mcp:tool:expert_list",
         "mcp:tool:roster_semantic_search",
         "mcp:tool:skill_list"
       ]
@@ -294,7 +294,7 @@
       "defaultClientScopes": [
         "mcp-audience",
         "mcp:read",
-        "mcp:tool:employee_list"
+        "mcp:tool:expert_list"
       ]
     },
     {
@@ -310,8 +310,8 @@
         "mcp-audience",
         "mcp:read",
         "mcp:write",
-        "mcp:tool:employee_create_draft",
-        "mcp:tool:employee_skill_add",
+        "mcp:tool:expert_create_draft",
+        "mcp:tool:expert_skill_add",
         "mcp:tool:experience_add",
         "mcp:tool:language_add",
         "mcp:tool:qualification_add",

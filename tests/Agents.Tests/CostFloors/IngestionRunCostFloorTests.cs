@@ -126,9 +126,9 @@ public class IngestionRunCostFloorTests(ITestOutputHelper output)
             // out to have no catalog entry, since the lookup is how the agent finds that out.
             // P1T-155 traded the single unfiltered dump for these.
             .. truth.Skills.Select(_ => "skill_list"),
-            "employee_create_draft",
+            "expert_create_draft",
             .. truth.Languages.Select(_ => "language_add"),
-            .. truth.Skills.Where(s => s.InCatalog).Select(_ => "employee_skill_add"),
+            .. truth.Skills.Where(s => s.InCatalog).Select(_ => "expert_skill_add"),
             .. truth.Qualifications.Select(_ => "qualification_add"),
             .. truth.Experiences.Select(_ => "experience_add"),
         ];
@@ -309,9 +309,9 @@ public class IngestionRunCostFloorTests(ITestOutputHelper output)
     [
         AIFunctionFactory.Create(() => LookupPage, "skill_list"),
         AIFunctionFactory.Create(
-            () => $$"""{"employee":{"id":"{{DraftId}}","firstName":"Torvald","lastName":"Emberwright"},"duplicateWarning":null}""",
-            "employee_create_draft"),
-        .. new[] { "language_add", "employee_skill_add", "qualification_add", "experience_add" }
+            () => $$"""{"expert":{"id":"{{DraftId}}","firstName":"Torvald","lastName":"Emberwright"},"duplicateWarning":null}""",
+            "expert_create_draft"),
+        .. new[] { "language_add", "expert_skill_add", "qualification_add", "experience_add" }
             .Select(name => (AITool)AIFunctionFactory.Create(
                 () => $$"""{"id":"{{Guid.NewGuid()}}"}""", name)),
     ];
@@ -370,7 +370,7 @@ public class IngestionRunCostFloorTests(ITestOutputHelper output)
         // A lookup, not a dump: the shortest distinctive word of one extracted skill name, which
         // is what step 1 of the agent's procedure now asks for.
         "skill_list" => new() { ["nameContains"] = LookupTerms[(nth - 1) % LookupTerms.Length] },
-        "employee_create_draft" => new()
+        "expert_create_draft" => new()
         {
             ["dto"] = new
             {
@@ -386,12 +386,12 @@ public class IngestionRunCostFloorTests(ITestOutputHelper output)
         },
         "language_add" => new()
         {
-            ["employeeId"] = DraftId,
+            ["expertId"] = DraftId,
             ["dto"] = new { name = "Latvian", level = "Native" },
         },
-        "employee_skill_add" => new()
+        "expert_skill_add" => new()
         {
-            ["employeeId"] = DraftId,
+            ["expertId"] = DraftId,
             ["dto"] = new
             {
                 skillId = Deterministic(nth, 0xA1),
@@ -401,7 +401,7 @@ public class IngestionRunCostFloorTests(ITestOutputHelper output)
         },
         "qualification_add" => new()
         {
-            ["employeeId"] = DraftId,
+            ["expertId"] = DraftId,
             ["dto"] = new
             {
                 type = "Degree",
@@ -413,7 +413,7 @@ public class IngestionRunCostFloorTests(ITestOutputHelper output)
         },
         "experience_add" => new()
         {
-            ["employeeId"] = DraftId,
+            ["expertId"] = DraftId,
             ["dto"] = new
             {
                 company = "Brasswater Ledger",

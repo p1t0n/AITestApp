@@ -59,8 +59,8 @@ public class StaffingEndpointTests
     private static FakeChatClient NarrativeChat() => new(() => new ChatResponse(new ChatMessage(
         ChatRole.Assistant,
         $$"""
-          {"rationales":[{"employeeId":"{{AdaId}}","rationale":"Best coverage."},{"employeeId":"{{GraceId}}","rationale":"Solid depth."}],
-           "recommendation":{"employeeId":"{{AdaId}}","narrative":"Ada is the strongest fit."} }
+          {"rationales":[{"expertId":"{{AdaId}}","rationale":"Best coverage."},{"expertId":"{{GraceId}}","rationale":"Solid depth."}],
+           "recommendation":{"expertId":"{{AdaId}}","narrative":"Ada is the strongest fit."} }
           """))
     {
         Usage = new UsageDetails { InputTokenCount = 30, OutputTokenCount = 15, TotalTokenCount = 45 },
@@ -129,7 +129,7 @@ public class StaffingEndpointTests
             ("narrative", "completed", null, null, null));
 
         // Candidates carry both id and name; optional fields are omitted, not null.
-        frames[2].Json.GetProperty("candidate").GetProperty("employeeId").GetString()
+        frames[2].Json.GetProperty("candidate").GetProperty("expertId").GetString()
             .Should().Be(AdaId.ToString());
         frames[0].Json.TryGetProperty("candidate", out _).Should().BeFalse();
         frames[0].Json.TryGetProperty("error", out _).Should().BeFalse();
@@ -223,7 +223,7 @@ public class StaffingEndpointTests
         var candidates = body.GetProperty("candidates");
         candidates.GetArrayLength().Should().Be(2);
         var ada = candidates[0];
-        ada.GetProperty("employeeId").GetString().Should().Be(AdaId.ToString());
+        ada.GetProperty("expertId").GetString().Should().Be(AdaId.ToString());
         ada.GetProperty("name").GetString().Should().Be("Ada Lovelace");
         ada.GetProperty("title").GetString().Should().Be("Platform Lead");
 
@@ -248,7 +248,7 @@ public class StaffingEndpointTests
         ada.GetProperty("rationale").GetString().Should().Be("Best coverage.");
 
         var recommendation = body.GetProperty("recommendation");
-        recommendation.GetProperty("employeeId").GetString().Should().Be(AdaId.ToString());
+        recommendation.GetProperty("expertId").GetString().Should().Be(AdaId.ToString());
         recommendation.GetProperty("narrative").GetString().Should().Be("Ada is the strongest fit.");
 
         body.GetProperty("degraded").GetBoolean().Should().BeFalse();
@@ -272,7 +272,7 @@ public class StaffingEndpointTests
         var pending = await client.GetFromJsonAsync<JsonElement>("/agents/staffing/proposals?status=pending");
         var inbox = pending.EnumerateArray().Single(p => p.GetProperty("id").GetGuid() == proposalId);
         inbox.GetProperty("status").GetString().Should().Be("pending");
-        inbox.GetProperty("recommendedEmployeeId").GetGuid().Should().Be(AdaId);
+        inbox.GetProperty("recommendedExpertId").GetGuid().Should().Be(AdaId);
         inbox.GetProperty("candidates").GetArrayLength().Should().Be(2);
         inbox.GetProperty("candidates")[0].GetProperty("name").GetString().Should().Be("Ada Lovelace");
 

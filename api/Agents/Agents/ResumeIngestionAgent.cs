@@ -11,20 +11,20 @@ public sealed record IngestionToolCall(string Tool, bool Succeeded, string? Erro
 
 /// <summary>
 /// What one ingestion run produced: the model reply (metering), the created draft's id and
-/// duplicate warning captured from the <c>employee_create_draft</c> result, every write-tool
+/// duplicate warning captured from the <c>expert_create_draft</c> result, every write-tool
 /// invocation in order (the run service composes counts and degradation notes from these — never
 /// from model text), and the model's minimal closing JSON (skill proposals, abort flag).
 /// </summary>
 public sealed record ResumeIngestionOutcome(
     AgentReply Reply,
-    Guid? EmployeeId,
+    Guid? ExpertId,
     string? DuplicateWarning,
     IReadOnlyList<IngestionToolCall> ToolCalls,
     string ClosingJson);
 
 /// <summary>
 /// The first <c>mcp:write</c> agent (P1T-92): pasted resume text → structured extraction → real
-/// chained MCP write calls staging a DRAFT employee with children. The MCP layer returns
+/// chained MCP write calls staging a DRAFT expert with children. The MCP layer returns
 /// structured validation errors, which flow back to the model as tool results so it can
 /// self-correct (bounded by instruction to ~2 retries per item). Deterministic facts — the draft
 /// id, duplicate warning, per-tool success/failure — are captured from tool results by per-run
@@ -34,7 +34,7 @@ public sealed record ResumeIngestionOutcome(
 /// </summary>
 public sealed class ResumeIngestionAgent
 {
-    private const string CreateDraftTool = "employee_create_draft";
+    private const string CreateDraftTool = "expert_create_draft";
 
     /// <summary>The narrowed tool surface: the draft create, the four child adds, and the catalog
     /// lookup the model resolves skill ids through. Nothing else — notably not skill_create (the
@@ -45,7 +45,7 @@ public sealed class ResumeIngestionAgent
     [
         CreateDraftTool,
         "language_add",
-        "employee_skill_add",
+        "expert_skill_add",
         "qualification_add",
         "experience_add",
         "skill_list",
@@ -54,7 +54,7 @@ public sealed class ResumeIngestionAgent
     private const string Instructions =
         """
         You are the Resume Ingestion assistant for ExpertToJob. The user message is the raw text
-        of one resume. Stage it as a DRAFT employee by calling tools, then report.
+        of one resume. Stage it as a DRAFT expert by calling tools, then report.
 
         Extraction rules — honesty above completeness:
         - Use ONLY facts present in the resume text. If a value is absent (even email), leave it
@@ -73,18 +73,18 @@ public sealed class ResumeIngestionAgent
            distinctive word of it ("ReactJS" → "react", "Entity Framework Core" → "entity
            framework"). NEVER unfiltered: the whole catalog would then re-cost you every later
            turn. No match → retry that one once, shorter; still none means no catalog entry.
-        2. Call employee_create_draft with the person's root fields (firstName, lastName, title,
+        2. Call expert_create_draft with the person's root fields (firstName, lastName, title,
            email — empty string if the resume has none — phone, location, summary).
-        3. Using the returned employee id, add children — each kind as ONE batched turn:
+        3. Using the returned expert id, add children — each kind as ONE batched turn:
            - language_add for each spoken language (level: Basic|Conversational|Professional|Fluent|Native).
-           - employee_skill_add for each skill step 1 resolved, using the skillId it returned.
+           - expert_skill_add for each skill step 1 resolved, using the skillId it returned.
              Level (Beginner|Intermediate|Advanced|Expert) and yearsExperience only as evidenced.
            - qualification_add for each degree/certification (type: Degree|Certification).
            - experience_add for each role: company, title, dates, summary, achievements (verbatim-
              faithful result bullets), and skillIds for catalog skills evidenced in THAT role.
         4. If a tool returns a validation error, read its fields, fix the arguments, and retry —
            at most 2 retries for the same item, then skip it and move on.
-        5. If employee_create_draft itself still fails after 2 retries, STOP — do not add children.
+        5. If expert_create_draft itself still fails after 2 retries, STOP — do not add children.
         6. Skills step 1 could not resolve are NOT added and NOT created — collect their names as
            proposals for human review.
 
@@ -126,7 +126,7 @@ public sealed class ResumeIngestionAgent
             _chatClient,
             instructions: Instructions,
             name: "ResumeIngestion",
-            description: "Stages a resume as a draft employee via MCP write tools (draft-then-promote).",
+            description: "Stages a resume as a draft expert via MCP write tools (draft-then-promote).",
             tools: runTools,
             loggerFactory: _loggerFactory);
 
@@ -158,7 +158,7 @@ public sealed class ResumeIngestionAgent
             run.Degradation);
 
         return new ResumeIngestionOutcome(
-            reply, capture.EmployeeId, capture.DuplicateWarning, capture.Calls, response.Text);
+            reply, capture.ExpertId, capture.DuplicateWarning, capture.Calls, response.Text);
     }
 
     private async Task<IReadOnlyList<AITool>> GetToolsAsync(CancellationToken ct)
@@ -190,7 +190,7 @@ public sealed class ResumeIngestionAgent
 /// <summary>Mutable per-run capture filled by <see cref="CapturingIngestionFunction"/>.</summary>
 internal sealed class IngestionCapture
 {
-    public Guid? EmployeeId { get; set; }
+    public Guid? ExpertId { get; set; }
     public string? DuplicateWarning { get; set; }
     public List<IngestionToolCall> Calls { get; } = [];
 }
@@ -198,15 +198,15 @@ internal sealed class IngestionCapture
 /// <summary>The MCP structured tool error, as mapped by the server's McpToolErrorMapper.</summary>
 internal sealed record IngestionErrorPayload(string Code, string Message);
 
-/// <summary>The employee_create_draft result: the created draft plus the duplicate warning.</summary>
-internal sealed record IngestionDraftPayload(IngestionDraftEmployee Employee, string? DuplicateWarning);
+/// <summary>The expert_create_draft result: the created draft plus the duplicate warning.</summary>
+internal sealed record IngestionDraftPayload(IngestionDraftExpert Expert, string? DuplicateWarning);
 
-internal sealed record IngestionDraftEmployee(Guid Id);
+internal sealed record IngestionDraftExpert(Guid Id);
 
 /// <summary>
 /// Decorates each write <see cref="AIFunction"/> to record, per run, whether the MCP layer
 /// accepted the call — a result carrying the structured error shape ({"code","message",...}) is a
-/// failure — plus the created draft's id and duplicate warning from <c>employee_create_draft</c>.
+/// failure — plus the created draft's id and duplicate warning from <c>expert_create_draft</c>.
 /// The wrapped tool behaves identically otherwise, so the model still sees the error and retries.
 /// </summary>
 internal sealed class CapturingIngestionFunction(AIFunction inner, IngestionCapture capture)
@@ -233,13 +233,13 @@ internal sealed class CapturingIngestionFunction(AIFunction inner, IngestionCapt
         capture.Calls.Add(new IngestionToolCall(
             Name, error is null, error is null ? null : $"{error.Code}: {error.Message}"));
 
-        if (error is null && Name == "employee_create_draft")
+        if (error is null && Name == "expert_create_draft")
         {
             var draft = ToolResultPayload.Extract<IngestionDraftPayload>(
-                result, obj => obj.ContainsKey("employee") || obj.ContainsKey("Employee"), Json);
-            if (draft is { Employee.Id: var id } && id != Guid.Empty)
+                result, obj => obj.ContainsKey("expert") || obj.ContainsKey("Expert"), Json);
+            if (draft is { Expert.Id: var id } && id != Guid.Empty)
             {
-                capture.EmployeeId = id;
+                capture.ExpertId = id;
             }
 
             capture.DuplicateWarning ??= draft?.DuplicateWarning;

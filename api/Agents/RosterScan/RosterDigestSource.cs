@@ -11,7 +11,7 @@ namespace ExpertToJob.Agents.RosterScan;
 public interface IRosterDigestSource
 {
     /// <summary>One page of digests, or null when the tool result is unreadable.</summary>
-    Task<EmployeeDigestPage?> ListAsync(int page, int pageSize, CancellationToken ct = default);
+    Task<ExpertDigestPage?> ListAsync(int page, int pageSize, CancellationToken ct = default);
 }
 
 /// <summary>Invokes the real MCP tool through the roster-scan agent identity's tool source —
@@ -32,7 +32,7 @@ public sealed class McpRosterDigestSource : IRosterDigestSource
 
     public McpRosterDigestSource(IMcpToolSource toolSource) => _toolSource = toolSource;
 
-    public async Task<EmployeeDigestPage?> ListAsync(int page, int pageSize, CancellationToken ct = default)
+    public async Task<ExpertDigestPage?> ListAsync(int page, int pageSize, CancellationToken ct = default)
     {
         var tool = await GetToolAsync(ct);
         var result = await tool.InvokeAsync(new AIFunctionArguments
@@ -40,7 +40,7 @@ public sealed class McpRosterDigestSource : IRosterDigestSource
             ["page"] = page,
             ["pageSize"] = pageSize,
         }, ct);
-        return ToolResultPayload.Extract<EmployeeDigestPage>(
+        return ToolResultPayload.Extract<ExpertDigestPage>(
             result, obj => obj.ContainsKey("items") || obj.ContainsKey("Items"), Json);
     }
 

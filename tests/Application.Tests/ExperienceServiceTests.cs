@@ -1,4 +1,4 @@
-using ExpertToJob.Application.Employees;
+using ExpertToJob.Application.Experts;
 using ExpertToJob.Domain.Entities;
 using ExpertToJob.Domain.Enums;
 using ExpertToJob.Infrastructure.Persistence;
@@ -18,16 +18,16 @@ public class ExperienceServiceTests
     private static ExperienceService NewService(AppDbContext db) =>
         new(db, new SaveExperienceValidator());
 
-    private static async Task<(Employee Employee, Skill Skill)> Seed(AppDbContext db)
+    private static async Task<(Expert Expert, Skill Skill)> Seed(AppDbContext db)
     {
         var category = new Category { Id = Guid.NewGuid(), Name = "Backend" };
         var skill = new Skill { Id = Guid.NewGuid(), Name = "C#", CategoryId = category.Id };
-        var employee = new Employee { Id = Guid.NewGuid(), FirstName = "Ada", LastName = "Lovelace", Email = "ada@x.com" };
+        var expert = new Expert { Id = Guid.NewGuid(), FirstName = "Ada", LastName = "Lovelace", Email = "ada@x.com" };
         db.Categories.Add(category);
         db.Skills.Add(skill);
-        db.Employees.Add(employee);
+        db.Experts.Add(expert);
         await db.SaveChangesAsync();
-        return (employee, skill);
+        return (expert, skill);
     }
 
     private static SaveExperienceDto Dto(Guid skillId, params string[] bullets) => new(
@@ -44,9 +44,9 @@ public class ExperienceServiceTests
         // Surfaced by the Tailor CV "Apply" flow (the first real caller of this PUT with children).
         await using var db = NewDb();
         var svc = NewService(db);
-        var (employee, skill) = await Seed(db);
+        var (expert, skill) = await Seed(db);
 
-        var created = await svc.AddAsync(employee.Id, Dto(skill.Id, "Old bullet one", "Old bullet two"));
+        var created = await svc.AddAsync(expert.Id, Dto(skill.Id, "Old bullet one", "Old bullet two"));
 
         var updated = await svc.UpdateAsync(created.Id, Dto(skill.Id, "New bullet one", "New bullet two"));
 
@@ -61,8 +61,8 @@ public class ExperienceServiceTests
         // The Apply-rewrite shape: same experience, same skills, one bullet's text swapped.
         await using var db = NewDb();
         var svc = NewService(db);
-        var (employee, skill) = await Seed(db);
-        var created = await svc.AddAsync(employee.Id, Dto(skill.Id, "Keep me", "Rewrite me"));
+        var (expert, skill) = await Seed(db);
+        var created = await svc.AddAsync(expert.Id, Dto(skill.Id, "Keep me", "Rewrite me"));
 
         var updated = await svc.UpdateAsync(created.Id, Dto(skill.Id, "Keep me", "Rewritten, sharper"));
 

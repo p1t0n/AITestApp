@@ -30,10 +30,10 @@ namespace ExpertToJob.Agents.Tests;
 ///
 /// <para>It drives the <b>real</b> <see cref="QueuedSyncScoringTransport"/> over <b>real</b>
 /// digests — the committed demo roster projected through the production
-/// <see cref="EmployeeDigestService"/> — so the schema under test is literally the one Roster Scan
+/// <see cref="ExpertDigestService"/> — so the schema under test is literally the one Roster Scan
 /// sends, not a hand-copied replica that could drift from it. Adherence is measured the way the
 /// transport itself measures honesty: a candidate is <c>Scored</c> only if the reply parsed as
-/// <c>roster_scan_chunk</c> <i>and</i> named that employee id.</para>
+/// <c>roster_scan_chunk</c> <i>and</i> named that expert id.</para>
 ///
 /// <para>Run the gate:
 /// <c>CLOUDFLARE_ACCOUNT_ID=… CLOUDFLARE_API_TOKEN=… dotnet test tests/Agents.Tests --filter "Category=live"</c>.
@@ -135,7 +135,7 @@ public class CloudflareWorkersAiGateTests(ITestOutputHelper output)
             var fullScan = neurons * (DemoRosterSize / (double)RosterScanGateChunk.ChunkSize);
             output.WriteLine(
                 $"  ~{neurons:N1} neurons/chunk at the 7B reference rate → {FreeNeuronsPerDay / neurons:N0} " +
-                $"chunk calls/day inside the 10,000-neuron free grant; a {DemoRosterSize}-employee scan " +
+                $"chunk calls/day inside the 10,000-neuron free grant; a {DemoRosterSize}-expert scan " +
                 $"costs ~{fullScan:N0} neurons ({fullScan / FreeNeuronsPerDay:N1}× the daily grant)");
         }
 
@@ -149,7 +149,7 @@ public class CloudflareWorkersAiGateTests(ITestOutputHelper output)
 
         foreach (var failed in scored.Results.Where(r => r.Status != ScoringCandidateStatus.Scored))
         {
-            output.WriteLine($"  MISS {failed.EmployeeId}: {failed.Error}");
+            output.WriteLine($"  MISS {failed.ExpertId}: {failed.Error}");
         }
 
         return rate;
@@ -231,31 +231,31 @@ internal static class RosterScanGateChunk
 
     /// <summary>
     /// Ten real digests: the committed demo roster seeded into the in-memory provider and projected
-    /// by the production <see cref="EmployeeDigestService"/>. No Postgres — the gate is about the
-    /// model's reply, and a digest is a pure projection over the employee aggregate.
+    /// by the production <see cref="ExpertDigestService"/>. No Postgres — the gate is about the
+    /// model's reply, and a digest is a pure projection over the expert aggregate.
     ///
     /// <para>Built <b>once per process</b>, which is load-bearing rather than an optimisation:
-    /// <c>DemoRosterSeeder</c> mints a fresh <c>Guid</c> per employee on every seed and
-    /// <c>EmployeeDigestService</c> orders by that id, so seeding twice yields the same ten people
+    /// <c>DemoRosterSeeder</c> mints a fresh <c>Guid</c> per expert on every seed and
+    /// <c>ExpertDigestService</c> orders by that id, so seeding twice yields the same ten people
     /// in a different order under different ids. Re-seeding per probe would hand Cloudflare and the
     /// Gemini control different chunks and quietly make the comparison meaningless.</para>
     /// </summary>
-    public static Task<IReadOnlyList<EmployeeDigest>> RealDigestChunkAsync() => Chunk.Value;
+    public static Task<IReadOnlyList<ExpertDigest>> RealDigestChunkAsync() => Chunk.Value;
 
-    private static readonly Lazy<Task<IReadOnlyList<EmployeeDigest>>> Chunk =
+    private static readonly Lazy<Task<IReadOnlyList<ExpertDigest>>> Chunk =
         new(BuildAsync, LazyThreadSafetyMode.ExecutionAndPublication);
 
-    private static async Task<IReadOnlyList<EmployeeDigest>> BuildAsync()
+    private static async Task<IReadOnlyList<ExpertDigest>> BuildAsync()
     {
         await using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase($"p1t143-gate-{Guid.NewGuid()}")
             .Options);
 
-        // The seeder takes the first ChunkSize employees in dataset file order, so which ten people
+        // The seeder takes the first ChunkSize experts in dataset file order, so which ten people
         // are in the chunk is fixed by the committed asset; only their ids and ordering are not.
         await DemoRosterSeeder.SeedAsync(db, DemoRosterSeeder.LoadCommittedDataset(), ChunkSize);
 
-        var page = await new EmployeeDigestService(db).ListAsync(page: 1, pageSize: ChunkSize);
+        var page = await new ExpertDigestService(db).ListAsync(page: 1, pageSize: ChunkSize);
         return page.Items;
     }
 }
@@ -275,8 +275,8 @@ public class RosterScanGateChunkTests
         var digests = await RosterScanGateChunk.RealDigestChunkAsync();
 
         digests.Should().HaveCount(RosterScanGateChunk.ChunkSize, "the gate prices a production-sized chunk");
-        digests.Select(d => d.EmployeeId).Should().OnlyHaveUniqueItems(
-            "adherence is counted per employee id, so a duplicate would make the rate a lie");
+        digests.Select(d => d.ExpertId).Should().OnlyHaveUniqueItems(
+            "adherence is counted per expert id, so a duplicate would make the rate a lie");
         digests.Should().AllSatisfy(d =>
         {
             d.Name.Should().NotBeNullOrWhiteSpace();
@@ -305,7 +305,7 @@ public class RosterScanGateChunkTests
         // The half that IS fixed by the committed asset: which people are in the chunk. If the
         // dataset is regenerated, this turns red and the gate's numbers stop being comparable to
         // any run recorded before it.
-        var expected = DemoRosterSeeder.LoadCommittedDataset().Employees
+        var expected = DemoRosterSeeder.LoadCommittedDataset().Experts
             .Take(RosterScanGateChunk.ChunkSize)
             .Select(e => $"{e.FirstName} {e.LastName}");
 

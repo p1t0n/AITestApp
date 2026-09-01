@@ -12,10 +12,10 @@ public sealed class SemanticSearchOptions
     /// manuals/retrieval-eval-baseline.md).</summary>
     public double MinSimilarity { get; set; } = 0.55;
 
-    /// <summary>Default number of employees returned when the caller doesn't specify.</summary>
+    /// <summary>Default number of experts returned when the caller doesn't specify.</summary>
     public int DefaultTopK { get; set; } = 5;
 
-    /// <summary>Hard cap on employees returned, whatever the caller asks for.</summary>
+    /// <summary>Hard cap on experts returned, whatever the caller asks for.</summary>
     public int MaxTopK { get; set; } = 20;
 
     /// <summary>Default number of shortlist candidates returned when the caller doesn't specify.</summary>
@@ -24,8 +24,8 @@ public sealed class SemanticSearchOptions
     /// <summary>Hard cap on shortlist candidates returned, whatever the caller asks for.</summary>
     public int ShortlistMaxTopK { get; set; } = 20;
 
-    /// <summary>Max snippets returned per employee (the closest-matching chunks).</summary>
-    public int MaxSnippetsPerEmployee { get; set; } = 3;
+    /// <summary>Max snippets returned per expert (the closest-matching chunks).</summary>
+    public int MaxSnippetsPerExpert { get; set; } = 3;
 
     /// <summary>Snippet text is truncated to this many characters to keep tool payloads small.</summary>
     public int SnippetMaxChars { get; set; } = 500;

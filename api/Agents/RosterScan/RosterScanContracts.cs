@@ -21,7 +21,7 @@ public sealed record RosterScanAccepted(Guid JobId, RosterScanEstimate Estimate)
 /// <summary>One candidate row in the polling payload. Score/band/rationale are the structured
 /// chunk verdict; <c>scorable: false</c> with nulls is the honest "nothing to judge" outcome.</summary>
 public sealed record RosterScanCandidateView(
-    Guid EmployeeId,
+    Guid ExpertId,
     string Name,
     string Title,
     string Status,
@@ -49,7 +49,7 @@ public sealed record RosterScanJobView(
         job.CreatedAt, job.JobDescription,
         ScoringJobProgress.Of(job.Candidates),
         job.Candidates.Select(c => new RosterScanCandidateView(
-            c.EmployeeId, c.Name, c.Title, c.Status, c.Score, c.Band, c.Rationale, c.Scorable, c.Error)).ToList());
+            c.ExpertId, c.Name, c.Title, c.Status, c.Score, c.Band, c.Rationale, c.Scorable, c.Error)).ToList());
 }
 
 /// <summary>GET /agents/roster-scan — one light row per job, newest-first.</summary>

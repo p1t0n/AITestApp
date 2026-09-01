@@ -122,7 +122,7 @@ public class CompatEndpointProbeTests
 
         var first = await client.GetResponseAsync(
             [new ChatMessage(ChatRole.User,
-                "Look up the office city for employee 'Alex Doe' with the tool, then report: " +
+                "Look up the office city for expert 'Alex Doe' with the tool, then report: " +
                 "seniority Senior, minYears 5, and one requirement naming that city.")],
             options);
 
@@ -134,7 +134,7 @@ public class CompatEndpointProbeTests
         var followUp = new List<ChatMessage>
         {
             new(ChatRole.User,
-                "Look up the office city for employee 'Alex Doe' with the tool, then report: " +
+                "Look up the office city for expert 'Alex Doe' with the tool, then report: " +
                 "seniority Senior, minYears 5, and one requirement naming that city."),
         };
         followUp.AddRange(first.Messages);
@@ -170,9 +170,9 @@ public class CompatEndpointProbeTests
     }
 
     private static AIFunction LookupTool() => AIFunctionFactory.Create(
-        (string employeeName) => "Amsterdam",
+        (string expertName) => "Amsterdam",
         "lookup_office_city",
-        "Returns the office city for the named employee.");
+        "Returns the office city for the named expert.");
 
     private static List<FunctionCallContent> FunctionCalls(ChatResponse response) =>
         response.Messages.SelectMany(m => m.Contents).OfType<FunctionCallContent>().ToList();

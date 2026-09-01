@@ -27,7 +27,7 @@ export type RosterScanState = "queued" | "running" | "paused" | "completed" | "f
 export type RosterScanCandidateStatus = "pending" | "scored" | "failed";
 
 export interface RosterScanCandidate {
-  employeeId: string;
+  expertId: string;
   name: string;
   title: string;
   status: RosterScanCandidateStatus;

@@ -14,7 +14,7 @@ public class OAuthTests
 
         var tools = await client.ListToolsAsync();
 
-        tools.Select(t => t.Name).Should().Contain("employee_list");
+        tools.Select(t => t.Name).Should().Contain("expert_list");
     }
 
     [Fact]
@@ -39,8 +39,8 @@ public class OAuthTests
 
         var names = (await client.ListToolsAsync()).Select(t => t.Name).ToList();
 
-        names.Should().Contain("employee_list");        // read is allowed
-        names.Should().NotContain("employee_delete");   // admin scope required
+        names.Should().Contain("expert_list");        // read is allowed
+        names.Should().NotContain("expert_delete");   // admin scope required
     }
 
     [Fact]
@@ -52,7 +52,7 @@ public class OAuthTests
 
         var names = (await client.ListToolsAsync()).Select(t => t.Name).ToList();
 
-        names.Should().Contain("employee_delete");
+        names.Should().Contain("expert_delete");
     }
 
     [Fact]

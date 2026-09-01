@@ -24,7 +24,7 @@ public sealed record ExperienceNarrative(string Summary, IReadOnlyList<string> A
 /// </summary>
 public interface INarrativeSource
 {
-    string WriteEmployeeSummary(string industry, string title, IReadOnlyList<string> topSkills, DeterministicRandom rng);
+    string WriteExpertSummary(string industry, string title, IReadOnlyList<string> topSkills, DeterministicRandom rng);
 
     ExperienceNarrative WriteExperience(NarrativeContext context, DeterministicRandom rng);
 }

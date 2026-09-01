@@ -44,7 +44,7 @@ public sealed class StaffingProposalStore(
                 Id = id,
                 RequestedByUserId = requestedBy,
                 JobDescription = jobDescription,
-                RecommendedEmployeeId = report.Recommendation?.EmployeeId,
+                RecommendedExpertId = report.Recommendation?.ExpertId,
                 ReportDegraded = report.Degraded,
                 Status = StaffingProposalStatus.Pending,
                 CreatedAt = clock.GetUtcNow(),
@@ -52,7 +52,7 @@ public sealed class StaffingProposalStore(
                 Candidates = report.Candidates.Select((c, i) => new StaffingProposalCandidate
                 {
                     Id = Guid.NewGuid(),
-                    EmployeeId = c.EmployeeId,
+                    ExpertId = c.ExpertId,
                     Name = c.Name,
                     Title = c.Title,
                     Rank = i + 1,

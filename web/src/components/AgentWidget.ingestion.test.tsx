@@ -6,7 +6,7 @@ import AgentWidget from "./AgentWidget";
 import { selectAgentSurface } from "../test/agentSurface";
 import type { AgentDock } from "./useAgentDock";
 import type { IngestionResponse } from "../api";
-import type { EmployeeDetail } from "../types";
+import type { ExpertDetail } from "../types";
 
 // ---- api module mock ----
 // Hooks only; apiErrorMessage stays real (same pattern as the other AgentWidget suites).
@@ -23,20 +23,20 @@ const deleteState = { mutateAsync: vi.fn(), isPending: false };
 const addSkillState = { mutateAsync: vi.fn(), isPending: false };
 const createSkillState = { mutateAsync: vi.fn(), isPending: false };
 
-let draftEmployee: EmployeeDetail;
+let draftExpert: ExpertDetail;
 
 vi.mock("../api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../api")>();
   return {
     ...actual,
     useResumeIngestion: () => ingestState,
-    usePromoteEmployee: () => promoteState,
-    useUpdateEmployee: () => updateState,
-    useDeleteEmployee: () => deleteState,
-    useAddEmployeeSkill: () => addSkillState,
+    usePromoteExpert: () => promoteState,
+    useUpdateExpert: () => updateState,
+    useDeleteExpert: () => deleteState,
+    useAddExpertSkill: () => addSkillState,
     useCreateSkill: () => createSkillState,
-    useEmployee: () => ({ data: draftEmployee, isLoading: false }),
-    useEmployees: () => ({ data: [], isLoading: false }),
+    useExpert: () => ({ data: draftExpert, isLoading: false }),
+    useExperts: () => ({ data: [], isLoading: false }),
     useSkills: () => ({
       data: [{ id: "s-react", name: "React", categoryId: "c1", categoryName: "Frontend", rank: 1 }],
       isLoading: false,
@@ -52,7 +52,7 @@ vi.mock("../api", async (importOriginal) => {
 
 function response(overrides: Partial<IngestionResponse> = {}): IngestionResponse {
   return {
-    employeeId: DRAFT_ID,
+    expertId: DRAFT_ID,
     created: { languages: 2, skills: 3, qualifications: 1, experiences: 2 },
     proposals: [],
     notes: [],
@@ -62,7 +62,7 @@ function response(overrides: Partial<IngestionResponse> = {}): IngestionResponse
   };
 }
 
-function employee(overrides: Partial<EmployeeDetail> = {}): EmployeeDetail {
+function expert(overrides: Partial<ExpertDetail> = {}): ExpertDetail {
   return {
     id: DRAFT_ID,
     firstName: "Wren",
@@ -111,7 +111,7 @@ async function stage(text = "some resume text") {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  draftEmployee = employee();
+  draftExpert = expert();
 });
 
 describe("Ingestion tab", () => {
@@ -130,7 +130,7 @@ describe("Ingestion tab", () => {
   it("surfaces the duplicate warning and degradation notes prominently", async () => {
     ingestState.mutateAsync.mockResolvedValue(
       response({
-        duplicateWarning: "An employee named Wren Ashgrove already exists.",
+        duplicateWarning: "An expert named Wren Ashgrove already exists.",
         notes: ["experience_add failed 2 time(s); some items were skipped."],
         degraded: true,
       }),
@@ -157,7 +157,7 @@ describe("Ingestion tab", () => {
     expect(screen.getByTestId("proposal-LabVIEW")).toHaveTextContent("LabVIEW");
   });
 
-  it("mapping a proposal to an existing skill adds it to the employee", async () => {
+  it("mapping a proposal to an existing skill adds it to the expert", async () => {
     ingestState.mutateAsync.mockResolvedValue(response({ proposals: ["ReactJS"] }));
     addSkillState.mutateAsync.mockResolvedValue({});
 
@@ -216,7 +216,7 @@ describe("Ingestion tab", () => {
   });
 
   it("demands an email before promoting an email-less draft, then saves it first", async () => {
-    draftEmployee = employee({ email: "" });
+    draftExpert = expert({ email: "" });
     ingestState.mutateAsync.mockResolvedValue(response());
     updateState.mutateAsync.mockResolvedValue({});
     promoteState.mutateAsync.mockResolvedValue({});

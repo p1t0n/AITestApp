@@ -17,7 +17,7 @@ public sealed record TailoringResponse(string Answer, IReadOnlyList<TailoringRew
 /// <summary>
 /// Endpoint-side composition of the hybrid tailoring response. The answer is turn 1's markdown
 /// verbatim; every deterministic rewrite field — experienceId, achievementId, the original bullet
-/// — is resolved from the captured cv_get result (the Agents service may not query employee data
+/// — is resolved from the captured cv_get result (the Agents service may not query expert data
 /// directly; MCP is the boundary), and the model's turn-2 JSON contributes only rewritten strings.
 /// Entries with unknown/unselected/corrupted ids or blank text are dropped, and each survivor
 /// passes the <see cref="FabricationGuard"/> against its original bullet, its experience context,

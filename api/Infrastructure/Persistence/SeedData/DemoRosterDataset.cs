@@ -5,13 +5,13 @@ namespace ExpertToJob.Infrastructure.Persistence.SeedData;
 /// <summary>
 /// Shape of the committed <c>demo-roster.json</c> asset (P1T-48): a self-contained synthetic
 /// roster for demoing semantic search. Carries its own skill catalog so a later seeder slice
-/// can upsert skills the base <see cref="DbInitializer"/> catalog is missing. All employee
+/// can upsert skills the base <see cref="DbInitializer"/> catalog is missing. All expert
 /// emails end in <c>@demo.example.com</c> — the wipe-tag a later slice uses to remove demo data.
 /// </summary>
 public sealed class DemoRosterDataset
 {
     public List<DemoRosterSkill> Skills { get; set; } = [];
-    public List<DemoRosterEmployee> Employees { get; set; } = [];
+    public List<DemoRosterExpert> Experts { get; set; } = [];
 }
 
 /// <summary>Catalog skill carried by the dataset; <see cref="Category"/> is the category name.</summary>
@@ -21,7 +21,7 @@ public sealed class DemoRosterSkill
     public string Category { get; set; } = string.Empty;
 }
 
-public sealed class DemoRosterEmployee
+public sealed class DemoRosterExpert
 {
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
@@ -36,7 +36,7 @@ public sealed class DemoRosterEmployee
 
     public List<DemoRosterSpokenLanguage> SpokenLanguages { get; set; } = [];
     public List<DemoRosterAvailability> Availability { get; set; } = [];
-    public List<DemoRosterEmployeeSkill> Skills { get; set; } = [];
+    public List<DemoRosterExpertSkill> Skills { get; set; } = [];
     public List<DemoRosterQualification> Qualifications { get; set; } = [];
     public List<DemoRosterExperience> Experiences { get; set; } = [];
 }
@@ -54,7 +54,7 @@ public sealed class DemoRosterAvailability
 }
 
 /// <summary>References a catalog skill from the dataset's <see cref="DemoRosterDataset.Skills"/> by name.</summary>
-public sealed class DemoRosterEmployeeSkill
+public sealed class DemoRosterExpertSkill
 {
     public string Name { get; set; } = string.Empty;
     public SkillLevel Level { get; set; }

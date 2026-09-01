@@ -8,7 +8,7 @@ records how the headless path is built and why it is built that way.
 ## Shape
 
 ```
-EmployeeDetailDto ──CvService.Build──▶ CvDto ──ICvPdfRenderer.Render──▶ byte[]
+ExpertDetailDto ──CvService.Build──▶ CvDto ──ICvPdfRenderer.Render──▶ byte[]
                      (Application)             (Application seam,
                                                 Infrastructure impl)
 ```
@@ -19,7 +19,7 @@ EmployeeDetailDto ──CvService.Build──▶ CvDto ──ICvPdfRenderer.Rend
 * **`CvPdfRenderer`** — `api/Infrastructure/Documents/CvPdfRenderer.cs`. QuestPDF implementation,
   registered as a singleton (stateless, thread-safe).
 * **`CvPdfFileName`** — beside the seam, so the controller does no string work of its own.
-* **`GET /api/employees/{id}/cv.pdf`** — builds the CV Projection, renders, returns
+* **`GET /api/experts/{id}/cv.pdf`** — builds the CV Projection, renders, returns
   `application/pdf` with a `Content-Disposition` filename.
 * **SPA** — `useDownloadCvPdf` in `web/src/api.ts` fetches the PDF as a blob through axios (so the
   session token rides along; a plain `<a href>` would hit the endpoint unauthenticated) and hands it
@@ -69,7 +69,7 @@ bytes passed in) and what an unreachable photo does to the document.
 
 A freshly-ingested draft can have nothing on it but a name. QuestPDF rejects an empty container
 outright rather than drawing a blank, so the body emits an explicit "No CV content recorded for this
-employee yet." line when every optional section is empty.
+expert yet." line when every optional section is empty.
 
 ## Tests
 

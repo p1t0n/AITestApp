@@ -19,7 +19,7 @@ import {
   apiErrorMessage,
   useApplyRewrite,
   useCvTailoring,
-  useEmployees,
+  useExperts,
   useInterviewKit,
   useJdMatch,
   useMatch,
@@ -40,14 +40,14 @@ interface FormResult {
   /** Vetted structured questions (Interview kit only; empty on the degrade path). */
   questions: InterviewQuestion[];
   latencyMs: number;
-  /** The employee the run was submitted for — Apply targets this even if the picker changes later. */
-  employeeId: string;
+  /** The expert the run was submitted for — Apply targets this even if the picker changes later. */
+  expertId: string;
 }
 
 // ---- Rewritten bullets (CV Tailoring hybrid contract) ----
 
 /** Rewrites grouped by experienceId, preserving response order. The widget only fetches the
- * employees list (name/title) — not the employee's CV — so a nice "title @ company" header would
+ * experts list (name/title) — not the expert's CV — so a nice "title @ company" header would
  * need a new fetch. We deliberately avoid that and use a neutral positional header instead. */
 function groupRewrites(rewrites: TailoringRewrite[]) {
   const groups: { experienceId: string; items: TailoringRewrite[] }[] = [];
@@ -61,7 +61,7 @@ function groupRewrites(rewrites: TailoringRewrite[]) {
 
 /** One before → after card with its own Apply mutation, so pending/applied/error state is strictly
  * per card. Apply writes through the Web API with the user's session (never the agent, P1T-62). */
-function RewriteCard({ employeeId, rewrite }: { employeeId: string; rewrite: TailoringRewrite }) {
+function RewriteCard({ expertId, rewrite }: { expertId: string; rewrite: TailoringRewrite }) {
   const apply = useApplyRewrite();
   const r = rewrite;
   return (
@@ -90,7 +90,7 @@ function RewriteCard({ employeeId, rewrite }: { employeeId: string; rewrite: Tai
               startIcon={
                 apply.isPending ? <CircularProgress size={14} color="inherit" /> : undefined
               }
-              onClick={() => apply.mutate({ employeeId, ...r })}
+              onClick={() => apply.mutate({ expertId, ...r })}
             >
               {apply.isPending ? "Applying…" : "Apply"}
             </Button>
@@ -115,10 +115,10 @@ function RewriteCard({ employeeId, rewrite }: { employeeId: string; rewrite: Tai
 
 /** Per-bullet before → after cards, grouped by experience. */
 function RewrittenBullets({
-  employeeId,
+  expertId,
   rewrites,
 }: {
-  employeeId: string;
+  expertId: string;
   rewrites: TailoringRewrite[];
 }) {
   const groups = useMemo(() => groupRewrites(rewrites), [rewrites]);
@@ -134,7 +134,7 @@ function RewrittenBullets({
               Experience {i + 1}
             </Typography>
             {g.items.map((r) => (
-              <RewriteCard key={r.achievementId} employeeId={employeeId} rewrite={r} />
+              <RewriteCard key={r.achievementId} expertId={expertId} rewrite={r} />
             ))}
           </Stack>
         ))}
@@ -148,10 +148,10 @@ export function AgentJobForm({
   initial,
 }: {
   mode: "cv-tailoring" | "match" | "interview-kit";
-  /** Pre-filled employee + JD (e.g. "Run full Match" from a shortlist card). Applied on mount. */
+  /** Pre-filled expert + JD (e.g. "Run full Match" from a shortlist card). Applied on mount. */
   initial?: AgentJobRequest;
 }) {
-  const employees = useEmployees();
+  const experts = useExperts();
   const tailoring = useCvTailoring();
   const match = useMatch();
   const interviewKit = useInterviewKit();
@@ -159,26 +159,26 @@ export function AgentJobForm({
   const run = mode === "cv-tailoring" ? tailoring : mode === "interview-kit" ? interviewKit : match;
   const pending = run.isPending || jdMatch.isPending;
 
-  const [employeeId, setEmployeeId] = useState<string | null>(initial?.employeeId ?? null);
+  const [expertId, setExpertId] = useState<string | null>(initial?.expertId ?? null);
   const [jobDescription, setJobDescription] = useState(initial?.jobDescription ?? "");
   const [result, setResult] = useState<FormResult | null>(null);
-  // JD-only match results (Match tab with no employee selected, P1T-103).
+  // JD-only match results (Match tab with no expert selected, P1T-103).
   const [jdResult, setJdResult] = useState<JdMatchResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const options = useMemo(
     () =>
-      (employees.data ?? []).map((e) => ({
+      (experts.data ?? []).map((e) => ({
         id: e.id,
         label: `${e.firstName} ${e.lastName} — ${e.title}`,
       })),
-    [employees.data],
+    [experts.data],
   );
-  const selected = options.find((o) => o.id === employeeId) ?? null;
+  const selected = options.find((o) => o.id === expertId) ?? null;
 
-  // Match runs without an employee (JD-only mode); the other modes require one.
+  // Match runs without an expert (JD-only mode); the other modes require one.
   const canSubmit =
-    (mode === "match" || !!employeeId) && jobDescription.trim().length > 0 && !pending;
+    (mode === "match" || !!expertId) && jobDescription.trim().length > 0 && !pending;
 
   async function submit() {
     if (!canSubmit) return;
@@ -187,12 +187,12 @@ export function AgentJobForm({
     setJdResult(null);
     const startedAt = performance.now();
     try {
-      if (mode === "match" && !employeeId) {
+      if (mode === "match" && !expertId) {
         setJdResult(await jdMatch.mutateAsync({ jobDescription: jobDescription.trim() }));
         return;
       }
 
-      const req: AgentJobRequest = { employeeId: employeeId!, jobDescription: jobDescription.trim() };
+      const req: AgentJobRequest = { expertId: expertId!, jobDescription: jobDescription.trim() };
       // Tailoring returns answer + rewrites; the interview kit answer + questions; Match is
       // answer-only. Normalized into one FormResult shape.
       const res =
@@ -201,7 +201,7 @@ export function AgentJobForm({
           : mode === "interview-kit"
             ? { ...(await interviewKit.mutateAsync(req)), rewrites: [] }
             : { ...(await match.mutateAsync(req)), rewrites: [], questions: [] };
-      setResult({ ...res, latencyMs: performance.now() - startedAt, employeeId: req.employeeId });
+      setResult({ ...res, latencyMs: performance.now() - startedAt, expertId: req.expertId });
     } catch (err) {
       setError(apiErrorMessage(err));
     }
@@ -217,15 +217,15 @@ export function AgentJobForm({
         <Autocomplete
           options={options}
           value={selected}
-          onChange={(_, v) => setEmployeeId(v?.id ?? null)}
-          loading={employees.isLoading}
+          onChange={(_, v) => setExpertId(v?.id ?? null)}
+          loading={experts.isLoading}
           isOptionEqualToValue={(o, v) => o.id === v.id}
           renderInput={(params) => (
             <TextField
               {...params}
-              label={mode === "match" ? "Employee (optional)" : "Employee"}
+              label={mode === "match" ? "Expert (optional)" : "Expert"}
               placeholder={
-                mode === "match" ? "Pick an employee, or leave empty to search the roster" : "Pick an employee"
+                mode === "match" ? "Pick an expert, or leave empty to search the roster" : "Pick an expert"
               }
             />
           )}
@@ -272,7 +272,7 @@ export function AgentJobForm({
               ? "Tailor CV"
               : mode === "interview-kit"
                 ? "Build interview kit"
-                : employeeId
+                : expertId
                   ? "Assess fit"
                   : "Find matches"}
         </Button>
@@ -296,7 +296,7 @@ export function AgentJobForm({
         )}
 
         {result && result.rewrites.length > 0 && (
-          <RewrittenBullets employeeId={result.employeeId} rewrites={result.rewrites} />
+          <RewrittenBullets expertId={result.expertId} rewrites={result.rewrites} />
         )}
 
         {result && result.questions.length > 0 && <InterviewQuestions questions={result.questions} />}
@@ -324,7 +324,7 @@ function JdMatchResults({ response }: { response: JdMatchResponse }) {
       ) : (
         <Stack spacing={1}>
           {response.results.map((r) => (
-            <JdMatchCard key={r.employeeId} result={r} />
+            <JdMatchCard key={r.expertId} result={r} />
           ))}
         </Stack>
       )}
@@ -335,7 +335,7 @@ function JdMatchResults({ response }: { response: JdMatchResponse }) {
 function JdMatchCard({ result }: { result: JdMatchResult }) {
   const [open, setOpen] = useState(false);
   return (
-    <Paper sx={{ p: 1.5 }} data-testid={`jd-match-${result.employeeId}`}>
+    <Paper sx={{ p: 1.5 }} data-testid={`jd-match-${result.expertId}`}>
       <Stack direction="row" alignItems="center" justifyContent="space-between">
         <Box>
           <Typography variant="body2" fontWeight={600}>

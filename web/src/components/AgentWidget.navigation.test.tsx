@@ -24,7 +24,7 @@ vi.mock("../api", async (importOriginal) => {
   return {
     ...actual,
     useUsage: () => ({ data: usage, isLoading: false, isError: false, error: null }),
-    useEmployees: () => ({ data: [], isLoading: false }),
+    useExperts: () => ({ data: [], isLoading: false }),
     useSkills: () => ({ data: [], isLoading: false }),
     useCategories: () => ({ data: [], isLoading: false }),
     useRosterScanJob: () => ({ data: undefined }),
@@ -67,7 +67,7 @@ function renderWidget(isNarrow = false, docked = false) {
 const SURFACES: { label: string; marker: RegExp }[] = [
   { label: "Roster Q&A", marker: /Ask about the roster…/ },
   { label: "Tailor CV", marker: /Paste a job description, or pick a preset above…/ },
-  { label: "Match", marker: /Pick an employee, or leave empty to search the roster/ },
+  { label: "Match", marker: /Pick an expert, or leave empty to search the roster/ },
   { label: "Interview kit", marker: /Paste a job description, or pick a preset above…/ },
   { label: "Shortlist", marker: /Paste a job description, or pick a preset above…/ },
   { label: "Staffing", marker: /Paste a job description, or pick a preset above…/ },

@@ -16,7 +16,7 @@ vi.mock("../api", async (importOriginal) => {
   return {
     ...actual,
     useRosterQa: () => askState,
-    useEmployees: () => ({ data: [], isLoading: false }),
+    useExperts: () => ({ data: [], isLoading: false }),
     useSkills: () => ({ data: [], isLoading: false }),
     useUsage: () => ({ data: undefined, isLoading: false, isError: false, error: null }),
     useMatch: () => ({ mutateAsync: vi.fn(), isPending: false }),

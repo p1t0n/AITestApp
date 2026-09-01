@@ -15,11 +15,11 @@ public class MatchAgentTests
 {
     private static AIFunction CvGetTool(Action onInvoke) =>
         AIFunctionFactory.Create(
-            (Guid employeeId) => { onInvoke(); return """{"FullName":"Ada Lovelace","Title":"Engineer"}"""; },
+            (Guid expertId) => { onInvoke(); return """{"FullName":"Ada Lovelace","Title":"Engineer"}"""; },
             "cv_get");
 
-    private static AIFunction EmployeeListTool() =>
-        AIFunctionFactory.Create(() => "Ada Lovelace;id-1", "employee_list");
+    private static AIFunction ExpertListTool() =>
+        AIFunctionFactory.Create(() => "Ada Lovelace;id-1", "expert_list");
 
     [Fact]
     public async Task Exposes_only_the_cv_tool_to_the_model_and_returns_its_answer()
@@ -27,14 +27,14 @@ public class MatchAgentTests
         var chat = new FakeChatClient(
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "Fit: MODERATE (68/100)")));
         var agent = new MatchAgent(
-            chat, new FakeToolSource(CvGetTool(() => { }), EmployeeListTool()), NullLoggerFactory.Instance);
+            chat, new FakeToolSource(CvGetTool(() => { }), ExpertListTool()), NullLoggerFactory.Instance);
 
         var answer = await agent.AskAsync("Assess Ada against a React role.");
 
         answer.Text.Should().Contain("MODERATE");
         agent.Name.Should().Be("match");
         chat.ReceivedOptions[0]!.Tools.Should().Contain(t => t.Name == "cv_get");
-        chat.ReceivedOptions[0]!.Tools.Should().NotContain(t => t.Name == "employee_list");
+        chat.ReceivedOptions[0]!.Tools.Should().NotContain(t => t.Name == "expert_list");
     }
 
     [Fact]
@@ -59,7 +59,7 @@ public class MatchAgentTests
         var chat = new FakeChatClient(
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
                 [new FunctionCallContent("call-1", "cv_get",
-                    new Dictionary<string, object?> { ["employeeId"] = Guid.Empty })])),
+                    new Dictionary<string, object?> { ["expertId"] = Guid.Empty })])),
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "Fit: STRONG (90/100)")));
 
         var agent = new MatchAgent(
@@ -79,7 +79,7 @@ public class MatchAgentTests
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "Fit: MODERATE (60/100)")));
         var agent = new MatchAgent(chat, new FakeToolSource(CvGetTool(() => { })), NullLoggerFactory.Instance);
 
-        const string request = "Employee 11111111-2222-3333-4444-555555555555. Job description: Senior React engineer, GraphQL.";
+        const string request = "Expert 11111111-2222-3333-4444-555555555555. Job description: Senior React engineer, GraphQL.";
         await agent.AskAsync(request);
 
         chat.ReceivedMessages.SelectMany(turn => turn).Select(m => m.Text)
@@ -90,16 +90,16 @@ public class MatchAgentTests
     public async Task Relays_a_not_found_from_cv_get_as_plain_prose()
     {
         var notFoundTool = AIFunctionFactory.Create(
-            (Guid employeeId) => """{"error":"not_found","message":"Employee not found."}""", "cv_get");
+            (Guid expertId) => """{"error":"not_found","message":"Expert not found."}""", "cv_get");
         var chat = new FakeChatClient(
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
                 [new FunctionCallContent("call-1", "cv_get",
-                    new Dictionary<string, object?> { ["employeeId"] = Guid.Empty })])),
-            () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "That employee was not found.")));
+                    new Dictionary<string, object?> { ["expertId"] = Guid.Empty })])),
+            () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "That expert was not found.")));
 
         var agent = new MatchAgent(chat, new FakeToolSource(notFoundTool), NullLoggerFactory.Instance);
 
-        var answer = await agent.AskAsync("Assess employee 00000000-0000-0000-0000-000000000000 for a role.");
+        var answer = await agent.AskAsync("Assess expert 00000000-0000-0000-0000-000000000000 for a role.");
 
         answer.Text.Should().Contain("not found");
     }

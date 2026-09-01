@@ -67,20 +67,20 @@ public static class GoldenPromptSet
 
         // ---- Exact facts: structured reads, not meaning ----------------------------------------
         new("fact-list-emails", ExactFact,
-            "List all employees with their titles and emails.", "employee_list"),
+            "List all experts with their titles and emails.", "expert_list"),
         new("fact-count", ExactFact,
-            "How many employees do we have right now?", "employee_list",
+            "How many experts do we have right now?", "expert_list",
             AlsoAcceptable: ["roster_digest_list"]),
         new("fact-locations", ExactFact,
-            "Show me every employee and their location.", "employee_list"),
-        new("fact-one-employee", ExactFact,
-            "Show me everything we have on employee 7b2e8d3a-1111-2222-3333-444455556666, " +
-            "including languages and availability.", "employee_get"),
+            "Show me every expert and their location.", "expert_list"),
+        new("fact-one-expert", ExactFact,
+            "Show me everything we have on expert 7b2e8d3a-1111-2222-3333-444455556666, " +
+            "including languages and availability.", "expert_get"),
         new("fact-availability", ExactFact,
-            "What are the availability entries for employee 7b2e8d3a-1111-2222-3333-444455556666?",
-            "employee_get", AlsoAcceptable: ["availability_list"]),
+            "What are the availability entries for expert 7b2e8d3a-1111-2222-3333-444455556666?",
+            "expert_get", AlsoAcceptable: ["availability_list"]),
         new("fact-cv", ExactFact,
-            "Give me the assembled CV for employee 7b2e8d3a-1111-2222-3333-444455556666.", "cv_get"),
+            "Give me the assembled CV for expert 7b2e8d3a-1111-2222-3333-444455556666.", "cv_get"),
         new("fact-cv-render", ExactFact,
             "I need the full CV content of one specific person to review before a client meeting; " +
             "their id is 7b2e8d3a-1111-2222-3333-444455556666.", "cv_get"),
@@ -90,7 +90,7 @@ public static class GoldenPromptSet
             "Page through career digests of the whole roster so I can bulk-assess everyone.",
             "roster_digest_list"),
         new("sweep-score-all", BulkSweep,
-            "I want to score every single employee against one job description — fetch the roster " +
+            "I want to score every single expert against one job description — fetch the roster " +
             "in compact digest form, first page.", "roster_digest_list"),
         new("sweep-second-page", BulkSweep,
             "Get me page 2 of the roster digests, 50 per page.", "roster_digest_list"),
@@ -108,41 +108,41 @@ public static class GoldenPromptSet
 
         // ---- Writes: the classic person-vs-catalog and create-vs-draft traps -------------------
         new("write-skill-to-person", Writes,
-            "Add the existing catalog skill 8a8a8a8a-1111-2222-3333-444455556666 to employee " +
-            "7b2e8d3a-1111-2222-3333-444455556666 at Advanced level.", "employee_skill_add"),
+            "Add the existing catalog skill 8a8a8a8a-1111-2222-3333-444455556666 to expert " +
+            "7b2e8d3a-1111-2222-3333-444455556666 at Advanced level.", "expert_skill_add"),
         new("write-new-catalog-skill", Writes,
             "We don't track 'Rust' yet — add it to the skill catalog under category " +
             "9c9c9c9c-1111-2222-3333-444455556666.", "skill_create"),
         new("write-skill-trap-person", Writes,
-            "Mark that employee 7b2e8d3a-1111-2222-3333-444455556666 knows PostgreSQL " +
-            "(catalog skill 8a8a8a8a-1111-2222-3333-444455556666), 5 years of it.", "employee_skill_add"),
+            "Mark that expert 7b2e8d3a-1111-2222-3333-444455556666 knows PostgreSQL " +
+            "(catalog skill 8a8a8a8a-1111-2222-3333-444455556666), 5 years of it.", "expert_skill_add"),
         new("write-skill-trap-catalog", Writes,
             "Create a brand-new skill entry called 'Zig' so we can start tagging people with it.",
             "skill_create",
             // categoryId is a required argument the prompt never supplies (P1T-137): a
             // prerequisite read is the legally correct first call, not a miss.
             AlsoAcceptable: ["category_list", "category_tree", "skill_list"]),
-        new("write-new-employee", Writes,
-            "Add a new employee: Jane Doe, Senior Engineer, jane@example.com, Berlin.", "employee_create"),
+        new("write-new-expert", Writes,
+            "Add a new expert: Jane Doe, Senior Engineer, jane@example.com, Berlin.", "expert_create"),
         new("write-draft", Writes,
-            "Stage this pasted resume as a draft employee for later human review.", "employee_create_draft"),
+            "Stage this pasted resume as a draft expert for later human review.", "expert_create_draft"),
         new("write-language", Writes,
-            "Record that employee 7b2e8d3a-1111-2222-3333-444455556666 speaks German at " +
+            "Record that expert 7b2e8d3a-1111-2222-3333-444455556666 speaks German at " +
             "Professional level.", "language_add"),
         new("write-availability", Writes,
-            "Set employee 7b2e8d3a-1111-2222-3333-444455556666 to 50% capacity from 2026-10-01.",
+            "Set expert 7b2e8d3a-1111-2222-3333-444455556666 to 50% capacity from 2026-10-01.",
             "availability_add"),
         new("write-experience", Writes,
-            "Add a work experience to employee 7b2e8d3a-1111-2222-3333-444455556666: Platform " +
+            "Add a work experience to expert 7b2e8d3a-1111-2222-3333-444455556666: Platform " +
             "Lead at FlowWorks since March 2019.", "experience_add"),
         new("write-achievement", Writes,
             "Append an achievement bullet 'Cut deploy time by 40%' to experience " +
             "5d5d5d5d-1111-2222-3333-444455556666.", "achievement_add"),
         new("write-qualification", Writes,
-            "Record a certification for employee 7b2e8d3a-1111-2222-3333-444455556666: AWS " +
+            "Record a certification for expert 7b2e8d3a-1111-2222-3333-444455556666: AWS " +
             "Solutions Architect, issued by Amazon.", "qualification_add"),
         new("write-update-title", Writes,
-            "Change the title of employee 7b2e8d3a-1111-2222-3333-444455556666 to Staff Engineer.",
-            "employee_update"),
+            "Change the title of expert 7b2e8d3a-1111-2222-3333-444455556666 to Staff Engineer.",
+            "expert_update"),
     ];
 }

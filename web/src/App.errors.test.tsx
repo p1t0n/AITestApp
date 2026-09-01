@@ -18,7 +18,7 @@ vi.mock("./pages/CatalogPage", () => ({
     throw new Error("catalog page exploded");
   },
 }));
-vi.mock("./pages/EmployeesPage", () => ({ default: () => <div>the roster page</div> }));
+vi.mock("./pages/ExpertsPage", () => ({ default: () => <div>the roster page</div> }));
 
 let consoleError: ReturnType<typeof vi.spyOn>;
 beforeEach(() => {

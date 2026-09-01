@@ -1,5 +1,5 @@
 using ExpertToJob.Application.Common;
-using ExpertToJob.Application.Employees;
+using ExpertToJob.Application.Experts;
 using ExpertToJob.Domain.Entities;
 using ExpertToJob.Infrastructure.Persistence;
 using FluentAssertions;
@@ -21,16 +21,16 @@ public class AchievementServiceTests
 
     private static async Task<Experience> SeedExperience(AppDbContext db)
     {
-        var employee = new Employee { Id = Guid.NewGuid(), FirstName = "Ada", LastName = "Lovelace", Email = "ada@x.com" };
+        var expert = new Expert { Id = Guid.NewGuid(), FirstName = "Ada", LastName = "Lovelace", Email = "ada@x.com" };
         var exp = new Experience
         {
             Id = Guid.NewGuid(),
-            EmployeeId = employee.Id,
+            ExpertId = expert.Id,
             Company = "Acme",
             Title = "Engineer",
             StartDate = new DateOnly(2020, 1, 1),
         };
-        db.Employees.Add(employee);
+        db.Experts.Add(expert);
         db.Experiences.Add(exp);
         await db.SaveChangesAsync();
         return exp;

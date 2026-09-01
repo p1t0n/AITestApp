@@ -1,6 +1,6 @@
 using System.ComponentModel;
 using ExpertToJob.Application.Availability;
-using ExpertToJob.Application.Employees;
+using ExpertToJob.Application.Experts;
 using Microsoft.AspNetCore.Authorization;
 using ModelContextProtocol.Server;
 
@@ -11,21 +11,21 @@ public class AvailabilityTools
 {
     [McpServerTool(Name = "availability_list", ReadOnly = true, Destructive = false),
      Description(
-         "List ONE employee's availability entries — the capacity step function over time, ordered " +
+         "List ONE expert's availability entries — the capacity step function over time, ordered " +
          "by effectiveFrom: each entry says 'from this date, this person is at N% capacity' and " +
          "holds until the next entry. Use it to answer 'what is their availability', 'when do they " +
          "free up', or to read an entry's id before changing it. Do NOT use it to find who is free " +
          "on a date — roster_semantic_search and roster_shortlist_search take an availableOn " +
          "filter and search the whole roster; do NOT use it for the current headline number alone " +
-         "— employee_list and employee_get already carry currentCapacityPercent. Input: " +
-         "employeeId; e.g. {\"employeeId\": \"7b2e8d3a-1111-2222-3333-444455556666\"}. " +
+         "— expert_list and expert_get already carry currentCapacityPercent. Input: " +
+         "expertId; e.g. {\"expertId\": \"7b2e8d3a-1111-2222-3333-444455556666\"}. " +
          "Returns the dated steps only — no name, no skills, no CV."),
      Authorize(Policy = McpScopes.Read)]
     public static async Task<IReadOnlyList<AvailabilityEntryDto>> List(
         IAvailabilityService availability,
-        [Description("Employee id (GUID).")] Guid employeeId,
+        [Description("Expert id (GUID).")] Guid expertId,
         CancellationToken ct)
-        => await availability.ListAsync(employeeId, ct);
+        => await availability.ListAsync(expertId, ct);
 
     [McpServerTool(Name = "availability_add", ReadOnly = false, Destructive = false),
      Description(
@@ -33,28 +33,28 @@ public class AvailabilityTools
          "2026-10-01', 'he is fully free from March', 'book him out (0%) starting Monday'. " +
          "Availability is a step function, so this ADDS a step rather than overwriting a field: " +
          "the new percent holds from effectiveFrom until a later entry supersedes it, and past " +
-         "entries stay as history. Do NOT look for a capacity field on the employee — " +
-         "employee_update does not have one; do NOT use it to correct a step you just entered " +
+         "entries stay as history. Do NOT look for a capacity field on the expert — " +
+         "expert_update does not have one; do NOT use it to correct a step you just entered " +
          "wrongly — availability_update by the entry id (availability_list has them); do NOT use " +
-         "it to remove someone from the roster — that is employee_delete, and 0% is usually what " +
-         "is meant. Input: employeeId + dto {effectiveFrom (yyyy-MM-dd), capacityPercent (0-100)}; " +
-         "e.g. {\"employeeId\": \"7b2e8d3a-1111-2222-3333-444455556666\", \"dto\": " +
+         "it to remove someone from the roster — that is expert_delete, and 0% is usually what " +
+         "is meant. Input: expertId + dto {effectiveFrom (yyyy-MM-dd), capacityPercent (0-100)}; " +
+         "e.g. {\"expertId\": \"7b2e8d3a-1111-2222-3333-444455556666\", \"dto\": " +
          "{\"effectiveFrom\": \"2026-10-01\", \"capacityPercent\": 50}}. A second entry on " +
          "the same date returns conflict. Returns the created entry."),
      Authorize(Policy = McpScopes.Write)]
     public static Task<object> Add(
         IAvailabilityService availability,
-        [Description("Employee id (GUID) whose capacity changes.")] Guid employeeId,
+        [Description("Expert id (GUID) whose capacity changes.")] Guid expertId,
         [Description("effectiveFrom: the date the new capacity starts, yyyy-MM-dd; " +
                      "capacityPercent: integer 0-100 (0 = fully booked, 100 = fully available).")]
         SaveAvailabilityEntryDto dto,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => availability.AddAsync(employeeId, dto, ct));
+        => McpToolExecutor.RunAsync(() => availability.AddAsync(expertId, dto, ct));
 
     [McpServerTool(Name = "availability_update", ReadOnly = false, Destructive = false),
      Description(
          "CORRECT one existing availability step — its date or its percent — addressed by the " +
-         "ENTRY id (from availability_list or employee_get), not the employee id. Use it when a " +
+         "ENTRY id (from availability_list or expert_get), not the expert id. Use it when a " +
          "step was entered wrongly ('that 50% should start on the 15th'). Do NOT use it to record " +
          "a NEW change from a new date — availability_add appends a step and keeps the history, " +
          "which is what a genuine capacity change is. Input: id + dto {effectiveFrom (yyyy-MM-dd), " +
@@ -64,7 +64,7 @@ public class AvailabilityTools
      Authorize(Policy = McpScopes.Write)]
     public static Task<object> Update(
         IAvailabilityService availability,
-        [Description("Availability entry id (GUID) from availability_list — not the employee id.")]
+        [Description("Availability entry id (GUID) from availability_list — not the expert id.")]
         Guid id,
         [Description("effectiveFrom (yyyy-MM-dd) and capacityPercent (0-100) AFTER the correction.")]
         SaveAvailabilityEntryDto dto,

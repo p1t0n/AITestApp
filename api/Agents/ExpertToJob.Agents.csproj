@@ -8,9 +8,9 @@
 
   <!--
     The agent layer consumes the MCP server over HTTP (Microsoft Agent Framework + MCP client);
-    all *employee* data access goes through the MCP tools, not the DB.
+    all *expert* data access goes through the MCP tools, not the DB.
     Exception: AI token-usage metering and per-user caps are an operational concern owned by the
-    platform (not employee domain data), so this project references Infrastructure to read user
+    platform (not expert domain data), so this project references Infrastructure to read user
     caps and write the AgentUsage log directly. User management itself stays off MCP.
   -->
   <ItemGroup>

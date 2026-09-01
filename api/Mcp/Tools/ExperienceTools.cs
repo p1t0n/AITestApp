@@ -1,5 +1,5 @@
 using System.ComponentModel;
-using ExpertToJob.Application.Employees;
+using ExpertToJob.Application.Experts;
 using Microsoft.AspNetCore.Authorization;
 using ModelContextProtocol.Server;
 
@@ -18,8 +18,8 @@ public class ExperienceTools
          "technologies — pass their catalog ids in skillIds here (or link them later with " +
          "experience_skill_add); do NOT use it to add a bullet to an EXISTING role — " +
          "achievement_add; do NOT use it to change a role — experience_update by its id. Input: " +
-         "employeeId + dto {company, title, location?, startDate (yyyy-MM-dd), endDate? " +
-         "(yyyy-MM-dd or null), summary?, achievements[], skillIds[]}; e.g. {\"employeeId\": " +
+         "expertId + dto {company, title, location?, startDate (yyyy-MM-dd), endDate? " +
+         "(yyyy-MM-dd or null), summary?, achievements[], skillIds[]}; e.g. {\"expertId\": " +
          "\"7b2e8d3a-1111-2222-3333-444455556666\", \"dto\": {\"company\": \"FlowWorks\", " +
          "\"title\": \"Platform Lead\", \"startDate\": \"2019-03-01\", \"endDate\": " +
          "null, \"achievements\": [{\"order\": 1, \"text\": \"Cut deploy time by 40%\"}], " +
@@ -28,23 +28,23 @@ public class ExperienceTools
      Authorize(Policy = McpScopes.Write)]
     public static Task<object> Add(
         IExperienceService experiences,
-        [Description("Employee id (GUID) whose job this is.")] Guid employeeId,
+        [Description("Expert id (GUID) whose job this is.")] Guid expertId,
         [Description("company, title required; startDate yyyy-MM-dd; endDate yyyy-MM-dd or null " +
                      "for a current role; achievements: [{order, text}] bullets; skillIds: " +
                      "EXISTING catalog skill ids (GUIDs) used in this role. Pass empty arrays if " +
                      "the source text gives none — never invent bullets or skills.")]
         SaveExperienceDto dto,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => experiences.AddAsync(employeeId, dto, ct));
+        => McpToolExecutor.RunAsync(() => experiences.AddAsync(expertId, dto, ct));
 
     [McpServerTool(Name = "experience_update", ReadOnly = false, Destructive = false),
      Description(
-         "CHANGE one existing job by EXPERIENCE id (from employee_get or cv_get) — company, title, " +
+         "CHANGE one existing job by EXPERIENCE id (from expert_get or cv_get) — company, title, " +
          "dates, location, summary, and its achievement/skill sets. Use it for 'that role ended in " +
          "June', 'fix the company name'. This is a full replace: the achievements and skillIds you " +
          "send become the complete set, so omitting them clears them — send the existing bullets " +
          "back if they should stay. Do NOT use it to add another job — experience_add with the " +
-         "employee id; do NOT use it to edit a single bullet — achievement_update is safer and " +
+         "expert id; do NOT use it to edit a single bullet — achievement_update is safer and " +
          "cannot lose the others. Input: id + dto (same shape as experience_add); e.g. {\"id\": " +
          "\"5d5d5d5d-1111-2222-3333-444455556666\", \"dto\": {\"company\": " +
          "\"FlowWorks\", \"title\": \"Platform Lead\", \"startDate\": \"2019-03-01\", " +
@@ -53,7 +53,7 @@ public class ExperienceTools
      Authorize(Policy = McpScopes.Write)]
     public static Task<object> Update(
         IExperienceService experiences,
-        [Description("Experience id (GUID) from employee_get / cv_get — not the employee id.")]
+        [Description("Experience id (GUID) from expert_get / cv_get — not the expert id.")]
         Guid id,
         [Description("The experience AFTER the edit. Full replace: achievements and skillIds " +
                      "become the complete sets, so include the ones that should survive.")]

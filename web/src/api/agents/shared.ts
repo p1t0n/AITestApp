@@ -1,8 +1,8 @@
 // Contracts more than one agent surface speaks.
 
-/** The input Match, CV Tailoring and Interview Kit all take: one employee, one job description. */
+/** The input Match, CV Tailoring and Interview Kit all take: one expert, one job description. */
 export interface AgentJobRequest {
-  employeeId: string;
+  expertId: string;
   jobDescription: string;
 }
 

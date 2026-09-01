@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
-using ExpertToJob.Application.Employees;
+using ExpertToJob.Application.Experts;
 using ExpertToJob.Application.Skills;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
@@ -21,9 +21,9 @@ public class ErrorShapeTests(WebApiFactory factory)
     private readonly HttpClient _client = factory.CreateAuthenticatedClient();
 
     [Fact]
-    public async Task A_missing_employee_is_404_problem_details()
+    public async Task A_missing_expert_is_404_problem_details()
     {
-        var response = await _client.GetAsync($"/api/employees/{Guid.NewGuid()}");
+        var response = await _client.GetAsync($"/api/experts/{Guid.NewGuid()}");
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
         var problem = await response.ReadAsync<ProblemDetails>();
@@ -34,8 +34,8 @@ public class ErrorShapeTests(WebApiFactory factory)
     [Fact]
     public async Task A_validation_failure_is_400_with_per_field_errors()
     {
-        var response = await _client.PostAsJsonAsync("/api/employees",
-            new SaveEmployeeDto("", "Hopper", "Engineer", "not-an-email", null, null, null, null),
+        var response = await _client.PostAsJsonAsync("/api/experts",
+            new SaveExpertDto("", "Hopper", "Engineer", "not-an-email", null, null, null, null),
             WebApiFactory.Json);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -50,7 +50,7 @@ public class ErrorShapeTests(WebApiFactory factory)
     [Fact]
     public async Task A_malformed_body_is_400_and_never_reaches_the_Application_layer()
     {
-        var response = await _client.PostAsync("/api/employees",
+        var response = await _client.PostAsync("/api/experts",
             new StringContent("{ not json", Encoding.UTF8, "application/json"));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -61,7 +61,7 @@ public class ErrorShapeTests(WebApiFactory factory)
     {
         // The `:guid` route constraint has to reject it — an unconstrained bind would surface as a
         // 500 from the model binder instead.
-        var response = await _client.GetAsync("/api/employees/not-a-guid");
+        var response = await _client.GetAsync("/api/experts/not-a-guid");
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -72,11 +72,11 @@ public class ErrorShapeTests(WebApiFactory factory)
         // Postgres-only ground: the uniqueness lives in a partial index over Active rows, so this
         // failure exists nowhere an EF InMemory test could see it.
         var email = ApiClientExtensions.UniqueEmail("clash");
-        await _client.CreateEmployeeAsync(ApiClientExtensions.NewEmployee(
+        await _client.CreateExpertAsync(ApiClientExtensions.NewExpert(
             firstName: "First", lastName: "Claimant", email: email));
 
-        var response = await _client.PostAsJsonAsync("/api/employees",
-            ApiClientExtensions.NewEmployee(firstName: "Second", lastName: "Claimant", email: email),
+        var response = await _client.PostAsJsonAsync("/api/experts",
+            ApiClientExtensions.NewExpert(firstName: "Second", lastName: "Claimant", email: email),
             WebApiFactory.Json);
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);

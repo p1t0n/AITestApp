@@ -22,7 +22,7 @@ const tailoringState = {
 const applyCalls: ApplyRewriteInput[] = [];
 let applyImpl: (input: ApplyRewriteInput) => Promise<unknown> = () => Promise.resolve({});
 
-const EMPLOYEE_ID = "11111111-2222-3333-4444-555555555555";
+const EXPERT_ID = "11111111-2222-3333-4444-555555555555";
 const EXPERIENCE_A = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
 const EXPERIENCE_B = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
 
@@ -52,10 +52,10 @@ vi.mock("../api", async (importOriginal) => {
         },
       };
     },
-    useEmployees: () => ({
+    useExperts: () => ({
       data: [
         {
-          id: EMPLOYEE_ID,
+          id: EXPERT_ID,
           firstName: "Ada",
           lastName: "Lovelace",
           title: "Senior Engineer",
@@ -127,7 +127,7 @@ async function runTailoring(response: CvTailoringResponse) {
     </MemoryRouter>,
   );
   await selectAgentSurface(user, "Tailor CV");
-  await user.click(screen.getByLabelText("Employee"));
+  await user.click(screen.getByLabelText("Expert"));
   await user.click(await screen.findByRole("option", { name: "Ada Lovelace — Senior Engineer" }));
   await user.type(
     screen.getByPlaceholderText(/paste a job description/i),
@@ -233,14 +233,14 @@ describe("Tailor CV tab — apply flow", () => {
     return screen.getByTestId(`rewrite-card-${achievementId}`);
   }
 
-  it("applies with the selected employee, the rewrite's ids, and text = rewritten", async () => {
+  it("applies with the selected expert, the rewrite's ids, and text = rewritten", async () => {
     const user = await runTailoring(RESPONSE);
 
     await user.click(within(card(CARD_2.achievementId)).getByRole("button", { name: "Apply" }));
 
     expect(applyCalls).toEqual([
       {
-        employeeId: EMPLOYEE_ID,
+        expertId: EXPERT_ID,
         experienceId: EXPERIENCE_A,
         achievementId: CARD_2.achievementId,
         original: CARD_2.original,

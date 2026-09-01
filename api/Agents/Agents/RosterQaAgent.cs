@@ -5,7 +5,7 @@ using Microsoft.Extensions.AI;
 namespace ExpertToJob.Agents.Agents;
 
 /// <summary>
-/// Read-only conversational agent over the employee roster. A Microsoft Agent Framework
+/// Read-only conversational agent over the expert roster. A Microsoft Agent Framework
 /// <see cref="ChatClientAgent"/> backed by the configured chat model, given the MCP read tools.
 /// It answers natural-language questions ("who knows React?") by calling those tools and never
 /// fabricates data. Single-turn: each question runs on a fresh, ephemeral session.
@@ -15,19 +15,19 @@ public sealed class RosterQaAgent : IChatAgent
     private const string Instructions =
         """
         You are the Roster Q&A assistant for ExpertToJob. Answer questions about the roster of
-        employees — skills, qualifications, experience, languages, availability — using ONLY the
-        provided tools. Never invent employees, skills, or facts.
+        experts — skills, qualifications, experience, languages, availability — using ONLY the
+        provided tools. Never invent experts, skills, or facts.
 
         Converge: aim to answer in two tool calls, never exceed four. Before each call, ask what it
         adds that you lack; once a result answers the question, answer and stop.
 
         Choosing a tool:
         - Capability / experience questions — "who has done X", "anyone with a Z background" — live in
-          employees' free-text career history: use roster_semantic_search and quote the evidence
+          experts' free-text career history: use roster_semantic_search and quote the evidence
           snippets it returns.
         - Put the WHOLE question into that one call. Its filters (location, skillIds, availableOn,
           minYears) are how constraints combine; look a skill id up with skill_list first when you need
-          skillIds. Never rebuild a filter by hand from employee_list plus per-person cv_get, and never
+          skillIds. Never rebuild a filter by hand from expert_list plus per-person cv_get, and never
           re-run a search reworded — one filtered result set is the answer, and an empty one means
           nobody matches, which is also an answer.
         - For exact facts — a skill level, availability on a date, languages, contact details — use the
@@ -36,7 +36,7 @@ public sealed class RosterQaAgent : IChatAgent
         - A degradedReason means the matches are real but keyword-ranked — use them, and say ranking
           quality is reduced.
 
-        Name each employee in full with their id in parentheses, e.g. "Ada Lovelace (a1b2c3d4-...)".
+        Name each expert in full with their id in parentheses, e.g. "Ada Lovelace (a1b2c3d4-...)".
 
         If the tools return nothing relevant, say so plainly. You have read-only access; if asked to
         change data, explain that you cannot.
@@ -87,7 +87,7 @@ public sealed class RosterQaAgent : IChatAgent
         // Force grounding on the first model call (P1T-130): RequireAny is one-shot by design —
         // FunctionInvokingChatClient resets the tool mode after the first iteration, so the model
         // must start from a tool but stays free to answer once results are in hand. RequireAny
-        // over RequireSpecific: exact-fact questions legitimately ground through employee_list
+        // over RequireSpecific: exact-fact questions legitimately ground through expert_list
         // and friends, not just roster_semantic_search — force grounding, not one tool. Applied
         // on every turn of a thread too (no opt-out flag): each answer must stand on fresh roster
         // data, and a follow-up re-query is cheap.
@@ -151,7 +151,7 @@ public sealed class RosterQaAgent : IChatAgent
                 _chatClient,
                 instructions: Instructions,
                 name: "RosterQa",
-                description: "Answers read-only questions about the employee roster.",
+                description: "Answers read-only questions about the expert roster.",
                 tools: tools,
                 loggerFactory: _loggerFactory);
             return _agent;

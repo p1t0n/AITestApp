@@ -151,9 +151,9 @@ Flat, eager, five protected routes:
 
 ```
 /signin  /signup  /recover          public
-/                                   EmployeesPage
-/employees/:id                      EmployeeDetailPage
-/employees/:id/cv                   CvPage
+/                                   ExpertsPage
+/experts/:id                      ExpertDetailPage
+/experts/:id/cv                   CvPage
 /catalog                            CatalogPage
 /users                              UsersPage
 ```
@@ -172,8 +172,8 @@ src/api/
   index.ts           the barrel — every component imports from here, and only from here
   http.ts            the two axios clients, the token interceptor, apiErrorMessage
   auth.ts            the three passkey ceremonies (§3) + the local session helpers
-  employees.ts       the roster aggregate: list, detail, CV, cv.pdf, promote
-  employeeChildren.ts  skills, availability, languages, qualifications, experiences
+  experts.ts       the roster aggregate: list, detail, CV, cv.pdf, promote
+  expertChildren.ts  skills, availability, languages, qualifications, experiences
   catalog.ts         the skill-catalog tree
   users.ts           user administration and cap overrides
   agents/
@@ -189,11 +189,11 @@ trading it away: the barrel is the public face, the modules behind it are the re
 
 Two things are not hooks at all and are called imperatively: `runStaffing` (SSE, in
 `agents/staffing.ts` — see below) and the blob → object URL → synthetic `<a download>` click →
-revoke dance inside `useDownloadCvPdf` (`employees.ts`).
+revoke dance inside `useDownloadCvPdf` (`experts.ts`).
 
 Splitting a data layer with a shared cache has one rule worth stating: **a module boundary must not
 become a cache boundary.** The query-key convention below is a single flat namespace across all
-eighteen modules, so `agents/ingestion.ts` invalidating `["employees"]` and `employees.ts` reading
+eighteen modules, so `agents/ingestion.ts` invalidating `["experts"]` and `experts.ts` reading
 it are the same key by construction. The split is by *who owns the endpoint*, never by cache
 region.
 
@@ -202,9 +202,9 @@ region.
 A flat, hierarchical convention, invalidated by prefix:
 
 ```
-["employees"]                    list
-["employees", id]                detail
-["employees", id, "cv"]          assembled CV
+["experts"]                    list
+["experts", id]                detail
+["experts", id, "cv"]          assembled CV
 ["categories"] ["categories","tree"] ["skills"]
 ["users"] ["usage"]
 ["staffing-proposals", status]
@@ -212,9 +212,9 @@ A flat, hierarchical convention, invalidated by prefix:
 ```
 
 Invalidation is explicit and generous. Every child mutation (skills, availability, languages,
-qualifications, experiences) invalidates `["employees", employeeId]`; the three experience
+qualifications, experiences) invalidates `["experts", expertId]`; the three experience
 mutations also invalidate the CV key, because an experience edit changes the rendered CV.
-`["employees", id, "cv"]` is never invalidated by anything else.
+`["experts", id, "cv"]` is never invalidated by anything else.
 
 **Every agent mutation invalidates `["usage"]`.** That is what keeps the dock's Usage tab honest
 without polling — the token ledger updates the moment any agent call returns.
@@ -239,7 +239,7 @@ to any other API failure, and the parsed body rides along for the structured cap
 
 Split by origin, not by shape:
 
-- `src/types.ts` (190 lines) — the roster domain: `EmployeeDetail`, `Experience`, `SkillLevel`,
+- `src/types.ts` (190 lines) — the roster domain: `ExpertDetail`, `Experience`, `SkillLevel`,
   the `Save*` write shapes, `Cv`.
 - `src/api/agents/*.ts` — every agent contract type, declared beside the hook that returns it.
 
@@ -285,7 +285,7 @@ load-bearing, not incidental: switching tabs unmounts the previous panel, so eac
 independent state and a half-finished shortlist never bleeds into a staffing run. The same trick
 appears twice more:
 
-- `AgentJobForm` is keyed by `${mode}-${employeeId}` when prefilled, so a new drill-in always
+- `AgentJobForm` is keyed by `${mode}-${expertId}` when prefilled, so a new drill-in always
   re-seeds its fields.
 - On the roster screens, each child form dialog is **rendered only while its row is being edited**
   (`{languageEdit && <LanguageFormDialog .../>}`), because the dialogs seed from `initial` on first
@@ -297,7 +297,7 @@ Mounting *is* the initialisation, everywhere in this app.
 ### Cross-tab drill-in
 
 `AgentWidget` holds a `prefill` slot. A shortlist card's "Run full Match", or a staffing card's
-"Open in Match" / "Tailor CV", calls up to `openPrefilled(target, employeeId, jd)`, which switches
+"Open in Match" / "Tailor CV", calls up to `openPrefilled(target, expertId, jd)`, which switches
 the tab and seeds the form. Any manual tab click clears it, so a stale prefill cannot resurface.
 
 This is the only cross-tab communication in the dock; the tabs are otherwise fully isolated.
@@ -311,14 +311,14 @@ tabs each have their own panel, because their inputs and outputs have nothing in
 ### Human write authority, in the UI
 
 `IngestionTab` is where the agent's write boundary becomes visible. The agent stages a **draft**
-employee; the panel then renders the draft for review — skill proposals, degradation notes,
+expert; the panel then renders the draft for review — skill proposals, degradation notes,
 duplicate warning — and a human presses Promote. Nothing reaches the roster until then. Similarly
 `RewriteCard` in `AgentJobTab` applies a tailoring rewrite **through the Web API with the user's
 session**, never through the agent.
 
 ## 8. Roster screens
 
-`EmployeeDetailPage.tsx` (442 lines) is the largest screen and pulls sixteen hooks. It is composed
+`ExpertDetailPage.tsx` (442 lines) is the largest screen and pulls sixteen hooks. It is composed
 from a local `Section` helper (Paper + title + optional action + divider) repeated per child
 collection, and four dialog components.
 
@@ -326,7 +326,7 @@ The write shapes echo the API's own semantics rather than smoothing them over: `
 flattens achievements and skill links **into** the experience payload, because an experience save
 replaces both lists wholesale. The form is a nested-collection editor, not three resources.
 
-`EmployeesPage` and `CatalogPage` are list + dialog. `UsersPage` is the admin surface.
+`ExpertsPage` and `CatalogPage` are list + dialog. `UsersPage` is the admin surface.
 
 ## 9. CV and printing
 
@@ -387,7 +387,7 @@ the eleven error slots each re-implement placement and styling.
 | layer | tool | what it covers |
 |---|---|---|
 | component | vitest + Testing Library (jsdom) | 12 specs, ten of them one-per-dock-tab (`AgentWidget.staffing.test.tsx`, …) plus `ChildFormDialogs` and `api.applyRewrite` |
-| e2e | Playwright + CDP virtual authenticator | `auth`, `roster`, `employee-children` — the passkey-gated journeys |
+| e2e | Playwright + CDP virtual authenticator | `auth`, `roster`, `expert-children` — the passkey-gated journeys |
 
 The component specs are organised by dock tab, which mirrors the dock's own isolation: each tab is
 independently mountable, so each is independently testable.

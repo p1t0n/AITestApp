@@ -12,7 +12,7 @@ namespace ExpertToJob.Agents.Tests.CostFloors;
 /// <para>The two are genuinely different defects. P1T-144's floors would have caught a tool
 /// description doubling; none of them would have caught the traced roster-qa run, which reached
 /// *"three people in London, none know React"* through nine tool calls — three near-identical
-/// semantic searches, a whole-roster <c>employee_list</c>, three speculative <c>cv_get</c>s, and a
+/// semantic searches, a whole-roster <c>expert_list</c>, three speculative <c>cv_get</c>s, and a
 /// shortlist search fired after it already had the answer. Every individual payload was inside its
 /// ceiling. The shape of the run was the problem.</para>
 ///
@@ -74,9 +74,9 @@ public class ConvergenceCostFloorTests(ITestOutputHelper output)
         // results cost more in the order that fetches the large one first. It is why the fix for a
         // cost regression is a smaller early payload or a shorter path — never a bigger cap.
         var early = ExpertToJob.CostFloors.CostFloors.ConvergentRunCost(
-            Agent, ["employee_list", "roster_semantic_search"]);
+            Agent, ["expert_list", "roster_semantic_search"]);
         var late = ExpertToJob.CostFloors.CostFloors.ConvergentRunCost(
-            Agent, ["roster_semantic_search", "employee_list"]);
+            Agent, ["roster_semantic_search", "expert_list"]);
 
         early.Should().BeGreaterThan(late);
     }
@@ -85,7 +85,7 @@ public class ConvergenceCostFloorTests(ITestOutputHelper output)
     public void A_tool_with_neither_a_measured_ceiling_nor_a_pinned_estimate_cannot_be_priced()
     {
         // Silently pricing an unknown tool at zero would let a path grow for free.
-        var act = () => ExpertToJob.CostFloors.CostFloors.ResultSize("employee_delete");
+        var act = () => ExpertToJob.CostFloors.CostFloors.ResultSize("expert_delete");
 
         act.Should().Throw<KeyNotFoundException>();
     }

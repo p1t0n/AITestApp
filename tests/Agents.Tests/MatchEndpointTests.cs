@@ -59,19 +59,19 @@ public class MatchEndpointTests
         using var client = factory.CreateAuthenticatedClient();
 
         var response = await client.PostAsJsonAsync(
-            "/agents/match", new { employeeId = Guid.NewGuid(), jobDescription = "   " });
+            "/agents/match", new { expertId = Guid.NewGuid(), jobDescription = "   " });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]
-    public async Task Returns_400_when_employee_id_is_empty()
+    public async Task Returns_400_when_expert_id_is_empty()
     {
         using var factory = FakedHost();
         using var client = factory.CreateAuthenticatedClient();
 
         var response = await client.PostAsJsonAsync(
-            "/agents/match", new { employeeId = Guid.Empty, jobDescription = "Senior React engineer." });
+            "/agents/match", new { expertId = Guid.Empty, jobDescription = "Senior React engineer." });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -83,7 +83,7 @@ public class MatchEndpointTests
         using var client = factory.CreateAuthenticatedClient();
 
         var response = await client.PostAsJsonAsync(
-            "/agents/match", new { employeeId = Guid.NewGuid(), jobDescription = "Senior React engineer, GraphQL." });
+            "/agents/match", new { expertId = Guid.NewGuid(), jobDescription = "Senior React engineer, GraphQL." });
 
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -106,7 +106,7 @@ public class MatchEndpointTests
         var results = body.GetProperty("results");
         results.GetArrayLength().Should().Be(2);
         var top = results[0];
-        top.GetProperty("employeeId").GetGuid().Should().Be(AdaId);
+        top.GetProperty("expertId").GetGuid().Should().Be(AdaId);
         top.GetProperty("name").GetString().Should().Be("Ada Lovelace");
         top.GetProperty("retrievalScore").GetDouble().Should().BeApproximately(0.95, 0.0001);
         top.GetProperty("status").GetString().Should().Be("completed");
@@ -132,13 +132,13 @@ public class MatchEndpointTests
     }
 
     [Fact]
-    public async Task Explicit_empty_employee_id_is_still_a_400_not_jd_mode()
+    public async Task Explicit_empty_expert_id_is_still_a_400_not_jd_mode()
     {
         using var factory = JdFakedHost();
         using var client = factory.CreateAuthenticatedClient();
 
         var response = await client.PostAsJsonAsync(
-            "/agents/match", new { employeeId = Guid.Empty, jobDescription = "Role." });
+            "/agents/match", new { expertId = Guid.Empty, jobDescription = "Role." });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }

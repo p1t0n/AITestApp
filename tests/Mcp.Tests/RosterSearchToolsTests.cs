@@ -26,7 +26,7 @@ public class RosterSearchToolsTests
     }
 
     [Fact]
-    public async Task Calling_the_tool_returns_ranked_employees_with_snippets()
+    public async Task Calling_the_tool_returns_ranked_experts_with_snippets()
     {
         var stub = new StubSearch(new SemanticSearchResult(
         [
@@ -35,7 +35,7 @@ public class RosterSearchToolsTests
                 ["Payments Lead @ BankCo (2019-03–present)\nLed the fintech payments rewrite."]),
         ]));
 
-        using var factory = McpTestHost.CreateFactory(nameof(Calling_the_tool_returns_ranked_employees_with_snippets))
+        using var factory = McpTestHost.CreateFactory(nameof(Calling_the_tool_returns_ranked_experts_with_snippets))
             .WithWebHostBuilder(builder => builder.ConfigureServices(services =>
             {
                 services.RemoveAll<ISemanticSearchService>();

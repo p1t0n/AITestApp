@@ -31,7 +31,7 @@ public sealed class SearchIndexReconcilerTests : IAsyncLifetime
     {
         await using var db = NewDb();
         await db.Database.MigrateAsync();
-        var employee = SeedEmployee(db, summary: "Senior backend engineer.", experiences: 2);
+        var expert = SeedExpert(db, summary: "Senior backend engineer.", experiences: 2);
 
         var report = await Reconciler(db).RunOnceAsync();
 
@@ -41,7 +41,7 @@ public sealed class SearchIndexReconcilerTests : IAsyncLifetime
         report.Embedded.Should().Be(5);
         report.EmbeddingTokens.Should().BeGreaterThan(0);
 
-        var chunks = await db.EmployeeSearchChunks.Where(c => c.EmployeeId == employee.Id).ToListAsync();
+        var chunks = await db.ExpertSearchChunks.Where(c => c.ExpertId == expert.Id).ToListAsync();
         chunks.Should().HaveCount(5);
         chunks.Count(c => c.SourceType == SearchChunkSource.Achievement).Should().Be(2);
         chunks.Should().OnlyContain(c => c.Embedding != null && c.EmbeddedAt != null);
@@ -53,7 +53,7 @@ public sealed class SearchIndexReconcilerTests : IAsyncLifetime
     {
         await using var db = NewDb();
         await db.Database.MigrateAsync();
-        SeedEmployee(db, summary: "Bio.", experiences: 1);
+        SeedExpert(db, summary: "Bio.", experiences: 1);
 
         await Reconciler(db).RunOnceAsync();
         var second = await Reconciler(db).RunOnceAsync();
@@ -66,10 +66,10 @@ public sealed class SearchIndexReconcilerTests : IAsyncLifetime
     {
         await using var db = NewDb();
         await db.Database.MigrateAsync();
-        var employee = SeedEmployee(db, summary: "Bio.", experiences: 2);
+        var expert = SeedExpert(db, summary: "Bio.", experiences: 2);
         await Reconciler(db).RunOnceAsync();
 
-        var edited = employee.Experiences.First();
+        var edited = expert.Experiences.First();
         edited.Summary = "Rewrote the whole thing.";
         await db.SaveChangesAsync();
 
@@ -86,10 +86,10 @@ public sealed class SearchIndexReconcilerTests : IAsyncLifetime
     {
         await using var db = NewDb();
         await db.Database.MigrateAsync();
-        var employee = SeedEmployee(db, summary: "Bio.", experiences: 2);
+        var expert = SeedExpert(db, summary: "Bio.", experiences: 2);
         await Reconciler(db).RunOnceAsync();
 
-        var toRemove = employee.Experiences.First();
+        var toRemove = expert.Experiences.First();
         db.Experiences.Remove(toRemove);
         await db.SaveChangesAsync();
 
@@ -97,9 +97,9 @@ public sealed class SearchIndexReconcilerTests : IAsyncLifetime
 
         // The experience chunk and its cascaded achievement's bullet chunk both go.
         report.Deleted.Should().Be(2);
-        (await db.EmployeeSearchChunks.CountAsync(c => c.SourceId == toRemove.Id)).Should().Be(0);
+        (await db.ExpertSearchChunks.CountAsync(c => c.SourceId == toRemove.Id)).Should().Be(0);
         var orphanedAchievementIds = toRemove.Achievements.Select(a => a.Id).ToList();
-        (await db.EmployeeSearchChunks.CountAsync(c => orphanedAchievementIds.Contains(c.SourceId))).Should().Be(0);
+        (await db.ExpertSearchChunks.CountAsync(c => orphanedAchievementIds.Contains(c.SourceId))).Should().Be(0);
     }
 
     [Fact]
@@ -107,10 +107,10 @@ public sealed class SearchIndexReconcilerTests : IAsyncLifetime
     {
         await using var db = NewDb();
         await db.Database.MigrateAsync();
-        var employee = SeedEmployee(db, summary: "Bio.", experiences: 2);
+        var expert = SeedExpert(db, summary: "Bio.", experiences: 2);
         await Reconciler(db).RunOnceAsync();
 
-        var parent = employee.Experiences.First();
+        var parent = expert.Experiences.First();
         var edited = parent.Achievements.Single();
         edited.Text = "Shipped something entirely different.";
         await db.SaveChangesAsync();
@@ -124,7 +124,7 @@ public sealed class SearchIndexReconcilerTests : IAsyncLifetime
         report.Updated.Should().Be(2);
         report.Embedded.Should().Be(2);
 
-        var bulletChunk = await db.EmployeeSearchChunks.SingleAsync(c => c.SourceId == edited.Id);
+        var bulletChunk = await db.ExpertSearchChunks.SingleAsync(c => c.SourceId == edited.Id);
         bulletChunk.Content.Should().Be("Shipped something entirely different.");
         bulletChunk.Embedding.Should().NotBeNull();
     }
@@ -134,10 +134,10 @@ public sealed class SearchIndexReconcilerTests : IAsyncLifetime
     {
         await using var db = NewDb();
         await db.Database.MigrateAsync();
-        var employee = SeedEmployee(db, summary: "Bio.", experiences: 1);
+        var expert = SeedExpert(db, summary: "Bio.", experiences: 1);
         await Reconciler(db).RunOnceAsync();
 
-        var doomed = employee.Experiences.Single().Achievements.Single();
+        var doomed = expert.Experiences.Single().Achievements.Single();
         db.Achievements.Remove(doomed);
         await db.SaveChangesAsync();
 
@@ -146,21 +146,21 @@ public sealed class SearchIndexReconcilerTests : IAsyncLifetime
         // The bullet chunk is orphaned; the parent experience chunk re-renders without the bullet.
         report.Deleted.Should().Be(1);
         report.Updated.Should().Be(1);
-        (await db.EmployeeSearchChunks.CountAsync(c => c.SourceId == doomed.Id)).Should().Be(0);
+        (await db.ExpertSearchChunks.CountAsync(c => c.SourceId == doomed.Id)).Should().Be(0);
     }
 
     [Fact]
-    public async Task Deleting_an_employee_cascades_away_its_chunks()
+    public async Task Deleting_an_expert_cascades_away_its_chunks()
     {
         await using var db = NewDb();
         await db.Database.MigrateAsync();
-        var employee = SeedEmployee(db, summary: "Bio.", experiences: 2);
+        var expert = SeedExpert(db, summary: "Bio.", experiences: 2);
         await Reconciler(db).RunOnceAsync();
 
-        db.Employees.Remove(await db.Employees.FirstAsync(e => e.Id == employee.Id));
+        db.Experts.Remove(await db.Experts.FirstAsync(e => e.Id == expert.Id));
         await db.SaveChangesAsync();
 
-        (await db.EmployeeSearchChunks.CountAsync(c => c.EmployeeId == employee.Id)).Should().Be(0);
+        (await db.ExpertSearchChunks.CountAsync(c => c.ExpertId == expert.Id)).Should().Be(0);
     }
 
     private AppDbContext NewDb()
@@ -177,9 +177,9 @@ public sealed class SearchIndexReconcilerTests : IAsyncLifetime
         Options.Create(new SearchIndexOptions { EmbedBatchSize = 8 }),
         NullLogger<SearchIndexReconciler>.Instance);
 
-    private static Employee SeedEmployee(AppDbContext db, string? summary, int experiences)
+    private static Expert SeedExpert(AppDbContext db, string? summary, int experiences)
     {
-        var employee = new Employee
+        var expert = new Expert
         {
             Id = Guid.NewGuid(),
             FirstName = "Ada",
@@ -191,7 +191,7 @@ public sealed class SearchIndexReconcilerTests : IAsyncLifetime
 
         for (var i = 0; i < experiences; i++)
         {
-            employee.Experiences.Add(new Experience
+            expert.Experiences.Add(new Experience
             {
                 Id = Guid.NewGuid(),
                 Company = $"Company {i}",
@@ -202,9 +202,9 @@ public sealed class SearchIndexReconcilerTests : IAsyncLifetime
             });
         }
 
-        db.Employees.Add(employee);
+        db.Experts.Add(expert);
         db.SaveChanges();
-        return employee;
+        return expert;
     }
 
     /// <summary>Deterministic offline embedder: 1536-dim vector seeded from the text.</summary>

@@ -1,5 +1,5 @@
 // Match, in two modes against the same endpoint:
-//   with an employeeId — one candidate, markdown prose ({ answer }).
+//   with an expertId — one candidate, markdown prose ({ answer }).
 //   without one (P1T-103) — shortlist retrieval picks the top candidates and the run fans out per
 //   candidate. Failed entries degrade in place (status "failed" + error) rather than sinking the run.
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -16,7 +16,7 @@ export function useMatch() {
 }
 
 export interface JdMatchResult {
-  employeeId: string;
+  expertId: string;
   name: string;
   title: string;
   retrievalScore: number;

@@ -62,7 +62,7 @@ public sealed class ExemplarSearchServiceTests : IAsyncLifetime
     public async Task DisposeAsync() => await _postgres.DisposeAsync();
 
     [Fact]
-    public async Task Returns_anonymized_quantified_bullets_from_other_employees_only()
+    public async Task Returns_anonymized_quantified_bullets_from_other_experts_only()
     {
         var result = await Service().SearchAsync([_oliveFintechBulletId], topKPerBullet: 5);
 
@@ -70,7 +70,7 @@ public sealed class ExemplarSearchServiceTests : IAsyncLifetime
         var group = result.Results.Should().ContainSingle().Subject;
         group.AchievementId.Should().Be(_oliveFintechBulletId);
 
-        // Exactly the three quantified fintech bullets owned by other employees: Olive's own
+        // Exactly the three quantified fintech bullets owned by other experts: Olive's own
         // bullets, Bella's unquantified bullet, and every experience/summary chunk are all out.
         group.Exemplars.Select(e => e.Text).Should().BeEquivalentTo(AnonymizedFintechPool);
         group.Exemplars.Should().OnlyContain(e => e.Similarity >= 0.30);
@@ -194,8 +194,8 @@ public sealed class ExemplarSearchServiceTests : IAsyncLifetime
         result.ThemeResult.Should().NotBeNull();
         var themed = result.ThemeResult!;
         themed.Theme.Should().Be("fintech");
-        // Every quantified fintech achievement bullet across ALL employees — Olive's own included,
-        // since there is no requesting employee to exclude in theme mode.
+        // Every quantified fintech achievement bullet across ALL experts — Olive's own included,
+        // since there is no requesting expert to exclude in theme mode.
         themed.Exemplars.Select(e => e.Text).Should().BeEquivalentTo(
         [
             "Optimized fintech settlement flows, cutting operating costs 18% year over year.",
@@ -209,7 +209,7 @@ public sealed class ExemplarSearchServiceTests : IAsyncLifetime
     {
         // Id-keyed mode over the same logistics bullet finds nothing (its only owner is excluded —
         // see A_bullet_with_nothing_above_the_similarity_floor_gets_an_empty_exemplar_set). Theme
-        // mode has no requesting employee, so Olive's own bullet is eligible.
+        // mode has no requesting expert, so Olive's own bullet is eligible.
         var result = await Service().SearchAsync(achievementIds: null, theme: "logistics");
 
         result.Error.Should().BeNull();
@@ -254,7 +254,7 @@ public sealed class ExemplarSearchServiceTests : IAsyncLifetime
     private async Task SeedAsync(AppDbContext db)
     {
         // Olive owns the requested bullets; her own bullets must never come back as exemplars.
-        var olive = Employee("Olive", "Owner", "Owncorp",
+        var olive = Expert("Olive", "Owner", "Owncorp",
             "Optimized fintech settlement flows, cutting operating costs 18% year over year.",
             "Rebuilt fintech risk checks to score 10x more events per second at peak.",
             "Led gaming platform tuning, trimming load times by 35% across all titles.",
@@ -264,23 +264,23 @@ public sealed class ExemplarSearchServiceTests : IAsyncLifetime
         _oliveGamingBulletId = BulletId(olive, 2);
         _oliveLogisticsBulletId = BulletId(olive, 3);
 
-        var ada = Employee("Ada", "Lovelace", "Initech Global Services",
+        var ada = Expert("Ada", "Lovelace", "Initech Global Services",
             AdaCompanyBullet, AdaPlainBullet);
-        var carol = Employee("Carol", "Coder", "Vertex Analytics", CarolBullet);
-        var gary = Employee("Gary", "Gamer", "PixelForge", GaryBullet);
+        var carol = Expert("Carol", "Coder", "Vertex Analytics", CarolBullet);
+        var gary = Expert("Gary", "Gamer", "PixelForge", GaryBullet);
         // Bella's bullet is topical but unquantified; her experience summary is topical but is an
         // Experience chunk — neither may surface as an exemplar.
-        var bella = Employee("Bella", "Blogs", "Acme", BellaUnquantifiedBullet);
+        var bella = Expert("Bella", "Blogs", "Acme", BellaUnquantifiedBullet);
         bella.Experiences.Single().Summary = "Built fintech trading systems.";
 
-        db.Employees.AddRange(olive, ada, carol, gary, bella);
+        db.Experts.AddRange(olive, ada, carol, gary, bella);
         await db.SaveChangesAsync();
     }
 
-    private static Guid BulletId(Entities.Employee employee, int index)
-        => employee.Experiences.Single().Achievements.OrderBy(a => a.Order).ElementAt(index).Id;
+    private static Guid BulletId(Entities.Expert expert, int index)
+        => expert.Experiences.Single().Achievements.OrderBy(a => a.Order).ElementAt(index).Id;
 
-    private static Entities.Employee Employee(
+    private static Entities.Expert Expert(
         string first, string last, string company, params string[] bullets)
     {
         var experience = new Entities.Experience
@@ -293,7 +293,7 @@ public sealed class ExemplarSearchServiceTests : IAsyncLifetime
                 .Select((text, i) => new Entities.Achievement { Id = Guid.NewGuid(), Order = i, Text = text })
                 .ToList(),
         };
-        return new Entities.Employee
+        return new Entities.Expert
         {
             Id = Guid.NewGuid(),
             FirstName = first,

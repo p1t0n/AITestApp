@@ -1,5 +1,5 @@
 using System.ComponentModel;
-using ExpertToJob.Application.Employees;
+using ExpertToJob.Application.Experts;
 using Microsoft.AspNetCore.Authorization;
 using ModelContextProtocol.Server;
 
@@ -13,8 +13,8 @@ public class ExperienceSkillTools
          "Link an EXISTING catalog skill to ONE JOB — the evidence trail of which skills were " +
          "actually used in that role ('she used Kubernetes at FlowWorks'). It joins an experience " +
          "id to a catalog skill id and carries no level or years. Do NOT use it to say the PERSON " +
-         "has the skill overall — employee_skill_add holds their level and years, and the two are " +
-         "complementary: the role link is evidence, the employee skill is the claim; do NOT use it " +
+         "has the skill overall — expert_skill_add holds their level and years, and the two are " +
+         "complementary: the role link is evidence, the expert skill is the claim; do NOT use it " +
          "to create a skill — skill_create adds it to the catalog first, skill_list finds its id. " +
          "Input: experienceId + skillId; e.g. {\"experienceId\": " +
          "\"5d5d5d5d-1111-2222-3333-444455556666\", \"skillId\": " +
@@ -31,9 +31,9 @@ public class ExperienceSkillTools
     [McpServerTool(Name = "experience_skill_delete", ReadOnly = false, Destructive = true, Idempotent = true),
      Description(
          "DESTRUCTIVE: remove one skill-to-role link by LINK id (the experienceSkill row's own id " +
-         "from employee_get, not the experience id and not the skill id). The role, the catalog " +
+         "from expert_get, not the experience id and not the skill id). The role, the catalog " +
          "skill and the person's own skill entry are all untouched. Do NOT use it to take a skill " +
-         "off the person — employee_skill_delete. Input: id; e.g. {\"id\": " +
+         "off the person — expert_skill_delete. Input: id; e.g. {\"id\": " +
          "\"1e1e1e1e-1111-2222-3333-444455556666\"}. Requires the admin scope; idempotent. " +
          "Returns no data."),
      Authorize(Policy = McpScopes.Admin)]

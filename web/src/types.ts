@@ -4,9 +4,9 @@ export type SkillLevel = "Beginner" | "Intermediate" | "Advanced" | "Expert";
 export type LanguageLevel = "Basic" | "Conversational" | "Professional" | "Fluent" | "Native";
 export type QualificationType = "Degree" | "Certification";
 
-export type EmployeeStatus = "Draft" | "Active";
+export type ExpertStatus = "Draft" | "Active";
 
-export interface EmployeeSummary {
+export interface ExpertSummary {
   id: string;
   firstName: string;
   lastName: string;
@@ -14,7 +14,7 @@ export interface EmployeeSummary {
   location: string | null;
   email: string;
   currentCapacityPercent: number;
-  status: EmployeeStatus;
+  status: ExpertStatus;
 }
 
 export interface SpokenLanguage {
@@ -29,7 +29,7 @@ export interface AvailabilityEntry {
   capacityPercent: number;
 }
 
-export interface EmployeeSkill {
+export interface ExpertSkill {
   id: string;
   skillId: string;
   skillName: string;
@@ -76,7 +76,7 @@ export interface Experience {
   skills: ExperienceSkillRef[];
 }
 
-export interface EmployeeDetail {
+export interface ExpertDetail {
   id: string;
   firstName: string;
   lastName: string;
@@ -87,10 +87,10 @@ export interface EmployeeDetail {
   summary: string | null;
   photoUrl: string | null;
   currentCapacityPercent: number;
-  status: EmployeeStatus;
+  status: ExpertStatus;
   spokenLanguages: SpokenLanguage[];
   availabilityEntries: AvailabilityEntry[];
-  skills: EmployeeSkill[];
+  skills: ExpertSkill[];
   qualifications: Qualification[];
   experiences: Experience[];
 }
@@ -107,10 +107,10 @@ export interface SaveAvailabilityEntry {
 }
 
 /**
- * `skillId` is read on add only. `PUT /api/employee-skills/{id}` writes the level and the years and
+ * `skillId` is read on add only. `PUT /api/expert-skills/{id}` writes the level and the years and
  * never reassigns the catalog link, so moving a skill to another catalog row is a delete and an add.
  */
-export interface SaveEmployeeSkill {
+export interface SaveExpertSkill {
   skillId: string;
   level: SkillLevel;
   yearsExperience: number;
@@ -147,7 +147,7 @@ export interface SaveExperience {
   skillIds: string[];
 }
 
-export interface SaveEmployee {
+export interface SaveExpert {
   firstName: string;
   lastName: string;
   title: string;
@@ -189,7 +189,7 @@ export interface Cv {
   summary: string | null;
   photoUrl: string | null;
   availability: { currentCapacityPercent: number; schedule: AvailabilityEntry[] };
-  skillGroups: { category: string; skills: EmployeeSkill[] }[];
+  skillGroups: { category: string; skills: ExpertSkill[] }[];
   languages: SpokenLanguage[];
   experiences: {
     id: string;

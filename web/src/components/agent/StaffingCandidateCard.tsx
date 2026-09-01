@@ -24,20 +24,20 @@ export function StaffingCandidateCard({
   onTailorCv,
 }: {
   candidate: StaffingReportCandidate;
-  onOpenInMatch: (employeeId: string) => void;
-  onTailorCv: (employeeId: string) => void;
+  onOpenInMatch: (expertId: string) => void;
+  onTailorCv: (expertId: string) => void;
 }) {
   const [showMatch, setShowMatch] = useState(false);
   const [showEvidence, setShowEvidence] = useState(false);
   const c = candidate;
   const hasMatchDetails = c.match.status === "completed" && !!c.match.answer;
   return (
-    <Paper sx={{ p: 1.5 }} data-testid={`staffing-candidate-${c.employeeId}`}>
+    <Paper sx={{ p: 1.5 }} data-testid={`staffing-candidate-${c.expertId}`}>
       <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
         <Box sx={{ minWidth: 0 }}>
           <Link
             component={RouterLink}
-            to={`/employees/${c.employeeId}`}
+            to={`/experts/${c.expertId}`}
             variant="body2"
             fontWeight={600}
           >
@@ -97,16 +97,16 @@ export function StaffingCandidateCard({
           </Button>
         )}
         <Box sx={{ flex: 1 }} />
-        <Button onClick={() => onOpenInMatch(c.employeeId)}>
+        <Button onClick={() => onOpenInMatch(c.expertId)}>
           Open in Match
         </Button>
-        <Button onClick={() => onTailorCv(c.employeeId)}>
+        <Button onClick={() => onTailorCv(c.expertId)}>
           Tailor CV
         </Button>
       </Stack>
 
       <Collapse in={showEvidence} unmountOnExit>
-        <Stack spacing={0.75} sx={{ mt: 1 }} data-testid={`staffing-evidence-${c.employeeId}`}>
+        <Stack spacing={0.75} sx={{ mt: 1 }} data-testid={`staffing-evidence-${c.expertId}`}>
           {c.shortlist.requirements.map((r, i) => (
             <Stack key={i} direction="row" spacing={1} alignItems="flex-start">
               {r.matched ? (
@@ -141,7 +141,7 @@ export function StaffingCandidateCard({
 export function StaffingRecommendation({ report }: { report: StaffingReport }) {
   const rec = report.recommendation;
   const name = rec
-    ? (report.candidates.find((c) => c.employeeId === rec.employeeId)?.name ?? rec.employeeId)
+    ? (report.candidates.find((c) => c.expertId === rec.expertId)?.name ?? rec.expertId)
     : null;
   return (
     <Paper
@@ -156,7 +156,7 @@ export function StaffingRecommendation({ report }: { report: StaffingReport }) {
           <Box>
             <Link
               component={RouterLink}
-              to={`/employees/${rec.employeeId}`}
+              to={`/experts/${rec.expertId}`}
               variant="subtitle2"
               fontWeight={700}
             >

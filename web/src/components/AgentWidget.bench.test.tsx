@@ -22,7 +22,7 @@ vi.mock("../api", async (importOriginal) => {
     useJdMatch: () => ({ mutateAsync: vi.fn(), isPending: false }),
     useInterviewKit: () => ({ mutateAsync: vi.fn(), isPending: false }),
     useApplyRewrite: () => ({ isPending: false, isSuccess: false, isError: false, error: null, mutate: vi.fn() }),
-    useEmployees: () => ({ data: [], isLoading: false }),
+    useExperts: () => ({ data: [], isLoading: false }),
     useSkills: () => ({ data: [], isLoading: false }),
     useUsage: () => ({ data: undefined, isLoading: false, isError: false, error: null }),
     useRosterQa: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -61,7 +61,7 @@ describe("Bench tab (P1T-104)", () => {
     benchState.mutateAsync.mockResolvedValue({
       answer: "## Narrative\n\nBench pressure is moderate.",
       stats: {
-        activeEmployees: 12,
+        activeExperts: 12,
         fullyAvailable: 5,
         partiallyAvailable: 4,
         fullyBooked: 3,
@@ -94,9 +94,9 @@ describe("Bench tab (P1T-104)", () => {
 
   it("surfaces degrade notes when the report shipped partial", async () => {
     benchState.mutateAsync.mockResolvedValue({
-      answer: "## Bench report (deterministic summary)\n\n- Active employees: 0",
+      answer: "## Bench report (deterministic summary)\n\n- Active experts: 0",
       stats: {
-        activeEmployees: 0,
+        activeExperts: 0,
         fullyAvailable: 0,
         partiallyAvailable: 0,
         fullyBooked: 0,

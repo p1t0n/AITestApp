@@ -52,7 +52,7 @@ vi.mock("../api", async (importOriginal) => {
     },
     runStaffing: vi.fn(() => Promise.resolve()),
     useSkills: () => ({ data: [], isLoading: false }),
-    useEmployees: () => ({ data: [], isLoading: false }),
+    useExperts: () => ({ data: [], isLoading: false }),
     useUsage: () => ({ data: undefined, isLoading: false, isError: false, error: null }),
     useRosterQa: () => ({ mutateAsync: vi.fn(), isPending: false }),
     useCvTailoring: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -68,11 +68,11 @@ const SUMMARY: StaffingProposalSummary = {
   jobDescription: "Senior React engineer with leadership experience.",
   status: "pending",
   createdAt: "2026-08-16T12:00:00Z",
-  recommendedEmployeeId: ADA,
+  recommendedExpertId: ADA,
   reportDegraded: false,
   candidates: [
     {
-      employeeId: ADA,
+      expertId: ADA,
       name: "Ada Lovelace",
       title: "Senior Engineer",
       rank: 1,
@@ -89,7 +89,7 @@ const PACKAGE: HandoffPackage = {
     requirements: ["React expertise", "Team leadership"],
     candidates: [
       {
-        employeeId: ADA,
+        expertId: ADA,
         name: "Ada Lovelace",
         title: "Senior Engineer",
         shortlist: {
@@ -104,7 +104,7 @@ const PACKAGE: HandoffPackage = {
         rationale: "Best coverage.",
       },
       {
-        employeeId: GRACE,
+        expertId: GRACE,
         name: "Grace Hopper",
         title: "Compiler Engineer",
         shortlist: {
@@ -116,7 +116,7 @@ const PACKAGE: HandoffPackage = {
         rationale: "Systems depth, weaker frontend evidence.",
       },
     ],
-    recommendation: { employeeId: ADA, narrative: "Ada is the strongest fit overall." },
+    recommendation: { expertId: ADA, narrative: "Ada is the strongest fit overall." },
     degraded: true,
     notes: ["Match failed for Grace Hopper: model timeout"],
     proposalId: PROPOSAL_ID,

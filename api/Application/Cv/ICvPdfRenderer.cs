@@ -17,7 +17,7 @@ public interface ICvPdfRenderer
 /// <summary>Download filename for a rendered CV — kept beside the seam so adapters stay thin.</summary>
 public static class CvPdfFileName
 {
-    /// <summary>Slugs the employee name into <c>firstname-lastname-cv.pdf</c>. Accents are folded to
+    /// <summary>Slugs the expert name into <c>firstname-lastname-cv.pdf</c>. Accents are folded to
     /// their base letter; anything still outside ASCII is dropped, so the name survives a bare
     /// <c>Content-Disposition</c> filename without needing the encoded form. A name that folds away
     /// to nothing (a wholly non-Latin one) falls back to <c>cv.pdf</c>.</summary>

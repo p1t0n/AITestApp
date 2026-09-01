@@ -20,7 +20,7 @@ public class DemoRosterSeederTests
             .UseInMemoryDatabase($"demo-seeder-{Guid.NewGuid()}")
             .Options);
 
-    // --- Trimmed dataset: 3 employees over a 3-skill catalog spanning 2 categories ---
+    // --- Trimmed dataset: 3 experts over a 3-skill catalog spanning 2 categories ---
 
     private static DemoRosterDataset NewDataset() => new()
     {
@@ -30,15 +30,15 @@ public class DemoRosterSeederTests
             new DemoRosterSkill { Name = "FIX Protocol", Category = "Fintech / Trading" },
             new DemoRosterSkill { Name = "Market Data Feeds", Category = "Fintech / Trading" },
         ],
-        Employees =
+        Experts =
         [
-            DemoEmployee("avery.brightforge", "C#", "FIX Protocol"),
-            DemoEmployee("blair.copperfield", "FIX Protocol", "Market Data Feeds"),
-            DemoEmployee("casey.duskwalker", "C#", "Market Data Feeds"),
+            DemoExpert("avery.brightforge", "C#", "FIX Protocol"),
+            DemoExpert("blair.copperfield", "FIX Protocol", "Market Data Feeds"),
+            DemoExpert("casey.duskwalker", "C#", "Market Data Feeds"),
         ],
     };
 
-    private static DemoRosterEmployee DemoEmployee(string slug, params string[] skillNames) => new()
+    private static DemoRosterExpert DemoExpert(string slug, params string[] skillNames) => new()
     {
         FirstName = slug.Split('.')[0],
         LastName = slug.Split('.')[1],
@@ -51,7 +51,7 @@ public class DemoRosterSeederTests
         SpokenLanguages = [new DemoRosterSpokenLanguage { Language = "English", Level = LanguageLevel.Fluent }],
         Availability = [new DemoRosterAvailability { EffectiveFrom = new DateOnly(2026, 3, 1), CapacityPercent = 50 }],
         Skills = skillNames
-            .Select(n => new DemoRosterEmployeeSkill { Name = n, Level = SkillLevel.Expert, YearsExperience = 9.5m })
+            .Select(n => new DemoRosterExpertSkill { Name = n, Level = SkillLevel.Expert, YearsExperience = 9.5m })
             .ToList(),
         Qualifications =
         [
@@ -86,16 +86,16 @@ public class DemoRosterSeederTests
     };
 
     [Fact]
-    public async Task Seed_inserts_employees_with_all_children_and_resolves_skills_to_catalog_rows()
+    public async Task Seed_inserts_experts_with_all_children_and_resolves_skills_to_catalog_rows()
     {
         await using var db = NewDb();
 
         var result = await DemoRosterSeeder.SeedAsync(db, NewDataset());
 
         result.Should().Be(new DemoRosterSeedResult(Seeded: 3, Skipped: 0));
-        (await db.Employees.CountAsync()).Should().Be(3);
+        (await db.Experts.CountAsync()).Should().Be(3);
 
-        var avery = await db.Employees
+        var avery = await db.Experts
             .Include(e => e.SpokenLanguages)
             .Include(e => e.AvailabilityEntries)
             .Include(e => e.Skills).ThenInclude(s => s.Skill)
@@ -111,7 +111,7 @@ public class DemoRosterSeederTests
             .Which.Should().BeEquivalentTo(new { EffectiveFrom = new DateOnly(2026, 3, 1), CapacityPercent = 50 });
         avery.Qualifications.Should().ContainSingle().Which.Issuer.Should().Be("Amazon Web Services");
 
-        // Employee skills resolve to real catalog rows carried by the dataset.
+        // Expert skills resolve to real catalog rows carried by the dataset.
         avery.Skills.Select(s => s.Skill.Name).Should().BeEquivalentTo("C#", "FIX Protocol");
         avery.Skills.Should().AllSatisfy(s => s.YearsExperience.Should().Be(9.5m));
 
@@ -144,19 +144,19 @@ public class DemoRosterSeederTests
         (await db.Categories.CountAsync(c => c.Name == "Fintech / Trading")).Should().Be(1);
         (await db.Skills.CountAsync()).Should().Be(3);
 
-        // Employee skills for "C#" resolve to the pre-existing catalog row, not a duplicate.
-        (await db.EmployeeSkills.Where(s => s.SkillId == existingSkill.Id).CountAsync()).Should().Be(2);
+        // Expert skills for "C#" resolve to the pre-existing catalog row, not a duplicate.
+        (await db.ExpertSkills.Where(s => s.SkillId == existingSkill.Id).CountAsync()).Should().Be(2);
     }
 
     [Fact]
-    public async Task Seed_with_count_takes_exactly_the_first_n_employees_deterministically()
+    public async Task Seed_with_count_takes_exactly_the_first_n_experts_deterministically()
     {
         await using var db = NewDb();
 
         var result = await DemoRosterSeeder.SeedAsync(db, NewDataset(), count: 2);
 
         result.Seeded.Should().Be(2);
-        (await db.Employees.Select(e => e.Email).ToListAsync()).Should().BeEquivalentTo(
+        (await db.Experts.Select(e => e.Email).ToListAsync()).Should().BeEquivalentTo(
             "avery.brightforge@demo.example.com",
             "blair.copperfield@demo.example.com");
     }
@@ -175,7 +175,7 @@ public class DemoRosterSeederTests
     }
 
     [Fact]
-    public async Task Seeding_a_larger_count_after_a_partial_seed_only_adds_the_missing_employees()
+    public async Task Seeding_a_larger_count_after_a_partial_seed_only_adds_the_missing_experts()
     {
         await using var db = NewDb();
         await DemoRosterSeeder.SeedAsync(db, NewDataset(), count: 1);
@@ -183,16 +183,16 @@ public class DemoRosterSeederTests
         var result = await DemoRosterSeeder.SeedAsync(db, NewDataset(), count: 3);
 
         result.Should().Be(new DemoRosterSeedResult(Seeded: 2, Skipped: 1));
-        (await db.Employees.CountAsync()).Should().Be(3);
+        (await db.Experts.CountAsync()).Should().Be(3);
     }
 
     [Fact]
-    public async Task Wipe_removes_only_demo_employees_and_cascades_their_children()
+    public async Task Wipe_removes_only_demo_experts_and_cascades_their_children()
     {
         await using var db = NewDb();
 
-        // A non-demo employee (with children) that must survive the wipe untouched.
-        var survivor = new Employee
+        // A non-demo expert (with children) that must survive the wipe untouched.
+        var survivor = new Expert
         {
             Id = Guid.NewGuid(),
             FirstName = "Grace",
@@ -211,20 +211,20 @@ public class DemoRosterSeederTests
                 },
             },
         };
-        db.Employees.Add(survivor);
+        db.Experts.Add(survivor);
         await db.SaveChangesAsync();
 
         await DemoRosterSeeder.SeedAsync(db, NewDataset());
         var wiped = await DemoRosterSeeder.WipeAsync(db);
 
         wiped.Should().Be(3);
-        (await db.Employees.Select(e => e.Email).ToListAsync())
+        (await db.Experts.Select(e => e.Email).ToListAsync())
             .Should().ContainSingle().Which.Should().Be("grace.hopper@example.com");
 
         // Demo children are gone; the survivor's children are intact.
         (await db.SpokenLanguages.CountAsync()).Should().Be(1);
         (await db.AvailabilityEntries.CountAsync()).Should().Be(0);
-        (await db.EmployeeSkills.CountAsync()).Should().Be(0);
+        (await db.ExpertSkills.CountAsync()).Should().Be(0);
         (await db.Qualifications.CountAsync()).Should().Be(0);
         (await db.Experiences.CountAsync()).Should().Be(1);
         (await db.Achievements.CountAsync()).Should().Be(1);
@@ -239,16 +239,16 @@ public class DemoRosterSeederTests
     {
         var dataset = DemoRosterSeeder.LoadCommittedDataset();
 
-        dataset.Employees.Should().HaveCount(500);
+        dataset.Experts.Should().HaveCount(500);
         dataset.Skills.Should().NotBeEmpty();
     }
 
     private static async Task<int[]> RowCounts(AppDbContext db) =>
     [
-        await db.Employees.CountAsync(),
+        await db.Experts.CountAsync(),
         await db.SpokenLanguages.CountAsync(),
         await db.AvailabilityEntries.CountAsync(),
-        await db.EmployeeSkills.CountAsync(),
+        await db.ExpertSkills.CountAsync(),
         await db.Qualifications.CountAsync(),
         await db.Experiences.CountAsync(),
         await db.Achievements.CountAsync(),

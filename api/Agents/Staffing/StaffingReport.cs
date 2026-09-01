@@ -40,7 +40,7 @@ public static class StaffingMatchStatus
 /// (from the shortlist tool result); the match detail comes from that candidate's match run; the
 /// rationale comes from the narrative step, or a deterministic template when it degrades.</summary>
 public sealed record StaffingCandidate(
-    Guid EmployeeId,
+    Guid ExpertId,
     string Name,
     string Title,
     StaffingShortlistDetail Shortlist,
@@ -48,7 +48,7 @@ public sealed record StaffingCandidate(
     string Rationale);
 
 /// <summary>The narrative step's validated pick: always one of the report's candidates.</summary>
-public sealed record StaffingRecommendation(Guid EmployeeId, string Narrative);
+public sealed record StaffingRecommendation(Guid ExpertId, string Narrative);
 
 /// <summary>The pinned POST /agents/staffing report (P1T-71, camelCase over the wire).
 /// <see cref="Recommendation"/> is null when the narrative degrades; <see cref="Degraded"/> plus
@@ -80,7 +80,7 @@ public sealed record StaffingProgressEvent(
     int Sequence,
     string Stage,
     string Message,
-    Guid? EmployeeId = null,
+    Guid? ExpertId = null,
     string? Status = null,
     string? CandidateName = null,
     int? CompletedCount = null,

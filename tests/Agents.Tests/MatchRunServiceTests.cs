@@ -25,15 +25,15 @@ public class MatchRunServiceTests
     }
 
     [Fact]
-    public async Task Builds_the_pinned_prompt_from_the_employee_id_and_job_description()
+    public async Task Builds_the_pinned_prompt_from_the_expert_id_and_job_description()
     {
         var agent = new RecordingChatAgent();
-        var employeeId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var expertId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
-        await new MatchRunService(agent).RunAsync(employeeId, "Senior React engineer, GraphQL.");
+        await new MatchRunService(agent).RunAsync(expertId, "Senior React engineer, GraphQL.");
 
         agent.LastQuestion.Should().Be(
-            "Assess employee 11111111-1111-1111-1111-111111111111 against this job description:\n\nSenior React engineer, GraphQL.");
+            "Assess expert 11111111-1111-1111-1111-111111111111 against this job description:\n\nSenior React engineer, GraphQL.");
     }
 
     [Fact]

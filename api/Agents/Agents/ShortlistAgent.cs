@@ -20,7 +20,7 @@ public sealed record ShortlistToolEvidence(
 
 /// <summary>One candidate as reported by the shortlist tool (coverage-ranked, with evidence).</summary>
 public sealed record ShortlistToolCandidate(
-    Guid EmployeeId,
+    Guid ExpertId,
     string Name,
     string Title,
     double Score,
@@ -45,7 +45,7 @@ public sealed record ShortlistAgentOutcome(
 /// composer still guards ids and blanks — schema validity is not semantic validity.</summary>
 public sealed record ShortlistRationalePayload(IReadOnlyList<ShortlistRationaleEntry?>? Rationales);
 
-public sealed record ShortlistRationaleEntry(string? EmployeeId, string? Rationale);
+public sealed record ShortlistRationaleEntry(string? ExpertId, string? Rationale);
 
 /// <summary>
 /// The shortlist's rationale generator. Since P1T-117 this is a tool-less structured call: the
@@ -62,7 +62,7 @@ public sealed class ShortlistAgent
         You write per-candidate rationales for a shortlist against a job description. You are
         given the job description and, for each candidate, their per-requirement evidence from
         the retrieval tool. Reply with the structured object: one rationale (one or two
-        sentences) per candidate, using exactly the employeeId values given. Each rationale must
+        sentences) per candidate, using exactly the expertId values given. Each rationale must
         be grounded strictly in that candidate's per-requirement evidence — never invent skills,
         experience, or facts the evidence does not contain.
         """;

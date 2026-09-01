@@ -22,7 +22,7 @@ by `RetrievalEvalLiveTests` (`dotnet test --filter "Category=live"` with `GEMINI
 ## Retrieval eval sweep
 
 - Embedding model: `text-embedding-3-small`
-- Corpus size: 24 employees
+- Corpus size: 24 experts
 - Golden set: 39 queries
 - Date: 2026-07-11
 
@@ -70,7 +70,7 @@ at the edge of the precision cliff (0.280 already leaks negatives at 16.7%). **D
 production default stays 0.30** — mid-plateau, maximum margin to both failure modes. No config
 change; the regression floor in `EvalBaselines.cs` reflects the plateau numbers (recall@5 1.0).
 
-Caveat recorded: the 24-employee frozen corpus saturates recall by design. The verdict means
+Caveat recorded: the 24-expert frozen corpus saturates recall by design. The verdict means
 "0.30 is not measurably improvable on the golden set", not "retrieval is perfect at scale"; the
 live regression gate guards the floor, and the sweep is one command to rerun (below) if the
 corpus or embedding model changes.
@@ -109,7 +109,7 @@ OpenAI-compatible endpoint). The 0.30 floor tuned above is **invalid for Gemini*
 scores cluster higher, so at 0.30 every negative query leaked (negative-FP 1.0).
 
 Full re-sweep (`GEMINI_API_KEY=<key> dotnet run --project tools/RetrievalEval -- --sweep 0.30:0.80:0.05 --refine`),
-same frozen 24-employee corpus and 39-query golden set:
+same frozen 24-expert corpus and 39-query golden set:
 
 | Threshold | Recall@5 | MRR | Negative FP rate | Keyword recall@5 |
 |-----------|----------|-----|------------------|------------------|

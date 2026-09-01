@@ -58,7 +58,7 @@ public class ReconcilerTests
     [Fact]
     public void Same_source_id_across_different_source_types_does_not_collide()
     {
-        // An employee's summary chunk is keyed by the employee id; an experience could (in theory)
+        // An expert's summary chunk is keyed by the expert id; an experience could (in theory)
         // share an id space — the (type, id) key must keep them distinct.
         var shared = Guid.NewGuid();
         var summary = new DesiredChunk(Emp, SearchChunkSource.Summary, shared, "s", "hash-s");

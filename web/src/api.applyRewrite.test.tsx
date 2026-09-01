@@ -8,12 +8,12 @@ import { http, useApplyRewrite, type ApplyRewriteInput } from "./api";
 // Web-API edit with the user's own session. Since P1T-90 that edit is one PATCH per bullet —
 // no read-modify-write of the whole experience, no regenerated sibling ids, no lost-update race.
 
-const EMPLOYEE_ID = "11111111-2222-3333-4444-555555555555";
+const EXPERT_ID = "11111111-2222-3333-4444-555555555555";
 const EXPERIENCE_ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
 const ACHIEVEMENT_1 = "a1a1a1a1-1111-1111-1111-111111111111";
 
 const INPUT: ApplyRewriteInput = {
-  employeeId: EMPLOYEE_ID,
+  expertId: EXPERT_ID,
   experienceId: EXPERIENCE_ID,
   achievementId: ACHIEVEMENT_1,
   original: "Worked on React apps",
@@ -53,7 +53,7 @@ describe("useApplyRewrite", () => {
     expect(put).not.toHaveBeenCalled();
   });
 
-  it("invalidates the employee queries so open detail/CV views refetch", async () => {
+  it("invalidates the expert queries so open detail/CV views refetch", async () => {
     vi.spyOn(http, "patch").mockResolvedValue({
       data: { id: ACHIEVEMENT_1, order: 1, text: INPUT.rewritten },
     } as never);
@@ -63,7 +63,7 @@ describe("useApplyRewrite", () => {
     result.current.mutate(INPUT);
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["employees", EMPLOYEE_ID] });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["experts", EXPERT_ID] });
   });
 
   it("surfaces a failed PATCH as a mutation error", async () => {

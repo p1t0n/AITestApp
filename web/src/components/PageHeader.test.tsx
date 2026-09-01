@@ -88,20 +88,20 @@ describe("PageHeader", () => {
 
   it("renders the back link as a link, with a subtitle beside the title", () => {
     renderHeader(
-      <PageHeader title="CV" subtitle="Principal Engineer" backTo="/employees/7" width="content" />,
+      <PageHeader title="CV" subtitle="Principal Engineer" backTo="/experts/7" width="content" />,
     );
 
     // `e2e/cv-print.e2e.ts` finds this by role + /back/i and then walks up to the strip, so both
     // halves of that locator are asserted here: it is a link, and the strip is its Stack ancestor.
     const back = screen.getByRole("link", { name: /back/i });
-    expect(back).toHaveAttribute("href", "/employees/7");
+    expect(back).toHaveAttribute("href", "/experts/7");
     expect(back.closest(".MuiStack-root")).toBe(strip());
     expect(screen.getByText("Principal Engineer")).toBeInTheDocument();
   });
 
   it("hides the whole strip in print, which is what takes every control in it off the paper", () => {
     renderHeader(
-      <PageHeader title="CV" backTo="/employees/7" width="content" actions={<button>Print</button>}>
+      <PageHeader title="CV" backTo="/experts/7" width="content" actions={<button>Print</button>}>
         <div>the sheet</div>
       </PageHeader>,
     );

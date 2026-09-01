@@ -3,7 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AxiosError, AxiosHeaders } from "axios";
 import AvailabilityFormDialog from "./AvailabilityFormDialog";
-import EmployeeSkillFormDialog from "./EmployeeSkillFormDialog";
+import ExpertSkillFormDialog from "./ExpertSkillFormDialog";
 import LanguageFormDialog from "./LanguageFormDialog";
 import QualificationFormDialog from "./QualificationFormDialog";
 import ExperienceFormDialog from "./ExperienceFormDialog";
@@ -346,10 +346,10 @@ describe("AvailabilityFormDialog", () => {
   });
 });
 
-describe("EmployeeSkillFormDialog", () => {
+describe("ExpertSkillFormDialog", () => {
   it("links a catalog skill with its level and years", async () => {
     const onSave = vi.fn().mockResolvedValue({});
-    render(<EmployeeSkillFormDialog open title="Add skill" onClose={() => {}} onSave={onSave} />);
+    render(<ExpertSkillFormDialog open title="Add skill" onClose={() => {}} onSave={onSave} />);
 
     await userEvent.click(screen.getByLabelText("Skill"));
     await userEvent.click(screen.getByRole("option", { name: "React" }));
@@ -367,7 +367,7 @@ describe("EmployeeSkillFormDialog", () => {
   });
 
   it("cannot save until a catalog skill is picked", () => {
-    render(<EmployeeSkillFormDialog open title="Add skill" onClose={() => {}} onSave={vi.fn()} />);
+    render(<ExpertSkillFormDialog open title="Add skill" onClose={() => {}} onSave={vi.fn()} />);
 
     expect(save()).toBeDisabled();
   });
@@ -375,7 +375,7 @@ describe("EmployeeSkillFormDialog", () => {
   it("locks the skill on edit and sends the row's own id back", async () => {
     const onSave = vi.fn().mockResolvedValue({});
     render(
-      <EmployeeSkillFormDialog
+      <ExpertSkillFormDialog
         open
         title="Edit skill"
         initial={{ skillId: "skill-dotnet", level: "Intermediate", yearsExperience: 3 }}
@@ -403,10 +403,10 @@ describe("EmployeeSkillFormDialog", () => {
   });
 
   it("shows a server validation failure and keeps the dialog open", async () => {
-    const onSave = vi.fn().mockRejectedValue(validationFailure("Employee already has this skill."));
+    const onSave = vi.fn().mockRejectedValue(validationFailure("Expert already has this skill."));
     const onClose = vi.fn();
     render(
-      <EmployeeSkillFormDialog
+      <ExpertSkillFormDialog
         open
         title="Add skill"
         initial={{ skillId: "skill-react" }}
@@ -417,7 +417,7 @@ describe("EmployeeSkillFormDialog", () => {
 
     await userEvent.click(save());
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Employee already has this skill.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Expert already has this skill.");
     expect(onClose).not.toHaveBeenCalled();
   });
 });

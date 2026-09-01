@@ -79,8 +79,8 @@ async function startApi() {
   await waitFor(`the Web API on :${PORTS.api}`, 120_000, async () => {
     if (api.exitCode !== null) throw new Error(`The Web API exited early (code ${api.exitCode}).`);
     try {
-      // Anything that answers means the host is up; /api/employees 401s without a token.
-      const response = await fetch(`http://localhost:${PORTS.api}/api/employees`);
+      // Anything that answers means the host is up; /api/experts 401s without a token.
+      const response = await fetch(`http://localhost:${PORTS.api}/api/experts`);
       return response.status === 401 || response.ok;
     } catch {
       return false;

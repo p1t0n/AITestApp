@@ -57,10 +57,10 @@ public class QueuedSyncScoringTransportTests
         }
     }
 
-    private static readonly IReadOnlyList<EmployeeDigest> Chunk =
+    private static readonly IReadOnlyList<ExpertDigest> Chunk =
     [
-        new EmployeeDigest(Ada, "Ada Lovelace", "Engineer", "Built Kafka pipelines for 6 years."),
-        new EmployeeDigest(Grace, "Grace Hopper", "Admiral", "Invented the compiler."),
+        new ExpertDigest(Ada, "Ada Lovelace", "Engineer", "Built Kafka pipelines for 6 years."),
+        new ExpertDigest(Grace, "Grace Hopper", "Admiral", "Invented the compiler."),
     ];
 
     private static JdRequirements Extraction() => new(
@@ -83,8 +83,8 @@ public class QueuedSyncScoringTransportTests
     private static string BothAssessed() =>
         $$"""
         {"assessments":[
-          {"employeeId":"{{Ada}}","score":85,"band":"Strong","rationale":"Kafka depth.","scorable":true},
-          {"employeeId":"{{Grace}}","score":null,"band":"InsufficientEvidence","rationale":"No requirement evidence.","scorable":false}]}
+          {"expertId":"{{Ada}}","score":85,"band":"Strong","rationale":"Kafka depth.","scorable":true},
+          {"expertId":"{{Grace}}","score":null,"band":"InsufficientEvidence","rationale":"No requirement evidence.","scorable":false}]}
         """;
 
     [Fact]
@@ -112,11 +112,11 @@ public class QueuedSyncScoringTransportTests
 
         var scored = await transport.ScoreChunkAsync("JD", null, Chunk);
 
-        var ada = scored.Results.Single(r => r.EmployeeId == Ada);
+        var ada = scored.Results.Single(r => r.ExpertId == Ada);
         ada.Status.Should().Be(ScoringCandidateStatus.Scored);
         ada.Score.Should().Be(85);
         ada.Band.Should().Be("Strong");
-        var grace = scored.Results.Single(r => r.EmployeeId == Grace);
+        var grace = scored.Results.Single(r => r.ExpertId == Grace);
         grace.Score.Should().BeNull();
         grace.Band.Should().Be("Insufficient evidence", "display bands keep the parser-era strings");
         grace.Scorable.Should().BeFalse();
@@ -131,23 +131,23 @@ public class QueuedSyncScoringTransportTests
         var transport = Transport(new FakeChatClient(() => Reply(
             $$"""
             {"assessments":[
-              {"employeeId":"{{Ada}}","score":70,"band":"Moderate","rationale":"ok","scorable":true},
-              {"employeeId":"{{stranger}}","score":99,"band":"Strong","rationale":"??","scorable":true}]}
+              {"expertId":"{{Ada}}","score":70,"band":"Moderate","rationale":"ok","scorable":true},
+              {"expertId":"{{stranger}}","score":99,"band":"Strong","rationale":"??","scorable":true}]}
             """)));
 
         var scored = await transport.ScoreChunkAsync("JD", null, Chunk);
 
         scored.Results.Should().HaveCount(2, "one row per chunk member, never per model claim");
-        scored.Results.Select(r => r.EmployeeId).Should().BeEquivalentTo([Ada, Grace]);
-        scored.Results.Single(r => r.EmployeeId == Grace).Status.Should().Be(ScoringCandidateStatus.Failed);
-        scored.Results.Single(r => r.EmployeeId == Grace).Error.Should().Contain("did not assess");
+        scored.Results.Select(r => r.ExpertId).Should().BeEquivalentTo([Ada, Grace]);
+        scored.Results.Single(r => r.ExpertId == Grace).Status.Should().Be(ScoringCandidateStatus.Failed);
+        scored.Results.Single(r => r.ExpertId == Grace).Error.Should().Contain("did not assess");
     }
 
     [Fact]
     public async Task Out_of_range_scores_are_nulled_not_trusted()
     {
         var transport = Transport(new FakeChatClient(() => Reply(
-            $$"""{"assessments":[{"employeeId":"{{Ada}}","score":780,"band":"Strong","rationale":"ok","scorable":true}]}""")));
+            $$"""{"assessments":[{"expertId":"{{Ada}}","score":780,"band":"Strong","rationale":"ok","scorable":true}]}""")));
 
         var scored = await transport.ScoreChunkAsync("JD", null, [Chunk[0]]);
 

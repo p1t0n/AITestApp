@@ -30,7 +30,7 @@ public interface IScoringTransport
     Task<ScoredChunk> ScoreChunkAsync(
         string jobDescription,
         JdRequirements? extraction,
-        IReadOnlyList<EmployeeDigest> chunk,
+        IReadOnlyList<ExpertDigest> chunk,
         CancellationToken ct = default);
 }
 
@@ -69,7 +69,7 @@ public sealed class RosterScanOptions
 /// The free-tier default transport: a tool-less, schema-constrained chat call per chunk, paced by
 /// a shared <see cref="RateLimiter"/> and retried with exponential backoff on 429s (bounded — the
 /// budget spent, a typed quota exception surfaces). Honesty end to end: the prompt gives the model
-/// the <c>scorable: false</c> outlet, and the reply is checked, never trusted — unknown employee
+/// the <c>scorable: false</c> outlet, and the reply is checked, never trusted — unknown expert
 /// ids are dropped, chunk members missing from the reply fail honestly, out-of-range scores null.
 /// </summary>
 public sealed class QueuedSyncScoringTransport : IScoringTransport
@@ -79,7 +79,7 @@ public sealed class QueuedSyncScoringTransport : IScoringTransport
         You score candidates against a job description for a first-pass roster scan. You are given
         the job description (and, when available, its extracted requirements) plus a list of
         candidate career digests. Reply with the structured object: exactly one assessment per
-        candidate, using exactly the employeeId values given.
+        candidate, using exactly the expertId values given.
 
         Rules, in priority order:
         1. Judge ONLY from each candidate's digest — never invent skills, experience, or facts a
@@ -110,7 +110,7 @@ public sealed class QueuedSyncScoringTransport : IScoringTransport
     public async Task<ScoredChunk> ScoreChunkAsync(
         string jobDescription,
         JdRequirements? extraction,
-        IReadOnlyList<EmployeeDigest> chunk,
+        IReadOnlyList<ExpertDigest> chunk,
         CancellationToken ct = default)
     {
         var prompt = BuildPrompt(jobDescription, extraction, chunk);
@@ -162,7 +162,7 @@ public sealed class QueuedSyncScoringTransport : IScoringTransport
     }
 
     private static string BuildPrompt(
-        string jobDescription, JdRequirements? extraction, IReadOnlyList<EmployeeDigest> chunk)
+        string jobDescription, JdRequirements? extraction, IReadOnlyList<ExpertDigest> chunk)
     {
         var prompt = new StringBuilder();
         prompt.AppendLine("Job description:");
@@ -181,21 +181,21 @@ public sealed class QueuedSyncScoringTransport : IScoringTransport
 
     /// <summary>Checked, never trusted: every chunk member gets exactly one result row.</summary>
     private static List<ScoringCandidateResult> MapResults(
-        IReadOnlyList<EmployeeDigest> chunk, string replyText)
+        IReadOnlyList<ExpertDigest> chunk, string replyText)
     {
         var assessments = TryParse(replyText)?.Assessments
             ?.Where(a => a is not null)
             .Select(a => a!)
-            .ToLookup(a => a.EmployeeId);
+            .ToLookup(a => a.ExpertId);
 
         var results = new List<ScoringCandidateResult>(chunk.Count);
         foreach (var candidate in chunk)
         {
-            var assessment = assessments?[candidate.EmployeeId].FirstOrDefault();
+            var assessment = assessments?[candidate.ExpertId].FirstOrDefault();
             if (assessment is null)
             {
                 results.Add(new ScoringCandidateResult(
-                    candidate.EmployeeId, ScoringCandidateStatus.Failed,
+                    candidate.ExpertId, ScoringCandidateStatus.Failed,
                     null, null, null, null,
                     assessments is null
                         ? "The chunk reply did not parse as the scoring schema."
@@ -204,7 +204,7 @@ public sealed class QueuedSyncScoringTransport : IScoringTransport
             }
 
             results.Add(new ScoringCandidateResult(
-                candidate.EmployeeId,
+                candidate.ExpertId,
                 ScoringCandidateStatus.Scored,
                 assessment.Score is >= 0 and <= 100 ? assessment.Score : null,
                 assessment.Band?.ToDisplay(),
@@ -243,7 +243,7 @@ public sealed class QueuedSyncScoringTransport : IScoringTransport
         [property: JsonPropertyName("assessments")] IReadOnlyList<ChunkAssessment?>? Assessments);
 
     internal sealed record ChunkAssessment(
-        [property: JsonPropertyName("employeeId")] Guid EmployeeId,
+        [property: JsonPropertyName("expertId")] Guid ExpertId,
         [property: JsonPropertyName("score")] int? Score,
         [property: JsonPropertyName("band")] MatchBand? Band,
         [property: JsonPropertyName("rationale")] string? Rationale,

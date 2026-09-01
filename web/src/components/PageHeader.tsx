@@ -19,7 +19,7 @@ export type PageWidth = "wide" | "content";
 /**
  * `wide` is for the three tables — roster, catalog, users — which read better the more columns
  * they can spread; the cap only stops a line of table becoming unscannable on a 4K monitor.
- * `content` is for a page that is read rather than scanned: the employee detail form and the CV
+ * `content` is for a page that is read rather than scanned: the expert detail form and the CV
  * page, whose sheet caps itself tighter still (820px, §7) and centres inside this.
  */
 export const PAGE_MAX_WIDTH: Record<PageWidth, number> = { wide: 1440, content: 1000 };

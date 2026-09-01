@@ -15,7 +15,7 @@ public class DemoRosterGeneratorTests
     /// <summary>Fake text source: fixed, cheap narratives so tests exercise assembly only.</summary>
     private sealed class StubNarrativeSource : INarrativeSource
     {
-        public string WriteEmployeeSummary(string industry, string title, IReadOnlyList<string> topSkills, DeterministicRandom rng) =>
+        public string WriteExpertSummary(string industry, string title, IReadOnlyList<string> topSkills, DeterministicRandom rng) =>
             $"Stub professional summary for a {title} in {industry}.";
 
         public ExperienceNarrative WriteExperience(NarrativeContext context, DeterministicRandom rng) =>
@@ -24,29 +24,29 @@ public class DemoRosterGeneratorTests
     }
 
     private static DemoRosterDataset Generate(int count = 100, int seed = 48) =>
-        DemoRosterGenerator.Generate(new GenerationOptions { EmployeeCount = count, Seed = seed }, new StubNarrativeSource());
+        DemoRosterGenerator.Generate(new GenerationOptions { ExpertCount = count, Seed = seed }, new StubNarrativeSource());
 
     [Fact]
-    public void Generates_the_requested_number_of_employees()
+    public void Generates_the_requested_number_of_experts()
     {
-        Generate(count: 137).Employees.Should().HaveCount(137);
+        Generate(count: 137).Experts.Should().HaveCount(137);
     }
 
     [Fact]
     public void Every_email_is_unique_and_ends_with_the_demo_wipe_tag_domain()
     {
-        var emails = Generate(count: 500).Employees.Select(e => e.Email).ToList();
+        var emails = Generate(count: 500).Experts.Select(e => e.Email).ToList();
 
         emails.Should().OnlyHaveUniqueItems();
         emails.Should().AllSatisfy(e => e.Should().EndWith("@demo.example.com"));
     }
 
     [Fact]
-    public void Every_employee_has_two_to_five_experiences_with_narratives_from_the_source()
+    public void Every_expert_has_two_to_five_experiences_with_narratives_from_the_source()
     {
-        var employees = Generate().Employees;
+        var experts = Generate().Experts;
 
-        employees.Should().AllSatisfy(e =>
+        experts.Should().AllSatisfy(e =>
         {
             e.Experiences.Should().HaveCountGreaterThanOrEqualTo(2).And.HaveCountLessThanOrEqualTo(5);
             e.Experiences.Should().AllSatisfy(x =>
@@ -60,9 +60,9 @@ public class DemoRosterGeneratorTests
     [Fact]
     public void Experience_dates_are_a_plausible_career_walking_back_in_time()
     {
-        var employees = Generate().Employees;
+        var experts = Generate().Experts;
 
-        employees.Should().AllSatisfy(e =>
+        experts.Should().AllSatisfy(e =>
         {
             // Newest first; each earlier role ends before (or when) the next one starts.
             var ordered = e.Experiences;
@@ -82,12 +82,12 @@ public class DemoRosterGeneratorTests
     }
 
     [Fact]
-    public void Every_employee_has_four_to_ten_skills_all_resolvable_against_the_dataset_catalog()
+    public void Every_expert_has_four_to_ten_skills_all_resolvable_against_the_dataset_catalog()
     {
         var dataset = Generate();
         var catalog = dataset.Skills.Select(s => s.Name).ToHashSet(StringComparer.Ordinal);
 
-        dataset.Employees.Should().AllSatisfy(e =>
+        dataset.Experts.Should().AllSatisfy(e =>
         {
             e.Skills.Should().HaveCountGreaterThanOrEqualTo(4).And.HaveCountLessThanOrEqualTo(10);
             e.Skills.Select(s => s.Name).Should().OnlyHaveUniqueItems();
@@ -107,11 +107,11 @@ public class DemoRosterGeneratorTests
     }
 
     [Fact]
-    public void Every_employee_has_valid_availability_languages_and_qualifications()
+    public void Every_expert_has_valid_availability_languages_and_qualifications()
     {
-        var employees = Generate().Employees;
+        var experts = Generate().Experts;
 
-        employees.Should().AllSatisfy(e =>
+        experts.Should().AllSatisfy(e =>
         {
             e.Availability.Should().HaveCountGreaterThanOrEqualTo(1).And.HaveCountLessThanOrEqualTo(3);
             e.Availability.Should().AllSatisfy(a => a.CapacityPercent.Should().BeInRange(0, 100));
@@ -128,20 +128,20 @@ public class DemoRosterGeneratorTests
     [Fact]
     public void Availability_step_functions_are_varied_across_the_roster()
     {
-        var employees = Generate(count: 500).Employees;
+        var experts = Generate(count: 500).Experts;
 
         // The roster must mix 0/50/100 step-functions, not hand everyone the same entry.
-        var capacities = employees.SelectMany(e => e.Availability).Select(a => a.CapacityPercent).Distinct();
+        var capacities = experts.SelectMany(e => e.Availability).Select(a => a.CapacityPercent).Distinct();
         capacities.Should().Contain([0, 50, 100]);
-        employees.Select(e => e.Availability.Count).Distinct().Should().Contain([1, 2, 3]);
+        experts.Select(e => e.Availability.Count).Distinct().Should().Contain([1, 2, 3]);
     }
 
     [Fact]
-    public void Employees_spread_across_ten_industry_clusters()
+    public void Experts_spread_across_ten_industry_clusters()
     {
-        var employees = Generate(count: 500).Employees;
+        var experts = Generate(count: 500).Experts;
 
-        var byIndustry = employees.GroupBy(e => e.Industry).ToList();
+        var byIndustry = experts.GroupBy(e => e.Industry).ToList();
         byIndustry.Should().HaveCount(10);
         byIndustry.Should().AllSatisfy(g => g.Should().HaveCountGreaterThanOrEqualTo(30));
     }

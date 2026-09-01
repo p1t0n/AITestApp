@@ -8,12 +8,12 @@ public class AppDbContext : DbContext, IAppDbContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
-    public DbSet<Employee> Employees => Set<Employee>();
+    public DbSet<Expert> Experts => Set<Expert>();
     public DbSet<SpokenLanguage> SpokenLanguages => Set<SpokenLanguage>();
     public DbSet<AvailabilityEntry> AvailabilityEntries => Set<AvailabilityEntry>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Skill> Skills => Set<Skill>();
-    public DbSet<EmployeeSkill> EmployeeSkills => Set<EmployeeSkill>();
+    public DbSet<ExpertSkill> ExpertSkills => Set<ExpertSkill>();
     public DbSet<Qualification> Qualifications => Set<Qualification>();
     public DbSet<Experience> Experiences => Set<Experience>();
     public DbSet<Achievement> Achievements => Set<Achievement>();
@@ -25,7 +25,7 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<StaffingProposalCandidate> StaffingProposalCandidates => Set<StaffingProposalCandidate>();
     public DbSet<ScoringJob> ScoringJobs => Set<ScoringJob>();
     public DbSet<ScoringJobCandidate> ScoringJobCandidates => Set<ScoringJobCandidate>();
-    public DbSet<EmployeeSearchChunk> EmployeeSearchChunks => Set<EmployeeSearchChunk>();
+    public DbSet<ExpertSearchChunk> ExpertSearchChunks => Set<ExpertSearchChunk>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -49,29 +49,29 @@ public class AppDbContext : DbContext, IAppDbContext
             }
         }
 
-        b.Entity<Employee>(e =>
+        b.Entity<Expert>(e =>
         {
             e.Property(x => x.FirstName).HasMaxLength(100).IsRequired();
             e.Property(x => x.LastName).HasMaxLength(100).IsRequired();
             e.Property(x => x.Title).HasMaxLength(200);
             e.Property(x => x.Email).HasMaxLength(256).IsRequired();
-            // Uniqueness binds only published employees with a real address: drafts may share an
+            // Uniqueness binds only published experts with a real address: drafts may share an
             // email (re-ingested resume) or carry none at all — the promote gate resolves clashes.
             e.HasIndex(x => x.Email).IsUnique()
                 .HasFilter("\"Status\" = 'Active' AND \"Email\" <> ''");
             e.Property(x => x.Phone).HasMaxLength(50);
             e.Property(x => x.Location).HasMaxLength(200);
 
-            e.HasMany(x => x.SpokenLanguages).WithOne(x => x.Employee)
-                .HasForeignKey(x => x.EmployeeId).OnDelete(DeleteBehavior.Cascade);
-            e.HasMany(x => x.AvailabilityEntries).WithOne(x => x.Employee)
-                .HasForeignKey(x => x.EmployeeId).OnDelete(DeleteBehavior.Cascade);
-            e.HasMany(x => x.Skills).WithOne(x => x.Employee)
-                .HasForeignKey(x => x.EmployeeId).OnDelete(DeleteBehavior.Cascade);
-            e.HasMany(x => x.Qualifications).WithOne(x => x.Employee)
-                .HasForeignKey(x => x.EmployeeId).OnDelete(DeleteBehavior.Cascade);
-            e.HasMany(x => x.Experiences).WithOne(x => x.Employee)
-                .HasForeignKey(x => x.EmployeeId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.SpokenLanguages).WithOne(x => x.Expert)
+                .HasForeignKey(x => x.ExpertId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.AvailabilityEntries).WithOne(x => x.Expert)
+                .HasForeignKey(x => x.ExpertId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.Skills).WithOne(x => x.Expert)
+                .HasForeignKey(x => x.ExpertId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.Qualifications).WithOne(x => x.Expert)
+                .HasForeignKey(x => x.ExpertId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.Experiences).WithOne(x => x.Expert)
+                .HasForeignKey(x => x.ExpertId).OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<SpokenLanguage>(e =>
@@ -82,7 +82,7 @@ public class AppDbContext : DbContext, IAppDbContext
 
         b.Entity<AvailabilityEntry>(e =>
         {
-            e.HasIndex(x => new { x.EmployeeId, x.EffectiveFrom }).IsUnique();
+            e.HasIndex(x => new { x.ExpertId, x.EffectiveFrom }).IsUnique();
         });
 
         b.Entity<Category>(e =>
@@ -102,12 +102,12 @@ public class AppDbContext : DbContext, IAppDbContext
             // index created in raw SQL in the CatalogUniqueIndexes migration — not globally unique.
         });
 
-        b.Entity<EmployeeSkill>(e =>
+        b.Entity<ExpertSkill>(e =>
         {
             e.Property(x => x.Level).HasMaxLength(20);
             e.Property(x => x.YearsExperience).HasPrecision(4, 1);
-            e.HasIndex(x => new { x.EmployeeId, x.SkillId }).IsUnique();
-            e.HasOne(x => x.Skill).WithMany(x => x.EmployeeSkills)
+            e.HasIndex(x => new { x.ExpertId, x.SkillId }).IsUnique();
+            e.HasOne(x => x.Skill).WithMany(x => x.ExpertSkills)
                 .HasForeignKey(x => x.SkillId).OnDelete(DeleteBehavior.Restrict);
         });
 
@@ -237,7 +237,7 @@ public class AppDbContext : DbContext, IAppDbContext
             e.HasIndex(x => new { x.JobId, x.Status });
         });
 
-        b.Entity<EmployeeSearchChunk>(e =>
+        b.Entity<ExpertSearchChunk>(e =>
         {
             e.Property(x => x.SourceType).HasMaxLength(20);
             e.Property(x => x.ContentHash).HasMaxLength(64).IsRequired();
@@ -255,11 +255,11 @@ public class AppDbContext : DbContext, IAppDbContext
 
             // One chunk per source row; also the reconciler's upsert/lookup key.
             e.HasIndex(x => new { x.SourceType, x.SourceId }).IsUnique();
-            // Pre-filter and aggregation always scope by employee.
-            e.HasIndex(x => x.EmployeeId);
+            // Pre-filter and aggregation always scope by expert.
+            e.HasIndex(x => x.ExpertId);
 
-            e.HasOne<Employee>().WithMany()
-                .HasForeignKey(x => x.EmployeeId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Expert>().WithMany()
+                .HasForeignKey(x => x.ExpertId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

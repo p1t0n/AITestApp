@@ -8,8 +8,8 @@ import {
   Routes,
   useLocation,
 } from "react-router-dom";
-import EmployeesPage from "./pages/EmployeesPage";
-import EmployeeDetailPage from "./pages/EmployeeDetailPage";
+import ExpertsPage from "./pages/ExpertsPage";
+import ExpertDetailPage from "./pages/ExpertDetailPage";
 import CvPage from "./pages/CvPage";
 import CatalogPage from "./pages/CatalogPage";
 import SignupPage from "./pages/SignupPage";
@@ -115,9 +115,9 @@ export default function App() {
 
           {/* Everything else requires authentication */}
           <Route element={<RequireAuth />}>
-            <Route path="/" element={<EmployeesPage />} />
-            <Route path="/employees/:id" element={<EmployeeDetailPage />} />
-            <Route path="/employees/:id/cv" element={<CvPage />} />
+            <Route path="/" element={<ExpertsPage />} />
+            <Route path="/experts/:id" element={<ExpertDetailPage />} />
+            <Route path="/experts/:id/cv" element={<CvPage />} />
             <Route path="/catalog" element={<CatalogPage />} />
             <Route path="/users" element={<UsersPage />} />
           </Route>

@@ -32,7 +32,7 @@ public class CvTailoringEndpointTests
         """;
 
     private static AIFunction CvGetTool() =>
-        AIFunctionFactory.Create((Guid employeeId) => CvPayload, "cv_get");
+        AIFunctionFactory.Create((Guid expertId) => CvPayload, "cv_get");
 
     private static AIFunction ExemplarTool(string? payload = null) =>
         AIFunctionFactory.Create((Guid[] achievementIds) => payload ?? ExemplarPayload, "style_exemplar_search");
@@ -70,20 +70,20 @@ public class CvTailoringEndpointTests
 
         var response = await client.PostAsJsonAsync(
             "/agents/cv-tailoring",
-            new { employeeId = Guid.NewGuid(), jobDescription = "   " });
+            new { expertId = Guid.NewGuid(), jobDescription = "   " });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]
-    public async Task Returns_400_when_employee_id_is_empty()
+    public async Task Returns_400_when_expert_id_is_empty()
     {
         using var factory = DefaultHost();
         using var client = factory.CreateAuthenticatedClient();
 
         var response = await client.PostAsJsonAsync(
             "/agents/cv-tailoring",
-            new { employeeId = Guid.Empty, jobDescription = "Senior React engineer." });
+            new { expertId = Guid.Empty, jobDescription = "Senior React engineer." });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -97,7 +97,7 @@ public class CvTailoringEndpointTests
 
         var response = await client.PostAsJsonAsync(
             "/agents/cv-tailoring",
-            new { employeeId = Guid.NewGuid(), jobDescription = "Platform engineer." });
+            new { expertId = Guid.NewGuid(), jobDescription = "Platform engineer." });
 
         response.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -113,7 +113,7 @@ public class CvTailoringEndpointTests
 
         var response = await client.PostAsJsonAsync(
             "/agents/cv-tailoring",
-            new { employeeId = Guid.NewGuid(), jobDescription = "Platform engineer." });
+            new { expertId = Guid.NewGuid(), jobDescription = "Platform engineer." });
 
         response.EnsureSuccessStatusCode();
         meter.Records.Should().ContainSingle().Which.AgentName.Should().Be("cv-tailoring");
@@ -127,7 +127,7 @@ public class CvTailoringEndpointTests
 
         var response = await client.PostAsJsonAsync(
             "/agents/cv-tailoring",
-            new { employeeId = Guid.NewGuid(), jobDescription = "Platform engineer: Kubernetes, CI/CD." });
+            new { expertId = Guid.NewGuid(), jobDescription = "Platform engineer: Kubernetes, CI/CD." });
 
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -153,7 +153,7 @@ public class CvTailoringEndpointTests
 
         var response = await client.PostAsJsonAsync(
             "/agents/cv-tailoring",
-            new { employeeId = Guid.NewGuid(), jobDescription = "Platform engineer." });
+            new { expertId = Guid.NewGuid(), jobDescription = "Platform engineer." });
 
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -171,7 +171,7 @@ public class CvTailoringEndpointTests
 
         var response = await client.PostAsJsonAsync(
             "/agents/cv-tailoring",
-            new { employeeId = Guid.NewGuid(), jobDescription = "Platform engineer." });
+            new { expertId = Guid.NewGuid(), jobDescription = "Platform engineer." });
 
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -187,7 +187,7 @@ public class CvTailoringEndpointTests
 
         var response = await client.PostAsJsonAsync(
             "/agents/cv-tailoring",
-            new { employeeId = Guid.NewGuid(), jobDescription = "Platform engineer." });
+            new { expertId = Guid.NewGuid(), jobDescription = "Platform engineer." });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK, "unparseable turn-2 output must not fail the request");
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -205,7 +205,7 @@ public class CvTailoringEndpointTests
 
         var response = await client.PostAsJsonAsync(
             "/agents/cv-tailoring",
-            new { employeeId = Guid.NewGuid(), jobDescription = "Platform engineer." });
+            new { expertId = Guid.NewGuid(), jobDescription = "Platform engineer." });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK, "a soft exemplar error must not fail the request");
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -216,14 +216,14 @@ public class CvTailoringEndpointTests
     public async Task Keeps_answer_only_behavior_when_the_model_never_calls_the_tools()
     {
         var chat = new FakeChatClient(
-            () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "That employee was not found.")),
+            () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "That expert was not found.")),
             () => new ChatResponse(new ChatMessage(ChatRole.Assistant, "[]")));
         using var factory = FakedHost(chat, null, CvGetTool(), ExemplarTool());
         using var client = factory.CreateAuthenticatedClient();
 
         var response = await client.PostAsJsonAsync(
             "/agents/cv-tailoring",
-            new { employeeId = Guid.NewGuid(), jobDescription = "Platform engineer." });
+            new { expertId = Guid.NewGuid(), jobDescription = "Platform engineer." });
 
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -241,7 +241,7 @@ public class CvTailoringEndpointTests
 
         var response = await client.PostAsJsonAsync(
             "/agents/cv-tailoring",
-            new { employeeId = Guid.NewGuid(), jobDescription = "Platform engineer." });
+            new { expertId = Guid.NewGuid(), jobDescription = "Platform engineer." });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadGateway);
     }

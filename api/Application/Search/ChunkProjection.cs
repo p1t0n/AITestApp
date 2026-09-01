@@ -7,41 +7,41 @@ using ExpertToJob.Domain.Enums;
 namespace ExpertToJob.Application.Search;
 
 /// <summary>
-/// Renders an employee's free-text career narrative into the set of chunks that semantic roster
+/// Renders an expert's free-text career narrative into the set of chunks that semantic roster
 /// search embeds: one chunk per work <see cref="Experience"/> (role + company + dates header, then
-/// its summary and achievements), one chunk for the employee's professional summary, plus one
+/// its summary and achievements), one chunk for the expert's professional summary, plus one
 /// fine-grained chunk per non-blank <see cref="Achievement"/> bullet (for exemplar-style retrieval;
-/// the experience chunk keeps the bullets rolled in as the employee-level narrative unit).
+/// the experience chunk keeps the bullets rolled in as the expert-level narrative unit).
 ///
-/// <para>Pure and deterministic: the same employee always renders the same text and the same
+/// <para>Pure and deterministic: the same expert always renders the same text and the same
 /// SHA-256 <c>ContentHash</c>, which is what lets the reconciler detect real changes.</para>
 /// </summary>
 public static class ChunkProjection
 {
     /// <summary>
-    /// Project an employee into its desired chunks. Requires <see cref="Employee.Experiences"/>
+    /// Project an expert into its desired chunks. Requires <see cref="Expert.Experiences"/>
     /// (with their achievements) to be loaded.
     /// </summary>
-    public static IReadOnlyList<DesiredChunk> Project(Employee employee)
+    public static IReadOnlyList<DesiredChunk> Project(Expert expert)
     {
         var chunks = new List<DesiredChunk>();
 
-        if (!string.IsNullOrWhiteSpace(employee.Summary))
+        if (!string.IsNullOrWhiteSpace(expert.Summary))
         {
-            chunks.Add(Make(employee.Id, SearchChunkSource.Summary, employee.Id, employee.Summary!.Trim()));
+            chunks.Add(Make(expert.Id, SearchChunkSource.Summary, expert.Id, expert.Summary!.Trim()));
         }
 
-        foreach (var experience in employee.Experiences)
+        foreach (var experience in expert.Experiences)
         {
-            chunks.Add(Make(employee.Id, SearchChunkSource.Experience, experience.Id, RenderExperience(experience)));
+            chunks.Add(Make(expert.Id, SearchChunkSource.Experience, experience.Id, RenderExperience(experience)));
 
             // One fine-grained chunk per achievement bullet (the experience chunk above keeps the
-            // bullets rolled in as well — it stays the narrative unit for employee-level search).
+            // bullets rolled in as well — it stays the narrative unit for expert-level search).
             foreach (var achievement in experience.Achievements.OrderBy(a => a.Order))
             {
                 if (!string.IsNullOrWhiteSpace(achievement.Text))
                 {
-                    chunks.Add(Make(employee.Id, SearchChunkSource.Achievement, achievement.Id, achievement.Text.Trim()));
+                    chunks.Add(Make(expert.Id, SearchChunkSource.Achievement, achievement.Id, achievement.Text.Trim()));
                 }
             }
         }
@@ -56,8 +56,8 @@ public static class ChunkProjection
         return Convert.ToHexStringLower(bytes);
     }
 
-    private static DesiredChunk Make(Guid employeeId, SearchChunkSource type, Guid sourceId, string content)
-        => new(employeeId, type, sourceId, content, Hash(content));
+    private static DesiredChunk Make(Guid expertId, SearchChunkSource type, Guid sourceId, string content)
+        => new(expertId, type, sourceId, content, Hash(content));
 
     private static string RenderExperience(Experience experience)
     {

@@ -1,14 +1,14 @@
 namespace ExpertToJob.Application.Search;
 
-/// <summary>One requirement's best chunk hit for an employee: similarity plus the evidence snippet.</summary>
+/// <summary>One requirement's best chunk hit for an expert: similarity plus the evidence snippet.</summary>
 public readonly record struct ShortlistMatch(double Similarity, string Snippet);
 
 /// <summary>
-/// A ranked candidate before hydration — the ranker works on employee ids only; the caller joins
+/// A ranked candidate before hydration — the ranker works on expert ids only; the caller joins
 /// names and titles afterwards.
 /// </summary>
 public sealed record ShortlistRankedCandidate(
-    Guid EmployeeId,
+    Guid ExpertId,
     double Score,
     int MatchedCount,
     IReadOnlyList<ShortlistRequirementEvidence> Evidence);
@@ -29,9 +29,9 @@ public static class ShortlistRanker
         IReadOnlyList<IReadOnlyDictionary<Guid, ShortlistMatch>> matchesPerRequirement,
         int topK)
     {
-        var employeeIds = matchesPerRequirement.SelectMany(m => m.Keys).Distinct();
+        var expertIds = matchesPerRequirement.SelectMany(m => m.Keys).Distinct();
 
-        return employeeIds
+        return expertIds
             .Select(id =>
             {
                 var evidence = requirements
@@ -48,7 +48,7 @@ public static class ShortlistRanker
             })
             .OrderByDescending(x => x.Candidate.MatchedCount)
             .ThenByDescending(x => x.meanSimilarity)
-            .ThenBy(x => x.Candidate.EmployeeId) // deterministic tie-break
+            .ThenBy(x => x.Candidate.ExpertId) // deterministic tie-break
             .Take(topK)
             .Select(x => x.Candidate)
             .ToList();

@@ -5,7 +5,7 @@ using Xunit;
 namespace ExpertToJob.Application.Tests;
 
 /// <summary>
-/// Variety guards for the offline narrative fragments: a 500-employee roster written purely
+/// Variety guards for the offline narrative fragments: a 500-expert roster written purely
 /// from fragments must still read like distinct CVs, not template mush.
 /// </summary>
 public class FragmentNarrativeSourceTests
@@ -16,7 +16,7 @@ public class FragmentNarrativeSourceTests
     [Fact]
     public void No_experience_summary_repeats_more_than_three_times()
     {
-        var summaries = FullRoster.Value.Employees
+        var summaries = FullRoster.Value.Experts
             .SelectMany(e => e.Experiences)
             .Select(x => x.Summary)
             .ToList();
@@ -27,7 +27,7 @@ public class FragmentNarrativeSourceTests
     [Fact]
     public void Average_experience_summary_length_exceeds_eighty_characters()
     {
-        FullRoster.Value.Employees
+        FullRoster.Value.Experts
             .SelectMany(e => e.Experiences)
             .Average(x => (double)x.Summary!.Length)
             .Should().BeGreaterThan(80);
@@ -36,7 +36,7 @@ public class FragmentNarrativeSourceTests
     [Fact]
     public void Achievements_are_varied_and_never_placeholder_mush()
     {
-        var achievements = FullRoster.Value.Employees
+        var achievements = FullRoster.Value.Experts
             .SelectMany(e => e.Experiences)
             .SelectMany(x => x.Achievements)
             .ToList();
@@ -52,9 +52,9 @@ public class FragmentNarrativeSourceTests
     }
 
     [Fact]
-    public void Employee_summaries_are_present_and_substantial()
+    public void Expert_summaries_are_present_and_substantial()
     {
-        FullRoster.Value.Employees.Should().AllSatisfy(e =>
+        FullRoster.Value.Experts.Should().AllSatisfy(e =>
             e.Summary.Should().NotBeNullOrWhiteSpace().And.Subject.Length.Should().BeGreaterThan(80));
     }
 
@@ -68,7 +68,7 @@ public class FragmentNarrativeSourceTests
             "FreeRTOS", "Zephyr", "CAN 2.0B", "ONNX", "OIDC", "SAML", "WCAG 2.2", "gRPC",
         ];
 
-        var heavyCount = FullRoster.Value.Employees.Count(e =>
+        var heavyCount = FullRoster.Value.Experts.Count(e =>
             e.Experiences.Any(x =>
                 markers.Count(m => (x.Summary + " " + string.Join(" ", x.Achievements)).Contains(m)) >= 2));
 

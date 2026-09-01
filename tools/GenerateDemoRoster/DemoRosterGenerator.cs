@@ -39,18 +39,18 @@ public static class DemoRosterGenerator
         }
 
         var usedEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        for (var i = 0; i < options.EmployeeCount; i++)
+        for (var i = 0; i < options.ExpertCount; i++)
         {
             // Round-robin over industries → ten clusters of ~equal size.
             var profile = IndustryProfiles.All[i % IndustryProfiles.All.Count];
             var rng = DeterministicRandom.ForSubStream(options.Seed, i);
-            dataset.Employees.Add(BuildEmployee(profile, rng, options, narrativeSource, usedEmails));
+            dataset.Experts.Add(BuildExpert(profile, rng, options, narrativeSource, usedEmails));
         }
 
         return dataset;
     }
 
-    private static DemoRosterEmployee BuildEmployee(
+    private static DemoRosterExpert BuildExpert(
         IndustryProfile profile,
         DeterministicRandom rng,
         GenerationOptions options,
@@ -66,7 +66,7 @@ public static class DemoRosterGenerator
         var experiences = BuildExperiences(profile, rng, options, narrativeSource, skillNames, acronymHeavy);
         var title = experiences[0].Title;
 
-        return new DemoRosterEmployee
+        return new DemoRosterExpert
         {
             FirstName = firstName,
             LastName = lastName,
@@ -75,7 +75,7 @@ public static class DemoRosterGenerator
             Phone = $"+1 555 {rng.Next(0, 9999):D4}",
             Location = rng.Pick(PeoplePools.Locations),
             Industry = profile.Id,
-            Summary = narrativeSource.WriteEmployeeSummary(profile.Id, title, skillNames.Take(4).ToList(), rng),
+            Summary = narrativeSource.WriteExpertSummary(profile.Id, title, skillNames.Take(4).ToList(), rng),
             SpokenLanguages = BuildLanguages(rng),
             Availability = BuildAvailability(rng, options.AnchorDate),
             Skills = skills,
@@ -96,7 +96,7 @@ public static class DemoRosterGenerator
         return email;
     }
 
-    private static List<DemoRosterEmployeeSkill> BuildSkills(IndustryProfile profile, DeterministicRandom rng)
+    private static List<DemoRosterExpertSkill> BuildSkills(IndustryProfile profile, DeterministicRandom rng)
     {
         var count = rng.Next(4, 10);
 
@@ -107,7 +107,7 @@ public static class DemoRosterGenerator
             .Take(count)
             .ToList();
 
-        return picked.Select(name => new DemoRosterEmployeeSkill
+        return picked.Select(name => new DemoRosterExpertSkill
         {
             Name = name,
             Level = (SkillLevel)rng.Next((int)SkillLevel.Beginner, (int)SkillLevel.Expert),

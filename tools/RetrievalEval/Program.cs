@@ -76,7 +76,7 @@ await using var provider = new ServiceCollection()
 var embedder = provider.GetRequiredService<IEmbedder>();
 
 Console.Error.WriteLine(string.Create(CultureInfo.InvariantCulture,
-    $"Seeding {corpus.Count} employees, indexing, and running {goldenSet.Count} queries " +
+    $"Seeding {corpus.Count} experts, indexing, and running {goldenSet.Count} queries " +
     $"once at floor {floor:F3} (model: {embedder.Model})..."));
 var cached = await EvalRunner.CaptureAsync(
     NewDb, embedder, corpus, goldenSet, floor, QueryRetryPolicy.Default);

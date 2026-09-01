@@ -22,7 +22,7 @@ public class ShortlistEndpointTests
 
     private const string ToolPayload =
         """
-        {"results":[{"employeeId":"11111111-1111-1111-1111-111111111111","name":"Ada Lovelace","title":"Platform Lead","score":0.91,"matchedCount":2,"totalRequirements":3,"evidence":[{"requirement":"event streaming with Kafka","matched":true,"snippet":"Built Kafka pipelines.","similarity":0.88},{"requirement":"Kubernetes operations","matched":true,"snippet":"Ran K8s clusters.","similarity":0.8},{"requirement":"team leadership","matched":false}]}],"error":null}
+        {"results":[{"expertId":"11111111-1111-1111-1111-111111111111","name":"Ada Lovelace","title":"Platform Lead","score":0.91,"matchedCount":2,"totalRequirements":3,"evidence":[{"requirement":"event streaming with Kafka","matched":true,"snippet":"Built Kafka pipelines.","similarity":0.88},{"requirement":"Kubernetes operations","matched":true,"snippet":"Ran K8s clusters.","similarity":0.8},{"requirement":"team leadership","matched":false}]}],"error":null}
         """;
 
     private static AIFunction ShortlistTool(string? payload = null) =>
@@ -42,7 +42,7 @@ public class ShortlistEndpointTests
     private static FakeChatClient ScriptedChat() => new(
         () => new ChatResponse(new ChatMessage(ChatRole.Assistant, ExtractionJson)),
         () => new ChatResponse(new ChatMessage(ChatRole.Assistant,
-            $$"""{"rationales":[{"employeeId":"{{AdaIdText}}","rationale":"Strong Kafka and K8s evidence."}]}""")));
+            $$"""{"rationales":[{"expertId":"{{AdaIdText}}","rationale":"Strong Kafka and K8s evidence."}]}""")));
 
     private static WebApplicationFactory<Program> FakedHost(
         IChatClient chat, AIFunction? tool = null, Action<IServiceCollection>? extra = null) =>
@@ -118,7 +118,7 @@ public class ShortlistEndpointTests
         var candidates = body.GetProperty("candidates");
         candidates.GetArrayLength().Should().Be(1);
         var ada = candidates[0];
-        ada.GetProperty("employeeId").GetString().Should().Be(AdaIdText);
+        ada.GetProperty("expertId").GetString().Should().Be(AdaIdText);
         ada.GetProperty("name").GetString().Should().Be("Ada Lovelace");
         ada.GetProperty("title").GetString().Should().Be("Platform Lead");
         ada.GetProperty("score").GetDouble().Should().BeApproximately(0.91, 0.0001);

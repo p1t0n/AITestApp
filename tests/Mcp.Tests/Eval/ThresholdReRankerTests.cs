@@ -13,7 +13,7 @@ public class ThresholdReRankerTests
 {
     private const int TopK = 5;
 
-    /// <summary>Per-employee best similarity for one fake query, deliberately straddling every
+    /// <summary>Per-expert best similarity for one fake query, deliberately straddling every
     /// sweep threshold and exceeding top-5 at the floor.</summary>
     private static readonly IReadOnlyDictionary<string, double> Similarities =
         new Dictionary<string, double>

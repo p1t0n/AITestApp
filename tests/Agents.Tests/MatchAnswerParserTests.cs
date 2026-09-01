@@ -59,7 +59,7 @@ public class MatchAnswerParserTests
     [Fact]
     public void Answer_without_a_score_or_band_yields_nulls()
     {
-        var facts = MatchAnswerParser.Parse("The employee was not found.");
+        var facts = MatchAnswerParser.Parse("The expert was not found.");
 
         facts.Score.Should().BeNull();
         facts.Band.Should().BeNull();

@@ -30,7 +30,7 @@ public class CvTailoringLiveSmokeTests
             "/agents/cv-tailoring",
             new
             {
-                employeeId = Guid.NewGuid(),
+                expertId = Guid.NewGuid(),
                 jobDescription = "Senior backend engineer: .NET, PostgreSQL, distributed systems.",
             });
 
@@ -38,7 +38,7 @@ public class CvTailoringLiveSmokeTests
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("answer").GetString().Should().NotBeNullOrWhiteSpace();
 
-        // The hybrid contract: rewrites ride along (possibly empty — e.g. an unknown employee or
+        // The hybrid contract: rewrites ride along (possibly empty — e.g. an unknown expert or
         // a degraded rewrite turn), and every entry the guard let through is fully populated.
         var rewrites = body.GetProperty("rewrites");
         rewrites.ValueKind.Should().Be(JsonValueKind.Array);

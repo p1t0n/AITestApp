@@ -6,7 +6,7 @@ namespace ExpertToJob.Infrastructure.Persistence;
 
 /// <summary>
 /// Idempotent dev seeder: a skill-category tree + catalog skills, plus a few fully-populated
-/// sample employees so the API, CV view, and (later) AI tooling have realistic data to work with.
+/// sample experts so the API, CV view, and (later) AI tooling have realistic data to work with.
 /// </summary>
 public static class DbInitializer
 {
@@ -58,8 +58,8 @@ public static class DbInitializer
             Sk("Test-Driven Development", practices)
         );
 
-        // --- Sample employees ---
-        db.Employees.AddRange(
+        // --- Sample experts ---
+        db.Experts.AddRange(
             BuildAlice(skills),
             BuildBob(skills),
             BuildCarol(skills)
@@ -68,7 +68,7 @@ public static class DbInitializer
         await db.SaveChangesAsync(ct);
     }
 
-    private static EmployeeSkill ES(Skill skill, SkillLevel level, decimal years) =>
+    private static ExpertSkill ES(Skill skill, SkillLevel level, decimal years) =>
         new() { Id = Guid.NewGuid(), SkillId = skill.Id, Level = level, YearsExperience = years };
 
     private static ExperienceSkill XS(Skill skill) =>
@@ -77,7 +77,7 @@ public static class DbInitializer
     private static Achievement Ach(int order, string text) =>
         new() { Id = Guid.NewGuid(), Order = order, Text = text };
 
-    private static Employee BuildAlice(Dictionary<string, Skill> s) => new()
+    private static Expert BuildAlice(Dictionary<string, Skill> s) => new()
     {
         Id = Guid.NewGuid(),
         FirstName = "Alice",
@@ -153,7 +153,7 @@ public static class DbInitializer
         },
     };
 
-    private static Employee BuildBob(Dictionary<string, Skill> s) => new()
+    private static Expert BuildBob(Dictionary<string, Skill> s) => new()
     {
         Id = Guid.NewGuid(),
         FirstName = "Bob",
@@ -205,7 +205,7 @@ public static class DbInitializer
         },
     };
 
-    private static Employee BuildCarol(Dictionary<string, Skill> s) => new()
+    private static Expert BuildCarol(Dictionary<string, Skill> s) => new()
     {
         Id = Guid.NewGuid(),
         FirstName = "Carol",

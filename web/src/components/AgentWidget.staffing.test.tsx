@@ -63,7 +63,7 @@ vi.mock("../api", async (importOriginal) => {
       ],
       isLoading: false,
     }),
-    useEmployees: () => ({
+    useExperts: () => ({
       data: [
         {
           id: ADA,
@@ -104,7 +104,7 @@ const REPORT: StaffingReport = {
   requirements: ["React expertise", "Team leadership"],
   candidates: [
     {
-      employeeId: ADA,
+      expertId: ADA,
       name: "Ada Lovelace",
       title: "Senior Engineer",
       shortlist: {
@@ -125,7 +125,7 @@ const REPORT: StaffingReport = {
       rationale: "Ada leads on coverage and depth.",
     },
     {
-      employeeId: GRACE,
+      expertId: GRACE,
       name: "Grace Hopper",
       title: "Compiler Engineer",
       shortlist: {
@@ -140,7 +140,7 @@ const REPORT: StaffingReport = {
       rationale: "Strong systems background, weaker frontend evidence.",
     },
     {
-      employeeId: LIN,
+      expertId: LIN,
       name: "Lin Zhou",
       title: "Frontend Engineer",
       shortlist: {
@@ -155,7 +155,7 @@ const REPORT: StaffingReport = {
       rationale: "Solid React skills; match run skipped.",
     },
   ],
-  recommendation: { employeeId: ADA, narrative: "Ada is the strongest fit overall." },
+  recommendation: { expertId: ADA, narrative: "Ada is the strongest fit overall." },
   degraded: false,
   notes: [],
 };
@@ -210,8 +210,8 @@ async function runToReport(user: Awaited<ReturnType<typeof openStaffingTab>>, re
   await screen.findByTestId("staffing-recommendation");
 }
 
-function candidateCard(employeeId: string) {
-  return screen.getByTestId(`staffing-candidate-${employeeId}`);
+function candidateCard(expertId: string) {
+  return screen.getByTestId(`staffing-candidate-${expertId}`);
 }
 
 beforeEach(() => {
@@ -343,7 +343,7 @@ describe("Staffing tab — progress stepper", () => {
       handlers.onStep({
         stage: "match",
         status: "started",
-        candidate: { employeeId: ADA, name: "Ada Lovelace" },
+        candidate: { expertId: ADA, name: "Ada Lovelace" },
         totalCount: 2,
       }),
     );
@@ -354,7 +354,7 @@ describe("Staffing tab — progress stepper", () => {
       handlers.onStep({
         stage: "match",
         status: "completed",
-        candidate: { employeeId: ADA, name: "Ada Lovelace" },
+        candidate: { expertId: ADA, name: "Ada Lovelace" },
         completedCount: 1,
         totalCount: 2,
       }),
@@ -366,7 +366,7 @@ describe("Staffing tab — progress stepper", () => {
       handlers.onStep({
         stage: "match",
         status: "failed",
-        candidate: { employeeId: GRACE, name: "Grace Hopper" },
+        candidate: { expertId: GRACE, name: "Grace Hopper" },
         completedCount: 2,
         totalCount: 2,
         error: "model timeout",
@@ -414,7 +414,7 @@ describe("Staffing tab — report", () => {
 
     const recommendation = screen.getByTestId("staffing-recommendation");
     const recLink = within(recommendation).getByRole("link", { name: "Ada Lovelace" });
-    expect(recLink).toHaveAttribute("href", `/employees/${ADA}`);
+    expect(recLink).toHaveAttribute("href", `/experts/${ADA}`);
     expect(
       within(recommendation).getByText("Ada is the strongest fit overall."),
     ).toBeInTheDocument();
@@ -431,7 +431,7 @@ describe("Staffing tab — report", () => {
     const ada = candidateCard(ADA);
     expect(within(ada).getByRole("link", { name: "Ada Lovelace" })).toHaveAttribute(
       "href",
-      `/employees/${ADA}`,
+      `/experts/${ADA}`,
     );
     expect(within(ada).getByText("Senior Engineer")).toBeInTheDocument();
     expect(within(ada).getByText("0.92")).toBeInTheDocument();
@@ -498,7 +498,7 @@ describe("Staffing tab — report", () => {
     expect(within(ada).getByText("Built React apps for 6 years")).toBeInTheDocument();
   });
 
-  it("'Open in Match' switches to the Match tab with the employee and JD pre-filled", async () => {
+  it("'Open in Match' switches to the Match tab with the expert and JD pre-filled", async () => {
     const user = await openStaffingTab();
     await runToReport(user, REPORT);
 
@@ -509,7 +509,7 @@ describe("Staffing tab — report", () => {
     expect(screen.getByDisplayValue("Senior React engineer")).toBeInTheDocument();
   });
 
-  it("'Tailor CV' switches to the Tailor CV tab with the employee and JD pre-filled", async () => {
+  it("'Tailor CV' switches to the Tailor CV tab with the expert and JD pre-filled", async () => {
     const user = await openStaffingTab();
     await runToReport(user, REPORT);
 

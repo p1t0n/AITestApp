@@ -11,7 +11,7 @@ namespace ExpertToJob.Mcp.Tests;
 /// <summary>
 /// Integration test for <see cref="DemoRosterSeeder"/> (P1T-51) against a real pgvector Postgres
 /// (Testcontainers, migrations applied): the full seed → idempotent re-run → wipe → reseed cycle
-/// with a trimmed dataset, exercising the DB-level cascades (children + EmployeeSearchChunks)
+/// with a trimmed dataset, exercising the DB-level cascades (children + ExpertSearchChunks)
 /// the in-memory tests cannot.
 /// </summary>
 public sealed class DemoRosterSeederPostgresTests : IAsyncLifetime
@@ -31,8 +31,8 @@ public sealed class DemoRosterSeederPostgresTests : IAsyncLifetime
         {
             await db.Database.MigrateAsync();
 
-            // A non-demo employee that every phase must leave untouched.
-            db.Employees.Add(new Employee
+            // A non-demo expert that every phase must leave untouched.
+            db.Experts.Add(new Expert
             {
                 Id = Guid.NewGuid(),
                 FirstName = "Grace",
@@ -54,14 +54,14 @@ public sealed class DemoRosterSeederPostgresTests : IAsyncLifetime
 
         var dataset = TrimmedDataset();
 
-        // --- Seed: employees land with children, skills resolved against the upserted catalog ---
+        // --- Seed: experts land with children, skills resolved against the upserted catalog ---
         await using (var db = NewDb())
         {
             var seeded = await DemoRosterSeeder.SeedAsync(db, dataset);
 
             seeded.Should().Be(new DemoRosterSeedResult(Seeded: 2, Skipped: 0));
 
-            var avery = await db.Employees
+            var avery = await db.Experts
                 .Include(e => e.SpokenLanguages)
                 .Include(e => e.AvailabilityEntries)
                 .Include(e => e.Skills).ThenInclude(s => s.Skill)
@@ -78,12 +78,12 @@ public sealed class DemoRosterSeederPostgresTests : IAsyncLifetime
             experience.Achievements.Should().HaveCount(2);
             experience.Skills.Should().HaveCount(2);
 
-            // Simulate the reconcile worker having indexed a demo employee: the wipe must
+            // Simulate the reconcile worker having indexed a demo expert: the wipe must
             // cascade this chunk away via the DB-level FK.
-            db.EmployeeSearchChunks.Add(new EmployeeSearchChunk
+            db.ExpertSearchChunks.Add(new ExpertSearchChunk
             {
                 Id = Guid.NewGuid(),
-                EmployeeId = avery.Id,
+                ExpertId = avery.Id,
                 SourceType = SearchChunkSource.Summary,
                 SourceId = avery.Id,
                 Content = "chunk",
@@ -98,25 +98,25 @@ public sealed class DemoRosterSeederPostgresTests : IAsyncLifetime
             var second = await DemoRosterSeeder.SeedAsync(db, dataset);
 
             second.Should().Be(new DemoRosterSeedResult(Seeded: 0, Skipped: 2));
-            (await db.Employees.CountAsync()).Should().Be(3);
+            (await db.Experts.CountAsync()).Should().Be(3);
         }
 
-        // --- Wipe: exactly the demo-tagged employees go, cascading children and chunks ---
+        // --- Wipe: exactly the demo-tagged experts go, cascading children and chunks ---
         await using (var db = NewDb())
         {
             var wiped = await DemoRosterSeeder.WipeAsync(db);
 
             wiped.Should().Be(2);
-            (await db.Employees.Select(e => e.Email).ToListAsync())
+            (await db.Experts.Select(e => e.Email).ToListAsync())
                 .Should().ContainSingle().Which.Should().Be("grace.hopper@example.com");
             (await db.SpokenLanguages.CountAsync()).Should().Be(0);
             (await db.AvailabilityEntries.CountAsync()).Should().Be(0);
-            (await db.EmployeeSkills.CountAsync()).Should().Be(0);
+            (await db.ExpertSkills.CountAsync()).Should().Be(0);
             (await db.Qualifications.CountAsync()).Should().Be(0);
             (await db.Experiences.CountAsync()).Should().Be(1); // the survivor's
             (await db.Achievements.CountAsync()).Should().Be(0);
             (await db.ExperienceSkills.CountAsync()).Should().Be(0);
-            (await db.EmployeeSearchChunks.CountAsync()).Should().Be(0);
+            (await db.ExpertSearchChunks.CountAsync()).Should().Be(0);
 
             // The upserted catalog stays for the next seed.
             (await db.Skills.CountAsync()).Should().Be(2);
@@ -128,7 +128,7 @@ public sealed class DemoRosterSeederPostgresTests : IAsyncLifetime
             var reseeded = await DemoRosterSeeder.SeedAsync(db, dataset);
 
             reseeded.Should().Be(new DemoRosterSeedResult(Seeded: 2, Skipped: 0));
-            (await db.Employees.CountAsync()).Should().Be(3);
+            (await db.Experts.CountAsync()).Should().Be(3);
             (await db.Skills.CountAsync()).Should().Be(2);
             (await db.Categories.CountAsync()).Should().Be(2);
         }
@@ -149,14 +149,14 @@ public sealed class DemoRosterSeederPostgresTests : IAsyncLifetime
             new DemoRosterSkill { Name = "C#", Category = "Backend / .NET" },
             new DemoRosterSkill { Name = "FIX Protocol", Category = "Fintech / Trading" },
         ],
-        Employees =
+        Experts =
         [
-            DemoEmployee("avery.brightforge"),
-            DemoEmployee("blair.copperfield"),
+            DemoExpert("avery.brightforge"),
+            DemoExpert("blair.copperfield"),
         ],
     };
 
-    private static DemoRosterEmployee DemoEmployee(string slug) => new()
+    private static DemoRosterExpert DemoExpert(string slug) => new()
     {
         FirstName = slug.Split('.')[0],
         LastName = slug.Split('.')[1],
@@ -168,8 +168,8 @@ public sealed class DemoRosterSeederPostgresTests : IAsyncLifetime
         Availability = [new DemoRosterAvailability { EffectiveFrom = new DateOnly(2026, 3, 1), CapacityPercent = 50 }],
         Skills =
         [
-            new DemoRosterEmployeeSkill { Name = "C#", Level = SkillLevel.Expert, YearsExperience = 9.5m },
-            new DemoRosterEmployeeSkill { Name = "FIX Protocol", Level = SkillLevel.Advanced, YearsExperience = 6m },
+            new DemoRosterExpertSkill { Name = "C#", Level = SkillLevel.Expert, YearsExperience = 9.5m },
+            new DemoRosterExpertSkill { Name = "FIX Protocol", Level = SkillLevel.Advanced, YearsExperience = 6m },
         ],
         Qualifications =
         [

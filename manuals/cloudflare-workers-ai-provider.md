@@ -100,7 +100,7 @@ default profile. `MeteringChatClient` and the OpenTelemetry wrapper are per-clie
 ## 5. Embeddings: separate ticket, do not bundle
 
 Workers AI exposes `/v1/embeddings` (bge family) on the same free pool, but no bge model emits
-1536 dimensions, and `EmployeeSearchChunk` pins `vector(1536)`
+1536 dimensions, and `ExpertSearchChunk` pins `vector(1536)`
 (`api/Infrastructure/Embeddings/EmbeddingOptions.cs` → `Dimensions = 1536`). Swapping the embedder
 means a schema change plus a full reindex. Out of scope for the chat-provider work.
 

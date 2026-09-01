@@ -10,12 +10,12 @@ namespace ExpertToJob.Application.Abstractions;
 /// </summary>
 public interface IAppDbContext
 {
-    DbSet<Employee> Employees { get; }
+    DbSet<Expert> Experts { get; }
     DbSet<SpokenLanguage> SpokenLanguages { get; }
     DbSet<AvailabilityEntry> AvailabilityEntries { get; }
     DbSet<Category> Categories { get; }
     DbSet<Skill> Skills { get; }
-    DbSet<EmployeeSkill> EmployeeSkills { get; }
+    DbSet<ExpertSkill> ExpertSkills { get; }
     DbSet<Qualification> Qualifications { get; }
     DbSet<Experience> Experiences { get; }
     DbSet<Achievement> Achievements { get; }

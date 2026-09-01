@@ -110,8 +110,8 @@ export function StaffingPanel({
   onOpenInMatch,
   onTailorCv,
 }: {
-  onOpenInMatch: (employeeId: string, jobDescription: string) => void;
-  onTailorCv: (employeeId: string, jobDescription: string) => void;
+  onOpenInMatch: (expertId: string, jobDescription: string) => void;
+  onTailorCv: (expertId: string, jobDescription: string) => void;
 }) {
   const skills = useSkills();
 
@@ -341,10 +341,10 @@ export function StaffingPanel({
             ) : (
               report.candidates.map((c) => (
                 <StaffingCandidateCard
-                  key={c.employeeId}
+                  key={c.expertId}
                   candidate={c}
-                  onOpenInMatch={(employeeId) => onOpenInMatch(employeeId, submittedJd)}
-                  onTailorCv={(employeeId) => onTailorCv(employeeId, submittedJd)}
+                  onOpenInMatch={(expertId) => onOpenInMatch(expertId, submittedJd)}
+                  onTailorCv={(expertId) => onTailorCv(expertId, submittedJd)}
                 />
               ))
             )}

@@ -1,5 +1,5 @@
 using System.Text.Json;
-using ExpertToJob.Application.Employees;
+using ExpertToJob.Application.Experts;
 using ExpertToJob.Domain.Enums;
 using FluentValidation;
 using FluentValidation.Results;
@@ -10,7 +10,7 @@ namespace ExpertToJob.Agents.Tests.Eval;
 /// <summary>Everything one eval run staged, captured from the fake MCP tools' arguments.</summary>
 public sealed class IngestionWriteLog
 {
-    public SaveEmployeeDto? Draft { get; set; }
+    public SaveExpertDto? Draft { get; set; }
     public List<SaveSpokenLanguageDto> Languages { get; } = [];
     public List<Guid> SkillIds { get; } = [];
     public List<SaveQualificationDto> Qualifications { get; } = [];
@@ -56,26 +56,26 @@ public static class IngestionEvalTools
             "skill_list");
 
         var createDraft = AIFunctionFactory.Create(
-            (SaveEmployeeDto dto) => Guard(log, new SaveEmployeeValidator().Validate(dto), () =>
+            (SaveExpertDto dto) => Guard(log, new SaveExpertValidator().Validate(dto), () =>
             {
                 log.Draft = dto;
                 return JsonSerializer.Serialize(
-                    new { employee = new { id = draftId, dto.FirstName, dto.LastName }, duplicateWarning = (string?)null }, Json);
+                    new { expert = new { id = draftId, dto.FirstName, dto.LastName }, duplicateWarning = (string?)null }, Json);
             }),
-            "employee_create_draft",
-            "Create a DRAFT employee from root fields.");
+            "expert_create_draft",
+            "Create a DRAFT expert from root fields.");
 
         var addLanguage = AIFunctionFactory.Create(
-            (Guid employeeId, SaveSpokenLanguageDto dto) => Guard(log, new SaveSpokenLanguageValidator().Validate(dto), () =>
+            (Guid expertId, SaveSpokenLanguageDto dto) => Guard(log, new SaveSpokenLanguageValidator().Validate(dto), () =>
             {
                 log.Languages.Add(dto);
                 return Created();
             }),
             "language_add",
-            "Add a spoken language to an employee.");
+            "Add a spoken language to an expert.");
 
         var addSkill = AIFunctionFactory.Create(
-            (Guid employeeId, SaveEmployeeSkillDto dto) =>
+            (Guid expertId, SaveExpertSkillDto dto) =>
             {
                 if (!catalogById.ContainsKey(dto.SkillId))
                 {
@@ -86,26 +86,26 @@ public static class IngestionEvalTools
                 log.SkillIds.Add(dto.SkillId);
                 return Created();
             },
-            "employee_skill_add",
-            "Add a catalog skill to an employee.");
+            "expert_skill_add",
+            "Add a catalog skill to an expert.");
 
         var addQualification = AIFunctionFactory.Create(
-            (Guid employeeId, SaveQualificationDto dto) => Guard(log, new SaveQualificationValidator().Validate(dto), () =>
+            (Guid expertId, SaveQualificationDto dto) => Guard(log, new SaveQualificationValidator().Validate(dto), () =>
             {
                 log.Qualifications.Add(dto);
                 return Created();
             }),
             "qualification_add",
-            "Add a degree or certification to an employee.");
+            "Add a degree or certification to an expert.");
 
         var addExperience = AIFunctionFactory.Create(
-            (Guid employeeId, SaveExperienceDto dto) => Guard(log, new SaveExperienceValidator().Validate(dto), () =>
+            (Guid expertId, SaveExperienceDto dto) => Guard(log, new SaveExperienceValidator().Validate(dto), () =>
             {
                 log.Experiences.Add(dto);
                 return Created();
             }),
             "experience_add",
-            "Add a work-experience record (with achievements and skill ids) to an employee.");
+            "Add a work-experience record (with achievements and skill ids) to an expert.");
 
         return ([skillList, createDraft, addLanguage, addSkill, addQualification, addExperience], log, catalogById);
     }

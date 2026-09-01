@@ -1,6 +1,6 @@
 # Roster Scan — async bulk scoring and the sync-vs-batch selection
 
-One job description in, every (optionally filtered) active employee scored against it — as a
+One job description in, every (optionally filtered) active expert scored against it — as a
 durable, pausable background job rather than a blocking call. Roster Scan is the knowledge-item-3
 artifact of map P1T-105: choosing between the synchronous Messages-style API and an asynchronous
 batch API based on latency requirements, workflow blocking, and acceptable processing windows —
@@ -44,9 +44,9 @@ JD + its `JdRequirements` extraction; the runner never knows the transport.
 
 ## Quota arithmetic (P1T-114, pinned `gemini-3.5-flash-lite`)
 
-RPM 15 / TPM 250K / RPD 500 (free tier, per project, resets midnight Pacific). A 500-employee
+RPM 15 / TPM 250K / RPD 500 (free tier, per project, resets midnight Pacific). A 500-expert
 scan = 50 chunk calls + 1 extraction ≈ **4 minutes** under RPM pacing and a tenth of the day's
-RPD; the 45-employee dev roster completes in seconds. Every Flash-proper generation is an RPD-20
+RPD; the 45-expert dev roster completes in seconds. Every Flash-proper generation is an RPD-20
 trap — never trust a `-latest` alias for quota.
 
 ## Job model
@@ -64,7 +64,7 @@ digest at intake — a resumed job scores exactly what the original sweep saw.
   spends. A timer sweep re-queues due jobs; startup recovery re-queues orphaned `running` rows.
 - Intake is idempotent: one metered JD extraction (`jd-extraction`, persisted), one digest sweep
   via `roster_digest_list` through the `agent-roster-scan` identity (mcp:read), filtered by the
-  deterministic eligible-id set (`IEmployeeFilterService` — semantic search's prefilter
+  deterministic eligible-id set (`IExpertFilterService` — semantic search's prefilter
   semantics). Chunk replies meter under `roster-scan`.
 
 ## Surfaces

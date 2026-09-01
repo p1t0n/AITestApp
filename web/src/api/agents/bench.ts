@@ -19,7 +19,7 @@ export interface BenchProposalStats {
 }
 
 export interface BenchStats {
-  activeEmployees: number;
+  activeExperts: number;
   fullyAvailable: number;
   partiallyAvailable: number;
   fullyBooked: number;

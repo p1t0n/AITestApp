@@ -16,13 +16,13 @@ namespace ExpertToJob.CostFloors;
 /// </summary>
 public static class CostFloors
 {
-    /// <summary>Employees seeded for the result-size floor. Pinned at the roster size the
+    /// <summary>Experts seeded for the result-size floor. Pinned at the roster size the
     /// 2026-08-30 measurement ran on, so the committed ceilings stay comparable to it.</summary>
-    public const int DemoRosterEmployees = 45;
+    public const int DemoRosterExperts = 45;
 
     /// <summary>
     /// Per-read-tool RESULT ceilings, measured over the seeded demo roster
-    /// (<see cref="DemoRosterEmployees"/> employees, 79 catalog skills) against real Postgres.
+    /// (<see cref="DemoRosterExperts"/> experts, 79 catalog skills) against real Postgres.
     /// Every model-free read tool must appear here — the floor test fails on an unlisted one, so
     /// a new read tool cannot ship unmeasured.
     /// </summary>
@@ -41,9 +41,9 @@ public static class CostFloors
             // 12.7% of the same run. No paging by design (the roster IS the answer), so the cost
             // is bounded by roster size; the Tool Allowlist (P1T-146) is what keeps it away from
             // agents with no business listing everyone — only roster-qa and bench-report see it.
-            ["employee_list"] = 2_805,
+            ["expert_list"] = 2_805,
 
-            ["employee_get"] = 2_064,
+            ["expert_get"] = 2_064,
             ["cv_get"] = 1_643,
             ["availability_list"] = 73,
             ["category_list"] = 270,
@@ -52,7 +52,7 @@ public static class CostFloors
             // Already pages — the P1T-121 reference implementation. This is one default page of 50,
             // which is why a full sweep is a deliberate act and a stray call is not. The only
             // ceiling here carrying slack: digests truncate at 1,500 CHARACTERS, and EF leaves
-            // an employee's experience order unspecified, so which non-ASCII characters fall
+            // an expert's experience order unspecified, so which non-ASCII characters fall
             // inside the cut — and therefore how many \uXXXX escapes the JSON carries — shifts a
             // few tokens per seed. Measured 18,248-18,253.
             ["roster_digest_list"] = 18_300,
@@ -102,8 +102,8 @@ public static class CostFloors
             ["category_list"] = 165,
             ["category_tree"] = 163,
             ["cv_get"] = 296,
-            ["employee_get"] = 357,
-            ["employee_list"] = 243,
+            ["expert_get"] = 357,
+            ["expert_list"] = 243,
             ["roster_digest_list"] = 301,
             // P1T-148 made its filters read as the primary path for a compound question and
             // paid for the words by cutting elaboration — a ratchet down, not a trade.
@@ -127,13 +127,13 @@ public static class CostFloors
             ["category_create"] = 251,
             ["category_delete"] = 158,
             ["category_update"] = 241,
-            ["employee_create"] = 421,
-            ["employee_create_draft"] = 379,
-            ["employee_delete"] = 216,
-            ["employee_skill_add"] = 428,
-            ["employee_skill_delete"] = 149,
-            ["employee_skill_update"] = 351,
-            ["employee_update"] = 482,
+            ["expert_create"] = 421,
+            ["expert_create_draft"] = 379,
+            ["expert_delete"] = 216,
+            ["expert_skill_add"] = 428,
+            ["expert_skill_delete"] = 149,
+            ["expert_skill_update"] = 351,
+            ["expert_update"] = 482,
             ["experience_add"] = 564,
             ["experience_delete"] = 152,
             ["experience_skill_add"] = 275,
@@ -159,8 +159,8 @@ public static class CostFloors
     public static readonly IReadOnlySet<string> ReadScopeTools =
         new HashSet<string>
         {
-            "availability_list", "category_list", "category_tree", "cv_get", "employee_get",
-            "employee_list", "roster_digest_list", "roster_semantic_search",
+            "availability_list", "category_list", "category_tree", "cv_get", "expert_get",
+            "expert_list", "roster_digest_list", "roster_semantic_search",
             "roster_shortlist_search", "skill_list", "style_exemplar_search",
         };
 
@@ -173,8 +173,8 @@ public static class CostFloors
         new HashSet<string>(ReadScopeTools)
         {
             "achievement_add", "achievement_update", "availability_add", "availability_update",
-            "category_create", "category_update", "employee_create", "employee_create_draft",
-            "employee_skill_add", "employee_skill_update", "employee_update", "experience_add",
+            "category_create", "category_update", "expert_create", "expert_create_draft",
+            "expert_skill_add", "expert_skill_update", "expert_update", "experience_add",
             "experience_skill_add", "experience_update", "language_add", "language_update",
             "qualification_add", "qualification_update", "skill_create", "skill_update",
         };
@@ -212,21 +212,21 @@ public static class CostFloors
         new Dictionary<string, IReadOnlySet<string>>
         {
             // The 26% line item. roster_shortlist_search, roster_digest_list, category_list,
-            // category_tree, availability_list and employee_get were paid for ten times and never
+            // category_tree, availability_list and expert_get were paid for ten times and never
             // called; availability facts come off cv_get, which carries them.
             ["roster-qa"] = new HashSet<string>
-                { "roster_semantic_search", "skill_list", "employee_list", "cv_get" },
+                { "roster_semantic_search", "skill_list", "expert_list", "cv_get" },
             ["cv-tailoring"] = new HashSet<string> { "cv_get", "style_exemplar_search" },
             ["match"] = new HashSet<string> { "cv_get" },
             ["shortlist"] = new HashSet<string> { "roster_shortlist_search" },
             ["interview-kit"] = new HashSet<string> { "cv_get" },
-            ["bench-report"] = new HashSet<string> { "employee_list" },
+            ["bench-report"] = new HashSet<string> { "expert_list" },
 
             // The one mcp:write identity. Not skill_create (it proposes catalog additions, humans
             // approve them) and no Availability tools — resumes do not state capacity.
             ["resume-ingestion"] = new HashSet<string>
             {
-                "skill_list", "employee_create_draft", "language_add", "employee_skill_add",
+                "skill_list", "expert_create_draft", "language_add", "expert_skill_add",
                 "qualification_add", "experience_add",
             },
             ["roster-scan"] = new HashSet<string> { "roster_digest_list" },
@@ -322,7 +322,7 @@ public static class CostFloors
     /// up, then ask ONE filtered semantic search, then answer.
     ///
     /// <para>The traced run took nine tool calls to reach the same answer: three near-identical
-    /// semantic searches, a whole-roster <c>employee_list</c>, three speculative <c>cv_get</c>s
+    /// semantic searches, a whole-roster <c>expert_list</c>, three speculative <c>cv_get</c>s
     /// and a <c>roster_shortlist_search</c> fired after it already had the answer. That is a
     /// Convergence defect, not a payload one — a Runtime Budget truncates it, it does not fix it.
     /// The instructions and <c>roster_semantic_search</c>'s description are what point at this

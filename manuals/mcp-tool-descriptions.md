@@ -14,7 +14,7 @@ is by far the most important factor in tool performance"* — what the tool does
 ([define-tools § best practices](https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools),
 digested in `manuals/anthropic-gemini-ichatclient-mapping.md`, P1T-106). Before this pass most of
 our 40+ tools carried a single one-line sentence — `cv_get` was *"Assemble and return an
-employee's full CV (all sections) by id. Returns data, not a PDF."* — and the tool-selection eval
+expert's full CV (all sections) by id. Returns data, not a PDF."* — and the tool-selection eval
 (P1T-127) measured what that costs.
 
 ### The five parts every description carries
@@ -26,7 +26,7 @@ employee's full CV (all sections) by id. Returns data, not a PDF."* — and the 
 4. **Input format notes with an inline example** — `Input: … e.g. {"page": 2, "pageSize": 50}`.
    There is no `input_examples` field in M.E.AI or MCP (Anthropic's API has one; the mapping doc
    records the gap), so examples live in the description text or nowhere.
-5. **What it does NOT return** — the negative space: no PDF, no relevance scores, no employee
+5. **What it does NOT return** — the negative space: no PDF, no relevance scores, no expert
    data, no skill levels. Cheap to write, and it stops a wrong-tool call one sentence earlier.
 
 `roster_digest_list` (P1T-121) was written to this shape first and is the reference
@@ -39,9 +39,9 @@ The confusable READ clusters the P1T-112 audit named:
 
 | Cluster | Tools | Disambiguation added |
 | --- | --- | --- |
-| roster reads | `employee_list`, `employee_get`, `cv_get` | each points capability questions at `roster_semantic_search`, JD ranking at `roster_shortlist_search`, bulk sweeps at `roster_digest_list`, and each other for one-person vs whole-roster; `cv_get` now advertises that its `achievementId`s are `style_exemplar_search`'s input |
+| roster reads | `expert_list`, `expert_get`, `cv_get` | each points capability questions at `roster_semantic_search`, JD ranking at `roster_shortlist_search`, bulk sweeps at `roster_digest_list`, and each other for one-person vs whole-roster; `cv_get` now advertises that its `achievementId`s are `style_exemplar_search`'s input |
 | search trio | `roster_semantic_search`, `roster_shortlist_search`, `style_exemplar_search` | one free-form question vs a JD's 3–8 requirements vs phrasing exemplars — each names the other two, plus the digest tool for sweeps and the structured reads for exact facts |
-| catalog reads | `category_list`, `category_tree`, `skill_list` | flat ids vs nested hierarchy (whose nodes carry their skills) vs the flat skill list; all three send per-person skills to `employee_get`, and `skill_list` separates `skill_create` (new catalog entry) from `employee_skill_add` (attach existing) |
+| catalog reads | `category_list`, `category_tree`, `skill_list` | flat ids vs nested hierarchy (whose nodes carry their skills) vs the flat skill list; all three send per-person skills to `expert_get`, and `skill_list` separates `skill_create` (new catalog entry) from `expert_skill_add` (attach existing) |
 
 ### The affordance pass 1 could not add: `skill_list`'s filter (P1T-145)
 
@@ -70,8 +70,8 @@ middle of the availability family:
 
 | Family | Tools | Disambiguation added |
 | --- | --- | --- |
-| employee root | `employee_create`, `employee_create_draft`, `employee_update`, `employee_delete` | active-vs-draft (drafts are hidden until a human promotes them and may carry an empty email — the ingestion path); "capacity is not a root field, use `availability_add`"; children are separate calls after the id comes back |
-| the person-vs-catalog trap | `employee_skill_add` ↔ `skill_create`, `employee_skill_update` ↔ `skill_update`, `employee_skill_delete` ↔ `skill_delete`, plus `experience_skill_add` | each side names the other explicitly: attaching an EXISTING catalog skill to a PERSON vs adding a NEW skill to the shared CATALOG (touching nobody) vs linking a skill to one ROLE as evidence |
+| expert root | `expert_create`, `expert_create_draft`, `expert_update`, `expert_delete` | active-vs-draft (drafts are hidden until a human promotes them and may carry an empty email — the ingestion path); "capacity is not a root field, use `availability_add`"; children are separate calls after the id comes back |
+| the person-vs-catalog trap | `expert_skill_add` ↔ `skill_create`, `expert_skill_update` ↔ `skill_update`, `expert_skill_delete` ↔ `skill_delete`, plus `experience_skill_add` | each side names the other explicitly: attaching an EXISTING catalog skill to a PERSON vs adding a NEW skill to the shared CATALOG (touching nobody) vs linking a skill to one ROLE as evidence |
 | child families | `language_*`, `availability_*`, `experience_*`, `achievement_*`, `qualification_*`, `experience_skill_*` | which id each takes — the parent id to add, the row's own id to update or delete — since that is the other standing confusion; a certification is not a skill; a bullet belongs to a role, not a person |
 | catalog structure | `category_create/update/delete` | category-vs-skill, and the cycle rule on re-parenting |
 
@@ -82,7 +82,7 @@ an explicit "full replace, include what should survive" warning. Every destructi
 itself, names the non-destructive alternative (0% capacity instead of deleting a person; the
 child's own delete instead of the parent's), and states that it needs the admin scope.
 
-`employee_get` also gained a pointer at the write tools, because "change the title of employee X"
+`expert_get` also gained a pointer at the write tools, because "change the title of expert X"
 measurably landed there.
 
 ### Measured before/after (P1T-127 instrument)
@@ -97,7 +97,7 @@ with 0 transport errors.
 | exact-fact | 100% | 100% ×4 | 100% ×2 | held throughout |
 | bulk-sweep | 100% | 100% ×4 | 100% ×2 | held throughout |
 | catalog | 100% | 100% ×4 | 100% ×2 | held throughout |
-| shortlist | 75% | 100%, 100%, 75%, 75% | 75%, 100%, 75%, 75% | left `employee_list`, but never settled |
+| shortlist | 75% | 100%, 100%, 75%, 75% | 75%, 100%, 75%, 75% | left `expert_list`, but never settled |
 | style | 0% | 0% ×4 | 0% ×4 | unmoved — an affordance problem, see below |
 | writes | 75% | 75% ×4 | 83%, 83%, 75%, 75% | pass 2's gain: `write-experience` left `skill_list` for `experience_add` |
 | **overall first-tool** | **0.821, 0.821** | **0.846, 0.846, 0.821, 0.821** | **0.846, 0.872, 0.821, 0.821** | any-call identical throughout |
@@ -109,7 +109,7 @@ real baseline. Measured 2026-08-28: 0.821, twice, with identical misses.
 **Selection on this model is not deterministic, and the two identical pre-pass runs were a
 coincidence.** Exactly one prompt moved: `sl-jd-paste` ("here is a job description with several
 must-haves — find the top candidates with per-requirement evidence"). Pre-pass it chose
-`employee_list` both times. Post-pass, across four runs, it never chose `employee_list` again — it
+`expert_list` both times. Post-pass, across four runs, it never chose `expert_list` again — it
 chose `roster_shortlist_search` twice (correct) and `roster_digest_list` twice (a miss). So the
 durable, repeated result is *narrower* than the headline: the JD prompt left the plain roster
 listing for the roster-search family, and which member of that family it picks is not pinned. One
@@ -122,7 +122,7 @@ runs — the rewrite cost nothing there, which is the other half of what the pas
 ### After the affordances (P1T-136 + P1T-137, measured 2026-08-29)
 
 Same instrument, now under P1T-138's `Temperature = 0` pin, with both affordance fixes landed:
-`style_exemplar_search`'s Theme Mode and `employee_update`'s Partial Update (plus `skill_create`'s
+`style_exemplar_search`'s Theme Mode and `expert_update`'s Partial Update (plus `skill_create`'s
 prerequisite reads scored as correct). Two clean runs:
 
 | Cluster | after pass 2 (best) | run A | run B |
@@ -192,34 +192,34 @@ the five that deflection is arguably the *correct* move:
 
 | Prompt | Expected | Model calls | The blocking contract |
 | --- | --- | --- | --- |
-| `write-update-title` | `employee_update` | `employee_get` | `SaveEmployeeDto` is a full replace with `firstName`/`lastName` `NotEmpty` — writing from the prompt alone would blank the person's name and email |
+| `write-update-title` | `expert_update` | `expert_get` | `SaveExpertDto` is a full replace with `firstName`/`lastName` `NotEmpty` — writing from the prompt alone would blank the person's name and email |
 | `write-skill-trap-catalog` | `skill_create` | `category_list` | needs a `categoryId` the prompt never gives (its sibling prompt, which supplies one, passes) |
 | `style-bullet` / `style-rewrite` / `style-metrics` | `style_exemplar_search` | `roster_semantic_search` etc. | needs `achievementIds`; the prompts name no bullet |
-| `write-draft` (last two runs only) | `employee_create_draft` | **no call at all** | the prompt says "stage this pasted resume" but carries no resume text, so there is nothing to put in the dto |
+| `write-draft` (last two runs only) | `expert_create_draft` | **no call at all** | the prompt says "stage this pasted resume" but carries no resume text, so there is nothing to put in the dto |
 
 `write-draft` deserves a note on provenance rather than a theory: it passed in the first eight runs
 and made no call in the last two. Those last two are also the first runs that saw a one-sentence
-edit to `employee_create`'s description (the email-uniqueness wording). A causal link is unlikely —
+edit to `expert_create`'s description (the email-uniqueness wording). A causal link is unlikely —
 the prompt is about drafts, not creates — and two runs of a ±2-prompt instrument cannot establish
 one either way. Left recorded, not concluded; P1T-138's variance fix is what would settle it.
 
 The eval scores a first call, and `AnyCallCorrect` cannot rescue these either — the harness
 measures one turn, so the follow-up write never happens. Tracked as P1T-137 (write side: partial
-update for `employee_update`, `skill_create` by category name, or a deliberate re-label) and
+update for `expert_update`, `skill_create` by category name, or a deliberate re-label) and
 P1T-136 (style side). Both decisions are a human's: one option changes the product surface, the
 other changes the yardstick.
 
 #### The write cluster's two survivors, resolved (P1T-137)
 
-Landed **option 1** for `employee_update`, **option 3** for `skill_create`'s trap prompt:
+Landed **option 1** for `expert_update`, **option 3** for `skill_create`'s trap prompt:
 
-* `employee_update` now takes `UpdateEmployeeDto` — every root field optional, only the fields
-  present overwrite the employee's current value (`FirstName`/`LastName`, if sent, still cannot be
-  blank). The old `SaveEmployeeDto` full-replace path is unchanged for `employee_create` and stays
-  available on REST as `PUT /api/employees/{id}`; a new `PATCH /api/employees/{id}` exposes the
+* `expert_update` now takes `UpdateExpertDto` — every root field optional, only the fields
+  present overwrite the expert's current value (`FirstName`/`LastName`, if sent, still cannot be
+  blank). The old `SaveExpertDto` full-replace path is unchanged for `expert_create` and stays
+  available on REST as `PUT /api/experts/{id}`; a new `PATCH /api/experts/{id}` exposes the
   same partial-update method REST-side, so validation stays identical across both surfaces
-  (product invariant 7). `write-update-title` — "Change the title of employee … to Staff
-  Engineer" — is now a single legal `employee_update` call with just `{"title": "Staff Engineer"}`;
+  (product invariant 7). `write-update-title` — "Change the title of expert … to Staff
+  Engineer" — is now a single legal `expert_update` call with just `{"title": "Staff Engineer"}`;
   no re-label needed, this was a real product gap in the tool contract, not an eval sensitivity to
   loosen. The tool description dropped the "full replace" warning for one describing partial-update
   semantics and the null-vs-empty-string distinction.
@@ -232,13 +232,13 @@ Landed **option 1** for `employee_update`, **option 3** for `skill_create`'s tra
 
 Application-layer tests cover `PatchAsync`: a title-only patch leaves the other fields untouched, a
 supplied empty `firstName` still throws `ValidationException`, and an unknown id still throws
-`NotFoundException` (`tests/Application.Tests/EmployeeServiceValidationTests.cs`). An MCP-level
-test confirms the same round trip through `employee_update` with a single-field dto
-(`tests/Mcp.Tests/EmployeeToolsTests.cs`).
+`NotFoundException` (`tests/Application.Tests/ExpertServiceValidationTests.cs`). An MCP-level
+test confirms the same round trip through `expert_update` with a single-field dto
+(`tests/Mcp.Tests/ExpertToolsTests.cs`).
 
 **Eval re-run: done, 2026-08-29 — see "After the affordances" above.** The `writes` cluster read
 **100% in both clean runs**, up from 83% at its pass-2 best. Both survivors are gone:
-`write-update-title` now calls `employee_update` directly, and `write-skill-trap-catalog`'s
+`write-update-title` now calls `expert_update` directly, and `write-skill-trap-catalog`'s
 prerequisite `category_list` read is scored as correct.
 
 The honest summary of two passes: the description bar fixed what descriptions can fix — the
@@ -269,7 +269,7 @@ options is a human's, since one changes the product surface and the other change
 **Decision (P1T-136): option 1 — the affordance is now real.** `IExemplarSearchService.SearchAsync`
 takes `achievementIds` OR a free-text `theme`, mutually exclusive (both or neither is a `validation`
 error with per-field detail, not a silent empty result). Theme mode embeds the theme itself and
-ranks the whole achievement-bullet pool against it; unlike id mode there is no requesting employee,
+ranks the whole achievement-bullet pool against it; unlike id mode there is no requesting expert,
 so nothing is excluded from the pool. The response shape says honestly which mode ran:
 `ExemplarSearchResult.Results` (id-keyed, a `BulletExemplars` per input bullet) and `ThemeResult`
 (a single `ThemeExemplars`) are siblings, not a nullable-keyed variant of one record — exactly one
@@ -303,14 +303,14 @@ is mandatory) `RequireAny` forcing plus the Capture-Verify Guard (P1T-130).
 | Shortlist | `jd-extraction` (tool-less model call) | fixed | code — `ShortlistRunService` orchestrates it (P1T-117) |
 | Shortlist | `roster_shortlist_search` | fixed (arguments = the extractor's requirements + the request filters) | code — `IShortlistSearch` invokes the MCP tool directly (P1T-117) |
 | Shortlist | rationale model call | n/a (tool-less) | code-orchestrated, model writes prose only |
-| CV Tailoring | `cv_get` | **fixed** (the employee id arrives in the request) | **converted to code in P1T-131**: pre-fetched deterministically; the verbatim result opens the session; the model's tool surface shrank to the exemplar tool alone |
+| CV Tailoring | `cv_get` | **fixed** (the expert id arrives in the request) | **converted to code in P1T-131**: pre-fetched deterministically; the verbatim result opens the session; the model's tool surface shrank to the exemplar tool alone |
 | CV Tailoring | `style_exemplar_search` | dynamic (the model picks which selected bullets deserve exemplars and passes their ids) | stays model-driven; per-run capture decorator records the selection + payload for the fabrication guard |
-| Match | `cv_get` | fixed in principle | **stays model-driven, recorded**: the run is a single turn whose tool surface is already narrowed to `cv_get` alone and whose outcome is schema-constrained — the miss rate the conversion would buy down has not been observed since the narrowing. Converting would thread `employeeId` through `MatchAgent`/`MatchRunService` and re-script the match/staffing test fixtures — a materially larger change than Tailoring's for no demonstrated failure. Revisit if the live smokes or the tool-selection eval ever show a skipped `cv_get`. |
+| Match | `cv_get` | fixed in principle | **stays model-driven, recorded**: the run is a single turn whose tool surface is already narrowed to `cv_get` alone and whose outcome is schema-constrained — the miss rate the conversion would buy down has not been observed since the narrowing. Converting would thread `expertId` through `MatchAgent`/`MatchRunService` and re-script the match/staffing test fixtures — a materially larger change than Tailoring's for no demonstrated failure. Revisit if the live smokes or the tool-selection eval ever show a skipped `cv_get`. |
 | Interview Kit | `cv_get` | fixed in principle | **stays model-driven, recorded**: same judgment as Match — tool surface already `cv_get`-only, 2-turn flow with composer-side evidence vetting against the captured result; conversion touches the evidence-vetting seam for no observed miss. Same revisit trigger. |
 | Roster Q&A | `roster_semantic_search` / structured reads | dynamic (the question decides the tool) | prompt-driven selection + `RequireAny` on the first call + Capture-Verify Guard (P1T-130) |
-| Resume Ingestion | staged `employee_create_draft` → child adds | dynamic chain (the model self-corrects off MCP's structured validation errors) | stays prompt-procedural **by design** — the error-driven retry loop is the mechanism, not a gap (P1T-92) |
+| Resume Ingestion | staged `expert_create_draft` → child adds | dynamic chain (the model self-corrects off MCP's structured validation errors) | stays prompt-procedural **by design** — the error-driven retry loop is the mechanism, not a gap (P1T-92) |
 | Roster Scan | `roster_digest_list` + scoring calls | fixed (the job enumerates the roster) | code — the scan runner drives everything; the model only scores (P1T-124/125) |
-| Bench Report | `employee_list` | fixed | code — server-composed stats; the model writes prose over them (P1T-104) |
+| Bench Report | `expert_list` | fixed | code — server-composed stats; the model writes prose over them (P1T-104) |
 
 Summary: every fixed call in the system is now code-driven; the calls that remain model-driven
 are either genuinely dynamic (Tailoring's exemplar search, Roster Q&A's tool choice, Ingestion's
@@ -319,13 +319,13 @@ Interview Kit's `cv_get`, both already single-tool surfaces with structured outc
 
 ### What the Tailoring conversion changed (P1T-131)
 
-- `CvTailoringAgent.TailorAsync(Guid employeeId, string jobDescription, …)` — typed inputs
+- `CvTailoringAgent.TailorAsync(Guid expertId, string jobDescription, …)` — typed inputs
   replace the composed prompt; the agent invokes `cv_get` directly (`InvokeAsync` with
-  `{ employeeId }`), captures the payload for the composer's evidence vetting exactly as before,
+  `{ expertId }`), captures the payload for the composer's evidence vetting exactly as before,
   and opens the 2-turn session with the JD + the verbatim tool result.
 - The model's tool list is now `style_exemplar_search` only — no `cv_get` round-trip to hope for,
   one fewer way to go wrong, and a smaller prompt surface.
 - A missing `cv_get` tool on the MCP listing is an upstream fault (502), same as the shortlist's
-  missing-tool rule. A not-found employee flows through as the tool's error payload — the model
+  missing-tool rule. A not-found expert flows through as the tool's error payload — the model
   says so plainly, as before.
 - The composer, fabrication guard, and endpoint contract are unchanged.

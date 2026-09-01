@@ -59,7 +59,7 @@ public class ShortlistRunServiceTests
     private static ShortlistAgent RationaleAgent(out FakeChatClient chat)
     {
         chat = new FakeChatClient(() => new ChatResponse(new ChatMessage(ChatRole.Assistant,
-            $$"""{"rationales":[{"employeeId":"{{Ada}}","rationale":"Strong Kafka evidence."}]}"""))
+            $$"""{"rationales":[{"expertId":"{{Ada}}","rationale":"Strong Kafka evidence."}]}"""))
         {
             Usage = new UsageDetails { InputTokenCount = 50, OutputTokenCount = 10, TotalTokenCount = 60 },
         });

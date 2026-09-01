@@ -32,7 +32,7 @@ public class MatchLiveSmokeTests
             "/agents/match",
             new
             {
-                employeeId = Guid.NewGuid(),
+                expertId = Guid.NewGuid(),
                 jobDescription = "Senior backend engineer: .NET, PostgreSQL, distributed systems.",
             });
 

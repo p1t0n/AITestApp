@@ -29,9 +29,9 @@ public sealed record ExemplarSearchResult(
 /// <summary>
 /// Style exemplar retrieval for CV tailoring, in two mutually exclusive modes: id-keyed — given
 /// achievement ids (e.g. from cv_get), resolve each bullet's stored text server-side and return,
-/// per bullet, the closest quantified achievement bullets from OTHER employees' CVs; or themed —
+/// per bullet, the closest quantified achievement bullets from OTHER experts' CVs; or themed —
 /// given a free-text theme with no bullet to anchor to, embed the theme itself and return the
-/// closest quantified achievement bullets against it (there is no requesting employee to exclude,
+/// closest quantified achievement bullets against it (there is no requesting expert to exclude,
 /// so nothing is subtracted from the pool). Either way results are anonymized
 /// ([name]/[company] placeholders) so they can be imitated for phrasing style without leaking who
 /// wrote them. Unknown ids are skipped silently; the same source bullet is never returned twice

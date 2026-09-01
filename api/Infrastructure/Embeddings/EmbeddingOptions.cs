@@ -20,7 +20,7 @@ public sealed class EmbeddingOptions
     public string EmbeddingModel { get; set; } = "gemini-embedding-001";
 
     /// <summary>Requested output dimensionality. gemini-embedding-001 defaults to 3072; the
-    /// EmployeeSearchChunk column is vector(1536), so the request must pin 1536.</summary>
+    /// ExpertSearchChunk column is vector(1536), so the request must pin 1536.</summary>
     public int Dimensions { get; set; } = 1536;
 
     /// <summary>API key. Prefer the GEMINI_API_KEY env var over config in real use.</summary>

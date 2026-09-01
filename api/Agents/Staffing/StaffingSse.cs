@@ -11,7 +11,7 @@ namespace ExpertToJob.Agents.Staffing;
 ///
 /// <list type="bullet">
 /// <item><c>event: step</c> — <c>{ "stage": "shortlist|match|narrative", "status":
-/// "started|completed", "candidate"?: { "employeeId", "name" }, "completedCount"?,
+/// "started|completed", "candidate"?: { "expertId", "name" }, "completedCount"?,
 /// "totalCount"? }</c>. Enough for a stepper UI: shortlist started/completed, match
 /// started/completed per candidate (name + k/N counters), narrative started/completed.</item>
 /// <item><c>event: stepFailed</c> — the same shape with <c>"status": "failed"</c> plus an
@@ -39,7 +39,7 @@ public static class StaffingSse
     public const string ReportEvent = "report";
     public const string ErrorEvent = "error";
 
-    private sealed record StepCandidate(Guid EmployeeId, string Name);
+    private sealed record StepCandidate(Guid ExpertId, string Name);
 
     private sealed record StepPayload(
         string Stage,
@@ -200,7 +200,7 @@ public static class StaffingSse
             return null;
         }
 
-        var candidate = evt is { EmployeeId: { } id, CandidateName: { } name }
+        var candidate = evt is { ExpertId: { } id, CandidateName: { } name }
             ? new StepCandidate(id, name)
             : null;
         var payload = new StepPayload(

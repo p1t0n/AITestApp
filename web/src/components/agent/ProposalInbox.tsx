@@ -59,8 +59,8 @@ function PackageView({
 }: {
   detail: StaffingProposalDetail;
   pkg: HandoffPackage;
-  onOpenInMatch: (employeeId: string, jobDescription: string) => void;
-  onTailorCv: (employeeId: string, jobDescription: string) => void;
+  onOpenInMatch: (expertId: string, jobDescription: string) => void;
+  onTailorCv: (expertId: string, jobDescription: string) => void;
   onDecided: () => void;
 }) {
   const report = pkg.report;
@@ -101,10 +101,10 @@ function PackageView({
 
       {report.candidates.map((c) => (
         <StaffingCandidateCard
-          key={c.employeeId}
+          key={c.expertId}
           candidate={c}
-          onOpenInMatch={(employeeId) => onOpenInMatch(employeeId, jd)}
-          onTailorCv={(employeeId) => onTailorCv(employeeId, jd)}
+          onOpenInMatch={(expertId) => onOpenInMatch(expertId, jd)}
+          onTailorCv={(expertId) => onTailorCv(expertId, jd)}
         />
       ))}
     </>
@@ -135,7 +135,7 @@ function SnapshotOnlyView({
         <ProposalDecisionCard proposalId={detail.id} onDecided={onDecided} />
       )}
       {detail.candidates.map((c) => (
-        <Paper key={c.employeeId} sx={{ p: 1.5 }}>
+        <Paper key={c.expertId} sx={{ p: 1.5 }}>
           <Typography variant="subtitle2" fontWeight={700}>
             #{c.rank} {c.name} — {c.title}
           </Typography>
@@ -157,8 +157,8 @@ export function ProposalInbox({
   onOpenInMatch,
   onTailorCv,
 }: {
-  onOpenInMatch: (employeeId: string, jobDescription: string) => void;
-  onTailorCv: (employeeId: string, jobDescription: string) => void;
+  onOpenInMatch: (expertId: string, jobDescription: string) => void;
+  onTailorCv: (expertId: string, jobDescription: string) => void;
 }) {
   const proposals = useStaffingProposals("pending");
   const [expanded, setExpanded] = useState(false);

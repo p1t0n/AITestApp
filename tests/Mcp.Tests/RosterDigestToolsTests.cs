@@ -31,9 +31,9 @@ public class RosterDigestToolsTests
     }
 
     [Fact]
-    public async Task Pages_active_employees_in_stable_id_order_with_narrative_digests()
+    public async Task Pages_active_experts_in_stable_id_order_with_narrative_digests()
     {
-        using var factory = McpTestHost.CreateFactory(nameof(Pages_active_employees_in_stable_id_order_with_narrative_digests));
+        using var factory = McpTestHost.CreateFactory(nameof(Pages_active_experts_in_stable_id_order_with_narrative_digests));
         var ids = await SeedAsync(factory, activeCount: 3, draftCount: 1);
         await using var client = await McpTestHost.ConnectAsync(factory);
 
@@ -80,14 +80,14 @@ public class RosterDigestToolsTests
         var ids = new List<Guid>();
         for (var i = 0; i < activeCount; i++)
         {
-            var employee = new Employee
+            var expert = new Expert
             {
                 Id = Guid.NewGuid(),
                 FirstName = $"Active{i}",
                 LastName = "Person",
                 Title = "Engineer",
                 Email = $"active{i}@example.com",
-                Status = EmployeeStatus.Active,
+                Status = ExpertStatus.Active,
                 Summary = "Veteran stream wrangler across payments platforms.",
                 Experiences =
                 {
@@ -102,20 +102,20 @@ public class RosterDigestToolsTests
                     },
                 },
             };
-            ids.Add(employee.Id);
-            db.Employees.Add(employee);
+            ids.Add(expert.Id);
+            db.Experts.Add(expert);
         }
 
         for (var i = 0; i < draftCount; i++)
         {
-            db.Employees.Add(new Employee
+            db.Experts.Add(new Expert
             {
                 Id = Guid.NewGuid(),
                 FirstName = "Draft",
                 LastName = "Dana",
                 Title = "Engineer",
                 Email = $"draft{i}@example.com",
-                Status = EmployeeStatus.Draft,
+                Status = ExpertStatus.Draft,
             });
         }
 

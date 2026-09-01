@@ -1,7 +1,7 @@
 namespace ExpertToJob.RetrievalEval;
 
 /// <summary>
-/// The outcome of running one golden query: what the search returned (employee keys, best first)
+/// The outcome of running one golden query: what the search returned (expert keys, best first)
 /// against what the golden set expected. Negative queries carry an empty expectation — for them a
 /// non-empty result is a false positive.
 /// </summary>

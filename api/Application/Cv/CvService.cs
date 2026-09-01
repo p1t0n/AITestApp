@@ -1,30 +1,30 @@
 using System.Globalization;
-using ExpertToJob.Application.Employees;
+using ExpertToJob.Application.Experts;
 using ExpertToJob.Domain.Enums;
 
 namespace ExpertToJob.Application.Cv;
 
 public interface ICvService
 {
-    Task<CvDto> BuildAsync(Guid employeeId, CancellationToken ct = default);
+    Task<CvDto> BuildAsync(Guid expertId, CancellationToken ct = default);
 }
 
 /// <summary>
-/// Assembles a CV from an employee's full record. Pure projection over the detail DTO —
+/// Assembles a CV from an expert's full record. Pure projection over the detail DTO —
 /// no persistence — so it is trivially unit-testable and reusable headlessly later.
 /// </summary>
 public class CvService : ICvService
 {
-    private readonly IEmployeeService _employees;
-    public CvService(IEmployeeService employees) => _employees = employees;
+    private readonly IExpertService _experts;
+    public CvService(IExpertService experts) => _experts = experts;
 
-    public async Task<CvDto> BuildAsync(Guid employeeId, CancellationToken ct = default)
+    public async Task<CvDto> BuildAsync(Guid expertId, CancellationToken ct = default)
     {
-        var e = await _employees.GetAsync(employeeId, ct);
+        var e = await _experts.GetAsync(expertId, ct);
         return Build(e);
     }
 
-    public static CvDto Build(EmployeeDetailDto e)
+    public static CvDto Build(ExpertDetailDto e)
     {
         var skillGroups = e.Skills
             .GroupBy(s => s.CategoryName)

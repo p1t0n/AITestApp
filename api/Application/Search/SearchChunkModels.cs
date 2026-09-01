@@ -3,12 +3,12 @@ using ExpertToJob.Domain.Enums;
 namespace ExpertToJob.Application.Search;
 
 /// <summary>
-/// A chunk the projection wants to exist for an employee, with its content already rendered and
+/// A chunk the projection wants to exist for an expert, with its content already rendered and
 /// hashed. Provider-neutral: no embedding vector, no EF type — the reconciliation worker embeds and
 /// persists it. Addressed by (<see cref="SourceType"/>, <see cref="SourceId"/>).
 /// </summary>
 public sealed record DesiredChunk(
-    Guid EmployeeId,
+    Guid ExpertId,
     SearchChunkSource SourceType,
     Guid SourceId,
     string Content,

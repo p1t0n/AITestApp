@@ -2,9 +2,9 @@ using ExpertToJob.Domain.Entities;
 
 namespace ExpertToJob.Agents.Agents;
 
-/// <summary>One employee's slice of the roster stats, as captured from the MCP
-/// <c>employee_list</c> result. Only the fields the aggregates need.</summary>
-public sealed record BenchEmployee(string Title, string? Location, int CurrentCapacityPercent);
+/// <summary>One expert's slice of the roster stats, as captured from the MCP
+/// <c>expert_list</c> result. Only the fields the aggregates need.</summary>
+public sealed record BenchExpert(string Title, string? Location, int CurrentCapacityPercent);
 
 /// <summary>A name/count pair for distributions (titles, locations, frequent candidates).</summary>
 public sealed record NameCount(string Name, int Count);
@@ -22,7 +22,7 @@ public sealed record ProposalStats(
 /// <summary>The deterministic aggregates the bench report is grounded in. Every number the model
 /// is allowed to mention lives here; the UI renders these directly, no model text involved.</summary>
 public sealed record BenchStats(
-    int ActiveEmployees,
+    int ActiveExperts,
     int FullyAvailable,
     int PartiallyAvailable,
     int FullyBooked,
@@ -50,9 +50,9 @@ public static class BenchStatsComposer
     private const int JdSnippetChars = 160;
 
     public static BenchStats Compose(
-        IReadOnlyList<BenchEmployee>? employees, IReadOnlyList<StaffingProposal>? proposals)
+        IReadOnlyList<BenchExpert>? experts, IReadOnlyList<StaffingProposal>? proposals)
     {
-        var roster = employees ?? [];
+        var roster = experts ?? [];
         return new BenchStats(
             roster.Count,
             roster.Count(e => e.CurrentCapacityPercent >= 100),
@@ -72,7 +72,7 @@ public static class BenchStatsComposer
         {
             "## Bench report (deterministic summary)",
             "",
-            $"- Active employees: {stats.ActiveEmployees}",
+            $"- Active experts: {stats.ActiveExperts}",
             $"- Fully available: {stats.FullyAvailable}, partially: {stats.PartiallyAvailable}, fully booked: {stats.FullyBooked}",
             $"- Average available capacity: {stats.AverageCapacityPercent}%",
         };

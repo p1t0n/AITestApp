@@ -18,9 +18,9 @@ public class RosterShortlistTools
          "input and the ask is 'who are the top candidates', 'rank our matches', 'who covers the " +
          "most of these' — with per-requirement evidence. Do NOT use it for a single free-form " +
          "capability question — roster_semantic_search does that; do NOT use it to score EVERY " +
-         "employee one by one — roster_digest_list pages the whole roster for a bulk sweep; do NOT " +
+         "expert one by one — roster_digest_list pages the whole roster for a bulk sweep; do NOT " +
          "use it for phrasing examples — style_exemplar_search; do NOT use it as a roster listing " +
-         "— employee_list. Input: requirements (3-8 short phrases, NOT the raw JD text) plus " +
+         "— expert_list. Input: requirements (3-8 short phrases, NOT the raw JD text) plus " +
          "optional filters (availableOn, skillIds, location, minYears, topK); e.g. " +
          "{\"requirements\": [\"Kafka event streaming\", \"Kubernetes operations\", \"team " +
          "leadership\"], \"topK\": 10}. Returns each candidate's coverage (matched count / " +
@@ -34,11 +34,11 @@ public class RosterShortlistTools
                      "phrase each, e.g. ['real-time payments', 'Kubernetes operations', 'team leadership'].")]
         string[] requirements,
         CancellationToken ct,
-        [Description("Optional: keep only employees available (capacity > 0) on this date (YYYY-MM-DD).")]
+        [Description("Optional: keep only experts available (capacity > 0) on this date (YYYY-MM-DD).")]
         DateOnly? availableOn = null,
-        [Description("Optional: keep only employees who have ALL of these catalog skill ids (GUIDs).")]
+        [Description("Optional: keep only experts who have ALL of these catalog skill ids (GUIDs).")]
         Guid[]? skillIds = null,
-        [Description("Optional: keep only employees in this location (case-insensitive).")]
+        [Description("Optional: keep only experts in this location (case-insensitive).")]
         string? location = null,
         [Description("Optional: minimum years of experience (applied to the required skills, or any skill if none given).")]
         decimal? minYears = null,

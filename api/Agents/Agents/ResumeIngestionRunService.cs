@@ -6,13 +6,13 @@ namespace ExpertToJob.Agents.Agents;
 public sealed record IngestionCreated(int Languages, int Skills, int Qualifications, int Experiences);
 
 /// <summary>
-/// The composed ingestion response. Every deterministic field (employee id, counts, notes,
+/// The composed ingestion response. Every deterministic field (expert id, counts, notes,
 /// duplicate warning) comes from captured tool results; only <see cref="Proposals"/> originates
 /// in model output — proposals are extraction content by nature, and the agent is instructed to
 /// list exactly the skills it did not add.
 /// </summary>
 public sealed record IngestionResponse(
-    Guid EmployeeId,
+    Guid ExpertId,
     IngestionCreated Created,
     IReadOnlyList<string> Proposals,
     IReadOnlyList<string> Notes,
@@ -34,7 +34,7 @@ internal sealed record IngestionClosing(string[]? Proposals, bool Aborted, strin
 /// <summary>
 /// The core of an ingestion run: run the <see cref="ResumeIngestionAgent"/>, then compose the
 /// response from the captured tool-call chain. The failure ladder (P1T-80): no successful
-/// employee_create_draft → the whole run aborts (no draft exists); failed child calls degrade —
+/// expert_create_draft → the whole run aborts (no draft exists); failed child calls degrade —
 /// each one becomes a note, the run still returns the draft. A child that failed and then
 /// succeeded on a model retry counts as success (the self-correction loop working as designed).
 /// </summary>
@@ -53,25 +53,25 @@ public sealed class ResumeIngestionRunService
     {
         var outcome = await _agent.IngestAsync(resumeText, ct);
 
-        if (outcome.EmployeeId is not { } employeeId)
+        if (outcome.ExpertId is not { } expertId)
         {
             var closing = ParseClosing(outcome.ClosingJson);
             var createError = outcome.ToolCalls
-                .LastOrDefault(c => c.Tool == "employee_create_draft" && !c.Succeeded)?.Error;
+                .LastOrDefault(c => c.Tool == "expert_create_draft" && !c.Succeeded)?.Error;
             return new IngestionRunOutcome(
                 _agent.Name,
                 outcome.Reply,
                 Response: null,
                 AbortDetail: createError
                              ?? closing?.AbortReason
-                             ?? "The agent did not create a draft employee.");
+                             ?? "The agent did not create a draft expert.");
         }
 
         return new IngestionRunOutcome(
-            _agent.Name, outcome.Reply, Compose(employeeId, outcome), AbortDetail: null);
+            _agent.Name, outcome.Reply, Compose(expertId, outcome), AbortDetail: null);
     }
 
-    private static IngestionResponse Compose(Guid employeeId, ResumeIngestionOutcome outcome)
+    private static IngestionResponse Compose(Guid expertId, ResumeIngestionOutcome outcome)
     {
         // A tool that eventually succeeded is a success; only items the model gave up on (failed
         // with no later success covering them) degrade. We approximate "gave up" per tool name by
@@ -81,7 +81,7 @@ public sealed class ResumeIngestionRunService
 
         var created = new IngestionCreated(
             Succeeded("language_add"),
-            Succeeded("employee_skill_add"),
+            Succeeded("expert_skill_add"),
             Succeeded("qualification_add"),
             Succeeded("experience_add"));
 
@@ -90,7 +90,7 @@ public sealed class ResumeIngestionRunService
         // degradation. (Per-item pairing is impossible without parsing arguments; last-call state
         // per tool is the honest approximation.)
         var notes = outcome.ToolCalls
-            .Where(c => c.Tool != "employee_create_draft")
+            .Where(c => c.Tool != "expert_create_draft")
             .GroupBy(c => c.Tool)
             .Where(g => !g.Last().Succeeded)
             .Select(g =>
@@ -103,7 +103,7 @@ public sealed class ResumeIngestionRunService
         var closing = ParseClosing(outcome.ClosingJson);
 
         return new IngestionResponse(
-            employeeId,
+            expertId,
             created,
             closing?.Proposals ?? [],
             notes,

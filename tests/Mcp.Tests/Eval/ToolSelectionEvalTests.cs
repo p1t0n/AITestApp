@@ -14,14 +14,14 @@ namespace ExpertToJob.Mcp.Tests.Eval;
 public class ToolSelectionScoringTests
 {
     private static readonly GoldenPrompt Strict = new("p1", "c1", "text", "cv_get");
-    private static readonly GoldenPrompt Lenient = new("p2", "c2", "text", "employee_list",
+    private static readonly GoldenPrompt Lenient = new("p2", "c2", "text", "expert_list",
         AlsoAcceptable: ["roster_digest_list"]);
 
     [Fact]
     public void First_tool_credit_covers_expected_and_also_acceptable_only()
     {
         new PromptResult(Strict, "cv_get", ["cv_get"]).FirstToolCorrect.Should().BeTrue();
-        new PromptResult(Strict, "employee_get", ["employee_get"]).FirstToolCorrect.Should().BeFalse();
+        new PromptResult(Strict, "expert_get", ["expert_get"]).FirstToolCorrect.Should().BeFalse();
         new PromptResult(Lenient, "roster_digest_list", ["roster_digest_list"]).FirstToolCorrect.Should().BeTrue();
         new PromptResult(Strict, null, []).FirstToolCorrect.Should().BeFalse("no call is a miss");
         new PromptResult(Strict, null, [], "boom").FirstToolCorrect.Should().BeFalse("an error is a miss");
@@ -30,8 +30,8 @@ public class ToolSelectionScoringTests
     [Fact]
     public void Any_call_credit_looks_across_the_whole_response()
     {
-        new PromptResult(Strict, "employee_get", ["employee_get", "cv_get"]).AnyCallCorrect.Should().BeTrue();
-        new PromptResult(Strict, "employee_get", ["employee_get"]).AnyCallCorrect.Should().BeFalse();
+        new PromptResult(Strict, "expert_get", ["expert_get", "cv_get"]).AnyCallCorrect.Should().BeTrue();
+        new PromptResult(Strict, "expert_get", ["expert_get"]).AnyCallCorrect.Should().BeFalse();
     }
 
     [Fact]
@@ -40,7 +40,7 @@ public class ToolSelectionScoringTests
         var aggregate = SelectionAggregate.From(
         [
             new PromptResult(Strict, "cv_get", ["cv_get"]),
-            new PromptResult(Strict with { Id = "p3" }, "employee_get", ["employee_get"]),
+            new PromptResult(Strict with { Id = "p3" }, "expert_get", ["expert_get"]),
             new PromptResult(Lenient, null, [], "transport down"),
         ]);
 
@@ -72,7 +72,7 @@ public class ToolSelectionScoringTests
         var violations = ToolSelectionReport.GateViolations(SelectionAggregate.From(
         [
             new PromptResult(capability, "roster_semantic_search", ["roster_semantic_search"]),
-            new PromptResult(capability with { Id = "c2" }, "employee_list", ["employee_list"]),
+            new PromptResult(capability with { Id = "c2" }, "expert_list", ["expert_list"]),
         ]));
 
         violations.Should().ContainSingle(v => v.Contains($"cluster '{GoldenPromptSet.Capability}'"));

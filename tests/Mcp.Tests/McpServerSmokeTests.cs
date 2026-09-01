@@ -17,24 +17,24 @@ public class McpServerSmokeTests
     }
 
     [Fact]
-    public async Task Authenticated_client_can_list_tools_including_employee_list()
+    public async Task Authenticated_client_can_list_tools_including_expert_list()
     {
-        using var factory = McpTestHost.CreateFactory(nameof(Authenticated_client_can_list_tools_including_employee_list));
+        using var factory = McpTestHost.CreateFactory(nameof(Authenticated_client_can_list_tools_including_expert_list));
         await using var client = await McpTestHost.ConnectAsync(factory);
 
         var tools = await client.ListToolsAsync();
 
-        tools.Select(t => t.Name).Should().Contain("employee_list");
+        tools.Select(t => t.Name).Should().Contain("expert_list");
     }
 
     [Fact]
-    public async Task Calling_employee_list_returns_the_seeded_employee()
+    public async Task Calling_expert_list_returns_the_seeded_expert()
     {
-        using var factory = McpTestHost.CreateFactory(nameof(Calling_employee_list_returns_the_seeded_employee));
-        McpTestHost.SeedEmployee(factory);
+        using var factory = McpTestHost.CreateFactory(nameof(Calling_expert_list_returns_the_seeded_expert));
+        McpTestHost.SeedExpert(factory);
         await using var client = await McpTestHost.ConnectAsync(factory);
 
-        var result = await client.CallToolAsync("employee_list");
+        var result = await client.CallToolAsync("expert_list");
 
         result.IsError.Should().NotBe(true);
         var text = (result.StructuredContent?.ToString() ?? "")

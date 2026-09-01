@@ -13,7 +13,7 @@ public class DemoRosterLoaderTests
             { "name": "C#", "category": "Backend / .NET" },
             { "name": "FIX Protocol", "category": "Fintech / Trading" }
           ],
-          "employees": [
+          "experts": [
             {
               "firstName": "Avery",
               "lastName": "Brightforge",
@@ -63,7 +63,7 @@ public class DemoRosterLoaderTests
         """;
 
     [Fact]
-    public void Load_parses_skills_and_employees_from_json()
+    public void Load_parses_skills_and_experts_from_json()
     {
         var dataset = DemoRosterLoader.Load(SampleJson);
 
@@ -71,20 +71,20 @@ public class DemoRosterLoaderTests
         dataset.Skills[1].Name.Should().Be("FIX Protocol");
         dataset.Skills[1].Category.Should().Be("Fintech / Trading");
 
-        var employee = dataset.Employees.Should().ContainSingle().Subject;
-        employee.FirstName.Should().Be("Avery");
-        employee.Email.Should().Be("avery.brightforge@demo.example.com");
-        employee.Industry.Should().Be("fintech");
-        employee.SpokenLanguages.Should().ContainSingle()
+        var expert = dataset.Experts.Should().ContainSingle().Subject;
+        expert.FirstName.Should().Be("Avery");
+        expert.Email.Should().Be("avery.brightforge@demo.example.com");
+        expert.Industry.Should().Be("fintech");
+        expert.SpokenLanguages.Should().ContainSingle()
             .Which.Level.Should().Be(LanguageLevel.Fluent);
-        employee.Availability.Should().ContainSingle()
+        expert.Availability.Should().ContainSingle()
             .Which.Should().BeEquivalentTo(new { EffectiveFrom = new DateOnly(2026, 3, 1), CapacityPercent = 50 });
-        employee.Skills.Should().ContainSingle()
+        expert.Skills.Should().ContainSingle()
             .Which.Should().BeEquivalentTo(new { Name = "C#", Level = SkillLevel.Expert, YearsExperience = 9.5m });
-        employee.Qualifications.Should().ContainSingle()
+        expert.Qualifications.Should().ContainSingle()
             .Which.Type.Should().Be(QualificationType.Certification);
 
-        var experience = employee.Experiences.Should().ContainSingle().Subject;
+        var experience = expert.Experiences.Should().ContainSingle().Subject;
         experience.Company.Should().Be("LedgerPeak Capital");
         experience.StartDate.Should().Be(new DateOnly(2021, 2, 1));
         experience.EndDate.Should().BeNull();
@@ -95,7 +95,7 @@ public class DemoRosterLoaderTests
     [Fact]
     public void Load_rejects_unknown_json_properties()
     {
-        var act = () => DemoRosterLoader.Load("""{ "skills": [], "employees": [], "surprise": 1 }""");
+        var act = () => DemoRosterLoader.Load("""{ "skills": [], "experts": [], "surprise": 1 }""");
 
         act.Should().Throw<System.Text.Json.JsonException>();
     }

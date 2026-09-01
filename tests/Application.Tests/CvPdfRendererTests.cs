@@ -1,6 +1,6 @@
 using System.Text;
 using ExpertToJob.Application.Cv;
-using ExpertToJob.Application.Employees;
+using ExpertToJob.Application.Experts;
 using ExpertToJob.Domain.Enums;
 using ExpertToJob.Infrastructure.Documents;
 using FluentAssertions;
@@ -17,7 +17,7 @@ public class CvPdfRendererTests
 {
     private static readonly ICvPdfRenderer Renderer = new CvPdfRenderer();
 
-    private static EmployeeDetailDto FullEmployee() => new(
+    private static ExpertDetailDto FullExpert() => new(
         Id: Guid.NewGuid(),
         FirstName: "Alice",
         LastName: "Nguyen",
@@ -28,7 +28,7 @@ public class CvPdfRendererTests
         Summary: "Backend engineer with a decade on distributed .NET systems.",
         PhotoUrl: "https://example.com/alice.png",
         CurrentCapacityPercent: 50,
-        Status: EmployeeStatus.Active,
+        Status: ExpertStatus.Active,
         SpokenLanguages: new[]
         {
             new SpokenLanguageDto(Guid.NewGuid(), "English", LanguageLevel.Fluent),
@@ -41,9 +41,9 @@ public class CvPdfRendererTests
         },
         Skills: new[]
         {
-            new EmployeeSkillDto(Guid.NewGuid(), Guid.NewGuid(), "C#", "Backend", SkillLevel.Expert, 9),
-            new EmployeeSkillDto(Guid.NewGuid(), Guid.NewGuid(), "EF Core", "Backend", SkillLevel.Advanced, 7),
-            new EmployeeSkillDto(Guid.NewGuid(), Guid.NewGuid(), "PostgreSQL", "Data", SkillLevel.Advanced, 6),
+            new ExpertSkillDto(Guid.NewGuid(), Guid.NewGuid(), "C#", "Backend", SkillLevel.Expert, 9),
+            new ExpertSkillDto(Guid.NewGuid(), Guid.NewGuid(), "EF Core", "Backend", SkillLevel.Advanced, 7),
+            new ExpertSkillDto(Guid.NewGuid(), Guid.NewGuid(), "PostgreSQL", "Data", SkillLevel.Advanced, 6),
         },
         Qualifications: new[]
         {
@@ -68,7 +68,7 @@ public class CvPdfRendererTests
         });
 
     /// <summary>A draft with nothing on it but a name — every optional section empty.</summary>
-    private static EmployeeDetailDto SparseEmployee() => new(
+    private static ExpertDetailDto SparseExpert() => new(
         Id: Guid.NewGuid(),
         FirstName: "Bob",
         LastName: "Stone",
@@ -79,10 +79,10 @@ public class CvPdfRendererTests
         Summary: null,
         PhotoUrl: null,
         CurrentCapacityPercent: 100,
-        Status: EmployeeStatus.Draft,
+        Status: ExpertStatus.Draft,
         SpokenLanguages: Array.Empty<SpokenLanguageDto>(),
         AvailabilityEntries: Array.Empty<AvailabilityEntryDto>(),
-        Skills: Array.Empty<EmployeeSkillDto>(),
+        Skills: Array.Empty<ExpertSkillDto>(),
         Qualifications: Array.Empty<QualificationDto>(),
         Experiences: Array.Empty<ExperienceDto>());
 
@@ -92,7 +92,7 @@ public class CvPdfRendererTests
     [Fact]
     public void Renders_a_full_cv_as_a_pdf()
     {
-        var pdf = Renderer.Render(CvService.Build(FullEmployee()));
+        var pdf = Renderer.Render(CvService.Build(FullExpert()));
 
         IsPdf(pdf).Should().BeTrue("the response is served as application/pdf");
         pdf.Length.Should().BeGreaterThan(1024, "a populated CV is more than an empty page");
@@ -103,7 +103,7 @@ public class CvPdfRendererTests
     {
         // Every optional section is empty — the layout must not emit an empty container,
         // which QuestPDF treats as a hard error rather than a blank space.
-        var pdf = Renderer.Render(CvService.Build(SparseEmployee()));
+        var pdf = Renderer.Render(CvService.Build(SparseExpert()));
 
         IsPdf(pdf).Should().BeTrue();
     }
@@ -113,7 +113,7 @@ public class CvPdfRendererTests
     {
         // No timestamp or run id may leak into the document: a byte-identical render is what lets
         // a caller cache or diff the output.
-        var cv = CvService.Build(FullEmployee());
+        var cv = CvService.Build(FullExpert());
 
         Renderer.Render(cv).Should().Equal(Renderer.Render(cv));
     }
@@ -123,8 +123,8 @@ public class CvPdfRendererTests
     {
         // PhotoUrl is a remote resource; invariant "degrade, never 500" is easiest to keep by not
         // making a network call inside a render at all. Out of scope for this slice by design.
-        var withPhoto = Renderer.Render(CvService.Build(FullEmployee()));
-        var withoutPhoto = Renderer.Render(CvService.Build(FullEmployee() with { PhotoUrl = null }));
+        var withPhoto = Renderer.Render(CvService.Build(FullExpert()));
+        var withoutPhoto = Renderer.Render(CvService.Build(FullExpert() with { PhotoUrl = null }));
 
         withPhoto.Should().Equal(withoutPhoto);
     }
@@ -133,9 +133,9 @@ public class CvPdfRendererTests
     [InlineData("Alice", "Nguyen", "alice-nguyen-cv.pdf")]
     [InlineData("Zoë", "O'Brien-Smith", "zoe-o-brien-smith-cv.pdf")]
     [InlineData("李", "雷", "cv.pdf")]
-    public void Builds_a_download_filename_from_the_employee_name(string first, string last, string expected)
+    public void Builds_a_download_filename_from_the_expert_name(string first, string last, string expected)
     {
-        var cv = CvService.Build(SparseEmployee() with { FirstName = first, LastName = last });
+        var cv = CvService.Build(SparseExpert() with { FirstName = first, LastName = last });
 
         CvPdfFileName.For(cv).Should().Be(expected);
     }

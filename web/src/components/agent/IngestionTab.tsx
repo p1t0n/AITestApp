@@ -1,4 +1,4 @@
-// Resume ingestion (P1T-96): paste text → the agent stages a DRAFT employee → a human reviews
+// Resume ingestion (P1T-96): paste text → the agent stages a DRAFT expert → a human reviews
 // (skill proposals, degradation notes, duplicate warning) and promotes or discards. Promotion is
 // the publication gate — the roster never shows the draft until it happens.
 import { useState } from "react";
@@ -21,15 +21,15 @@ import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import {
   apiErrorMessage,
-  useAddEmployeeSkill,
+  useAddExpertSkill,
   useCategories,
   useCreateSkill,
-  useDeleteEmployee,
-  useEmployee,
-  usePromoteEmployee,
+  useDeleteExpert,
+  useExpert,
+  usePromoteExpert,
   useResumeIngestion,
   useSkills,
-  useUpdateEmployee,
+  useUpdateExpert,
   type IngestionResponse,
 } from "../../api";
 import { ErrorNotice } from "../ErrorNotice";
@@ -42,10 +42,10 @@ type ProposalState =
   | { kind: "rejected" }
   | { kind: "error"; message: string };
 
-function ProposalRow({ name, employeeId }: { name: string; employeeId: string }) {
+function ProposalRow({ name, expertId }: { name: string; expertId: string }) {
   const skills = useSkills();
   const categories = useCategories();
-  const addSkill = useAddEmployeeSkill(employeeId);
+  const addSkill = useAddExpertSkill(expertId);
   const createSkill = useCreateSkill();
 
   const [state, setState] = useState<ProposalState>({ kind: "pending" });
@@ -140,10 +140,10 @@ function ProposalRow({ name, employeeId }: { name: string; employeeId: string })
 }
 
 function DraftReview({ result, onDiscarded }: { result: IngestionResponse; onDiscarded: () => void }) {
-  const draft = useEmployee(result.employeeId);
-  const promote = usePromoteEmployee();
-  const update = useUpdateEmployee(result.employeeId);
-  const discard = useDeleteEmployee();
+  const draft = useExpert(result.expertId);
+  const promote = usePromoteExpert();
+  const update = useUpdateExpert(result.expertId);
+  const discard = useDeleteExpert();
 
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -258,7 +258,7 @@ function DraftReview({ result, onDiscarded }: { result: IngestionResponse; onDis
           </Typography>
           <Stack spacing={1} sx={{ mt: 0.5 }}>
             {result.proposals.map((p) => (
-              <ProposalRow key={p} name={p} employeeId={e.id} />
+              <ProposalRow key={p} name={p} expertId={e.id} />
             ))}
           </Stack>
         </Box>
@@ -270,8 +270,8 @@ function DraftReview({ result, onDiscarded }: { result: IngestionResponse; onDis
         <Paper sx={{ p: 1.5, borderColor: "success.main" }}>
           <Typography variant="body2">
             Promoted.{" "}
-            <Link component={RouterLink} to={`/employees/${e.id}`}>
-              Open the employee page
+            <Link component={RouterLink} to={`/experts/${e.id}`}>
+              Open the expert page
             </Link>
           </Typography>
         </Paper>

@@ -11,11 +11,11 @@ public sealed record ShortlistRequirementEvidence(
     double? Similarity = null);
 
 /// <summary>
-/// One shortlisted employee: coverage (how many requirements they matched), a composite score, and
+/// One shortlisted expert: coverage (how many requirements they matched), a composite score, and
 /// per-requirement evidence.
 /// </summary>
 public sealed record ShortlistCandidate(
-    Guid EmployeeId,
+    Guid ExpertId,
     string Name,
     string Title,
     double Score,

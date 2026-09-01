@@ -22,7 +22,7 @@ public sealed record InterviewKitOutcome(
     InterviewCvPayload? Cv);
 
 /// <summary>
-/// Read-only agent that generates gap-targeted interview questions for one employee against a
+/// Read-only agent that generates gap-targeted interview questions for one expert against a
 /// target job description (P1T-102). A Microsoft Agent Framework <see cref="ChatClientAgent"/>
 /// narrowed to the <c>cv_get</c> MCP tool. One run is a single 2-turn session: turn 1 fetches the
 /// CV, analyses fit gaps, and answers with a readable interview kit; turn 2 (driven by this
@@ -40,10 +40,10 @@ public sealed class InterviewKitAgent
 
     private const string Instructions =
         """
-        You are the Interview Kit assistant for ExpertToJob. You are given an employee id and a
+        You are the Interview Kit assistant for ExpertToJob. You are given an expert id and a
         target job description. The conversation has exactly two steps.
 
-        STEP 1 — the current message. Call the cv_get tool to fetch that employee's full CV. Then
+        STEP 1 — the current message. Call the cv_get tool to fetch that expert's full CV. Then
         compare the CV against the job description and produce a readable interview kit in
         markdown:
 
@@ -54,7 +54,7 @@ public sealed class InterviewKitAgent
            quote that item.
 
         Use ONLY facts returned by cv_get — never invent skills, experience, or achievements the
-        CV does not contain. If cv_get reports the employee was not found, say so plainly and
+        CV does not contain. If cv_get reports the expert was not found, say so plainly and
         stop. You have read-only access and cannot change any data.
 
         STEP 2 — the user will then say "Now the JSON." Reply with ONLY a JSON array — no prose,
@@ -100,7 +100,7 @@ public sealed class InterviewKitAgent
             _chatClient,
             instructions: Instructions,
             name: "InterviewKit",
-            description: "Generates gap-targeted interview questions for an employee vs a job description (read-only).",
+            description: "Generates gap-targeted interview questions for an expert vs a job description (read-only).",
             tools: runTools,
             loggerFactory: _loggerFactory);
 
@@ -175,7 +175,7 @@ internal sealed class InterviewKitCapture
 }
 
 /// <summary>Decorates <c>cv_get</c> to record the CV the model fetched — evidence quotes are
-/// validated against it (the Agents service may not query the employee DB directly; MCP is the
+/// validated against it (the Agents service may not query the expert DB directly; MCP is the
 /// boundary). Behaves identically otherwise.</summary>
 internal sealed class InterviewCapturingCvFunction(AIFunction inner, InterviewKitCapture capture)
     : DelegatingAIFunction(inner)

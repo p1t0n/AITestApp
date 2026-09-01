@@ -22,7 +22,7 @@ vi.mock("../api", async (importOriginal) => {
   return {
     ...actual,
     useUsage: () => ({ data: undefined, isLoading: false, isError: false, error: null }),
-    useEmployees: () => ({ data: [], isLoading: false }),
+    useExperts: () => ({ data: [], isLoading: false }),
     useRosterQa: idle,
     useStaffingProposals: () => ({ data: [], isLoading: false }),
   };

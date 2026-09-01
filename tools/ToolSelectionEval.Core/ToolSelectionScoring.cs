@@ -65,7 +65,7 @@ public sealed record SelectionAggregate(
 ///
 /// <para>The five misses that survived both description passes were one class — a REQUIRED
 /// argument the prompt cannot supply, so the model legitimately read first
-/// (<c>employee_update</c> was a full replace needing firstName/lastName; <c>skill_create</c>
+/// (<c>expert_update</c> was a full replace needing firstName/lastName; <c>skill_create</c>
 /// needs a categoryId; <c>style_exemplar_search</c> needed achievementIds). Descriptions could
 /// not move those; affordances did — P1T-136 and P1T-137, measured below. Never lower a floor to
 /// make a red run pass.</para>
