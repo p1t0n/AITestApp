@@ -147,19 +147,53 @@ whole app re-render into its signed-in state.
 
 ## 4. Routing
 
-Flat, eager, five protected routes:
+Flat, eager, and split by audience — every protected route declares whose it is, mirroring the
+server, where the audience is declared per endpoint and the fallback is staff-only:
 
 ```
 /signin  /signup  /recover          public
-/                                   ExpertsPage
-/experts/:id                      ExpertDetailPage
-/experts/:id/cv                   CvPage
-/catalog                            CatalogPage
-/users                              UsersPage
+
+                                    ServiceManager
+/                                     ExpertsPage
+/experts/:id                          ExpertDetailPage
+/experts/:id/cv                       CvPage
+/catalog                              CatalogPage
+/users                                UsersPage
+
+                                    Expert
+/me                                   → /me/cv
+/me/cv                                MyCvPage
+/me/claim                             ClaimStatusPage
+/me/privacy                           MyWorkspacePage
 ```
+
+A signed-in person who asks for a route their role cannot have goes to **their own landing page,
+never `/signin`** — sending them to the gate would claim they are signed out, and offer them a
+second account they do not have. `landingFor` is the one place that decides where that is.
 
 Every page is a static import — no `React.lazy`, no `Suspense`, so the bundle is one chunk. At 38
 files that is a defensible trade; it is worth revisiting only if a heavy dependency lands.
+
+### The Expert's half (P1T-190)
+
+**Two places, and not more**: *My CV* and *Privacy & data*. An Expert has no other account settings
+worth a page — their email is immutable to them (P1T-184) and they do not set their own token caps.
+
+**My CV is the landing**, because editing it is what they came to do; a dashboard reporting three
+mostly-static facts is a page that tells you nothing on most visits, so profile status is a compact
+strip on the editor instead. Somebody who owns no record goes to `/me/claim` — there is nothing to
+edit, and an empty editor would read as "fill this in" rather than "you are waiting on somebody".
+
+**The child forms are one shared module** (`components/ExpertRecordSections`) used by the staff page
+and the Expert's alike; the *pages* are thin shells around it. What was rejected is the other shape,
+one page serving both roles with controls hidden by role — "hidden for Experts" is one `sx` prop away
+from not hidden, and that is how a page grows holes. A test reads both page sources and fails if
+either reaches past the shared module to a child form directly.
+
+**Same shell, dock not mounted.** The agent surfaces read and act on the whole roster, so they are
+staff's. This is not a second layout mode: the dock is already closeable, so "rail only" is a state
+the Content Floor handles today. ⌘K rides the same condition — two of the three things it offers are
+the roster and the agent surfaces, and an Expert can reach neither.
 
 ## 5. The data layer: `src/api/`
 

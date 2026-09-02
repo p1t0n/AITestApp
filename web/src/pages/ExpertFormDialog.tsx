@@ -14,6 +14,13 @@ import { ErrorNotice } from "../components/ErrorNotice";
 import { SPECIAL_CATEGORY_GUIDANCE } from "./cvGuidance";
 
 interface Props {
+  /**
+   * Locks the email field with an explanation (P1T-184, P1T-190). Not a control hidden by role —
+   * the field is there, visibly frozen, and the server refuses a change from anybody but a Service
+   * Manager regardless. The address is login identifier, claim key and CV contact at once with no
+   * verification behind any of them, so its owner is exactly who must not be able to move it.
+   */
+  emailLocked?: boolean;
   open: boolean;
   title: string;
   initial?: Partial<SaveExpert>;
@@ -32,7 +39,9 @@ const empty: SaveExpert = {
   photoUrl: null,
 };
 
-export default function ExpertFormDialog({ open, title, initial, onClose, onSave }: Props) {
+export default function ExpertFormDialog(
+  { open, title, initial, onClose, onSave, emailLocked = false }: Props,
+) {
   const [form, setForm] = useState<SaveExpert>({ ...empty, ...initial });
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -66,7 +75,18 @@ export default function ExpertFormDialog({ open, title, initial, onClose, onSave
             <TextField label="Last name" value={form.lastName} onChange={field("lastName")} fullWidth />
           </Stack>
           <TextField label="Title" value={form.title} onChange={field("title")} fullWidth />
-          <TextField label="Email" value={form.email} onChange={field("email")} fullWidth />
+          <TextField
+            label="Email"
+            value={form.email}
+            onChange={field("email")}
+            fullWidth
+            disabled={emailLocked}
+            helperText={
+              emailLocked
+                ? "Your email address is set when you register and can only be changed by a Service Manager. It identifies your account and links you to this record."
+                : undefined
+            }
+          />
           <Stack direction="row" spacing={2}>
             <TextField label="Phone" value={form.phone ?? ""} onChange={field("phone")} fullWidth />
             <TextField label="Location" value={form.location ?? ""} onChange={field("location")} fullWidth />

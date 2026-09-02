@@ -19,5 +19,7 @@ export function isSessionRole(value: string | null | undefined): value is Sessio
  * out", which is both wrong and a dead end — they have no second account to sign in with.
  */
 export function landingFor(role: SessionRole): string {
-  return role === "Expert" ? "/me" : "/";
+  // Not "/me": that is a redirect, and a landing that bounces is a landing that flickers.
+  // My CV is the Expert's home, and it sends somebody who owns no record on to claim status.
+  return role === "Expert" ? "/me/cv" : "/";
 }

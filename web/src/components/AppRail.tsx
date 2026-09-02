@@ -19,6 +19,7 @@ import {
 import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
 import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
 import BadgeOutlinedIcon from "@mui/icons-material/BadgeOutlined";
+import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
@@ -64,11 +65,15 @@ export const NAV: NavPlace[] = [
 ];
 
 /**
- * An Expert's places (P1T-181). One for now: the rail must not offer a signed-in Expert three
- * destinations that all bounce them straight back here. P1T-190 fills the workspace out.
+ * An Expert's two places (P1T-190). Two, and not more: they have no other account settings worth a
+ * page — their email is immutable to them (P1T-184) and they do not set their own token caps — so a
+ * third place would be a page with nothing on it.
+ *
+ * <p>My CV first, because it is the landing and what they came to do.</p>
  */
 export const EXPERT_NAV: NavPlace[] = [
-  { label: "My workspace", to: "/me", icon: <BadgeOutlinedIcon /> },
+  { label: "My CV", to: "/me/cv", icon: <BadgeOutlinedIcon /> },
+  { label: "Privacy & data", to: "/me/privacy", icon: <ShieldOutlinedIcon /> },
 ];
 
 export interface NavPlace {
