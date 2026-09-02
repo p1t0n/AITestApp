@@ -4,6 +4,7 @@ import NoticeUpdateBanner from "../components/NoticeUpdateBanner";
 import RedeemClaimCode from "../components/RedeemClaimCode";
 import BenchPauseControl from "../components/BenchPauseControl";
 import ExpiryBanner from "../components/ExpiryBanner";
+import ContestableScores from "../components/ContestableScores";
 import EraseAccountControl from "../components/EraseAccountControl";
 import { useSessionEmail } from "../auth/useAuth";
 
@@ -40,6 +41,9 @@ export default function MyWorkspacePage() {
           </Typography>
         </Stack>
       </Paper>
+
+      {/* You can only contest what you can see, so this sits with the scores themselves (P1T-189). */}
+      <ContestableScores />
 
       {/* The pause: shown only to somebody who actually owns a record (P1T-185). Kept well away
           from anything destructive — pause and delete are two different kinds of act, and with no

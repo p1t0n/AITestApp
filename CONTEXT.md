@@ -97,6 +97,14 @@ precisely because nobody can be told it exists. Staff edits and agent scoring ne
 being looked at counted, a bench running weekly scans would keep everybody alive by looking at them.
 _Avoid_: TTL, expiry policy (the expiry is the consequence, the clock is the rule), archive
 
+**Contest**:
+An Expert asking for a person to look at a score software gave them, saying why, and having the
+outcome recorded on the row. The Art. 22(3) safeguard that our reliance on Art. 22(2)(a) obliges —
+so it is a legal requirement, not a courtesy. Deliberately not an appeals workflow: no states, no
+deadline, no escalation. A person can only contest a score they can see, which is why the access
+view shows scores and rationales in full.
+_Avoid_: appeal, dispute, complaint (a complaint goes to a supervisory authority), override
+
 **Origin**:
 How a roster row came to exist — `SelfRegistered` or `StaffCreated` — and the **only** input to
 its Lawful Basis. Not a synonym for who owns the row: ownership says which Expert reaches it,

@@ -15,6 +15,7 @@
 //   visibility         the Expert's own pause control
 //   erasure            deleting yourself: account and record together
 //   transparency       what we hold on you, and the portable copy
+//   contests           contesting an automated score, and the review of it
 //   download           turning a response into a saved file
 //   agents/*           one module per agent surface, each DTO beside the hook that returns it
 //
@@ -30,6 +31,7 @@ export * from "./claims";
 export * from "./visibility";
 export * from "./erasure";
 export * from "./transparency";
+export * from "./contests";
 
 export * from "./agents/usage";
 export * from "./agents/shared";

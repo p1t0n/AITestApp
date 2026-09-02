@@ -25,11 +25,15 @@ import {
   apiErrorMessage,
   useApproveClaim,
   useClaimQueue,
+  useContestQueue,
   useDeleteUser,
   useRejectClaim,
+  useReviewContest,
   useUpdateUser,
   useUsers,
   type ClaimQueueItem,
+  type ContestOutcome,
+  type ContestQueueItem,
   type UpdateUser,
   type UserStatus,
   type UserSummary,
@@ -37,12 +41,15 @@ import {
 import { ErrorNotice } from "../components/ErrorNotice";
 import PageHeader from "../components/PageHeader";
 import ClaimQueue from "../components/ClaimQueue";
+import ContestQueue from "../components/ContestQueue";
 
 const capLabel = (v: number | null) => (v === null ? "default" : v.toLocaleString());
 
 export default function UsersPage() {
   const { data: users, isLoading, isError, error } = useUsers();
   const claims = useClaimQueue();
+  const contests = useContestQueue();
+  const reviewContest = useReviewContest();
   const approveClaim = useApproveClaim();
   const rejectClaim = useRejectClaim();
   const updateUser = useUpdateUser();
@@ -92,7 +99,10 @@ export default function UsersPage() {
       <ErrorNotice
         message={
           claims.isError || approveClaim.isError || rejectClaim.isError
-            ? apiErrorMessage(claims.error ?? approveClaim.error ?? rejectClaim.error)
+          || contests.isError || reviewContest.isError
+            ? apiErrorMessage(
+                claims.error ?? approveClaim.error ?? rejectClaim.error
+                ?? contests.error ?? reviewContest.error)
             : null
         }
         sx={{ mb: 2 }}
@@ -103,6 +113,22 @@ export default function UsersPage() {
         onApprove={approve}
         onReject={(claim) => rejectClaim.mutate(claim.id)}
         busy={approveClaim.isPending || rejectClaim.isPending}
+      />
+
+      {/* The second thing only a person can decide, on the same page as the first (P1T-189). Two
+          lists rather than one: a claim and a contested score need different columns and different
+          verbs, and merging them would make both harder to read. */}
+      <ContestQueue
+        contests={contests.data}
+        loading={contests.isLoading}
+        onReview={(item: ContestQueueItem, outcome: ContestOutcome, response: string) =>
+          reviewContest.mutate({
+            scoringCandidateId: item.scoringCandidateId,
+            outcome,
+            response: response.trim() === "" ? undefined : response,
+          })
+        }
+        busy={reviewContest.isPending}
       />
 
       <Typography variant="h6" component="h2" sx={{ mb: 2 }}>

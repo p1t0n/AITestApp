@@ -202,6 +202,8 @@ That is the rule the whole slice turns on; `manuals/retention.md` §2 has the re
 | `POST /api/me/account/erase` | Both — own account only, gated by the control word |
 | `GET /api/me/access`, `GET /api/me/export` | Both — own record only, resolved from the scope |
 | `POST /api/experts/{id}/export` | Service Manager — on behalf, and it writes a record |
+| `POST /api/contests` | Both — own score only, resolved through the ownership scope |
+| `GET /api/contests`, `POST /api/contests/{id}/review` | Service Manager — the human who looks |
 | `GET /api/experts`, promote, delete, `cv`, `cv.pdf`, `/api/users` | Service Manager |
 | `/api/claims` (queue, approve, reject, codes, revoke) | Service Manager |
 

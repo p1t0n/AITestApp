@@ -49,7 +49,8 @@ and therefore have no Art. 22 exception either.** Mixed basis means mixed exposu
 roster scan must not produce automated outcomes for LI-basis Experts, or the bench migrates toward
 self-registration — carried into P1T-179, and **enforced since P1T-185**: the scan's candidate
 enumeration carries an Art. 22 route filter, so an LI-basis row is never scored at all
-(`manuals/expert-visibility.md`).
+(`manuals/expert-visibility.md`). The necessity argument the 6(1)(b) population's scoring rests on,
+and the Art. 22(3) safeguards it obliges, are written up in `manuals/art22-safeguards.md`.
 
 ## 3. How the pairing is enforced
 
