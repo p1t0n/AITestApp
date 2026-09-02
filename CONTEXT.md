@@ -60,6 +60,21 @@ account instead. Reversible and free: nothing is deleted, so nothing is re-embed
 _Avoid_: inactive (status means published-or-draft), disabled, deactivated (that is the account),
 archived, soft-deleted (nothing is deleted)
 
+**Personal-Data Declaration**:
+The one code-level list of every store holding or pointing at a person, each classified
+`delete | scrub | keep` with the reason written next to it. Erasure scrubs from it and the access
+view reads it; a store carrying an ExpertId or a UserId that nobody declared fails the build. The
+list is the artefact — two of them would drift, and the drift would be invisible until an audit.
+_Avoid_: data map, inventory (an inventory is a document; this is code the tests execute)
+
+**Erasure**:
+Deleting a person: their account and their record together, hard, in one act, gated by the control
+word. Irreversible and unannounced — there is no email on this service, so no confirmation link and
+no way to reach somebody afterwards. Distinct from [Paused], which is reversible and free, and from
+a scrub, which is what happens to rows a human already decided something on.
+_Avoid_: deactivation (that is the account status), soft delete, anonymisation (the residue is
+pseudonymous and restricted, not anonymous)
+
 **Origin**:
 How a roster row came to exist — `SelfRegistered` or `StaffCreated` — and the **only** input to
 its Lawful Basis. Not a synonym for who owns the row: ownership says which Expert reaches it,

@@ -13,6 +13,7 @@
 //   users              user administration and cap overrides
 //   claims             the claim queue, claim codes, and revocation
 //   visibility         the Expert's own pause control
+//   erasure            deleting yourself: account and record together
 //   agents/*           one module per agent surface, each DTO beside the hook that returns it
 //
 // Roster domain types stay in src/types.ts; agent contracts live beside their hooks.
@@ -25,6 +26,7 @@ export * from "./notice";
 export * from "./users";
 export * from "./claims";
 export * from "./visibility";
+export * from "./erasure";
 
 export * from "./agents/usage";
 export * from "./agents/shared";

@@ -163,6 +163,18 @@ Expert reaches the row they themselves paused), the MCP server takes the `Bench`
 default is the narrow one, so a host that forgets fails closed. Details in
 `manuals/expert-visibility.md`.
 
+## Erasure and the control word (P1T-186)
+
+`IControlWordHasher` moved from this folder into `Application.Abstractions` in that slice, with the
+implementation staying here. The reason is a rule rather than tidiness: the control word is the only
+proof-of-person this service has — no email means no confirmation link and no way to tell anybody
+afterwards — so the two acts that turn on it, recovery and erasure, verify it **themselves** instead
+of trusting a caller to have done it. `ErasureService` holds its own gate.
+
+`POST /api/me/account/erase` deletes the account and the roster row together, in one transaction. No
+`TokenVersion` bump is needed: both hosts re-read the account on every request, and it is gone.
+Details, and the store-by-store declaration behind it, in `manuals/personal-data-and-erasure.md`.
+
 ### Who reaches what
 
 | Surface | Audience |
@@ -173,6 +185,7 @@ default is the narrow one, so a host that forgets fails closed. Details in
 | Catalog writes | Service Manager (a category rename rewrites every CV) |
 | `POST /api/claims/redeem` | Both — the code is the authorization |
 | `/api/me/visibility` (read, hide, unhide) | Both — and always the caller's own row: no id exists |
+| `POST /api/me/account/erase` | Both — own account only, gated by the control word |
 | `GET /api/experts`, promote, delete, `cv`, `cv.pdf`, `/api/users` | Service Manager |
 | `/api/claims` (queue, approve, reject, codes, revoke) | Service Manager |
 

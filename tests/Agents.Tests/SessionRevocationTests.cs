@@ -56,6 +56,33 @@ public class SessionRevocationTests
             .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
+    /// <summary>
+    /// Erasure, from the second host's point of view (P1T-186). The Web API is where somebody
+    /// deletes themselves, and the agent surface is where their token would otherwise keep working
+    /// for the rest of its lifetime — while we have already told them their data is gone. Nothing
+    /// special makes this work: the account is simply not there any more, and both hosts re-read it.
+    /// </summary>
+    [Fact]
+    public async Task An_erased_account_takes_its_agent_session_with_it()
+    {
+        using var factory = AgentsHost();
+        var userId = Guid.NewGuid();
+        using var client = factory.CreateAuthenticatedClient(userId);
+
+        (await client.GetAsync($"{AuthorizedProbe}{Guid.NewGuid()}"))
+            .StatusCode.Should().Be(HttpStatusCode.NotFound, "the session works before");
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.Users.RemoveRange(db.Users.Where(u => u.Id == userId));
+            await db.SaveChangesAsync();
+        }
+
+        (await client.GetAsync($"{AuthorizedProbe}{Guid.NewGuid()}"))
+            .StatusCode.Should().Be(HttpStatusCode.Unauthorized, "and not after");
+    }
+
     [Fact]
     public async Task A_token_naming_no_account_is_refused()
     {

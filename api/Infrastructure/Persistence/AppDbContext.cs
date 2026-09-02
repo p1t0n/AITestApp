@@ -275,6 +275,11 @@ public class AppDbContext : DbContext, IAppDbContext
 
         b.Entity<StaffingProposalCandidate>(e =>
         {
+            // Deliberately no foreign key to Expert (P1T-186). This row records a decision a human
+            // made, so it has to outlive the person: a cascade would delete the decision and a
+            // restrict would block the erasure. The surviving ExpertId is a restricted-processing
+            // reference under Art. 18, not a link — pseudonymisation, and not something to call
+            // anonymous.
             e.Property(x => x.Name).HasMaxLength(200).IsRequired();
             e.Property(x => x.Title).HasMaxLength(200);
             e.Property(x => x.MatchBand).HasMaxLength(50);
@@ -313,6 +318,14 @@ public class AppDbContext : DbContext, IAppDbContext
             e.Property(x => x.Error).HasMaxLength(2000);
             // Progress counts group by status within a job; chunk writes look rows up per job.
             e.HasIndex(x => new { x.JobId, x.Status });
+
+            // A scan candidate carries the person's name, title, whole career digest and a
+            // model-written rationale, and until P1T-186 it had no foreign key at all — so erasing
+            // an Expert left every one of those rows behind, and nothing in the schema noticed.
+            // Cascade, because a scan is a working artefact rather than a decision: there is
+            // nothing here worth keeping once the person it describes is gone.
+            e.HasOne<Expert>().WithMany()
+                .HasForeignKey(x => x.ExpertId).OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<ExpertSearchChunk>(e =>
