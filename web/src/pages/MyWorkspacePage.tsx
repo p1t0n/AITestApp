@@ -3,6 +3,7 @@ import PageHeader from "../components/PageHeader";
 import NoticeUpdateBanner from "../components/NoticeUpdateBanner";
 import RedeemClaimCode from "../components/RedeemClaimCode";
 import BenchPauseControl from "../components/BenchPauseControl";
+import EraseAccountControl from "../components/EraseAccountControl";
 import { useSessionEmail } from "../auth/useAuth";
 
 /**
@@ -45,6 +46,11 @@ export default function MyWorkspacePage() {
           one whose claim is waiting, so this page cannot tell which it is looking at — and
           somebody who was handed a code needs the field either way. */}
       <RedeemClaimCode />
+
+      {/* Last on the page, under its own rule, a long way from the pause (P1T-171, P1T-186). The
+          distance is the mechanism: pause and delete are different kinds of act, and this service
+          cannot email anybody who confused them. */}
+      <EraseAccountControl />
     </PageHeader>
   );
 }

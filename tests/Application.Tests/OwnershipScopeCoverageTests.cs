@@ -44,6 +44,10 @@ public class OwnershipScopeCoverageTests
     private static readonly Dictionary<Type, string> NotRosterOwned = new()
     {
         [typeof(IUserService)] = "accounts, not roster rows: a staff-only surface with no owner column",
+        [typeof(Compliance.IErasureService)] =
+            "not addressed by row id: its Guid is the acting account, and the row it erases is "
+            + "whichever one that account owns. Registered by the Web host alongside the control-"
+            + "word hasher it depends on, so it is not in this container at all (P1T-186)",
         [typeof(Visibility.IExpertVisibilityService)] =
             "not addressed by row id at all: every method takes the acting account and resolves " +
             "that account's own row through OwnerUserId, which is why the API cannot express " +

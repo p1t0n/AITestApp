@@ -34,6 +34,13 @@ public static class AuthServiceCollectionExtensions
         services.AddDistributedMemoryCache();
         services.AddSingleton<IChallengeStore, DistributedCacheChallengeStore>();
         services.AddSingleton<IControlWordHasher, ControlWordHasher>();
+
+        // Erasure is registered with the hasher rather than in AddApplication, because it depends
+        // on it and this is the only host that has one: the MCP server composes the same
+        // Application layer and must not fail to start over a service it can never serve
+        // (P1T-186). Deleting yourself is a session act, and sessions live here.
+        services.AddScoped<ExpertToJob.Application.Compliance.IErasureService,
+            ExpertToJob.Application.Compliance.ErasureService>();
         services.AddScoped<IJwtTokenIssuer, JwtTokenIssuer>();
 
         // Row-level reach (P1T-182). The Application services ask this; the Web host answers from

@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using ExpertToJob.Application.Abstractions;
 
 namespace ExpertToJob.Web.Auth;
 

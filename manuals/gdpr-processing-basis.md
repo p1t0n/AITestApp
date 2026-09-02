@@ -80,7 +80,9 @@ deletion of the old one.
 
 `DELETE` is deliberately **not** blocked. Deleting is erasure (P1T-186), a different act, and the
 `Expert` cascade has to be able to take these rows with it; refusing it here would make somebody's
-right to erasure depend on a trigger written for another purpose.
+right to erasure depend on a trigger written for another purpose. **Shipped that way**: erasure
+takes the history with the row, and `manuals/personal-data-and-erasure.md` §5 records why, since
+P1T-172's own table had called this store a `keep`.
 
 `Sequence` (unique per Expert) decides which record is in force. Timestamps tie, and "which basis
 applies right now" is a question the Art. 22 route filter has to answer unambiguously.
