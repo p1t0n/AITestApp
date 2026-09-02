@@ -44,6 +44,11 @@ public class OwnershipScopeCoverageTests
     private static readonly Dictionary<Type, string> NotRosterOwned = new()
     {
         [typeof(IUserService)] = "accounts, not roster rows: a staff-only surface with no owner column",
+        [typeof(Compliance.IContestService)] =
+            "mixed by design (P1T-189): contesting IS ownership-scoped — somebody else's score is a "
+            + "404 — but the queue and the review are the Service Manager acting on anybody's row, "
+            + "which is the point of a human intervention. The scoped half is asserted directly in "
+            + "Web.Tests/ContestTests.An_expert_can_only_contest_a_score_about_themselves.",
         [typeof(Compliance.IErasureService)] =
             "not addressed by row id: its Guid is the acting account, and the row it erases is "
             + "whichever one that account owns. Registered by the Web host alongside the control-"

@@ -27,6 +27,7 @@ public static class DependencyInjection
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IProcessingRecordService, ProcessingRecordService>();
         services.AddScoped<Compliance.IAccessAndExportService, Compliance.AccessAndExportService>();
+        services.AddScoped<Compliance.IContestService, Compliance.ContestService>();
         // The same class behind both seams — one place computes a record's sequence.
         services.AddScoped<IOwnershipChangeRecorder>(sp =>
             (ProcessingRecordService)sp.GetRequiredService<IProcessingRecordService>());

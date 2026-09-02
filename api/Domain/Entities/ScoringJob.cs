@@ -79,6 +79,49 @@ public class ScoringJobCandidate
     /// <summary>Set only when this candidate's scoring failed (chunk fault, missing from the
     /// reply); the job itself keeps going.</summary>
     public string? Error { get; set; }
+
+    // ---- Art. 22(3) safeguards (P1T-189) ---------------------------------------------------
+    // We concede that this scoring is an automated decision and rely on Art. 22(2)(a), which makes
+    // three safeguards mandatory rather than optional: human intervention, the right to express a
+    // view, and the right to contest. All three land on this row, because this row is the decision.
+
+    /// <summary>When the person asked for a human to look at this score. Null while nobody has.</summary>
+    public DateTimeOffset? ContestedAt { get; set; }
+
+    /// <summary>
+    /// What the person said about the score, in their own words — Art. 22(3)'s "right to express a
+    /// view", which is a distinct right from contesting and is worth nothing if the view is not
+    /// recorded where the reviewer will read it.
+    /// </summary>
+    public string? ContestNote { get; set; }
+
+    /// <summary>When a Service Manager reviewed it. Non-null is the evidence that a human did.</summary>
+    public DateTimeOffset? ContestReviewedAt { get; set; }
+
+    /// <summary>Which Service Manager looked. Cleared if their own account goes; the fact that
+    /// somebody looked survives them.</summary>
+    public Guid? ContestReviewedByUserId { get; set; }
+
+    /// <summary>One of <see cref="ContestOutcome"/> — what the human concluded.</summary>
+    public string? ContestOutcome { get; set; }
+
+    /// <summary>The reviewer's own words back to the person. Not a template: the point of the
+    /// safeguard is that somebody engaged with what they said.</summary>
+    public string? ContestResponse { get; set; }
+}
+
+/// <summary>
+/// What a human concluded about a contested score (P1T-189). Deliberately short: this is a record
+/// that somebody looked and what they decided, not an appeals workflow with states of its own.
+/// </summary>
+public static class ContestOutcome
+{
+    /// <summary>The human read it and let the score stand.</summary>
+    public const string Upheld = "upheld";
+
+    /// <summary>The human disagreed with the score. The scan row is a working artefact, so nothing
+    /// is rewritten — what changes is that a person now decides this candidate by hand.</summary>
+    public const string Overturned = "overturned";
 }
 
 /// <summary>The pinned job states. Terminal: completed, failed.</summary>
