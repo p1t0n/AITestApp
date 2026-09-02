@@ -25,6 +25,9 @@ public class VisibilitySeamTests
         ["api/Application/Visibility/ExpertVisibilityService.cs"] = "the pause control: the only writer",
         ["api/Application/Experts/ExpertDtos.cs"] = "read back so a Service Manager sees the badge",
         ["api/Application/Experts/ExpertMappings.cs"] = "the projection that fills that field",
+        ["api/Application/Compliance/AccessAndExportService.cs"] =
+            "disclosure, not filtering: the Art. 15 view owes the person 'paused since when' "
+            + "(P1T-185 §2, P1T-187). It reads the timestamp and never predicates on it.",
     };
 
     [Fact]

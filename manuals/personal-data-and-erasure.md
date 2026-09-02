@@ -8,6 +8,11 @@
 
 ## 1. One declaration, two readers
 
+> **Both readers now exist.** P1T-187's access view reads the same list, and
+> `TransparencyTests.Every_store_the_scrub_reaches_is_visible_in_the_access_view` asserts the
+> symmetry from it: every store erasure destroys is one the person can see while it exists. See
+> `manuals/transparency-and-export.md`.
+
 `api/Application/Compliance/PersonalDataDeclaration.cs` names every store that holds or points at a
 person, classified `delete | scrub | keep`, each with the reason in plain words. The erasure path
 scrubs from it and the Art. 15 access view will read it too.

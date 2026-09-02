@@ -9,6 +9,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Cv, ExpertDetail, ExpertSummary, SaveExpert } from "../types";
 import { http } from "./http";
+import { saveAsFile } from "./download";
 
 export function useExperts() {
   return useQuery({
@@ -41,18 +42,7 @@ export function useCv(id: string) {
 export function useDownloadCvPdf(id: string) {
   return useMutation({
     mutationFn: async () => {
-      const res = await http.get<Blob>(`/experts/${id}/cv.pdf`, { responseType: "blob" });
-      const disposition = (res.headers["content-disposition"] as string | undefined) ?? "";
-      const filename = /filename="?([^";]+)"?/.exec(disposition)?.[1] ?? "cv.pdf";
-      const url = URL.createObjectURL(res.data);
-      try {
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = filename;
-        link.click();
-      } finally {
-        URL.revokeObjectURL(url);
-      }
+      saveAsFile(await http.get<Blob>(`/experts/${id}/cv.pdf`, { responseType: "blob" }), "cv.pdf");
     },
   });
 }

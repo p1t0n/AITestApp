@@ -1,4 +1,6 @@
 using ExpertToJob.Application.Auth;
+using ExpertToJob.Application.Common;
+using ExpertToJob.Application.Compliance;
 using ExpertToJob.Application.Cv;
 using ExpertToJob.Application.Experts;
 using Microsoft.AspNetCore.Authorization;
@@ -68,6 +70,25 @@ public class ExpertsController : ControllerBase
     {
         await _experts.DeleteAsync(id, ct);
         return NoContent();
+    }
+
+    /// <summary>
+    /// Takes a copy of one person's file on their behalf (P1T-187) — the phoned-in request, since
+    /// this service has no email to receive one by. A <c>POST</c> because it is not a plain read:
+    /// it writes a record of the staff member who did it. That record is about them, not about the
+    /// Expert, and it is deliberately not a log of who viewed whom.
+    /// </summary>
+    [Authorize(Policy = AuthPolicies.ServiceManager)]
+    [HttpPost("{id:guid}/export")]
+    public async Task<IActionResult> ExportOnBehalf(
+        Guid id, IAccessAndExportService transparency, CancellationToken ct)
+    {
+        var actingUserId = SessionRevocation.UserId(User)
+            ?? throw new ConflictException("This session does not name an account.");
+        var export = await transparency.ExportOnBehalfAsync(id, actingUserId, ct);
+
+        return File(TransparencyController.Serialize(export),
+            "application/json", $"experttojob-export-{id}.json");
     }
 
     [Authorize(Policy = AuthPolicies.ServiceManager)]

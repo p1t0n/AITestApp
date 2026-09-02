@@ -319,6 +319,9 @@ public class OwnershipScopeCoverageTests
                 ["qualificationId"] = qualification.Id,
                 ["experienceSkillId"] = experienceSkill.Id,
                 ["skillId"] = skill.Id,
+                // Not a roster row: the Service Manager taking somebody's file on their
+                // behalf (P1T-187). Seeded so the audit exercises that method too.
+                ["staffUserId"] = Guid.NewGuid(),
             };
         }
 

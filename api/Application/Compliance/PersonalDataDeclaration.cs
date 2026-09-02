@@ -134,6 +134,14 @@ public static class PersonalDataDeclaration
             + "and until P1T-186 no cascade reached it: the FK this slice adds is what makes the "
             + "deletion automatic rather than something a future code path has to remember."),
 
+        new("DataExportRecord",
+            PersonalDataAction.Delete,
+            [],
+            "Cascades with the Expert. A record of a Service Manager taking somebody's file on "
+            + "their behalf (P1T-187) — about the staff member, not about the Expert, which is why "
+            + "it holds no field of theirs beyond the id. After erasure there is no file to have "
+            + "taken, so the row goes with it."),
+
         // ---- Survives, scrubbed, because a human decided something -------------------------
         new("StaffingProposalCandidate",
             PersonalDataAction.Scrub,

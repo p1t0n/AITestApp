@@ -75,6 +75,21 @@ a scrub, which is what happens to rows a human already decided something on.
 _Avoid_: deactivation (that is the account status), soft delete, anonymisation (the residue is
 pseudonymous and restricted, not anonymous)
 
+**Access View**:
+Everything Art. 15 owes one person about their own record, in one place: what is held, why, who it
+reaches — including the named model provider — how long it is kept, their rights, where the record
+came from if they did not give it to us, and **what software concluded about them**. Distinct from
+the Transparency Notice, which is a versioned artefact acknowledged at a moment in time; the access
+view describes the service as it stands now.
+_Avoid_: privacy page (that is the surface P1T-191 builds), data dump, profile
+
+**Export**:
+The machine-readable copy of what a person provided — their record and its basis history, and
+deliberately none of the scores, bands, rationales or digests derived about them. Art. 20 owes it to
+a 6(1)(b) record; a legitimate-interest record is offered the identical file, labelled a courtesy
+rather than a right. A rendered PDF is a readability courtesy and never the portable artefact.
+_Avoid_: download, backup, data dump (the exclusions are the point)
+
 **Origin**:
 How a roster row came to exist — `SelfRegistered` or `StaffCreated` — and the **only** input to
 its Lawful Basis. Not a synonym for who owns the row: ownership says which Expert reaches it,
