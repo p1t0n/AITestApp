@@ -19,7 +19,7 @@ export default function MyWorkspacePage() {
   const email = useSessionEmail();
 
   return (
-    <PageHeader title="My workspace" width="content">
+    <PageHeader title="Privacy & data" width="content">
       {/* Where a changed transparency notice reaches an Expert (P1T-183): this is where they land
           after signing in, and a sign-in is the only channel a service that sends no email has.
           It notifies — everything below it stays readable and editable regardless. */}

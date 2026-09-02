@@ -57,12 +57,17 @@ export async function signUp(page: Page, email = uniqueEmail("e2e")): Promise<st
 }
 
 /**
- * Signs a brand-new Expert up — the plain self-serve path, with nothing pre-created. Lands on the
- * Expert's own workspace, which is the whole difference this helper exists to express.
+ * Signs a brand-new Expert up — the plain self-serve path, with nothing pre-created.
+ *
+ * Waits for anywhere under `/me` rather than for one page, because which page they land on is a
+ * fact about their data, not about signing up (P1T-190): an address that matched nothing gets a
+ * record of its own and lands on `/me/cv`, while one that matched a record a Service Manager
+ * entered raises a claim and lands on `/me/claim`. A helper that insisted on either would be
+ * asserting the caller's fixture rather than waiting for the app.
  */
 export async function signUpAsExpert(page: Page, email = uniqueEmail("expert")): Promise<string> {
   await signUpThroughTheForm(page, email);
-  await page.waitForURL("**/me", { timeout: 30_000 });
+  await page.waitForURL(/\/me\//, { timeout: 30_000 });
   return email;
 }
 
