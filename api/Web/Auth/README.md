@@ -189,6 +189,14 @@ The other half lives on the way in. `ExpertActivityInterceptor` stamps `Expert.L
 and every agent resolve to `Unrestricted`, so their writes never move somebody's retention clock.
 That is the rule the whole slice turns on; `manuals/retention.md` §2 has the reasoning.
 
+## The SPA's half of the split (P1T-190)
+
+The routes mirror this table. An Expert has two places — `/me/cv` and `/me/privacy` — and the guard
+sends a signed-in person who asks for a route their role cannot have to **their own landing page**,
+never `/signin`. Nothing there is a security boundary: the server re-decides every request from the
+token, and the router only decides which chrome and which page a session gets.
+`manuals/spa-architecture.md` §4 has the shape.
+
 ### Who reaches what
 
 | Surface | Audience |

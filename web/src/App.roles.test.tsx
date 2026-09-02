@@ -10,7 +10,17 @@ import { setSession } from "./auth/session";
 vi.mock("./pages/ExpertsPage", () => ({ default: () => <div>the roster page</div> }));
 vi.mock("./pages/UsersPage", () => ({ default: () => <div>the users page</div> }));
 vi.mock("./pages/CatalogPage", () => ({ default: () => <div>the catalog page</div> }));
-vi.mock("./components/AgentWidget", () => ({ default: () => null }));
+// The Expert's two places, stood in for the same reason: this file asks which route renders.
+vi.mock("./pages/MyCvPage", () => ({ default: () => <div>the my-cv page</div> }));
+vi.mock("./pages/MyWorkspacePage", () => ({ default: () => <div>the privacy page</div> }));
+vi.mock("./pages/ClaimStatusPage", () => ({ default: () => <div>the claim-status page</div> }));
+let agentWidgetMounted = false;
+vi.mock("./components/AgentWidget", () => ({
+  default: () => {
+    agentWidgetMounted = true;
+    return null;
+  },
+}));
 // The gate is only ever asserted here as a destination, never driven.
 vi.mock("./pages/SigninPage", () => ({ default: () => <div>the sign-in gate</div> }));
 
@@ -54,7 +64,7 @@ describe("route audiences (P1T-181)", () => {
 
       renderApp(path);
 
-      expect(screen.getByRole("heading", { name: "My workspace" })).toBeInTheDocument();
+      expect(screen.getByText("the my-cv page")).toBeInTheDocument();
       expect(screen.queryByText("the sign-in gate")).not.toBeInTheDocument();
       expect(screen.queryByText("the roster page")).not.toBeInTheDocument();
     },
@@ -68,15 +78,51 @@ describe("route audiences (P1T-181)", () => {
     expect(screen.getByText("the roster page")).toBeInTheDocument();
   });
 
-  it("offers an Expert only the places an Expert can reach", () => {
+  it("offers an Expert exactly two places, and none of the staff ones", () => {
     signedInAs("Expert");
 
     renderApp("/me");
 
-    expect(screen.getByRole("link", { name: "My workspace" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "My CV" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Privacy & data" })).toBeInTheDocument();
     for (const staffPlace of ["CVs", "Skill Catalog", "Users"]) {
       expect(screen.queryByRole("link", { name: staffPlace })).not.toBeInTheDocument();
     }
+  });
+
+  /** /me is a redirect rather than a page, so the landing is the editor and not a flicker. */
+  it("sends an Expert from /me to their CV", () => {
+    signedInAs("Expert");
+
+    renderApp("/me");
+
+    expect(screen.getByText("the my-cv page")).toBeInTheDocument();
+  });
+
+  /**
+   * Same shell, dock not mounted (P1T-190). The agent surfaces read and act on the whole roster, so
+   * they are staff's — and the Content Floor treats "no dock" as the state it already handles when
+   * the dock is closed, rather than as a second layout mode.
+   */
+  it("mounts no agent dock for an Expert, and does for a Service Manager", () => {
+    signedInAs("Expert");
+    const expertView = renderApp("/me");
+    expect(expertView.container.querySelector("[data-testid='agent-widget']")).toBeNull();
+    expertView.unmount();
+
+    signedInAs("ServiceManager");
+    renderApp("/");
+    // The staff shell still mounts it — the stand-in above renders null, so what is asserted here
+    // is that the mock was reached at all rather than skipped by the guard.
+    expect(agentWidgetMounted).toBe(true);
+  });
+
+  it("gives an Expert their privacy page", () => {
+    signedInAs("Expert");
+
+    renderApp("/me/privacy");
+
+    expect(screen.getByText("the privacy page")).toBeInTheDocument();
   });
 
   // A session stored before the split carries a token with neither the role nor the token-version

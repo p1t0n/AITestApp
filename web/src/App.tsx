@@ -17,6 +17,8 @@ import SigninPage from "./pages/SigninPage";
 import RecoverPage from "./pages/RecoverPage";
 import UsersPage from "./pages/UsersPage";
 import MyWorkspacePage from "./pages/MyWorkspacePage";
+import MyCvPage from "./pages/MyCvPage";
+import ClaimStatusPage from "./pages/ClaimStatusPage";
 import AgentWidget from "./components/AgentWidget";
 import AppRailNav, { BRAND } from "./components/AppRail";
 import CommandPalette from "./components/CommandPalette";
@@ -98,6 +100,12 @@ function PublicTopBar() {
 
 export default function App() {
   const authed = useIsAuthenticated();
+  const role = useSessionRole();
+  // The agent surfaces read and act on the whole roster, so they are staff's. An Expert gets the
+  // same shell with the dock simply not mounted (P1T-190) — not a second layout mode: the dock is
+  // already closeable, so "rail only" is a state the Content Floor handles today, and forking the
+  // layout would be a second thing to keep in step for no gain.
+  const showsDock = authed && role === "ServiceManager";
   // Two edges, one contract. Both are `position: fixed`, both publish how much of the viewport they
   // are covering, and the root Box below pads by both — it knows neither one's state, neither one's
   // breakpoint, and neither one's width. Unset (no rail on the auth pages, no dock while signed
@@ -105,7 +113,7 @@ export default function App() {
   const dock = useAgentDock();
   // The one place that knows about both edges, which is why the rail's squeeze rule lives here:
   // the rail gives up its labels rather than let the dock squeeze the content below its floor.
-  const rail = useAppRail(dockPushWidth(dock));
+  const rail = useAppRail(showsDock ? dockPushWidth(dock) : 0);
 
   return (
     <Box
@@ -113,7 +121,8 @@ export default function App() {
         minHeight: "100vh",
         bgcolor: "background.default",
         paddingLeft: `var(${RAIL_PUSH_VAR}, 0px)`,
-        paddingRight: `var(${DOCK_PUSH_VAR}, 0px)`,
+        // Unset when there is no dock, so the floor falls back to no padding on its own.
+        paddingRight: showsDock ? `var(${DOCK_PUSH_VAR}, 0px)` : 0,
         transition: "padding 150ms ease",
         // Neither edge prints, so neither edge may leave a gutter on the page. Without this the
         // rail's 240px would shift every printed artifact — including a client's CV — to the right.
@@ -143,22 +152,31 @@ export default function App() {
             <Route path="/users" element={<UsersPage />} />
           </Route>
 
-          {/* The Expert's own space. Thin on purpose — P1T-190 builds the workspace; this slice
-              needs a landing page that exists, so a wrong-role redirect has somewhere to go. */}
+          {/* The Expert's two places (P1T-190). My CV is the landing, because editing it is what
+              they came to do; Privacy & data holds every right in one page. Somebody who owns no
+              record is sent to claim status instead — there is nothing to edit, and an empty
+              editor would misrepresent what is happening to them. */}
           <Route element={<RequireAuth role="Expert" />}>
-            <Route path="/me" element={<MyWorkspacePage />} />
+            <Route path="/me" element={<Navigate to="/me/cv" replace />} />
+            <Route path="/me/cv" element={<MyCvPage />} />
+            <Route path="/me/claim" element={<ClaimStatusPage />} />
+            <Route path="/me/privacy" element={<MyWorkspacePage />} />
           </Route>
         </Routes>
       </RoutedArea>
 
       {/* The widget sits under its own boundary: the assistant crashing must not take the roster
           with it. Panels have a second, inner boundary inside the widget. */}
-      {authed && (
+      {showsDock && (
         <>
           {/* ⌘K (P1T-165). Mounted here rather than in the rail, which only carries the visible
               trigger: the palette has to open with no rail on screen — below `md` the rail is a
               closed drawer — and it acts on the dock as well as on the routes, so it belongs
-              beside both. It takes the dock because "jump to an agent surface" opens it. */}
+              beside both. It takes the dock because "jump to an agent surface" opens it.
+
+              Staff only, riding the same condition as the dock: two of the three things it offers
+              are the roster and the agent surfaces, and an Expert can reach neither. A palette that
+              searched other people's CVs on their behalf would be worse than no palette. */}
           <CommandPalette dock={dock} />
           <ErrorBoundary fallback={(error, reset) => <WidgetErrorFallback error={error} reset={reset} />}>
             <AgentWidget dock={dock} />
