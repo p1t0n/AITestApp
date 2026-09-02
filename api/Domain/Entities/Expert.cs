@@ -38,6 +38,20 @@ public class Expert
     /// </summary>
     public DateTimeOffset? HiddenAt { get; set; }
 
+    /// <summary>
+    /// When this person last did something with their own record (P1T-188): saved a field, paused
+    /// themselves, claimed the row. Null until they ever do, which is the ordinary state of a
+    /// staff-created row nobody has claimed — the retention clock then falls back to the first
+    /// <see cref="ProcessingRecord"/>, because nothing has happened to that data since somebody
+    /// typed it in.
+    ///
+    /// <para><b>Only the Expert moves this.</b> A Service Manager editing the record and an agent
+    /// scoring it deliberately do not. If being looked at counted as activity, a bench running
+    /// weekly scans would never expire anybody — the service would keep people alive by looking at
+    /// them, which is the exact inverse of what retention is for.</para>
+    /// </summary>
+    public DateTimeOffset? LastActivityAt { get; set; }
+
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
 

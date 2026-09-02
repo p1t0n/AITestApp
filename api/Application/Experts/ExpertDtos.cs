@@ -40,7 +40,12 @@ public record ExpertDetailDto(
     IReadOnlyList<ExperienceDto> Experiences,
     /// <inheritdoc cref="ExpertSummaryDto.HiddenAt"/>
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    DateTimeOffset? HiddenAt = null);
+    DateTimeOffset? HiddenAt = null,
+    /// <summary>When this person last did something with their own record (P1T-188). Omitted when
+    /// they never have, which is the ordinary state of an unclaimed record — the retention clock
+    /// then runs from collection instead.</summary>
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    DateTimeOffset? LastActivityAt = null);
 
 public record SpokenLanguageDto(Guid Id, string Language, LanguageLevel Level);
 

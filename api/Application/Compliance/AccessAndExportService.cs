@@ -50,6 +50,16 @@ public sealed record AccessViewDto(
     string? NoticeVersionAcknowledged,
     DateTimeOffset? PausedSince,
     ExportEntitlement Export,
+    /// <summary>Which retention clock this record is on (P1T-188).</summary>
+    RetentionClock RetentionClock,
+    /// <summary>When this record will be deleted if nothing else happens, or null when nothing will
+    /// delete it. Art. 15(1)(d) asks for the period; giving the person their own date is the form of
+    /// it they can actually act on.</summary>
+    DateTimeOffset? ExpiresAt,
+    /// <summary>Whether the record is inside its last thirty days — what the banner renders on.
+    /// Signing in to read the warning is itself activity, so for a claimed record the warning cures
+    /// the thing it warns about.</summary>
+    bool ExpiringSoon,
     IReadOnlyList<string> Purposes,
     IReadOnlyList<string> DataCategories,
     IReadOnlyList<RecipientCategory> Recipients,
@@ -120,6 +130,14 @@ public class AccessAndExportService(
         var history = await records.HistoryAsync(expertId, ct);
         var current = await records.CurrentAsync(expertId, ct);
 
+        // The same function the sweep runs, so the date somebody is shown is the date their record
+        // actually goes — one answer, not a description and a behaviour that drift apart.
+        var retention = RetentionPolicy.For(
+            detail.Email,
+            isClaimed: await db.Experts.AnyAsync(e => e.Id == expertId && e.OwnerUserId != null, ct),
+            collectedAt: history[0].RecordedAt,
+            lastActivityAt: detail.LastActivityAt);
+
         return new AccessViewDto(
             expertId,
             current.Origin,
@@ -128,10 +146,13 @@ public class AccessAndExportService(
             history.Select(r => r.NoticeVersion).LastOrDefault(v => v is not null),
             detail.HiddenAt,
             EntitlementFor(current.Basis),
+            retention.Clock,
+            retention.ExpiresAt,
+            retention.IsInFinalWarningAt(clock.GetUtcNow()),
             Art15Disclosure.Purposes,
             Art15Disclosure.DataCategories,
             Art15Disclosure.Recipients,
-            Art15Disclosure.Retention,
+            $"{Art15Disclosure.Retention} {RetentionPolicy.DescriptionFor(retention.Clock)}",
             Art15Disclosure.Art22Logic,
             Art15Disclosure.Rights,
             Art15Disclosure.ComplaintRight,

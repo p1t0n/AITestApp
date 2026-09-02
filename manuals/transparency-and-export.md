@@ -86,11 +86,13 @@ It does **not** claim meaningful human review. We rely on Art. 22(2)(a), so conc
 is the honest position and the safeguards are what have to earn it. It also states the two things
 the person can act on: they read the rationale, and they can ask for a human to look again.
 
-## 7. Retention says criteria, not a date
+## 7. Retention: the criterion, and now the date
 
-`Art15Disclosure.Retention` gives the criterion — kept while in use, expires after a long silence,
-removable sooner on request. The clock itself is P1T-188. Naming a number the code does not enforce
-would be worse than naming the criterion honestly.
+`Art15Disclosure.Retention` gives the criterion. Since P1T-188 the access view also carries the
+person's **own expiry date** and which clock they are on, computed by the same `RetentionPolicy` the
+sweep runs — so the date somebody is shown is the date their record actually goes, rather than a
+description and a behaviour that can drift apart. Inside the final thirty days a banner renders, and
+reading it is itself activity. See `manuals/retention.md`.
 
 ## 8. Where the surfaces are, and what is not built yet
 

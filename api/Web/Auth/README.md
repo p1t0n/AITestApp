@@ -175,6 +175,20 @@ of trusting a caller to have done it. `ErasureService` holds its own gate.
 `TokenVersion` bump is needed: both hosts re-read the account on every request, and it is gone.
 Details, and the store-by-store declaration behind it, in `manuals/personal-data-and-erasure.md`.
 
+## The retention sweep (P1T-188)
+
+The Web host gained its first `BackgroundService`. It is here rather than in MCP or Agents because
+expiry runs the erasure path, and that is registered here alongside the control-word hasher it
+depends on — a second way to delete people in another host is exactly the divergence to avoid.
+
+It is **off unless `Retention:Enabled` is set**: for the one job whose normal operation destroys
+somebody's data, the safe default is not running.
+
+The other half lives on the way in. `ExpertActivityInterceptor` stamps `Expert.LastActivityAt` when
+— and only when — the ownership scope says an Expert is writing their own record. A Service Manager
+and every agent resolve to `Unrestricted`, so their writes never move somebody's retention clock.
+That is the rule the whole slice turns on; `manuals/retention.md` §2 has the reasoning.
+
 ### Who reaches what
 
 | Surface | Audience |

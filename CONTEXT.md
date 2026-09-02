@@ -90,6 +90,13 @@ a 6(1)(b) record; a legitimate-interest record is offered the identical file, la
 rather than a right. A rendered PDF is a readability courtesy and never the portable artefact.
 _Avoid_: download, backup, data dump (the exclusions are the point)
 
+**Retention Clock**:
+How long one record is kept and from when. Two of them: a claimed record runs two calendar years
+from the person's **own** last activity, an unclaimed one six months from collection — shorter
+precisely because nobody can be told it exists. Staff edits and agent scoring never move it; if
+being looked at counted, a bench running weekly scans would keep everybody alive by looking at them.
+_Avoid_: TTL, expiry policy (the expiry is the consequence, the clock is the rule), archive
+
 **Origin**:
 How a roster row came to exist — `SelfRegistered` or `StaffCreated` — and the **only** input to
 its Lawful Basis. Not a synonym for who owns the row: ownership says which Expert reaches it,
