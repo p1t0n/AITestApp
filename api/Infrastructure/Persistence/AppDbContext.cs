@@ -29,6 +29,7 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<ProcessingRecord> ProcessingRecords => Set<ProcessingRecord>();
     public DbSet<PendingClaim> PendingClaims => Set<PendingClaim>();
     public DbSet<ClaimCode> ClaimCodes => Set<ClaimCode>();
+    public DbSet<DataExportRecord> DataExportRecords => Set<DataExportRecord>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -143,6 +144,18 @@ public class AppDbContext : DbContext, IAppDbContext
 
             e.HasOne(x => x.Expert).WithMany()
                 .HasForeignKey(x => x.ExpertId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<DataExportRecord>(e =>
+        {
+            // Cascades with the Expert: after erasure there is no file to have taken, and the row
+            // would be a bare reference to somebody we no longer hold (P1T-187).
+            e.HasOne(x => x.Expert).WithMany()
+                .HasForeignKey(x => x.ExpertId).OnDelete(DeleteBehavior.Cascade);
+            // The staff member's account can go without taking the fact of the export with it.
+            e.HasOne<User>().WithMany()
+                .HasForeignKey(x => x.ExportedByUserId).OnDelete(DeleteBehavior.SetNull);
+            e.HasIndex(x => x.ExpertId);
         });
 
         b.Entity<SpokenLanguage>(e =>

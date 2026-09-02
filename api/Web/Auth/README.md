@@ -186,6 +186,8 @@ Details, and the store-by-store declaration behind it, in `manuals/personal-data
 | `POST /api/claims/redeem` | Both — the code is the authorization |
 | `/api/me/visibility` (read, hide, unhide) | Both — and always the caller's own row: no id exists |
 | `POST /api/me/account/erase` | Both — own account only, gated by the control word |
+| `GET /api/me/access`, `GET /api/me/export` | Both — own record only, resolved from the scope |
+| `POST /api/experts/{id}/export` | Service Manager — on behalf, and it writes a record |
 | `GET /api/experts`, promote, delete, `cv`, `cv.pdf`, `/api/users` | Service Manager |
 | `/api/claims` (queue, approve, reject, codes, revoke) | Service Manager |
 

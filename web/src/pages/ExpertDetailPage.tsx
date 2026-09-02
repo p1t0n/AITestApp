@@ -17,6 +17,7 @@ import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import DescriptionIcon from "@mui/icons-material/Description";
+import DownloadIcon from "@mui/icons-material/Download";
 import {
   useAddAvailability,
   useAddExpertSkill,
@@ -29,6 +30,7 @@ import {
   useDeleteLanguage,
   useDeleteQualification,
   useExpert,
+  useExportExpertOnBehalf,
   useUpdateAvailability,
   useUpdateExpert,
   useUpdateExpertSkill,
@@ -129,6 +131,7 @@ export default function ExpertDetailPage() {
   const { id = "" } = useParams();
   const { data: e, isLoading } = useExpert(id);
   const update = useUpdateExpert(id);
+  const exportOnBehalf = useExportExpertOnBehalf(id);
   const addSkill = useAddExpertSkill(id);
   const updateSkill = useUpdateExpertSkill(id);
   const delSkill = useDeleteExpertSkill(id);
@@ -171,6 +174,17 @@ export default function ExpertDetailPage() {
         <>
           <Button startIcon={<EditIcon />} onClick={() => setEditOpen(true)}>
             Edit
+          </Button>
+          {/* The out-of-band request (P1T-187): somebody phones in and asks for their data, since
+              this service has no email to receive the request by. Taking it writes a record of the
+              Service Manager who did — a fact about them, not a log of who looked at whom. */}
+          <Button
+            startIcon={<DownloadIcon />}
+            disabled={exportOnBehalf.isPending}
+            title="Download this person's data as JSON, on their behalf. The export is recorded."
+            onClick={() => exportOnBehalf.mutate()}
+          >
+            Export their data
           </Button>
           <Button
             variant="contained"

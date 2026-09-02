@@ -30,6 +30,7 @@ public interface IAppDbContext
     DbSet<ProcessingRecord> ProcessingRecords { get; }
     DbSet<PendingClaim> PendingClaims { get; }
     DbSet<ClaimCode> ClaimCodes { get; }
+    DbSet<DataExportRecord> DataExportRecords { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
