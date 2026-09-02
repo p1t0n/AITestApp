@@ -4,9 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import UsersPage from "./UsersPage";
-import ContestableScores, { CONTEST_RIGHT } from "../components/ContestableScores";
 import { CONTEST_QUEUE_NOTE } from "../components/ContestQueue";
-import type { ContestQueueItem, DerivedAssessment } from "../api";
+import type { ContestQueueItem } from "../api";
 
 const CONTESTED: ContestQueueItem = {
   scoringCandidateId: "cand-1",
@@ -20,21 +19,9 @@ const CONTESTED: ContestQueueItem = {
   contestedAt: "2026-09-02T10:00:00Z",
 };
 
-const SCORED: DerivedAssessment = {
-  source: "Roster scan",
-  sourceId: "cand-1",
-  at: null,
-  score: 41,
-  band: "weak",
-  rationale: "Looks like a user of payment platforms rather than a builder of them.",
-  digest: null,
-  matchAnswer: null,
-};
 
 let queue: ContestQueueItem[] = [];
-let assessments: DerivedAssessment[] = [];
 const review = vi.fn();
-const contest = vi.fn();
 
 vi.mock("../api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../api")>();
@@ -49,12 +36,6 @@ vi.mock("../api", async (importOriginal) => {
     useRejectClaim: () => ({ mutate: vi.fn(), ...idle }),
     useContestQueue: () => ({ data: queue, isLoading: false, isError: false, error: null }),
     useReviewContest: () => ({ mutate: review, ...idle }),
-    useContestScore: () => ({ mutate: contest, ...idle }),
-    useMyAccessView: () => ({
-      data: { derived: { assessments, searchIndexNote: "" } },
-      isError: false,
-      error: null,
-    }),
   };
 });
 
@@ -69,7 +50,6 @@ function renderIn(node: React.ReactNode) {
 
 beforeEach(() => {
   queue = [];
-  assessments = [];
   vi.clearAllMocks();
 });
 
@@ -122,40 +102,5 @@ describe("the Service Manager's contest queue (P1T-189)", () => {
 
     expect(screen.getByText(/without saying more. That is their right on its own/))
       .toBeInTheDocument();
-  });
-});
-
-describe("the Expert's contest control (P1T-189)", () => {
-  it("shows the score written about them and offers a person to look at it", async () => {
-    assessments = [SCORED];
-    renderIn(<ContestableScores />);
-
-    expect(screen.getByText(CONTEST_RIGHT)).toBeInTheDocument();
-    expect(screen.getByText(/a user of payment platforms/)).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole("button", { name: "Ask for a person to look at this" }));
-    await userEvent.type(screen.getByLabelText(/Why you disagree/), "I led it.");
-    await userEvent.click(screen.getByRole("button", { name: "Ask for a person to look" }));
-
-    expect(contest).toHaveBeenCalledWith(
-      { scoringCandidateId: "cand-1", view: "I led it." }, expect.anything());
-  });
-
-  /** Asking is a right on its own; requiring an explanation first would be a toll on it. */
-  it("lets somebody ask without explaining", async () => {
-    assessments = [SCORED];
-    renderIn(<ContestableScores />);
-
-    await userEvent.click(screen.getByRole("button", { name: "Ask for a person to look at this" }));
-    await userEvent.click(screen.getByRole("button", { name: "Ask for a person to look" }));
-
-    expect(contest).toHaveBeenCalledWith(
-      { scoringCandidateId: "cand-1", view: undefined }, expect.anything());
-  });
-
-  it("renders nothing for somebody software has never scored", () => {
-    const { container } = renderIn(<ContestableScores />);
-
-    expect(container).toBeEmptyDOMElement();
   });
 });

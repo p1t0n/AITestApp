@@ -16,8 +16,8 @@ import SignupPage from "./pages/SignupPage";
 import SigninPage from "./pages/SigninPage";
 import RecoverPage from "./pages/RecoverPage";
 import UsersPage from "./pages/UsersPage";
-import MyWorkspacePage from "./pages/MyWorkspacePage";
 import MyCvPage from "./pages/MyCvPage";
+import PrivacyDataPage from "./pages/PrivacyDataPage";
 import ClaimStatusPage from "./pages/ClaimStatusPage";
 import AgentWidget from "./components/AgentWidget";
 import AppRailNav, { BRAND } from "./components/AppRail";
@@ -160,7 +160,7 @@ export default function App() {
             <Route path="/me" element={<Navigate to="/me/cv" replace />} />
             <Route path="/me/cv" element={<MyCvPage />} />
             <Route path="/me/claim" element={<ClaimStatusPage />} />
-            <Route path="/me/privacy" element={<MyWorkspacePage />} />
+            <Route path="/me/privacy" element={<PrivacyDataPage />} />
           </Route>
         </Routes>
       </RoutedArea>
