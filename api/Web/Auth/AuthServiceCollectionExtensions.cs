@@ -42,6 +42,13 @@ public static class AuthServiceCollectionExtensions
         services.AddHttpContextAccessor();
         services.AddScoped<IOwnershipScopeProvider, HttpOwnershipScopeProvider>();
 
+        // What this host is looking at the roster for (P1T-185). Administration: its roster screens
+        // are the bench's admin surfaces and must show a paused Expert rather than lose them, and
+        // the one Expert-facing surface shows a person the row they themselves paused. The
+        // availability-shaped paths — search, digests, scan enumeration — filter regardless of this.
+        services.AddSingleton<ExpertToJob.Application.Visibility.IRosterAudienceProvider,
+            ExpertToJob.Application.Visibility.AdministrationAudienceProvider>();
+
         AddSessionJwtAuthentication(services, auth.Jwt);
 
         return services;

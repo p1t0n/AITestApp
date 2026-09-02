@@ -24,6 +24,20 @@ public class Expert
     /// a human promotes it. Active = the normal, visible state.</summary>
     public ExpertStatus Status { get; set; } = ExpertStatus.Active;
 
+    /// <summary>
+    /// When this person paused themselves, or null while they are on the bench (P1T-185). Hiding is
+    /// the Expert's own act and nobody else's: a Service Manager who wants somebody off the bench
+    /// deactivates the account instead, so the two mechanisms never blur into "who hid whom".
+    ///
+    /// <para>A nullable timestamp rather than a third <see cref="ExpertStatus"/> value, and not on
+    /// taste: an enum value collides with the <c>Draft → Active</c> promote path ("promote an
+    /// inactive draft" means nothing) and silently changes what the partial unique index on
+    /// <c>Email</c> enforces, which the claim-matching rule depends on (P1T-184). A hidden Expert
+    /// keeps <c>Status = Active</c>, so that index goes on meaning what it means today. The
+    /// timestamp also answers "since when", which the transparency view has to disclose.</para>
+    /// </summary>
+    public DateTimeOffset? HiddenAt { get; set; }
+
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
 

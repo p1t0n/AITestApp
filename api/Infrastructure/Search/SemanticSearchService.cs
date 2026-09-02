@@ -1,4 +1,5 @@
 using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Application.Visibility;
 using ExpertToJob.Application.Search;
 using ExpertToJob.Domain.Entities;
 using ExpertToJob.Domain.Enums;
@@ -95,7 +96,8 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
 
         var ids = byExpert.Select(x => x.ExpertId).ToList();
         var experts = await _db.Experts
-            .Where(e => ids.Contains(e.Id) && e.Status == ExpertStatus.Active)
+            .OnTheBench()
+            .Where(e => ids.Contains(e.Id))
             .Select(e => new { e.Id, e.FirstName, e.LastName, e.Title })
             .ToDictionaryAsync(e => e.Id, ct);
 
@@ -180,7 +182,8 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
 
         var ids = merged.Select(x => x.ExpertId).ToList();
         var experts = await _db.Experts
-            .Where(e => ids.Contains(e.Id) && e.Status == ExpertStatus.Active)
+            .OnTheBench()
+            .Where(e => ids.Contains(e.Id))
             .Select(e => new { e.Id, e.FirstName, e.LastName, e.Title })
             .ToDictionaryAsync(e => e.Id, ct);
 
@@ -223,7 +226,12 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
         }
 
         var candidates = _db.ExpertSearchChunks
-            .Where(c => c.SourceType != SearchChunkSource.Achievement);
+            .Where(c => c.SourceType != SearchChunkSource.Achievement)
+            // Filtered here, not deleted: a pause must stay free, and re-embedding on unhide would
+            // spend the 100/day quota to undo something reversible (P1T-185). The rows and their
+            // vectors sit right there, which is exactly why this is the assertion most likely to
+            // regress silently.
+            .Where(c => _db.Experts.OnTheBench().Any(e => e.Id == c.ExpertId));
         if (eligibleIds is not null)
         {
             candidates = candidates.Where(c => eligibleIds.Contains(c.ExpertId));
@@ -265,7 +273,8 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
 
         var ids = byExpert.Select(x => x.ExpertId).ToList();
         var experts = await _db.Experts
-            .Where(e => ids.Contains(e.Id) && e.Status == ExpertStatus.Active)
+            .OnTheBench()
+            .Where(e => ids.Contains(e.Id))
             .Select(e => new { e.Id, e.FirstName, e.LastName, e.Title })
             .ToDictionaryAsync(e => e.Id, ct);
 
@@ -304,7 +313,9 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
         // negative-false-positive rate when they compete here (their narrative already reaches
         // these paths rolled into the parent experience chunk).
         var candidates = _db.ExpertSearchChunks
-            .Where(c => c.Embedding != null && c.SourceType != SearchChunkSource.Achievement);
+            .Where(c => c.Embedding != null && c.SourceType != SearchChunkSource.Achievement)
+            // See LexicalSearchAsync: the vectors stay, the paused person does not surface.
+            .Where(c => _db.Experts.OnTheBench().Any(e => e.Id == c.ExpertId));
         if (eligibleIds is not null)
         {
             candidates = candidates.Where(c => eligibleIds.Contains(c.ExpertId));
@@ -347,7 +358,7 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
             return null;
         }
 
-        IQueryable<Expert> q = _db.Experts.Where(e => e.Status == ExpertStatus.Active);
+        IQueryable<Expert> q = _db.Experts.OnTheBench();
 
         if (!string.IsNullOrWhiteSpace(filters.Location))
         {

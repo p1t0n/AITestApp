@@ -2,6 +2,7 @@ import { Paper, Stack, Typography } from "@mui/material";
 import PageHeader from "../components/PageHeader";
 import NoticeUpdateBanner from "../components/NoticeUpdateBanner";
 import RedeemClaimCode from "../components/RedeemClaimCode";
+import BenchPauseControl from "../components/BenchPauseControl";
 import { useSessionEmail } from "../auth/useAuth";
 
 /**
@@ -33,6 +34,11 @@ export default function MyWorkspacePage() {
           </Typography>
         </Stack>
       </Paper>
+
+      {/* The pause: shown only to somebody who actually owns a record (P1T-185). Kept well away
+          from anything destructive — pause and delete are two different kinds of act, and with no
+          email there is no way back for somebody who confused them. */}
+      <BenchPauseControl />
 
       {/* The way out of owning nothing (P1T-184). Shown to everybody rather than only to people
           with a pending claim: a session that owns no row is deliberately indistinguishable from

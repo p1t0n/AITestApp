@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link as RouterLink, useParams } from "react-router-dom";
 import {
+  Alert,
   Box,
   Button,
   Chip,
@@ -182,6 +183,14 @@ export default function ExpertDetailPage() {
         </>
       }
     >
+      {e.hiddenAt && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          This person paused themselves on {new Date(e.hiddenAt).toLocaleDateString()}. They are not
+          offered for work — no searches, matches or scans reach them — and nothing has been
+          deleted. Only they can undo it.
+        </Alert>
+      )}
+
       <Section title="Profile">
         <Grid container spacing={1}>
           <Grid item xs={6}><b>Email:</b> {e.email}</Grid>

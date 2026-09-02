@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using ExpertToJob.Domain.Enums;
 
 namespace ExpertToJob.Application.Experts;
@@ -12,7 +13,13 @@ public record ExpertSummaryDto(
     string? Location,
     string Email,
     int CurrentCapacityPercent,
-    ExpertStatus Status);
+    ExpertStatus Status,
+    /// <summary>When this person paused themselves, or absent while they are on the bench
+    /// (P1T-185). Omitted rather than serialised as null, and that is not cosmetic: this projection
+    /// is what <c>expert_list</c> hands an agent on every model call, agents never see a paused
+    /// Expert at all, and a null per row would be pure token cost forever.</summary>
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    DateTimeOffset? HiddenAt = null);
 
 public record ExpertDetailDto(
     Guid Id,
@@ -30,7 +37,10 @@ public record ExpertDetailDto(
     IReadOnlyList<AvailabilityEntryDto> AvailabilityEntries,
     IReadOnlyList<ExpertSkillDto> Skills,
     IReadOnlyList<QualificationDto> Qualifications,
-    IReadOnlyList<ExperienceDto> Experiences);
+    IReadOnlyList<ExperienceDto> Experiences,
+    /// <inheritdoc cref="ExpertSummaryDto.HiddenAt"/>
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    DateTimeOffset? HiddenAt = null);
 
 public record SpokenLanguageDto(Guid Id, string Language, LanguageLevel Level);
 

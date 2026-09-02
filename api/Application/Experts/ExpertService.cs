@@ -1,6 +1,7 @@
 using ExpertToJob.Application.Abstractions;
 using ExpertToJob.Application.Auth;
 using ExpertToJob.Application.Common;
+using ExpertToJob.Application.Visibility;
 using ExpertToJob.Domain.Entities;
 using ExpertToJob.Domain.Enums;
 using FluentValidation;
@@ -36,18 +37,21 @@ public class ExpertService : IExpertService
     private readonly IValidator<SaveExpertDto> _validator;
     private readonly IValidator<UpdateExpertDto> _patchValidator;
     private readonly IOwnershipScopeProvider _scope;
+    private readonly IRosterAudienceProvider _audience;
     private readonly TimeProvider _clock;
     public ExpertService(
         IAppDbContext db,
         IValidator<SaveExpertDto> validator,
         IValidator<UpdateExpertDto> patchValidator,
         IOwnershipScopeProvider scope,
+        IRosterAudienceProvider audience,
         TimeProvider clock)
     {
         _db = db;
         _validator = validator;
         _patchValidator = patchValidator;
         _scope = scope;
+        _audience = audience;
         _clock = clock;
     }
 
@@ -59,10 +63,13 @@ public class ExpertService : IExpertService
         // call that would hand over the whole product, so it does not rely on a single [Authorize]
         // somewhere above it being right.
         var (unrestricted, owned) = await _scope.CurrentAsync(ct);
+        // Two seams, two questions: the ownership scope says who is asking (P1T-182), the audience
+        // says what the row permits (P1T-185). An agent is unrestricted on the first and still
+        // never sees a paused Expert here.
         var experts = await _db.Experts
             .AsNoTracking()
-            .Where(e => (includeDrafts || e.Status == ExpertStatus.Active)
-                        && (unrestricted || e.Id == owned))
+            .ForAudience(_audience.Current, includeDrafts)
+            .Where(e => unrestricted || e.Id == owned)
             .Include(e => e.AvailabilityEntries)
             .OrderBy(e => e.LastName).ThenBy(e => e.FirstName)
             .ToListAsync(ct);
@@ -228,6 +235,7 @@ public class ExpertService : IExpertService
     {
         var (unrestricted, owned) = await _scope.CurrentAsync(ct);
         return await _db.Experts
+            .ReachableBy(_audience.Current)
             .FirstOrDefaultAsync(x => x.Id == id && (unrestricted || x.Id == owned), ct);
     }
 
@@ -235,7 +243,7 @@ public class ExpertService : IExpertService
         Guid id, bool track, CancellationToken ct, OwnershipScope? scope = null)
     {
         var (unrestricted, owned) = scope ?? await _scope.CurrentAsync(ct);
-        var query = _db.Experts.AsQueryable();
+        var query = _db.Experts.ReachableBy(_audience.Current);
         if (!track) query = query.AsNoTracking();
         return await query
             .Include(e => e.SpokenLanguages)

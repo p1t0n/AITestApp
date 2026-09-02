@@ -47,7 +47,9 @@ safeguards problem, a prohibition.
 The consequence follows and is stated rather than discovered later: **staff-created rows sit on LI
 and therefore have no Art. 22 exception either.** Mixed basis means mixed exposure. Either the
 roster scan must not produce automated outcomes for LI-basis Experts, or the bench migrates toward
-self-registration — carried into P1T-179.
+self-registration — carried into P1T-179, and **enforced since P1T-185**: the scan's candidate
+enumeration carries an Art. 22 route filter, so an LI-basis row is never scored at all
+(`manuals/expert-visibility.md`).
 
 ## 3. How the pairing is enforced
 

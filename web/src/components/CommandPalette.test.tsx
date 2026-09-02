@@ -247,6 +247,24 @@ describe("finding a person", () => {
     expect(optionNames()).toEqual([expect.stringContaining("Grace Hopper")]);
   });
 
+  /**
+   * A paused Expert took themselves off the bench (P1T-185). The roster page keeps them, marked,
+   * because that page is where staff account for who is on the bench; the palette is a
+   * jump-to-a-person surface, and offering somebody here is offering them for work.
+   */
+  it("does not offer somebody who paused themselves", async () => {
+    roster = [
+      person({ id: "e1", firstName: "Grace", lastName: "Hopper" }),
+      person({ id: "e2", firstName: "Paused", lastName: "Hopper", hiddenAt: "2026-09-01T10:00:00Z" }),
+    ];
+
+    const { user } = renderPalette();
+    open();
+
+    await user.type(input(), "hopper");
+    expect(optionNames()).toEqual([expect.stringContaining("Grace Hopper")]);
+  });
+
   it("matches on the title, the location and the email as well as the name", async () => {
     const { user } = renderPalette();
     open();

@@ -7,7 +7,7 @@ internal static class ExpertMappings
 {
     public static ExpertSummaryDto ToSummary(this Expert e, DateOnly onDate) => new(
         e.Id, e.FirstName, e.LastName, e.Title, e.Location, e.Email,
-        CapacityCalculator.CapacityOn(e.AvailabilityEntries, onDate), e.Status);
+        CapacityCalculator.CapacityOn(e.AvailabilityEntries, onDate), e.Status, e.HiddenAt);
 
     public static ExpertDetailDto ToDetail(this Expert e, DateOnly onDate) => new(
         e.Id, e.FirstName, e.LastName, e.Title, e.Email, e.Phone, e.Location, e.Summary, e.PhotoUrl,
@@ -20,7 +20,8 @@ internal static class ExpertMappings
         e.Qualifications.Select(q => new QualificationDto(
             q.Id, q.Type, q.Name, q.Institution, q.Field, q.StartDate, q.EndDate,
             q.Issuer, q.CredentialId, q.IssueDate, q.ExpiryDate)).ToList(),
-        e.Experiences.OrderByDescending(x => x.StartDate).Select(x => x.ToDto()).ToList());
+        e.Experiences.OrderByDescending(x => x.StartDate).Select(x => x.ToDto()).ToList(),
+        e.HiddenAt);
 
     public static ExperienceDto ToDto(this Experience x) => new(
         x.Id, x.Company, x.Title, x.Location, x.StartDate, x.EndDate, x.Summary,
