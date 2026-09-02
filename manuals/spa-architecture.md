@@ -164,7 +164,7 @@ server, where the audience is declared per endpoint and the fallback is staff-on
 /me                                   → /me/cv
 /me/cv                                MyCvPage
 /me/claim                             ClaimStatusPage
-/me/privacy                           MyWorkspacePage
+/me/privacy                           PrivacyDataPage
 ```
 
 A signed-in person who asks for a route their role cannot have goes to **their own landing page,
@@ -189,6 +189,10 @@ and the Expert's alike; the *pages* are thin shells around it. What was rejected
 one page serving both roles with controls hidden by role — "hidden for Experts" is one `sx` prop away
 from not hidden, and that is how a page grows holes. A test reads both page sources and fails if
 either reaches past the shared module to a child form directly.
+
+**Privacy & data is Variant A** — a single-column document, state as a sentence, delete at the foot
+behind a rule. Two of its properties are load-bearing and must survive any later edit; both are
+recorded in `manuals/expert-privacy-page.md` §1, and one of them is *"do not shorten this page"*.
 
 **Same shell, dock not mounted.** The agent surfaces read and act on the whole roster, so they are
 staff's. This is not a second layout mode: the dock is already closeable, so "rail only" is a state

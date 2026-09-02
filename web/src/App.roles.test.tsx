@@ -12,7 +12,7 @@ vi.mock("./pages/UsersPage", () => ({ default: () => <div>the users page</div> }
 vi.mock("./pages/CatalogPage", () => ({ default: () => <div>the catalog page</div> }));
 // The Expert's two places, stood in for the same reason: this file asks which route renders.
 vi.mock("./pages/MyCvPage", () => ({ default: () => <div>the my-cv page</div> }));
-vi.mock("./pages/MyWorkspacePage", () => ({ default: () => <div>the privacy page</div> }));
+vi.mock("./pages/PrivacyDataPage", () => ({ default: () => <div>the privacy page</div> }));
 vi.mock("./pages/ClaimStatusPage", () => ({ default: () => <div>the claim-status page</div> }));
 let agentWidgetMounted = false;
 vi.mock("./components/AgentWidget", () => ({

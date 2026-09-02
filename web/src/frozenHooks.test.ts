@@ -87,6 +87,16 @@ const FROZEN_TEMPLATES = [
   "staffing-step-*",
 ] as const;
 
+/**
+ * Hooks added since, each with the slice that added it and why — the file's own convention, because
+ * the distinction between "what came in" and "what we left behind" is the finding it records.
+ *
+ * `row-*` addresses one right on the privacy page by its label (P1T-191). Two of those rows carry a
+ * control-word field — objecting and deleting are the same act reached two ways — so a page-wide
+ * query cannot tell them apart, and the hook is what lets a test scope to one right.
+ */
+const ADDED_SINCE_THE_CHAIN = ["row-*"] as const;
+
 // Off the working directory rather than off `import.meta.url`: the jsdom environment rewrites
 // `import.meta.url` to an `http://localhost/…` URL, so `fileURLToPath` throws on it. Vitest runs
 // with the cwd at `web/` (`e2e/screenshots.e2e.ts` already relies on the same), and the read below
@@ -137,6 +147,10 @@ describe("frozen DOM hooks (P1T-158 §9)", () => {
     expect(missing(ADDED_BY_THE_CHAIN, emittedHooks().literals)).toEqual([]);
   });
 
+  it("still emits the hooks added since", () => {
+    expect(missing(ADDED_SINCE_THE_CHAIN, emittedHooks().templates)).toEqual([]);
+  });
+
   // The other direction, and the reason this is an inventory rather than three presence checks: a
   // rename shows up above as a removal, but a *new* hook shows up nowhere unless the set is closed.
   // Failing here is not a defect — it means a hook arrived and this list is the place to say so,
@@ -144,6 +158,7 @@ describe("frozen DOM hooks (P1T-158 §9)", () => {
   it("names every hook the app emits", () => {
     const { literals, templates } = emittedHooks();
     expect([...literals].sort()).toEqual([...FROZEN_LITERALS, ...ADDED_BY_THE_CHAIN].sort());
-    expect([...templates].sort()).toEqual([...FROZEN_TEMPLATES].sort());
+    expect([...templates].sort()).toEqual(
+      [...FROZEN_TEMPLATES, ...ADDED_SINCE_THE_CHAIN].sort());
   });
 });

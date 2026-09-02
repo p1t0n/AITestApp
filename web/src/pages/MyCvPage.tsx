@@ -6,6 +6,7 @@ import { apiErrorMessage, useExpert, useMyVisibility, useUpdateExpert } from "..
 import PageHeader, { PageContainer } from "../components/PageHeader";
 import ExpertRecordSections, { Section } from "../components/ExpertRecordSections";
 import { ErrorNotice } from "../components/ErrorNotice";
+import ExpiryBanner from "../components/ExpiryBanner";
 import ExpertFormDialog from "./ExpertFormDialog";
 
 /**
@@ -75,6 +76,12 @@ function Editor({
         </Button>
       }
     >
+      {/* The one thing here with a deadline (P1T-188). It lives on this page rather than on
+          Privacy & data, where the state is stated in prose: two surfaces saying the same thing is
+          exactly what the prototype run rejected, and this is the page somebody actually spends
+          time on. Reading it is activity, so it has already pushed the date back. */}
+      <ExpiryBanner />
+
       {/* The status strip: compact, on the editor, and only saying something when there is
           something to say. How the five states should read at a glance is P1T-175's open visual
           question — this is the structure, not the answer to it. */}

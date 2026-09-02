@@ -131,7 +131,8 @@ Pausing twice keeps the first timestamp: "since when" is a fact about the pause,
 P1T-171 chose two separate controls precisely so nobody deletes when they meant to pause — and with
 no email there is no way to reach somebody who got it wrong. `BenchPauseControl` states the full
 consequence before the press: not offered for work, **nothing deleted**, the record stays, come back
-whenever. Erasure lives elsewhere on the page and looks like a different kind of thing (P1T-191).
+whenever. Erasure lives at the foot of the same page, below a rule and under its own heading, and
+the distance between them is the separation (P1T-191, `manuals/expert-privacy-page.md` §1).
 
 ## 8. How the seam is kept single
 
