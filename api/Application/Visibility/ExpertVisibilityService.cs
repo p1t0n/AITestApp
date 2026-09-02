@@ -48,7 +48,7 @@ public class ExpertVisibilityService(IAppDbContext db, TimeProvider clock) : IEx
         var expert = await MyRowAsync(actingUserId, ct);
         if (expert.HiddenAt is null)
         {
-            expert.HiddenAt = clock.GetUtcNow();
+            expert.HiddenAt = ToStorePrecision(clock.GetUtcNow());
             await db.SaveChangesAsync(ct);
         }
 
@@ -75,6 +75,16 @@ public class ExpertVisibilityService(IAppDbContext db, TimeProvider clock) : IEx
     private async Task<Expert> MyRowAsync(Guid actingUserId, CancellationToken ct) =>
         await db.Experts.FirstOrDefaultAsync(e => e.OwnerUserId == actingUserId, ct)
         ?? throw new NotFoundException(nameof(Expert), actingUserId);
+
+    /// <summary>
+    /// Truncates to the precision the store actually holds. Postgres <c>timestamptz</c> keeps
+    /// microseconds and a .NET tick is 100ns, so writing the raw clock value means the response to
+    /// the very first pause carries a "since when" no later read can ever return — the same field,
+    /// two answers, one of them unreachable. Rounding on the way in makes the value this call
+    /// returns the value every later read returns.
+    /// </summary>
+    private static DateTimeOffset ToStorePrecision(DateTimeOffset at) =>
+        new(at.Ticks - (at.Ticks % TimeSpan.TicksPerMicrosecond), at.Offset);
 
     private static ExpertVisibilityDto Project(Expert e) =>
         new(e.Id, e.HiddenAt is not null, e.HiddenAt);

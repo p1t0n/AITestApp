@@ -64,6 +64,11 @@ public class VisibilityBoundaryTests(WebApiFactory factory)
             .ReadOkAsync<ExpertVisibilityDto>();
 
         second.HiddenSince.Should().Be(first.HiddenSince);
+
+        // And the value the first call returned is the one the store actually holds — a "since
+        // when" that changes shape on its way back from Postgres is two answers to one question.
+        (await (await client.GetAsync("/api/me/visibility")).ReadOkAsync<ExpertVisibilityDto>())
+            .HiddenSince.Should().Be(first.HiddenSince);
     }
 
     /// <summary>
