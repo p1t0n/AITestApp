@@ -2,6 +2,19 @@ import { expect, test } from "@playwright/test";
 import { addVirtualAuthenticator, signUpAsExpert } from "./passkey";
 
 /**
+ * A fresh address on a domain that is <b>not</b> RFC 2606 reserved.
+ *
+ * The shared `uniqueEmail` helper uses `@example.com`, and retention treats a reserved domain as
+ * fabricated data that no clock applies to (P1T-188) — correctly, since no real person has an
+ * address there, and without it the demo roster would evaporate. But it means a person created by
+ * the shared helper sees "this is sample data rather than a record about a person" where their
+ * expiry date should be, so this suite would be asserting the exemption rather than the feature.
+ */
+function realPersonEmail(): string {
+  return `p1t191-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@lovelace.dev`;
+}
+
+/**
  * The privacy page at the real surface (P1T-191). Three of its rights cannot be shown by a unit
  * suite at all: a download is a browser event, pausing round-trips through the API and back into
  * the page's own prose, and deleting ends the session on both hosts — which is only observable by
@@ -15,7 +28,7 @@ import { addVirtualAuthenticator, signUpAsExpert } from "./passkey";
 test.describe("privacy and data", () => {
   test("the page states what is held, who sees it, and how long", async ({ context, page }) => {
     await addVirtualAuthenticator(context, page);
-    await signUpAsExpert(page);
+    await signUpAsExpert(page, realPersonEmail());
 
     await page.getByRole("link", { name: "Privacy & data" }).click();
 
@@ -28,7 +41,7 @@ test.describe("privacy and data", () => {
 
   test("the export downloads as a file, labelled a right", async ({ context, page }) => {
     await addVirtualAuthenticator(context, page);
-    await signUpAsExpert(page);
+    await signUpAsExpert(page, realPersonEmail());
     await page.goto("/me/privacy");
 
     await expect(page.getByText(/right to data portability/)).toBeVisible();
@@ -47,7 +60,7 @@ test.describe("privacy and data", () => {
    */
   test("pausing and resuming changes the sentence at the top", async ({ context, page }) => {
     await addVirtualAuthenticator(context, page);
-    await signUpAsExpert(page);
+    await signUpAsExpert(page, realPersonEmail());
     await page.goto("/me/privacy");
 
     await page.getByRole("button", { name: "Pause" }).click();
@@ -64,7 +77,7 @@ test.describe("privacy and data", () => {
    */
   test("deleting refuses a wrong control word and keeps the session", async ({ context, page }) => {
     await addVirtualAuthenticator(context, page);
-    await signUpAsExpert(page);
+    await signUpAsExpert(page, realPersonEmail());
     await page.goto("/me/privacy");
 
     const remove = page.getByRole("button", { name: "Delete everything" });
@@ -79,7 +92,7 @@ test.describe("privacy and data", () => {
 
   test("deleting with the right control word ends the session", async ({ context, page }) => {
     await addVirtualAuthenticator(context, page);
-    await signUpAsExpert(page);
+    await signUpAsExpert(page, realPersonEmail());
     await page.goto("/me/privacy");
 
     // The word every e2e signup uses (see `signUpThroughTheForm`).

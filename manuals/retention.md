@@ -100,6 +100,15 @@ entry, describing data that is not about anybody.
 A record with **no** address is also left alone: that is an agent-staged draft, and the promote gate
 decides a draft's fate, not a clock.
 
+> **The exclusion does not care who created the record.** Somebody who genuinely signs up with an
+> `@example.com` address is exempt too, and their privacy page tells them so — *"this is sample data
+> rather than a record about a person"*. That is the honest consequence of a domain rule, and in
+> production it is harmless, since nobody has a real address there. It does bite in one place worth
+> knowing about: the e2e suite's shared `uniqueEmail` helper uses `@example.com`, so a test that
+> wants to see a real expiry date has to ask for an address on some other domain
+> (`e2e/privacy-data.e2e.ts` does). P1T-191's first CI run failed on exactly this, asserting the
+> exemption while believing it was asserting the feature.
+
 ## 6. The sweep is off unless a deployment turns it on
 
 `Retention:Enabled` defaults to **false**. For the one background job whose normal operation
