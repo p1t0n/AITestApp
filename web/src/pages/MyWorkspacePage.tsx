@@ -3,6 +3,7 @@ import PageHeader from "../components/PageHeader";
 import NoticeUpdateBanner from "../components/NoticeUpdateBanner";
 import RedeemClaimCode from "../components/RedeemClaimCode";
 import BenchPauseControl from "../components/BenchPauseControl";
+import ExpiryBanner from "../components/ExpiryBanner";
 import EraseAccountControl from "../components/EraseAccountControl";
 import { useSessionEmail } from "../auth/useAuth";
 
@@ -22,6 +23,10 @@ export default function MyWorkspacePage() {
           after signing in, and a sign-in is the only channel a service that sends no email has.
           It notifies — everything below it stays readable and editable regardless. */}
       <NoticeUpdateBanner />
+
+      {/* Above everything, because it is the one thing on this page with a deadline (P1T-188).
+          Reading it is activity, so for an owned record it has already pushed the date back. */}
+      <ExpiryBanner />
 
       <Paper variant="outlined" sx={{ p: 3 }}>
         <Stack spacing={1.5}>

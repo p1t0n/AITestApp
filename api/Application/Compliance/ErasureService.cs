@@ -27,6 +27,11 @@ public sealed record ErasureResult(
 /// <para>Like the pause control it lives beside, no signature takes an expert id — the row is
 /// always the acting account's own, resolved through <c>OwnerUserId</c>. An API that cannot express
 /// "erase somebody else" cannot be talked into it.</para>
+///
+/// <para>The retention sweep needs the same act without an account or a control word, and it gets
+/// it through a <em>separate</em> interface (<see cref="IRetentionErasure"/>) that the Web host
+/// never routes to — the two share a private core rather than a signature, so this one still cannot
+/// name anybody but the caller.</para>
 /// </summary>
 public interface IErasureService
 {
@@ -38,7 +43,27 @@ public interface IErasureService
         Guid actingUserId, string controlWord, CancellationToken ct = default);
 }
 
-public class ErasureService(IAppDbContext db, IControlWordHasher controlWords) : IErasureService
+/// <summary>
+/// The same erasure, triggered by a clock instead of a person (P1T-188). Deliberately a second
+/// interface rather than a second method on <see cref="IErasureService"/>: that one's whole
+/// guarantee is that no signature can name somebody else's record, and adding an id-taking method
+/// beside it would quietly retire the guarantee. Nothing in the Web API routes to this.
+///
+/// <para>Retention is a <b>trigger</b>, not a second mechanism. Two implementations of "delete a
+/// person" diverge; it is only a question of when. <c>ErasureTests</c> asserts the two produce
+/// identical database state.</para>
+/// </summary>
+public interface IRetentionErasure
+{
+    /// <summary>
+    /// Erases one record because its period ran out. Takes no control word — there is nobody to ask
+    /// — and works on an unclaimed record, which has no account behind it at all.
+    /// </summary>
+    Task<ErasureResult> EraseExpiredAsync(Guid expertId, CancellationToken ct = default);
+}
+
+public class ErasureService(IAppDbContext db, IControlWordHasher controlWords)
+    : IErasureService, IRetentionErasure
 {
     public async Task<ErasureResult> EraseMineAsync(
         Guid actingUserId, string controlWord, CancellationToken ct = default)
@@ -58,6 +83,30 @@ public class ErasureService(IAppDbContext db, IControlWordHasher controlWords) :
         }
 
         var expert = await db.Experts.FirstOrDefaultAsync(e => e.OwnerUserId == actingUserId, ct);
+        return await EraseAsync(expert, user, ct);
+    }
+
+    public async Task<ErasureResult> EraseExpiredAsync(Guid expertId, CancellationToken ct = default)
+    {
+        var expert = await db.Experts.FirstOrDefaultAsync(e => e.Id == expertId, ct)
+            ?? throw new NotFoundException(nameof(Expert), expertId);
+
+        // The account goes with the record, exactly as it does when somebody deletes themselves —
+        // and an unclaimed record has none, which is the case self-service erasure cannot express.
+        var user = expert.OwnerUserId is { } ownerId
+            ? await db.Users.FirstOrDefaultAsync(u => u.Id == ownerId, ct)
+            : null;
+
+        return await EraseAsync(expert, user, ct);
+    }
+
+    /// <summary>
+    /// The act itself, with the gate already passed and both rows resolved. <b>One implementation,
+    /// two triggers</b> — a person asking, and a period running out. Everything below is keyed on
+    /// the record; who asked for it is settled before we get here.
+    /// </summary>
+    private async Task<ErasureResult> EraseAsync(Expert? expert, User? user, CancellationToken ct)
+    {
         var scoringRows = 0;
         var proposalRows = 0;
         var packages = 0;
@@ -66,7 +115,7 @@ public class ErasureService(IAppDbContext db, IControlWordHasher controlWords) :
         {
             // A scan is a working artefact, not a decision, so the rows go whole — including the
             // captured career digest, which is the fullest copy of the person outside their own row.
-            // The FK added in this slice makes the database do this too; doing it here as well means
+            // The FK added in P1T-186 makes the database do this too; doing it here as well means
             // erasure does not depend on a cascade a future migration could drop.
             var scoring = await db.ScoringJobCandidates
                 .Where(c => c.ExpertId == expert.Id).ToListAsync(ct);
@@ -110,8 +159,12 @@ public class ErasureService(IAppDbContext db, IControlWordHasher controlWords) :
         }
 
         // And the account, in the same transaction — its absence is what refuses every live session
-        // on both hosts, so there is no window in which a deleted person's token still works.
-        db.Users.Remove(user);
+        // on both hosts, so there is no window in which a deleted person's token still works. Null
+        // only for an unclaimed record, which never had one.
+        if (user is not null)
+        {
+            db.Users.Remove(user);
+        }
 
         await db.SaveChangesAsync(ct);
 

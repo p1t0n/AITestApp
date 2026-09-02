@@ -105,6 +105,14 @@ Keeping rows about an erased person — to prove we once had a basis for data we
 also not something Art. 17(3) plainly covers. So the cascade takes them, and this note is here so
 the next reader finds a decision rather than a discrepancy.
 
+## 5a. Two triggers, one mechanism
+
+Since P1T-188 erasure has a second trigger: a retention period running out. It is deliberately not a
+second implementation — `IErasureService.EraseMineAsync` (a person asking, gated by the control
+word) and `IRetentionErasure.EraseExpiredAsync` (the clock, with no account and no control word)
+share one private core, and a test compares the database residue of both. See
+`manuals/retention.md` §4.
+
 ## 6. The act itself
 
 **Self-service, synchronous, irreversible, control-word gated.** `POST /api/me/account/erase`, under

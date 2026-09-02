@@ -21,7 +21,8 @@ internal static class ExpertMappings
             q.Id, q.Type, q.Name, q.Institution, q.Field, q.StartDate, q.EndDate,
             q.Issuer, q.CredentialId, q.IssueDate, q.ExpiryDate)).ToList(),
         e.Experiences.OrderByDescending(x => x.StartDate).Select(x => x.ToDto()).ToList(),
-        e.HiddenAt);
+        e.HiddenAt,
+        e.LastActivityAt);
 
     public static ExperienceDto ToDto(this Experience x) => new(
         x.Id, x.Company, x.Title, x.Location, x.StartDate, x.EndDate, x.Summary,

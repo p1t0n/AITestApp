@@ -37,6 +37,12 @@ export interface AccessView {
   noticeVersionAcknowledged: string | null;
   pausedSince: string | null;
   export: ExportEntitlement;
+  /** Which retention clock this record is on (P1T-188). */
+  retentionClock: "Claimed" | "Unclaimed" | "NotAPerson";
+  /** When the record will be deleted if nothing else happens, or null when nothing will. */
+  expiresAt: string | null;
+  /** Inside the final thirty days — what the banner renders on. */
+  expiringSoon: boolean;
   purposes: string[];
   dataCategories: string[];
   recipients: RecipientCategory[];
