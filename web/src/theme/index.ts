@@ -13,9 +13,9 @@ import type { ThemeModeTokens } from "./tokens";
 import type { ThemeMode } from "./mode";
 
 /**
- * The one palette role MUI does not have. `raised` is the third surface step — a well *inside* a
- * panel — and `outline` is a control's own boundary, which has to clear 3:1 where `divider` must
- * not (see `tokens.ts`).
+ * The one palette role MUI does not have. `raised` is the third surface — a flat fill inside a
+ * panel, flat because Relief Depth stops at two levels — and `outline` is a control's own boundary,
+ * which has to clear 3:1 where `divider` must not (see `tokens.ts`).
  *
  * Deliberately does not re-expose `page` / `surface`: those already have MUI names
  * (`background.default`, `background.paper`), and a second name for the same colour is exactly the
@@ -52,29 +52,38 @@ declare module "@mui/material/Paper" {
  * The type scale. Dense on purpose: body copy is 14px and the headings stop well short of MUI's
  * defaults (`h1` is 6rem out of the box), because this app's pages are tables and forms, not
  * marketing. `textTransform: "none"` on buttons — a shouted label is not emphasis.
+ *
+ * Three families now, and the split is by role rather than by taste: headings are Plus Jakarta Sans
+ * at 800 (the artboards' voice), body is DM Sans, and `overline` — the **Eyebrow** — is mono, which
+ * is what makes mono a UI role here rather than something only `code` and `pre` reach.
  */
 function typography() {
+  const heading = { fontFamily: tokens.type.fontFamilyHeading, fontWeight: 800 };
   return {
     fontFamily: tokens.type.fontFamily,
     fontSize: tokens.type.baseSize,
-    h1: { fontSize: "2rem", fontWeight: 700, lineHeight: 1.2, letterSpacing: "-0.02em" },
-    h2: { fontSize: "1.625rem", fontWeight: 700, lineHeight: 1.25, letterSpacing: "-0.015em" },
-    h3: { fontSize: "1.375rem", fontWeight: 700, lineHeight: 1.3, letterSpacing: "-0.01em" },
-    h4: { fontSize: "1.25rem", fontWeight: 600, lineHeight: 1.3, letterSpacing: "-0.01em" },
-    h5: { fontSize: "1.0625rem", fontWeight: 600, lineHeight: 1.35 },
-    h6: { fontSize: "0.9375rem", fontWeight: 600, lineHeight: 1.4 },
+    h1: { ...heading, fontSize: "2rem", lineHeight: 1.2, letterSpacing: "-0.02em" },
+    h2: { ...heading, fontSize: "1.625rem", lineHeight: 1.25, letterSpacing: "-0.015em" },
+    h3: { ...heading, fontSize: "1.375rem", lineHeight: 1.3, letterSpacing: "-0.01em" },
+    h4: { ...heading, fontSize: "1.25rem", lineHeight: 1.3, letterSpacing: "-0.01em" },
+    h5: { ...heading, fontSize: "1.0625rem", lineHeight: 1.35 },
+    h6: { ...heading, fontSize: "0.9375rem", lineHeight: 1.4 },
     subtitle1: { fontSize: "0.875rem", fontWeight: 600, lineHeight: 1.45 },
     subtitle2: { fontSize: "0.8125rem", fontWeight: 600, lineHeight: 1.45 },
     body1: { fontSize: "0.875rem", lineHeight: 1.55 },
     body2: { fontSize: "0.8125rem", lineHeight: 1.5 },
     button: { fontSize: "0.8125rem", fontWeight: 600, textTransform: "none" as const },
     caption: { fontSize: "0.75rem", lineHeight: 1.45 },
+    // The Eyebrow: `ROSTER · 42 RECORDS`. Mono, so a count above a heading is legibly a *number*
+    // and lines up with the next one — see `CONTEXT.md`.
     overline: {
+      fontFamily: tokens.type.fontFamilyMono,
       fontSize: "0.6875rem",
       fontWeight: 700,
       lineHeight: 1.6,
       letterSpacing: "0.08em",
       textTransform: "uppercase" as const,
+      fontVariantNumeric: "tabular-nums",
     },
   };
 }
@@ -94,7 +103,7 @@ function build(mode: ThemeMode, t: ThemeModeTokens): Theme {
       divider: t.divider,
       action: t.action,
     },
-    shape: { borderRadius: tokens.radius },
+    shape: { borderRadius: tokens.radius.medium },
     spacing: tokens.spacing,
     // The motion ceiling from §8 of the design record, at the one place MUI's components read a
     // duration from. `standard` is the longest thing the library will now animate.

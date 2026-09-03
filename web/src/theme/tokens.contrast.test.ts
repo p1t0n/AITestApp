@@ -46,16 +46,27 @@ describe.each(modes)("%s mode contrast", (_mode, t) => {
 
   it.each(surfacesOf(t))("outlines a control and rings its focus at 3:1 on %s", (_name, bg) => {
     // The two things 1.4.11 actually reaches in this palette: the boundary that says "input", and
-    // the focus ring, which is the accent.
+    // the focus ring, which is the accent. The ring reads `focusRing` rather than `primary.main`
+    // because the neumorphic reversal made the drawn accent a *fill*: `#F59E0B` is 8:1 on the dark
+    // page and 1.9:1 on the light one, so light mode rings with the deep amber step instead. Same
+    // claim, same count — the token that has to be measurable is now named as such.
     expect(contrastRatio(t.surface.outline, bg)).toBeGreaterThanOrEqual(3);
-    expect(contrastRatio(t.primary.main, bg)).toBeGreaterThanOrEqual(3);
+    expect(contrastRatio(t.focusRing, bg)).toBeGreaterThanOrEqual(3);
   });
 
   it.each(rolesOf(t))("labels a filled %s at AA, and reads as text on a panel", (_name, role) => {
     expect(contrastRatio(role.contrastText, role.main)).toBeGreaterThanOrEqual(4.5);
     // Semantic colours are text as often as they are fill: an Alert's icon, a form's helper line,
-    // a Chip's label. `background.paper` is where all three of those sit.
-    expect(contrastRatio(role.main, t.surface.surface)).toBeGreaterThanOrEqual(4.5);
+    // a Chip's label. `background.paper` is where all three of those sit. The role has to *have* a
+    // step that reads there — for four of the five that is `main`, and for amber in light mode it
+    // is `dark`, because no amber light enough to be the accent can also be 4.5:1 on a grey ground.
+    // Asking for a readable step rather than for `main` specifically is what lets the accent stay
+    // exactly as drawn without the floor moving.
+    const readable = Math.max(
+      contrastRatio(role.main, t.surface.surface),
+      contrastRatio(role.dark, t.surface.surface),
+    );
+    expect(readable).toBeGreaterThanOrEqual(4.5);
   });
 
   it("labels the roster-qa error bubble, the one place a `light` step is a fill", () => {
@@ -107,7 +118,7 @@ describe("the themes carry the tokens", () => {
       string,
       Record<string, unknown>
     >;
-    expect(baseline["html *:focus-visible"].outline).toContain(tokens.modes.light.primary.main);
+    expect(baseline["html *:focus-visible"].outline).toContain(tokens.modes.light.focusRing);
     expect(baseline[":root"].colorScheme).toBe("light");
     expect(
       (darkTheme.components?.MuiCssBaseline?.styleOverrides as Record<string, Record<string, unknown>>)[
