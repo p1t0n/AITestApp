@@ -127,6 +127,39 @@ test.describe("the print cascade outside the CV page", () => {
     await expect(page.getByRole("button", { name: "Token usage" })).toBeVisible();
   });
 
+  test("no page content prints its relief, which is a grey smudge on paper", async ({
+    context,
+    page,
+  }) => {
+    // The floor slice ② added to `baseline.ts`. Every panel in the app is extruded now — the roster
+    // is a Paper around a table — and a dual shadow on paper is a grey halo around every card. The
+    // rail and the dock hide themselves; page *content* has to print, just flat.
+    //
+    // This is the half jsdom cannot answer. `components.test.tsx` proves the rule is emitted;
+    // whether it beats the component override that put the relief there in the first place is a
+    // cascade question, and `!important` in a `@media print` block is only a claim until Chromium
+    // agrees with it.
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await signInFresh(page, context);
+
+    // The roster's own card: walked out from the table's first column header, whose name is frozen
+    // (§9), rather than named by a class or a position that a later slice may move.
+    const card = (await page
+      .getByRole("columnheader", { name: "Name" })
+      .locator('xpath=ancestor::*[contains(@class,"MuiPaper-root")][1]')
+      .elementHandle())!;
+    expect(await css(card, "box-shadow")).not.toBe("none");
+
+    await page.emulateMedia({ media: "print" });
+    // Polled: `MuiPaper` transitions `box-shadow`, so an instant read after a media switch lands
+    // on an interpolation — the trap in this file's header, and the one `cv-print.e2e.ts` hit.
+    await expect.poll(() => css(card, "box-shadow"), { timeout: 5_000 }).toBe("none");
+
+    await page.emulateMedia({ media: null });
+    // And it is a print rule, not a deletion: the relief comes back on screen.
+    await expect.poll(() => css(card, "box-shadow"), { timeout: 5_000 }).not.toBe("none");
+  });
+
   test("below md the rail's top bar and its drawer stay off the paper", async ({
     context,
     page,
