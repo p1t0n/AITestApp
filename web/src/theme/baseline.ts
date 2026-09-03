@@ -26,18 +26,21 @@ export function baselineStyles(mode: ThemeMode, t: ThemeModeTokens): CSSObject {
       MozOsxFontSmoothing: "grayscale",
     },
 
-    // `fontFamilyMono` finally has a consumer (P1T-163). Slice 1 declared it and nothing pointed at
-    // it, so every `code` span the agents emit was rendering in the browser's default monospace —
-    // the same shape of gap slice 2 found in `surface.outline`. It is a document-level type floor,
-    // not a component look, which is why it is here and not in `components.ts`: nothing owns `code`.
-    "code, kbd, samp, pre": { fontFamily: tokens.type.fontFamilyMono },
+    // `fontFamilyMono` is a real family now, not a system stack, and it reaches further than the
+    // four elements below — Eyebrows, table headers and tags are set in it through the theme. What
+    // stays here is the document-level floor: nothing owns `code`, so nothing else can style it.
+    // `tabular-nums` rides along, because the numerals are half the reason mono was promoted.
+    "code, kbd, samp, pre": {
+      fontFamily: tokens.type.fontFamilyMono,
+      fontVariantNumeric: "tabular-nums",
+    },
 
     // One visible focus ring for every interactive element, whatever renders it. Applied to
     // `:focus-visible` rather than `:focus` so a mouse click does not leave a ring behind, and
     // written as a global rule because the alternative is remembering it per component — and the
     // failure mode of forgetting is an element a keyboard user cannot locate.
     "html *:focus-visible": {
-      outline: `${tokens.focusRing.width}px solid ${t.primary.main}`,
+      outline: `${tokens.focusRing.width}px solid ${t.focusRing}`,
       outlineOffset: tokens.focusRing.offset,
     },
 
@@ -52,7 +55,7 @@ export function baselineStyles(mode: ThemeMode, t: ThemeModeTokens): CSSObject {
     "*::-webkit-scrollbar-track": { backgroundColor: t.chrome.scrollbarTrack },
     "*::-webkit-scrollbar-thumb": {
       backgroundColor: t.chrome.scrollbarThumb,
-      borderRadius: tokens.radius,
+      borderRadius: tokens.radius.small,
       border: "2px solid transparent",
       backgroundClip: "content-box",
     },

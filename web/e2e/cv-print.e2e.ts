@@ -17,14 +17,26 @@ import type { ElementHandle } from "@playwright/test";
 import { addVirtualAuthenticator, signUp, uniqueEmail } from "./passkey";
 
 /**
- * The light tokens the sheet must resolve to, as Chromium reports colours. Kept literal rather than
+ * The light colours the sheet must resolve to, as Chromium reports them. Kept literal rather than
  * imported from `src/theme/tokens.ts`: a spec that read the same constant the app does would still
  * pass if a token were re-pointed at a dark value, which is one of the things it exists to catch.
+ *
+ * These moved with the neumorphic reversal (P1T-195), and that is the drift the ADR predicted:
+ * `CvPage` wraps the sheet in the *live* `lightTheme`, so the new light ground reached a
+ * client-facing document. Slice ③ (P1T-197) pins the sheet to a literal `cvSheetTheme` and these go
+ * back to white and near-black for good — after which they stop tracking the app's palette at all,
+ * which is the point of a lock. Until then they say what the sheet actually is.
  */
-const LIGHT = { paper: "rgb(255, 255, 255)", text: "rgb(16, 20, 24)" };
+const SHEET = { paper: "rgb(238, 241, 248)", text: "rgb(27, 35, 49)" };
+
+/**
+ * The printed page's own background, which is not a token and never was: `index.css` forces
+ * `body { background: #fff }` at print media, and no palette can reach it.
+ */
+const PRINT_PAPER = "rgb(255, 255, 255)";
 
 /** The dark mode's near-white body text — the colour a print must never put on white paper. */
-const DARK_TEXT = "rgb(230, 237, 243)";
+const DARK_TEXT = "rgb(232, 236, 244)";
 
 /**
  * Computed style through an `ElementHandle`, not a `Locator`. `getByRole` resolves against the
@@ -95,9 +107,9 @@ test.describe("CV print artifact", () => {
 
     // On screen, already: the sheet is light inside a dark app. What the operator sees is what the
     // client gets, which is why this is a nested theme and not a print-only colour block.
-    expect(await css(sheet, "background-color")).toBe(LIGHT.paper);
-    expect(await css(sheet, "color")).toBe(LIGHT.text);
-    expect(await css(heading, "color")).toBe(LIGHT.text);
+    expect(await css(sheet, "background-color")).toBe(SHEET.paper);
+    expect(await css(sheet, "color")).toBe(SHEET.text);
+    expect(await css(heading, "color")).toBe(SHEET.text);
 
     // And now at print media, where the artifact is actually made.
     await page.emulateMedia({ media: "print" });
@@ -106,10 +118,10 @@ test.describe("CV print artifact", () => {
     // the un-locked version dangerous rather than merely ugly: the dark paper would have vanished
     // and the near-white text would have survived onto white paper — a CV that prints blank. So the
     // load-bearing assertion is the text colour, twice, stated both ways.
-    expect(await css(heading, "color")).toBe(LIGHT.text);
+    expect(await css(heading, "color")).toBe(SHEET.text);
     expect(await css(heading, "color")).not.toBe(DARK_TEXT);
-    expect(await css(sheet, "color")).toBe(LIGHT.text);
-    expect(await css(body, "background-color")).toBe(LIGHT.paper);
+    expect(await css(sheet, "color")).toBe(SHEET.text);
+    expect(await css(body, "background-color")).toBe(PRINT_PAPER);
 
     // The chrome is not part of the document, and Chromium agrees at print media — the P1T-154
     // `sx` print rules (now the rail's own `hideInPrint`) winning against MUI's defaults, watched

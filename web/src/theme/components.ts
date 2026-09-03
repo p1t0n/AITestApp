@@ -11,7 +11,7 @@
 // Three defaults do most of the work, and each has a reason a component-level `sx` could not:
 //   * `MuiPaper` is `outlined` + `elevation: 0` — borders separate, shadows are the exception.
 //   * everything interactive is `size: "small"` — the app was already writing that 100+ times.
-//   * the only shadow in the system is `overlayShadow`, and it is reserved for surfaces that
+//   * the only shadow in the system is `relief.float`, and it is reserved for surfaces that
 //     genuinely float (menu, dialog, autocomplete popup), because a border cannot say "above".
 //
 // There is deliberately **no `MuiTabs` override**: the app renders no tabs anywhere. The agent
@@ -144,7 +144,7 @@ export function componentOverrides(t: ThemeModeTokens): Components<Theme> {
       defaultProps: { size: "small" },
       // Its popup is a Paper, so it is already bordered and flat; what it needs is the one thing a
       // border cannot express, which is that it sits *above* the field it came from.
-      styleOverrides: { paper: { boxShadow: t.overlayShadow } },
+      styleOverrides: { paper: { boxShadow: t.relief.float } },
     },
 
     MuiChip: {
@@ -152,7 +152,7 @@ export function componentOverrides(t: ThemeModeTokens): Components<Theme> {
       // Radius one step in from the surface it sits on: a chip is inside a control, not a panel.
       // Colours are left entirely alone — `variant="outlined"` chips carry their role's border and
       // a blanket `outlined` override here would flatten all five of them to one grey.
-      styleOverrides: { root: { borderRadius: tokens.radiusSmall } },
+      styleOverrides: { root: { borderRadius: tokens.radius.small } },
     },
 
     // ---- tables ---------------------------------------------------------------------------
@@ -190,7 +190,7 @@ export function componentOverrides(t: ThemeModeTokens): Components<Theme> {
         paper: {
           // A modal is the one place a shadow is doing real work: it is above everything, over a
           // backdrop, and a border alone would leave it looking pasted onto the page.
-          boxShadow: t.overlayShadow,
+          boxShadow: t.relief.float,
           backgroundImage: "none",
         },
       },
@@ -201,7 +201,7 @@ export function componentOverrides(t: ThemeModeTokens): Components<Theme> {
 
     MuiMenu: {
       styleOverrides: {
-        paper: { boxShadow: t.overlayShadow, backgroundImage: "none" },
+        paper: { boxShadow: t.relief.float, backgroundImage: "none" },
         list: { paddingTop: 4, paddingBottom: 4 },
       },
     },
@@ -226,8 +226,8 @@ export function componentOverrides(t: ThemeModeTokens): Components<Theme> {
           backgroundColor: t.surface.raised,
           color: t.text.primary,
           border: `1px solid ${t.divider}`,
-          borderRadius: tokens.radiusSmall,
-          boxShadow: t.overlayShadow,
+          borderRadius: tokens.radius.small,
+          boxShadow: t.relief.float,
           fontSize: "0.75rem",
           padding: "4px 8px",
         },
@@ -237,7 +237,7 @@ export function componentOverrides(t: ThemeModeTokens): Components<Theme> {
 
     MuiAlert: {
       styleOverrides: {
-        root: { borderRadius: tokens.radius, alignItems: "center" },
+        root: { borderRadius: tokens.radius.medium, alignItems: "center" },
         ...alertTints(t),
       },
     },
@@ -257,7 +257,7 @@ export function componentOverrides(t: ThemeModeTokens): Components<Theme> {
     MuiListItemButton: {
       styleOverrides: {
         root: {
-          borderRadius: tokens.radiusSmall,
+          borderRadius: tokens.radius.small,
           "&.Mui-selected": {
             backgroundColor: t.action.selected,
             "&:hover": { backgroundColor: t.action.selected },

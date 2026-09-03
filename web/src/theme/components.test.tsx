@@ -42,6 +42,15 @@ const modes: [string, Theme, ThemeModeTokens][] = [
   ["dark", darkTheme, tokens.modes.dark],
 ];
 
+/**
+ * jsdom re-serialises a multi-layer `box-shadow` without the space after the layer comma, so a
+ * relief pair never compares equal to the token it came from until both are normalised. The
+ * assertion is about the shadow, not about whitespace.
+ */
+function shadow(value: string): string {
+  return value.replace(/,\s*/g, ", ");
+}
+
 /** Renders `node` under one of the two real themes and hands back the computed styles reader. */
 function styleOf(theme: Theme, node: React.ReactElement, selector: string): CSSStyleDeclaration {
   const { container } = render(<ThemeProvider theme={theme}>{node}</ThemeProvider>);
@@ -77,7 +86,7 @@ describe.each(modes)("%s mode — surfaces separate with a border, not a shadow"
       </Dialog>,
       ".MuiDialog-paper",
     );
-    expect(s.boxShadow).toBe(t.overlayShadow);
+    expect(shadow(s.boxShadow)).toBe(shadow(t.relief.float));
   });
 
   it("never emits a second shadow anywhere else in the theme", () => {
@@ -93,8 +102,8 @@ describe.each(modes)("%s mode — surfaces separate with a border, not a shadow"
     };
     walk(theme.components);
     expect(shadows.length).toBeGreaterThan(0);
-    for (const shadow of shadows) {
-      expect([t.overlayShadow, "none"]).toContain(shadow);
+    for (const declared of shadows) {
+      expect([t.relief.float, "none"]).toContain(declared);
     }
   });
 });
@@ -241,6 +250,6 @@ describe("the overrides do not reopen settled decisions", () => {
       ".MuiChip-root",
     );
     expect(s.borderColor).not.toBe(rgb(tokens.modes.light.divider));
-    expect(s.borderRadius).toBe(`${tokens.radiusSmall}px`);
+    expect(s.borderRadius).toBe(`${tokens.radius.small}px`);
   });
 });
