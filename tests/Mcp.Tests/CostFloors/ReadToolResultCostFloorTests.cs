@@ -25,6 +25,12 @@ namespace ExpertToJob.Mcp.Tests.CostFloors;
 /// </summary>
 public sealed class ReadToolResultCostFloorTests(ITestOutputHelper output) : IAsyncLifetime
 {
+    /// <summary>The measurement day, as a clock the host can be handed.</summary>
+    private sealed class PinnedClock(DateOnly day) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => new(day.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+    }
+
     // pgvector, not stock postgres: the migrations create the `vector` extension for the RAG store.
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("pgvector/pgvector:pg17").Build();
 
@@ -34,7 +40,12 @@ public sealed class ReadToolResultCostFloorTests(ITestOutputHelper output) : IAs
     public async Task InitializeAsync()
     {
         await _postgres.StartAsync();
-        _factory = McpTestHost.CreateFactoryWithPostgres(_postgres.GetConnectionString());
+        // Pinned to the measurement date. The seeded roster's availability entries are dated and a
+        // read tool resolves capacity against "today", so an unpinned clock makes this floor fail
+        // on whatever day the calendar next crosses one of those dates — which is what it did
+        // (P1T-199). The ceiling measures the payload; the date is not part of the measurement.
+        _factory = McpTestHost.CreateFactoryWithPostgres(
+            _postgres.GetConnectionString(), new PinnedClock(ExpertToJob.CostFloors.CostFloors.MeasuredOn));
 
         using var scope = _factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
