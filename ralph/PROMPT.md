@@ -18,13 +18,43 @@ Linear issue state *is* the progress file.
 4. **Build it TDD.** Red, green, refactor. The ticket's acceptance criteria are the spec; do not
    invent scope beyond them and do not silently drop a criterion you found inconvenient.
 5. **Prove it.** Run the full suite: `dotnet test --filter "Category!=e2e&Category!=live"`, plus
-   `npm test`, `npm run typecheck` and `npm run lint` in `web/` if you touched the SPA. Green
-   before you commit. If it will not go green, say so in the ticket and stop — do not commit red.
+   `npm test`, `npm run typecheck`, `npm run lint` **and `npm run test:e2e`** in `web/` if you
+   touched the SPA — the e2e suite owns its own stack and needs Docker, and it is the only thing
+   that sees a real cascade, a real print media and a real browser. A theme change that passes
+   jsdom and breaks Playwright is a normal Tuesday. Green before you commit. If it will not go
+   green, say so in the ticket and stop — do not commit red.
 6. **Land it.** Commit, push the branch, open a PR with `gh pr create`.
    **Do not merge.** Merging is gated deliberately (`Bash(gh pr merge:*)` is an ask-rule); a
    human takes it from the PR.
-7. **Record it.** Comment on the Linear issue with what you did and the PR link, then leave the
-   issue `In Progress` — a human moves it to `Done` when the PR merges.
+7. **Watch CI to a conclusion.** A pushed PR is not a landed one. Wait for the run and read it:
+
+   ```bash
+   gh pr checks <pr>                                  # the three jobs and their state
+   gh run watch <run-id> --exit-status --interval 20  # blocks until the run finishes
+   ```
+
+   For a failure, get the actual assertion rather than guessing — `gh run view <id> --log-failed`
+   is truncated for long jobs, so when it does not carry the failure, pull the whole archive:
+
+   ```bash
+   gh api repos/p1t0n/AITestApp/actions/runs/<id>/logs > logs.zip && unzip -q logs.zip -d logs
+   grep -nE "  Failed [A-Z]|Test Run Failed" "logs/0_Build & Test.txt"
+   ```
+
+   Then decide **whose** red it is, and say which in the ticket:
+
+   * **Yours** — fix it on the branch and push again. Iterate until green; a red PR is not done.
+   * **Already red on `main`** — check `gh run list --branch main --limit 3` before assuming.
+     Inherited red is a finding: it gets its own Linear issue with the diagnosis, and it does not
+     get "fixed" by loosening the assertion that caught it. Say plainly that the branch's own
+     jobs are green and which job is inherited.
+   * **Green locally, red on CI (or the reverse)** — the environments differ in ways that matter:
+     culture and time zone, `Release` vs `Debug`, a clean database per run. A test that passes
+     here and fails there is evidence about the *test*, not noise to re-run away.
+
+   CI is the last word on green, not the local run. Report a ticket done only when CI says so.
+8. **Record it.** Comment on the Linear issue with what you did, the PR link and the CI result,
+   then leave the issue `In Progress` — a human moves it to `Done` when the PR merges.
 
 ## Rules
 
