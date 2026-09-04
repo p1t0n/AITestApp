@@ -84,7 +84,11 @@ internal static class McpTestHost
     /// roster, through the real queries. Same local test signing key as
     /// <see cref="CreateFactory"/>; the reconcile worker stays off (it needs an embedding backend).
     /// </summary>
-    public static WebApplicationFactory<Program> CreateFactoryWithPostgres(string connectionString) =>
+    /// <param name="clock">Pins the host's <see cref="TimeProvider"/>, which is what the roster
+    /// resolves an Expert's current capacity against. The Cost Floors pass one: a ceiling measured
+    /// against the machine clock measures the calendar as much as the payload (P1T-199).</param>
+    public static WebApplicationFactory<Program> CreateFactoryWithPostgres(
+        string connectionString, TimeProvider? clock = null) =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseSetting("SearchIndex:Enabled", "false");
@@ -92,6 +96,8 @@ internal static class McpTestHost
 
             builder.ConfigureTestServices(services =>
             {
+                if (clock is not null) services.AddSingleton(clock);
+
                 services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, o =>
                 {
                     o.Authority = null;

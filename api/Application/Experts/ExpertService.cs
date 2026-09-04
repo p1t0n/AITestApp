@@ -55,7 +55,14 @@ public class ExpertService : IExpertService
         _clock = clock;
     }
 
-    private static DateOnly Today => DateOnly.FromDateTime(DateTime.UtcNow);
+    /// <summary>
+    /// The date an Expert's <c>currentCapacityPercent</c> is resolved against — from the injected
+    /// clock, like every other time this service reads. It used to be <c>DateTime.UtcNow</c>, which
+    /// made the roster's shape a function of the machine it ran on: the Cost Floor over the seeded
+    /// demo roster measures a payload whose capacity values change width as the calendar crosses a
+    /// seeded availability date, so <c>main</c> went red overnight with no code change (P1T-199).
+    /// </summary>
+    private DateOnly Today => DateOnly.FromDateTime(_clock.GetUtcNow().UtcDateTime);
 
     public async Task<IReadOnlyList<ExpertSummaryDto>> ListAsync(bool includeDrafts = false, CancellationToken ct = default)
     {

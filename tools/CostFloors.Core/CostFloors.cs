@@ -21,6 +21,16 @@ public static class CostFloors
     public const int DemoRosterExperts = 45;
 
     /// <summary>
+    /// The day the result ceilings were measured, and the day the floor test pins its clock to.
+    /// The seeded roster carries dated availability entries and a read tool resolves
+    /// <c>currentCapacityPercent</c> against "today", so a floor read on a different date measures
+    /// a different roster — <c>80</c> becoming <c>100</c> is one more character and one more token.
+    /// Pinning it here keeps the ceilings a measurement of the payload rather than of the calendar
+    /// (P1T-199); the roster size above is pinned for the same reason.
+    /// </summary>
+    public static readonly DateOnly MeasuredOn = new(2026, 8, 30);
+
+    /// <summary>
     /// Per-read-tool RESULT ceilings, measured over the seeded demo roster
     /// (<see cref="DemoRosterExperts"/> experts, 79 catalog skills) against real Postgres.
     /// Every model-free read tool must appear here — the floor test fails on an unlisted one, so
