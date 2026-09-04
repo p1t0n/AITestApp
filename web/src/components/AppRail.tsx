@@ -216,11 +216,24 @@ function Brand({ collapsed }: { collapsed: boolean }) {
         justifyContent: collapsed ? "center" : "flex-start",
       }}
     >
-      <Box
+      {/* The mark from the prototype: an amber tile with the wordmark beside it. `aria-hidden`,
+          because `BRAND` is a frozen accessible name (§9) and a mark that announced itself would
+          make a screen reader read the same thing twice. Ink rather than white on the amber —
+          `primary.contrastText` is dark in both modes now, which is the one place the palette
+          reversed on itself (see `tokens.ts`).
+
+          Worth stating rather than absorbing: `CV` re-introduces the abbreviation P1T-167
+          deliberately moved the vocabulary away from (CvManager → ExpertToJob). Taken knowingly,
+          as a mark and not as a name — the name beside it is the full one. */}
+      <Typography
         aria-hidden
+        component="span"
+        // A heading variant rather than a font token: the mark is set in the heading voice, and
+        // naming the role is what keeps this component out of `tokens.ts` (§2).
+        variant="h5"
         sx={{
-          width: 32,
-          height: 32,
+          width: 44,
+          height: 44,
           flexShrink: 0,
           borderRadius: 1,
           bgcolor: "primary.main",
@@ -228,13 +241,12 @@ function Brand({ collapsed }: { collapsed: boolean }) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: "0.75rem",
-          fontWeight: 700,
+          fontSize: "1rem",
           letterSpacing: "0.02em",
         }}
       >
         CV
-      </Box>
+      </Typography>
       {/* Rendered even when collapsed — `visibility: hidden` would drop it from the a11y tree and
           from `getByText`, and the whole shell's claim is that it survives whatever the page does. */}
       <Typography variant="subtitle1" noWrap sx={collapsed ? visuallyHidden : undefined}>

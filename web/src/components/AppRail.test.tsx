@@ -18,6 +18,8 @@ import {
   paletteHotkeyHint,
 } from "./useCommandPalette";
 import { lightTheme } from "../theme";
+import { tokens } from "../theme/tokens";
+import { contrastRatio, rgb } from "../test/contrast";
 import { getModeOverride } from "../theme/mode";
 import { getToken, setSession } from "../auth/session";
 
@@ -53,6 +55,51 @@ beforeEach(() => localStorage.clear());
 afterEach(() => {
   localStorage.clear();
   document.documentElement.style.removeProperty(RAIL_PUSH_VAR);
+});
+
+describe("the brand tile", () => {
+  // The prototype's mark, taken as a mark and nothing else. `BRAND = "ExpertToJob"` is a frozen
+  // accessible name (§9): the tile sits beside it and must not become a second name for the same
+  // thing, which is why it is `aria-hidden` rather than an `<img alt="CV">`.
+  function tile(): HTMLElement {
+    const el = screen.getByText("CV", { selector: '[aria-hidden="true"]' });
+    return el as HTMLElement;
+  }
+
+  it("is a 44px amber square, set in the heading face at 800", () => {
+    renderRail(railWith());
+    const s = getComputedStyle(tile());
+
+    expect(s.width).toBe("44px");
+    expect(s.height).toBe("44px");
+    expect(s.backgroundColor).toBe(rgb(tokens.modes.light.primary.main));
+    expect(s.fontFamily).toBe(tokens.type.fontFamilyHeading);
+    expect(s.fontWeight).toBe("800");
+  });
+
+  it("labels itself in ink, because amber cannot take white", () => {
+    renderRail(railWith());
+    const s = getComputedStyle(tile());
+
+    expect(s.color).toBe(rgb(tokens.modes.light.primary.contrastText));
+    expect(
+      contrastRatio(tokens.modes.light.primary.contrastText, tokens.modes.light.primary.main),
+    ).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("adds no second accessible name beside the frozen one", () => {
+    renderRail(railWith());
+
+    expect(tile().getAttribute("aria-hidden")).toBe("true");
+    // The name a screen reader reads is still the wordmark, once.
+    expect(screen.getAllByText("ExpertToJob")).toHaveLength(1);
+  });
+
+  it("survives the rail collapsing to 64px, which is what the mark is for", () => {
+    renderRail(railWith({ collapsed: true, width: RAIL_COLLAPSED_WIDTH }));
+
+    expect(getComputedStyle(tile()).width).toBe("44px");
+  });
 });
 
 describe("the rail, expanded", () => {

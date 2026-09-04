@@ -56,8 +56,12 @@ declare module "@mui/material/Paper" {
  * Three families now, and the split is by role rather than by taste: headings are Plus Jakarta Sans
  * at 800 (the artboards' voice), body is DM Sans, and `overline` — the **Eyebrow** — is mono, which
  * is what makes mono a UI role here rather than something only `code` and `pre` reach.
+ *
+ * Exported because `cvSheetTheme` (`./cvSheet.ts`) pins the sheet's *colours* and deliberately does
+ * not pin its type — see that file's header for why. It is the one thing the document's theme and
+ * the app's still share.
  */
-function typography() {
+export function appTypography() {
   const heading = { fontFamily: tokens.type.fontFamilyHeading, fontWeight: 800 };
   return {
     fontFamily: tokens.type.fontFamily,
@@ -119,7 +123,7 @@ function build(mode: ThemeMode, t: ThemeModeTokens): Theme {
       },
       easing: { easeInOut: tokens.motion.easing },
     },
-    typography: typography(),
+    typography: appTypography(),
     components: {
       MuiCssBaseline: { styleOverrides: baselineStyles(mode, t) },
       ...componentOverrides(t, mode),

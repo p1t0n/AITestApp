@@ -15,7 +15,7 @@ import PrintIcon from "@mui/icons-material/Print";
 import DownloadIcon from "@mui/icons-material/Download";
 import { useCv, useDownloadCvPdf } from "../api";
 import PageHeader, { PageContainer } from "../components/PageHeader";
-import { lightTheme } from "../theme";
+import { cvSheetTheme } from "../theme/cvSheet";
 import type { Qualification } from "../types";
 
 function CvSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -87,8 +87,13 @@ export default function CvPage() {
 
       {/* The light-lock. The sheet is the *document*, not app chrome: what a client receives
           cannot depend on which Theme Mode the operator happened to be in, so the whole subtree
-          renders under the light theme in both modes (P1T-164). The chrome above stays in the
-          app's theme — it is print-hidden and never leaves the screen.
+          renders under `cvSheetTheme` in both modes (P1T-164, pinned in P1T-197). The chrome above
+          stays in the app's theme — it is print-hidden and never leaves the screen.
+
+          Pinned, and not simply "the light theme": this used to name the app's live `lightTheme`,
+          so the freeze held only as long as nobody re-tuned light mode. Somebody did — the
+          neumorphic reversal made light mode's paper grey and its accent amber — and the sheet
+          would have followed silently. `cvSheetTheme` is literal colours; see its header.
 
           One provider at one boundary rather than a `@media print` colour block, which would
           have to stay exhaustive forever as the sheet grows sections, and would only ever fix
@@ -100,9 +105,11 @@ export default function CvPage() {
           provider alone would have re-themed only what names a palette key and left the rest
           inheriting `body`'s near-white `#E6EDF3`: a white-on-white sheet, which is worse than the
           dark one it replaced, because it is invisible rather than merely wrong. */}
-      <ThemeProvider theme={lightTheme}>
+      <ThemeProvider theme={cvSheetTheme}>
         {/* On paper the sheet *is* the page: no elevation shadow, no centring margin. These used to
-            be a global `#cv-sheet` rule; the id now only marks the sheet for the e2e suite. */}
+            be a global `#cv-sheet` rule; the id now only marks the sheet for the e2e suite. The
+            print floor in `baseline.ts` says the same thing globally now, and this stays anyway —
+            it is the sheet's own claim about the sheet, and it survives the floor moving. */}
         <Paper
           variant="elevation"
           elevation={1}
