@@ -1,3 +1,4 @@
+using System.Globalization;
 using ExpertToJob.Domain.Entities;
 
 namespace ExpertToJob.Agents.Agents;
@@ -74,7 +75,9 @@ public static class BenchStatsComposer
             "",
             $"- Active experts: {stats.ActiveExperts}",
             $"- Fully available: {stats.FullyAvailable}, partially: {stats.PartiallyAvailable}, fully booked: {stats.FullyBooked}",
-            $"- Average available capacity: {stats.AverageCapacityPercent}%",
+            // A `double`, and this line is read by a person when the model call degrades — so the
+            // decimal point is the invariant one rather than the host's (P1T-200).
+            string.Create(CultureInfo.InvariantCulture, $"- Average available capacity: {stats.AverageCapacityPercent}%"),
         };
         if (stats.Proposals is { } p)
         {

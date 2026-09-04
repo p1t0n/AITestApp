@@ -83,6 +83,21 @@ public class BenchReportTests
     }
 
     [Fact]
+    public void Fallback_answer_reads_the_same_average_whatever_culture_the_host_has()
+    {
+        // `AverageCapacityPercent` is a `double` rounded to one place, and the fallback answer is
+        // what a person reads when the model call degrades. Ambient formatting turns 50.5 into
+        // `50,5` on a German host — a report that says something different depending on where the
+        // service runs (P1T-200).
+        var stats = BenchStatsComposer.Compose([Emp(100), Emp(1)], null);
+
+        var fallback = Culture.Under(Culture.Other, () => BenchStatsComposer.FallbackAnswer(stats));
+
+        fallback.Should().Contain("Average available capacity: 50.5%");
+        fallback.Should().NotContain("50,5");
+    }
+
+    [Fact]
     public void Fallback_answer_carries_the_headline_numbers()
     {
         var stats = BenchStatsComposer.Compose(

@@ -539,9 +539,13 @@ public sealed class StaffingPipeline
 
                 evidence.AppendLine();
                 evidence.AppendLine($"## {candidate.Name} — {candidate.Title} (expertId: {candidate.ExpertId})");
-                evidence.AppendLine(
+                // `Score` is a `double` and this evidence is what the narrative model reads, so the
+                // decimal separator cannot be the host's: on a German machine `0.85` becomes `0,85`
+                // and lands inside a comma-separated sentence (P1T-200).
+                evidence.AppendLine(string.Create(
+                    CultureInfo.InvariantCulture,
                     $"- Shortlist: score {candidate.Score:0.##}, matched {candidate.Coverage.Matched}/{candidate.Coverage.Total} requirements."
-                    + $" Matched: {Join(matched)}. Missing: {Join(missing)}.");
+                    + $" Matched: {Join(matched)}. Missing: {Join(missing)}."));
                 evidence.AppendLine(detail.Status == StaffingMatchStatus.Completed
                     ? $"- Match assessment ({ScoreSummary(detail)}):\n{Truncate(detail.Answer ?? "", 1500)}"
                     : $"- Match assessment: {detail.Status} — no assessment available.");

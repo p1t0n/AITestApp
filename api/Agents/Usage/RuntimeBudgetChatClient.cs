@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Extensions.AI;
 
 namespace ExpertToJob.Agents.Usage;
@@ -82,16 +83,25 @@ public sealed class RuntimeBudgetChatClient(
             return null;
         }
 
+        // Invariant, and not as a formality: this string is appended to the model's context as the
+        // closing instruction's degradation note and shown to a person as the degradation reason.
+        // `:N0` reads `CultureInfo.CurrentCulture`, so the same build said "5,000" on one host and
+        // "5.000" on another — a difference in what an agent reads, decided by a machine's locale
+        // rather than by anyone (P1T-200).
         if (spend.InputTokens >= budget.MaxInputTokens)
         {
-            return $"Runtime Budget reached: {spend.InputTokens:N0} of {budget.MaxInputTokens:N0} " +
-                   $"input tokens spent over {spend.Iterations} model calls.";
+            return string.Create(
+                CultureInfo.InvariantCulture,
+                $"Runtime Budget reached: {spend.InputTokens:N0} of {budget.MaxInputTokens:N0} " +
+                $"input tokens spent over {spend.Iterations} model calls.");
         }
 
         if (spend.Iterations >= budget.MaxIterations)
         {
-            return $"Runtime Budget reached: {spend.Iterations} of {budget.MaxIterations} model " +
-                   $"calls made ({spend.InputTokens:N0} input tokens).";
+            return string.Create(
+                CultureInfo.InvariantCulture,
+                $"Runtime Budget reached: {spend.Iterations} of {budget.MaxIterations} model " +
+                $"calls made ({spend.InputTokens:N0} input tokens).");
         }
 
         return null;
