@@ -62,6 +62,15 @@ export function baselineStyles(mode: ThemeMode, t: ThemeModeTokens): CSSObject {
     "*::-webkit-scrollbar-thumb:hover": { backgroundColor: t.chrome.scrollbarThumbHover },
     "*::-webkit-scrollbar-corner": { backgroundColor: "transparent" },
 
+    // Relief does not print. A dual shadow on paper is a grey smudge around every card, and the
+    // CV path proves people print from this app. The rail and the dock hide themselves at print
+    // media; page content does not, and every panel is extruded now — so the floor is global and
+    // lives here with the others. `!important` because it has to beat a component's own override
+    // and an `sx` block alike: this is the one place that outranks the look.
+    "@media print": {
+      "*, *::before, *::after": { boxShadow: "none !important" },
+    },
+
     // Motion is off, not shortened, when the OS asks. The ≤150ms *ceiling* is not enforced here —
     // it is `theme.transitions.duration`, which is where MUI's components read their timings from,
     // so capping it there binds every transition the library emits rather than only the ones a

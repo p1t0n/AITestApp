@@ -122,7 +122,7 @@ function build(mode: ThemeMode, t: ThemeModeTokens): Theme {
     typography: typography(),
     components: {
       MuiCssBaseline: { styleOverrides: baselineStyles(mode, t) },
-      ...componentOverrides(t),
+      ...componentOverrides(t, mode),
     },
   });
 }
