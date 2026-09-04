@@ -11,9 +11,20 @@
 > this line still called it a target; that is the failure mode the sentence above is warning about,
 > so it is worth saying it happened.)
 
-The goal in one sentence: a dense, dark-first product UI — hairline borders instead of shadows,
-accent reserved for the primary action and the focus ring, compact rows — with light mode as an
-equal citizen, not an afterthought.
+> **Status (2026-09-04): the look reversed, and this document caught up.** The hairline system §3
+> described until now is gone: depth is **Relief**, a dual shadow, and the accent is amber. The
+> decision and what it cost are `manuals/adr-neumorphic-reskin.md`; the chain is **P1T-193** with
+> five children — ⓪ the ADR and the `CONTEXT.md` glossary, ① tokens (P1T-195), ② `components.ts`
+> and the print floor (P1T-196), ③ the brand tile and the pinned CV sheet (P1T-197), ④ the visual
+> net and this rewrite (P1T-198). §3 and §8 below are rewritten with numbers that were **measured**
+> after ① landed rather than guessed before it — which is why ④ is last and why the banner that
+> stood here for a week said, in as many words, that these two sections were wrong. §1 (MUI stays),
+> §2 (tokens speak MUI's vocabulary) and §9 (what must not move) were never in scope and still hold;
+> §7 holds *better* than it did, and now by construction rather than by luck.
+
+The goal in one sentence: a dense, dark-first product UI in **relief** — surfaces lifted out of
+their ground or pressed into it by a pair of shadows, amber reserved for the primary action, compact
+rows — with light mode as an equal citizen, not an afterthought.
 
 ## 1. The library stays
 
@@ -78,87 +89,78 @@ it was taken of.
 
 ## 3. The look rules
 
-- **Accent**: a deeper, calmer blue replaces `#2e5bff`, which is loud on a dark surface. It appears
-  on the primary action and the focus ring, and essentially nowhere else.
-- **Surfaces**: a three-step ramp (page → surface → raised). Separation is a hairline border;
-  shadows are the exception, not the mechanism. `MuiPaper` defaults to `elevation: 0` and
-  `variant: "outlined"`.
-- **Density**: `size: "small"` is the default prop for inputs and buttons; table rows are compact
-  with hairline rules. Radius 8.
-- **Type**: Inter variable via `@fontsource-variable/inter`, system stack as fallback. Self-hosted
-  and versioned like any dependency — an authenticated internal tool does not fetch fonts from a
-  third-party CDN.
+Rewritten by P1T-193. What stood here — "separation is a hairline border; shadows are the exception,
+not the mechanism" — is the position the reversal deleted rather than softened. The old text is in
+git; the ADR says why it went.
 
-**The override policy, which is the load-bearing rule:** if a look is needed twice, it belongs in
-`src/theme/components.ts`, not in a third `sx`. The app has 151 `sx` blocks today; they are
-overwhelmingly spacing and layout, and they should stay that way. Overrides cover `MuiButton`,
-`MuiTextField`/`MuiOutlinedInput`, `MuiPaper`, `MuiTable`/`MuiTableCell`, `MuiDialog`, `MuiChip`,
-`MuiMenu`/`MuiMenuItem`, `MuiDrawer`, `MuiListItemButton`, `MuiTooltip`, `MuiAlert` and
-`MuiCssBaseline`. There is no `MuiTabs` override because the app renders no tabs anywhere —
-the dock's surface picker is a grouped `Menu` (P1T-152).
+- **Depth is Relief**: a dark shadow and a light one, cast from opposite corners, so a surface reads
+  as extruded from its ground or pressed into it. Per mode, because the light half is white on a
+  dark ground and near-white on a grey one: dark casts `rgba(0,0,0,.5)` against white at 12%, light
+  casts `rgba(163,177,198,.6)` against near-white. Offsets are the prototype's *ratios* at this
+  app's density, not its mass — 6px extruded and 4px inset where the artboards draw 8 and 6, because
+  `size="small"` is the default and P1T-158 deleted 109 props to make it so.
+- **Relief Depth**: **two levels, then flat.** One thing lifted, one pressed into it; a third is a
+  flat `surface.raised` fill plus a `divider` hairline. Dual shadows at three levels turn to mud and
+  inset-inside-extruded-inside-inset has no physical reading. Enforced by descendant selector in
+  `components.ts` — `& .MuiPaper-root .MuiPaper-root` — rather than remembered per call site: MUI
+  cannot tell a component its own nesting depth, but the DOM can be asked. Of the ten `well` Papers
+  in the dock, the audit found **two** past the ceiling (`ProposalInbox`'s package views, which sit
+  inside the tab's own card); they render flat and no call site changed.
+- **Float** is not a level: it is what "above the page" looks like now that extrusion is ordinary —
+  the largest pair plus `backdrop-filter: blur(8px)`, on Dialog, Menu, Tooltip and the Autocomplete
+  popup. MUI's `elevation` numbers are how a call site asks for it (4 and 8: the agent dock and the
+  error boundary).
+- **Grounds**: dark `#151A28` page / `#1F2A3A` surface / `#28303E` flat fill; light `#E5EAF3` /
+  `#EEF1F8` / `#DCE3ED`. **Light mode has no white surface**, and that is load-bearing rather than a
+  taste call: the light half of a neumorphic pair is white and vanishes on `#FFFFFF`, collapsing the
+  look to an ordinary drop shadow.
+- **Accent**: `#F59E0B` in both modes, labelled in **ink** (`#151A28` / `#1B2331`, ~8:1 and ~7.3:1)
+  — amber takes no white anywhere. `warning` re-hues off it (`#F97316` dark / `#9A4A0C` light):
+  the old `#F5B942` sat half a step from the new accent, and two ambers meaning two things is worse
+  than a warning that sits nearer to error. `info` turns teal (`#38B2AC` / `#2A7374`) — blue beside
+  amber reads as a re-skin that stopped halfway.
+- **Density**: unchanged. `size: "small"` everywhere; the shadow offsets scaled down to suit.
+  Radius becomes three steps — **8 / 14 / 24** — where `shape.borderRadius` is the middle one, so a
+  Paper, a Button and a Menu take 14 and the things *inside* a control take 8. Chips are pills.
+- **Type**: three families, all self-hosted via fontsource — Plus Jakarta Sans for headings at 800,
+  DM Sans for body, JetBrains Mono promoted from a code font to a **UI role**: the Eyebrow
+  (`typography.overline`), table headers, tags, and `tabular-nums`. §3's old rule is unchanged in
+  substance: an authenticated internal tool does not fetch fonts from a third-party CDN.
 
-**Built in slice 1:** the accent (`#2453D4` light / `#5B8CFF` dark), the three-step ramp, radius 8,
-Inter, and the type scale — body copy at 14px, headings well short of MUI's defaults (`h1` is 6rem
-out of the box), `textTransform: "none"` on buttons.
+**The override policy, which is still the load-bearing rule:** if a look is needed twice, it belongs
+in `src/theme/components.ts`, not in a third `sx`. Overrides cover `MuiPaper`, `MuiButton`,
+`MuiIconButton`, `MuiTextField`/`MuiOutlinedInput`, `MuiAutocomplete`, `MuiChip`,
+`MuiTable`/`MuiTableCell`/`MuiTableRow`, `MuiDialog` (+ Title/Content/Actions), `MuiMenu`/
+`MuiMenuItem`, `MuiTooltip`, `MuiAlert`, `MuiDrawer`, `MuiListItemButton`, `MuiAppBar` and
+`MuiCssBaseline`. There is still no `MuiTabs` override, because the app still renders no tabs.
 
-**Built in slice 2 (P1T-160):** `src/theme/components.ts`, wired into both themes, plus the sweep
-that removed every prop it now defaults — **168 props out of 22 files** (109 `size="small"`, 19
-`variant="outlined"` on a Paper, 27 `borderRadius: 2`, 12 explicit `elevation`s and one
-`MenuListProps={{ dense: true }}`), against 15 props added, all of them declared *exceptions*. And
-**no test edits** for the second slice running. Six things the plan had not priced:
+**What the reversal cost, measured rather than predicted:**
 
-- **`variant: "outlined"` as a Paper default is not the same rule as "borders separate".** Eleven
-  Papers in this app are *fills* — a roster-qa bubble, a degradation note, a read-only block — and a
-  hairline on a coloured fill reads as a defect, not as separation. They are `variant="well"` now: a
-  named variant through MUI's own `variants` API, so the flat-fill look lives in the theme instead of
-  in an eleventh copy of `{ p, bgcolor, borderRadius }`. Neither `outlined` (wrong) nor `elevation`
-  (a lie — and on dark mode that variant also paints MUI's white overlay gradient). The word is
-  already the project's: `CONTEXT.md`'s Surface Ramp has called the third step a well since P1T-159.
-  Three of those sites were faking a well with `bgcolor: "action.hover"`, an *interaction* wash, and
-  now say nothing at all.
-- **The exceptions had to be declared, and the print path is why.** With the default flipped, the
-  CV sheet would have grown a hairline — and a border *prints*, unlike a background colour, so a
-  frozen client-facing document would have gone out with a thin box drawn around the page. The sheet
-  says `variant="elevation" elevation={1}` and is otherwise untouched (§7, §9). The floating agent
-  panel and the widget's error toast say the same thing for the on-screen reason: they overlap
-  content, and a border cannot say "above".
-- **The only shadow in the system is a token, `overlayShadow`.** Dialog, Menu and the Autocomplete
-  popup carry it and nothing else does — asserted by walking the whole theme and requiring every
-  `boxShadow` it declares to be either that token or `none`, which is the rule as a test rather than
-  as a paragraph. Dark mode needs a deeper, wider shadow than light: a near-black page cannot be
-  shadowed by a darker black.
-- **`sx: { borderRadius: 2 }` silently doubled when slice 1 moved `shape.borderRadius` 4 → 8.**
-  `sx` multiplies. Fifteen dock and page Papers had been rendering 16px corners since slice 1
-  merged, and the undocked agent panel's `borderRadius: 3` was rendering 24px. The Papers dropped
-  the entry (8px *is* the theme's radius now); the panel is `1.5`, which is the 12px it always
-  meant. Nothing in the plan or the tests would have caught this — it is the shape half of the same
-  trap slice 1 hit with colour.
-- **Accent-on-`contained`-only is a real behaviour change, not a repaint.** MUI paints `outlined`
-  and `text` buttons accent-blue, which is how an accent stops meaning anything: Cancel, Edit, Add
-  skill and Deactivate were all as loud as Save. They are neutral chrome now, keyed per colour
-  (`outlinedPrimary` / `textPrimary`) so that `color="error"` still looks destructive — a blanket
-  `outlined` override would have flattened the delete buttons to grey too.
-- **`surface.outline` finally has a consumer, which means inputs only now meet 1.4.11.** Slice 1
-  shipped the token with nothing pointing at it and said so; `MuiOutlinedInput.notchedOutline` is
-  it. MUI's own default is `rgba(255,255,255,0.23)`, about 2.1:1. Hover moves to `text.secondary`
-  and focus to the 2px accent, so rest → hover → focus is a progression; MUI's own hover jumps
-  straight to `text.primary`, which makes hover louder than focus.
+- **`primary.main` cannot be the focus ring in both modes.** The drawn amber is 8.1:1 on the dark
+  page and **1.9:1** on `#EEF1F8`. The ring is its own per-mode token, `focusRing` — `#F59E0B` dark,
+  `#8A5406` light — held to 3:1 against all three surfaces (it measures 4.9–5.5 in light, 6.2–8.1 in
+  dark). For the same reason a role's *readable step* is `main` in dark mode and `dark` in light: a
+  component that draws the accent as text or as a boundary reads `primary.dark` there.
+- **`surface.outline` matters more under relief, not less.** Neumorphism's known 1.4.11 failure is
+  that a shadow edge has nothing to measure — the prototype's own inputs are
+  `border: 1px solid transparent`. Inputs here are inset wells *with* the outline underneath:
+  `#7C8899` dark (3.7–4.8:1), `#6E7684` light (3.5–4.1:1).
+- **The divider floor got more load, not less.** A level-three surface is flat fill plus hairline, so
+  the 1.4:1 floor (ours, not the standard's) is what makes it visible at all: `#434D5E` dark
+  (1.56–2.03), `#B4BECD` light (1.45–1.66), both still under the 3:1 ceiling that keeps a dense
+  table from reading as a grid.
+- **Tints are measured against composites, and one moved.** The Alert wash stayed at 14% with a 40%
+  edge; the Chip tag wash had to come **down to 10%**, because at 16% dark-mode `warning` inked at
+  4.1:1 on its own ground. A hovered table row washes in the accent at 8%, asserted as a composite
+  under `text.primary`.
+- **The prototype's own numbers do not all survive.** Its light `neutral-500 #7A869A` is ~3.0:1 on
+  `#EEF1F8` and fails its own artboards; light `text.secondary` is `#535E70` here (5.1–5.8:1). The
+  artboards are the reference for the look, not for the numbers.
+- **Shadows print.** Every panel is extruded now, and relief on paper is a grey halo around every
+  card — so `box-shadow: none !important` at print media joins the other floors in `baseline.ts`
+  (§8), and Chromium is watched agreeing with it at real print media in `e2e/print.e2e.ts`.
 
-`MuiAlert`'s standard variants are re-tuned rather than inherited, and this is where the token layer
-bit back: MUI computes a standard alert's colours as `lighten(palette[severity].light, 0.9)`, and in
-this palette `light` is a saturated mid-*step* (§2 — `error.light` is a fill white reads on), so the
-formula lands on a colour nobody chose. Each severity is now a 14% wash of its own `main` with a 40%
-edge, the icon in the role colour and the *message* left at `text.primary`. Contrast is asserted
-against the **composite** — the wash resolved over each of the three surfaces, in both modes — since
-that is what a person actually sees; a tint's own contrast is meaningless.
-
-There is deliberately no `MuiAppBar` restyle beyond `border: 0`, which only stops it inheriting the
-outlined default as a box around the whole bar. That was written expecting P1T-161 to delete the
-component — restyling one days before deleting it is work with a half-life. Slice 3 kept it after
-all, in two narrower roles: the signed-out public top bar and the mobile drawer's trigger bar
-(§4). `border: 0` is still the whole override, and both survivors are print-hidden.
-
-*Slices 1–2 — P1T-159, P1T-160.*
+*Slices ①–② of P1T-193 — P1T-195, P1T-196. The pre-reversal history of this section is in git.*
 
 ## 4. The shell: two edges that push
 
@@ -364,7 +366,8 @@ so if a rewrite drops it.
 ## 7. The CV sheet is frozen, and always light
 
 The CV sheet's visual design does not change. More than that: `CvPage` renders its sheet under a
-nested **light** `ThemeProvider` regardless of the app's mode.
+nested `ThemeProvider` carrying the sheet's **own pinned theme** (`src/theme/cvSheet.ts`), whatever
+mode the app is in.
 
 **Why:** the sheet is a client-facing artifact and the print path only forces `body` white, so a
 dark-mode `Paper` would print — or preview — as something no client should see. A nested provider is
@@ -378,37 +381,90 @@ re-themes what reads a palette key; everything else would have gone on inheritin
 `#E6EDF3` and produced a white-on-white sheet, which is worse than the dark one it replaced because it
 is invisible rather than merely wrong. The provider is the boundary; `Paper` is the mechanism.
 
-*Slice 6 — P1T-164, **built**. Held by `web/src/pages/CvSheet.lightLock.test.tsx` (six assertions on
-resolved colour, in a dark app) and `web/e2e/cv-print.e2e.ts` (the same claim in a real Chromium at
-print media). The server-side PDF path is untouched and was checked rather than assumed:
-`CvPdfRenderer` is a pure function of `CvDto` with QuestPDF's own colours and never loads the SPA.*
+**Pinned, and not merely "the light theme" — this was true by luck until P1T-197.** The provider
+named the app's *live* `lightTheme`, so the freeze held only while nobody re-tuned light mode.
+Somebody did: the neumorphic reversal made light mode's paper `#EEF1F8` and its accent amber, and
+for the week between slice ① and slice ③ this app rendered a grey client-facing CV with amber
+section headings. Both guarding tests stayed green throughout, because both asserted against the
+same tokens that had moved. **A test that mirrors a token is not a freeze.** `cvSheetTheme` is
+literal colours — white paper, the blue the headings were drawn in — built fresh rather than by
+extending `lightTheme`, because extending inherits `lightTheme.components`, whose overrides carry
+the app's current colours baked in as strings. The spec now asserts hex literals written out a
+second time by hand, and asserts the sheet's colours are *not* the app's.
+
+*Slice 6 — P1T-164, **built**; pinned for real in P1T-197. Held by
+`web/src/pages/CvSheet.lightLock.test.tsx` (literal colours, in a dark app) and
+`web/e2e/cv-print.e2e.ts` (the same claim in a real Chromium at print media). The server-side PDF
+path is untouched and was checked rather than assumed: `CvPdfRenderer` is a pure function of
+`CvDto` with QuestPDF's own colours and never loads the SPA.*
 
 ## 8. Floors that are cheaper now than later
 
 - **Contrast**: AA in *both* modes — 4.5:1 text, 3:1 UI. Checked against the token pairs, not
-  eyeballed on a screenshot.
-- **Focus**: a visible `:focus-visible` ring, 2px accent with offset, on every interactive element.
+  eyeballed on a screenshot. **All 34 assertions in `tokens.contrast.test.ts` survived the reversal**
+  with retuned numbers; two changed which token they read and neither changed what it claims (§3:
+  `focusRing` carries the ring, and a role must *have* a readable step rather than `main`
+  specifically).
+- **Focus**: a visible `:focus-visible` ring, 2px with offset, on every interactive element, in the
+  `focusRing` amber for that mode.
 - **Motion**: transitions ≤150ms, on `opacity`/`transform`/`colour` only, and
-  `prefers-reduced-motion` switches them off.
+  `prefers-reduced-motion` switches them off. The relief press — `translateY(2px)` plus swapping the
+  extruded pair for the inset one on `:active` — rides inside that ceiling; it did not need raising.
+- **Print**: `box-shadow: none !important` at print media, globally. New with the reversal, and not
+  optional: the rail and the dock hide themselves, but page content prints, and every panel carries
+  relief now.
 
-All four live in `MuiCssBaseline` (`src/theme/baseline.ts`), plus the scrollbar and selection
-colours. They are trivial to put in the foundation and expensive to retrofit across 24 components.
+All of them live in `MuiCssBaseline` (`src/theme/baseline.ts`), plus the scrollbar and selection
+colours and the mono type floor for `code/kbd/samp/pre`. They are trivial to put in the foundation
+and expensive to retrofit across 24 components.
 
-**Built (P1T-159), with two things learned by measuring it in a real browser:**
+**Learned by measuring these in a real browser (P1T-159, P1T-196):**
 
 - The focus ring is `html *:focus-visible`, not `*:focus-visible`. The plain universal selector is
   specificity (0,1,0) — the same as one emotion class — so `MuiButtonBase`'s own `outline: 0`, being
   injected later, won on source order and the ring silently did not render. `html *…` is (0,1,1) and
-  wins without an `!important`. This was caught by driving Chromium and reading
-  `getComputedStyle`, not by reading the CSS: the `outline-offset` was applying while the `outline`
-  was not, which is invisible in a diff.
+  wins without an `!important`. Caught by driving Chromium and reading `getComputedStyle`, not by
+  reading the CSS: the `outline-offset` was applying while the `outline` was not, which is invisible
+  in a diff.
 - Text inputs keep MUI's own indicator rather than the global ring. `MuiInputBase`'s
-  `&:focus { outline: 0 }` is (0,2,0) and beats the global rule, but the notched outline goes 2px
-  `primary.main` on focus, so focus is visible — in the same accent, by a different mechanism.
-  Fighting the specificity would have bought a doubled ring, not an accessible one.
+  `&:focus { outline: 0 }` is (0,2,0) and beats the global rule, but the notched outline goes 2px on
+  focus, so focus is visible — same accent, different mechanism.
 - The ≤150ms ceiling is **not** a CSS rule: it is `theme.transitions.duration`, capped at every key,
   which is where MUI's components read their timings from. A global selector would only reach the
   transitions it happens to match. `prefers-reduced-motion` is still the CSS kill switch.
+- The print floor needs `!important`, and that is the one place in this theme where that is the
+  right answer: it has to outrank both a component override and an `sx` block, because it is a floor
+  rather than a look. jsdom can only show the rule was *emitted* — that it *wins* is settled in
+  `e2e/print.e2e.ts` at real print media, polled, because `MuiPaper` transitions `box-shadow` and an
+  instant read lands on an interpolation.
+
+**The visual net (P1T-198).** Until this slice the look had no regression net at all: this document
+said screenshots "only prove the screen they were taken of", `screenshots.e2e.ts` merely *captured*
+PNGs behind `E2E_SHOTS=1`, and there was no `toHaveScreenshot` anywhere in the repo. A re-skin this
+total either gets a net or gets eyeballed. What exists now:
+
+- **Four baselines: the shell and the roster card, in both modes** (`e2e/shell.visual.e2e.ts`).
+  Narrow on purpose — full baselines turn every spacing change into an update chore, which is how a
+  visual suite stops being read. Everything else leans on the token and computed-style suites, which
+  fail with a number instead of a picture.
+- **One rendering environment, pinned.** The browser runs inside the official Playwright image at
+  this repo's exact version, `--platform linux/amd64`, and Playwright connects to it over a
+  websocket while the app stays on the host (`e2e/run.mjs`). CI runs amd64 and developers' machines
+  are arm64; the same multi-arch image would otherwise render two different Chromiums and a baseline
+  committed from a laptop would be red the moment CI looked at it. The container forwards its own
+  `localhost` to the host's SPA, because WebAuthn needs a secure context and no passkey ceremony —
+  so no signed-in screenshot — happens over `http://host.docker.internal`.
+- **Two regions are masked**, and it is not cheating: the signed-in account's email (unique per run)
+  and the "Availability (today)" column (a function of the calendar — the same time bomb P1T-199
+  defused in the cost floor). Both stay in frame at their real size; only their text leaves the
+  comparison.
+- **The tolerance is measured.** `maxDiffPixelRatio: 0.002` sounds tight and is 2,592 pixels on a
+  1440×900 frame — enough to swallow a card radius moving 14px to 20px, which is precisely what this
+  net exists to catch. The same edit fails at 59–68 differing pixels, repeated runs differ by zero,
+  so the floor is `maxDiffPixels: 12`. A net calibrated by eye would have passed the perturbation
+  that proved it.
+
+*Slice 1 — P1T-159. Print floor — P1T-196. Visual net — P1T-198.*
 
 ## 9. What must not move
 
