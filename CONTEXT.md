@@ -418,11 +418,14 @@ ignored rather than blanking the panel.
 _Avoid_: surface state, dock navigation event
 
 **Light Lock**:
-The rule that the CV Sheet renders under the light theme in both Theme Modes, and the nested
+The rule that the CV Sheet renders under its *own pinned* theme in both Theme Modes, and the nested
 `ThemeProvider` that enforces it. Named because it is a *lock*, not a default: no app-level mode may
-reach the sheet, since the artifact leaves the building. The subtlety worth keeping is that the
-provider only re-themes what names a palette role — the light text colour reaches the rest by being
-set on the sheet element itself, which everything inside then inherits.
+reach the sheet, since the artifact leaves the building. Pinned, and not simply "the light theme",
+because the sheet used to read the live one — so a change to the app's light ground or accent would
+have silently restyled a client-facing document, and the test that guards it would have stayed green
+by asserting against those same tokens. A lock asserts colours, not roles. The subtlety worth
+keeping is that the provider only re-themes what names a palette role — the light text colour
+reaches the rest by being set on the sheet element itself, which everything inside then inherits.
 _Avoid_: print theme, light override, forced light mode
 
 **Print Cascade**:
@@ -460,25 +463,43 @@ then expressed through the UI library's own vocabulary. A component names the *r
 the token: that is what makes a second Theme Mode cost a component nothing.
 _Avoid_: theme variable, CSS var, palette entry
 
-**Surface Ramp**:
-The three steps anything can be drawn on: the page, a panel on it, and a well inside that panel.
-Depth is a step on the ramp plus a hairline, not a shadow — a shadow separates nothing on a
-near-black page.
-_Avoid_: elevation, z-layer, background shades
+**Relief**:
+How depth is made: a pair of shadows, one dark and one light, cast from opposite corners, so a
+surface reads as lifted out of its ground or pressed into it. It replaces the Surface Ramp, which
+held the opposite position — that a shadow separates nothing on a near-black page — until the
+neumorphic reversal. Relief is stated per Theme Mode, because the light half of the pair is white on
+a dark ground and near-white on a grey one, and it does not exist at all on a white one.
+_Avoid_: elevation, z-layer, drop shadow, background shades
+
+**Relief Depth**:
+How far Relief may nest: **two levels**, and no further. One thing lifted, one thing pressed into
+it. Deeper than that the shadows overlap into mud and the physical reading breaks — an inset inside
+an extrusion inside an inset is not a thing that can exist — so a third level is a flat fill and a
+hairline instead. A rule a component can check, which is what the Surface Ramp's three steps never
+were.
+_Avoid_: nesting level, elevation depth, z-index
 
 **Well**:
-The third step of the Surface Ramp, as a thing a component can ask for: a panel-inside-a-panel that
-carries its own fill — a message bubble, a degradation note. A named Paper variant rather than three
-`sx` declarations repeated, because it is neither outlined (a hairline on a coloured fill reads as a
-defect) nor elevated (there is no elevation to speak of).
-_Avoid_: card, tinted box, inner panel
+A surface pressed *into* its parent — the inset half of Relief, and the second and last level of
+Relief Depth. A search field, a message bubble, a segmented control's track. A named Paper variant
+rather than the same three `sx` declarations repeated. Note this is a redefinition: a Well used to
+be the flat third step of the Surface Ramp, and the ones that sit deeper than level two are flat
+fills now, not Wells.
+_Avoid_: card, tinted box, inner panel, sunken panel
 
-**Overlay Shadow**:
-The one shadow in the design system, and the only thing allowed to carry one: a surface that
-genuinely floats over another — a menu, a dialog, an autocomplete popup, the undocked agent panel.
-Everything merely *next to* something else separates with a hairline. Stated as a token per Theme
-Mode, because a near-black page cannot be shadowed the way a light one can.
-_Avoid_: elevation 8, drop shadow, box shadow
+**Float**:
+A surface genuinely above the page rather than part of it — a menu, a dialog, an autocomplete popup,
+the undocked agent panel. It carries the largest Relief plus a backdrop, which is what separates it
+from a merely extruded panel now that extrusion is ordinary. Replaces Overlay Shadow, whose defining
+claim — "the one shadow in the design system" — stopped being true of anything.
+_Avoid_: elevation 8, overlay, modal layer
+
+**Eyebrow**:
+The small mono all-caps label above a heading, a figure or a field — `ROSTER · 42 RECORDS`,
+`AVAILABLE TODAY`. It is the design's voice as much as the accent is: it says what a number *is*
+without spending a heading on it, and it is why the mono family is a UI role here rather than
+something only `code` and `pre` get.
+_Avoid_: caption, overline, kicker, label
 
 **Override Policy**:
 The rule that decides where a look is written: needed twice, it belongs in the theme's component
