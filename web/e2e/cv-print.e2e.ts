@@ -17,17 +17,17 @@ import type { ElementHandle } from "@playwright/test";
 import { addVirtualAuthenticator, signUp, uniqueEmail } from "./passkey";
 
 /**
- * The light colours the sheet must resolve to, as Chromium reports them. Kept literal rather than
- * imported from `src/theme/tokens.ts`: a spec that read the same constant the app does would still
- * pass if a token were re-pointed at a dark value, which is one of the things it exists to catch.
+ * The colours the sheet must resolve to, as Chromium reports them. Kept literal rather than
+ * imported from the app: a spec that read the same constant the app does would still pass if that
+ * constant were re-pointed, which is one of the things it exists to catch.
  *
- * These moved with the neumorphic reversal (P1T-195), and that is the drift the ADR predicted:
- * `CvPage` wraps the sheet in the *live* `lightTheme`, so the new light ground reached a
- * client-facing document. Slice ③ (P1T-197) pins the sheet to a literal `cvSheetTheme` and these go
- * back to white and near-black for good — after which they stop tracking the app's palette at all,
- * which is the point of a lock. Until then they say what the sheet actually is.
+ * They moved once, with the neumorphic reversal (P1T-195), because `CvPage` wrapped the sheet in
+ * the app's live `lightTheme` and the new light ground reached a client-facing document. P1T-197
+ * pinned the sheet to a literal `cvSheetTheme`, so they are back to white and near-black — and now
+ * they are supposed to stay there while the app's palette does whatever it likes. That is the whole
+ * claim: this pair should only ever change when somebody decides the *document* changes.
  */
-const SHEET = { paper: "rgb(238, 241, 248)", text: "rgb(27, 35, 49)" };
+const SHEET = { paper: "rgb(255, 255, 255)", text: "rgb(16, 20, 24)" };
 
 /**
  * The printed page's own background, which is not a token and never was: `index.css` forces
