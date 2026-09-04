@@ -98,10 +98,19 @@ jobs:
         run: npm run test:e2e
         working-directory: web
 
-      - name: Upload traces on failure
+      - name: Run the visual net
+        # Renders in the pinned Playwright container rather than in the runner's own Chromium, so
+        # the committed baselines mean the same thing here as on the machine that produced them
+        # (`web/e2e/run.mjs` explains the whole arrangement). Docker is preinstalled on the runner.
+        run: npm run test:visual
+        working-directory: web
+
+      - name: Upload traces and visual diffs on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-traces
+          # `test-results/` carries the trace zips and, for a failed baseline, the expected/actual
+          # /diff triptych — which is the only useful way to review a visual failure.
           path: web/test-results/
           retention-days: 7

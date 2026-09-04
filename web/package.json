@@ -10,6 +10,8 @@
     "test": "vitest run",
     "test:e2e": "node e2e/run.mjs",
     "shots": "E2E_SHOTS=1 node e2e/run.mjs e2e/screenshots.e2e.ts",
+    "test:visual": "E2E_VISUAL=1 node e2e/run.mjs e2e/shell.visual.e2e.ts --project=visual",
+    "visual:update": "E2E_VISUAL=1 node e2e/run.mjs e2e/shell.visual.e2e.ts --project=visual --update-snapshots",
     "typecheck": "tsc --noEmit",
     "lint": "eslint ."
   },

@@ -15,6 +15,10 @@ export default defineConfig({
   server: {
     port,
     strictPort: true,
+    // The visual pass renders in a container, so the dev server has to be reachable from off
+    // `localhost` for that run and only that run — a dev server bound to every interface by
+    // default is a different decision, and not one a screenshot suite gets to make.
+    host: process.env.E2E_VISUAL === "1",
     proxy: {
       "/api": {
         target: apiTarget,
