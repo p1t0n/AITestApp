@@ -147,6 +147,25 @@ public class StaffingPipelineTests
     }
 
     [Fact]
+    public void The_evidence_scores_read_the_same_whatever_culture_the_host_has()
+    {
+        // The shortlist score is a `double` formatted `0.##` straight into the evidence the
+        // narrative model is given. On a German host that is `0,85`, so the model reads a different
+        // document than the one this suite tests — and a decimal comma inside a comma-separated
+        // line is worse than cosmetic (P1T-200).
+        var prompt = Culture.Under(Culture.Other, async () =>
+        {
+            var shortlist = new FakeShortlistRunService(ShortlistOk(Candidate(1), Candidate(2)));
+            var chat = NarrativeChat(NarrativeJson(Id(1), Id(2)));
+            await RunAsync(Pipeline(shortlist, MatchAlwaysOk(), chat));
+            return string.Concat(chat.ReceivedMessages[0].Select(m => m.Text));
+        });
+
+        prompt.Should().Contain("score 0.85").And.Contain("score 0.8,");
+        prompt.Should().NotContain("0,85");
+    }
+
+    [Fact]
     public async Task Match_runs_receive_the_shortlist_steps_extraction()
     {
         var extraction = new JdRequirements(

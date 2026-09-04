@@ -80,6 +80,29 @@ public class RuntimeBudgetChatClientTests
     }
 
     [Fact]
+    public void The_notice_reads_the_same_number_whatever_culture_the_host_has()
+    {
+        // The notice is not a log line: it is appended to the model's context as the closing
+        // instruction's degradation note, and shown to a person as the degradation reason. Under
+        // `de-DE` an ambient `:N0` renders the ceiling as `5.000`, so the same build said two
+        // different things depending on where it ran — and the assertion below failed on every
+        // European workstation while passing on CI, which is how it went unfixed for three slices.
+        var text = Culture.Under(Culture.Other, async () =>
+        {
+            var (client, _) = Pipeline(new AgentBudget { MaxInputTokens = 5_000, MaxIterations = 99 }, 6_000);
+            var options = WithTools();
+
+            using var scope = MeteringScope.Begin();
+            await client.GetResponseAsync([new ChatMessage(ChatRole.User, "one")], options);
+            var closing = await client.GetResponseAsync([new ChatMessage(ChatRole.User, "two")], options);
+            return closing.Text;
+        });
+
+        text.Should().Contain("6,000 of 5,000 input tokens");
+        text.Should().NotContain("5.000");
+    }
+
+    [Fact]
     public async Task Over_the_token_ceiling_it_withdraws_the_tools_and_asks_for_a_closing_answer()
     {
         // 6,000 tokens a call: the second call starts with the 5,000-token ceiling already spent.
