@@ -1,0 +1,33 @@
+<!--
+  The orchestrator (P1T-216). See manuals/adr-aspire-apphost.md for why this exists and what it is
+  deliberately not: there is no deployment manifest here, and no prerelease package anywhere.
+-->
+<Project Sdk="Aspire.AppHost.Sdk/13.5.3">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <!--
+      SDK-only, no CLI bundle (P1T-212). With the bundle on, a resolution failure is *error*
+      ASPIRE009, and since this project sits in ExpertToJob.slnx that would take down the whole
+      `dotnet build` / `dotnet test` step over a tool nobody installed. ASPIRE010 is the warning
+      that says "you could be using the CLI"; we know.
+    -->
+    <AspireUseCliBundle>false</AspireUseCliBundle>
+    <NoWarn>$(NoWarn);ASPIRE010</NoWarn>
+    <!-- The only place a developer keeps a personal secret: Parameters:gemini-api-key (P1T-207). -->
+    <UserSecretsId>experttojob-apphost</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.5.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Migrator\ExpertToJob.Migrator.csproj" />
+    <ProjectReference Include="..\..\tools\SeedDemoRoster\SeedDemoRoster.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -3,6 +3,9 @@
   <Folder Name="/api/Agents/">
     <Project Path="api/Agents/ExpertToJob.Agents.csproj" />
   </Folder>
+  <Folder Name="/api/AppHost/">
+    <Project Path="api/AppHost/ExpertToJob.AppHost.csproj" />
+  </Folder>
   <Folder Name="/api/Application/">
     <Project Path="api/Application/ExpertToJob.Application.csproj" />
   </Folder>
