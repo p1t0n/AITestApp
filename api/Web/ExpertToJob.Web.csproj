@@ -14,7 +14,13 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.0" />
+    <!--
+      10.2.1 rather than 10.2.0 for CVE-2026-49451 (P1T-220): Swashbuckle.AspNetCore.Swagger
+      10.2.0 pins Microsoft.OpenApi 2.4.1, whose reader stack-overflows on a circular schema
+      reference. The patch bump moves that transitive pin to 2.7.5, so no direct reference to a
+      package nothing here names is needed.
+    -->
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.1" />
   </ItemGroup>
 
   <ItemGroup>
