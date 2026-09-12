@@ -20,6 +20,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Application\ExpertToJob.Application.csproj" />
     <ProjectReference Include="..\Infrastructure\ExpertToJob.Infrastructure.csproj" />
+    <ProjectReference Include="..\ServiceDefaults\ExpertToJob.ServiceDefaults.csproj" />
   </ItemGroup>
 
 </Project>

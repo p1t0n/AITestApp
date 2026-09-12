@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="FluentAssertions" Version="8.10.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\api\ServiceDefaults\ExpertToJob.ServiceDefaults.csproj" />
+  </ItemGroup>
+
+  <!--
+    The three hosts' startup files, read as data by the telemetry freeze. This project references
+    none of the hosts on purpose — the freeze is about what their Program.cs says, and a project
+    reference would drag Infrastructure, Keycloak and the agent framework into a test that only
+    needs to read four lists of strings.
+  -->
+  <ItemGroup>
+    <None Include="..\..\api\Web\Program.cs" Link="hosts\web-Program.cs.txt" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\api\Mcp\Program.cs" Link="hosts\mcp-Program.cs.txt" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\api\Agents\Program.cs" Link="hosts\agents-Program.cs.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

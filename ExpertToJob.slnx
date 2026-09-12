@@ -15,6 +15,9 @@
   <Folder Name="/api/Mcp/">
     <Project Path="api/Mcp/ExpertToJob.Mcp.csproj" />
   </Folder>
+  <Folder Name="/api/ServiceDefaults/">
+    <Project Path="api/ServiceDefaults/ExpertToJob.ServiceDefaults.csproj" />
+  </Folder>
   <Folder Name="/api/Web/">
     <Project Path="api/Web/ExpertToJob.Web.csproj" />
   </Folder>
@@ -27,6 +30,9 @@
   </Folder>
   <Folder Name="/tests/Mcp.Tests/">
     <Project Path="tests/Mcp.Tests/ExpertToJob.Mcp.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tests/ServiceDefaults.Tests/">
+    <Project Path="tests/ServiceDefaults.Tests/ExpertToJob.ServiceDefaults.Tests.csproj" />
   </Folder>
   <Folder Name="/tests/Web.Tests/">
     <Project Path="tests/Web.Tests/ExpertToJob.Web.Tests.csproj" />

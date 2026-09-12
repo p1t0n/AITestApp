@@ -18,28 +18,29 @@ using ModelContextProtocol.Authentication;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// The shared spine (P1T-214): OTLP export — only when OTEL_EXPORTER_OTLP_ENDPOINT is set — plus
+// AspNetCore/HttpClient/Runtime instrumentation, HTTP resilience and the health checks.
+builder.AddServiceDefaults();
+
 // Tracing spine (P1T-94): the MCP SDK instruments itself and propagates trace context via
-// JSON-RPC _meta, Npgsql tracing is native — this subscription + OTLP export turns both on.
-// Target is the Aspire dashboard from docker-compose (OTLP gRPC localhost:4317 by default);
-// the app runs unchanged when the dashboard is down.
+// JSON-RPC _meta, Npgsql tracing is native — this subscription is what turns both on. It stays
+// here, next to the code that emits the spans: ServiceDefaults knows nothing about MCP, and a
+// source dropped from this list stops collecting silently. Frozen in
+// tests/ServiceDefaults.Tests/HostTelemetryFreezeTests.cs.
 builder.Services.AddOpenTelemetry()
     .ConfigureResource(r => r.AddService("experttojob-mcp"))
     .WithTracing(t => t
-        .AddAspNetCoreInstrumentation()
         .AddSource(
             "Experimental.ModelContextProtocol",
             "Experimental.Microsoft.Extensions.AI",   // embedding generator calls
             "System.Net.Http",
-            "Npgsql")
-        .AddOtlpExporter())
+            "Npgsql"))
     .WithMetrics(m => m
-        .AddAspNetCoreInstrumentation()
         .AddMeter(
             "Experimental.ModelContextProtocol",
             "Experimental.Microsoft.Extensions.AI",
             "System.Net.Http",
-            "Npgsql")
-        .AddOtlpExporter());
+            "Npgsql"));
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -125,6 +126,7 @@ var app = builder.Build();
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapDefaultEndpoints();
 app.MapMcp().RequireAuthorization();
 
 app.Run();
