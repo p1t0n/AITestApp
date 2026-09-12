@@ -54,9 +54,51 @@ builder.AddProject<Projects.SeedDemoRoster>("demo-roster")
     .WaitFor(postgres)
     .WithExplicitStart();
 
-// Referenced so the container is part of the graph and the dashboard shows it; the hosts that
-// actually need Keycloak arrive in slice 4.
-_ = keycloak;
-_ = migrator;
+// One declaration, two hosts. The Web host issues the session JWT and both it and Agents validate
+// it, so a copy in two appsettings files is a drift waiting to happen (P1T-207). Read through
+// Configuration rather than the bare AddParameter(name, secret: true) overload, which *fails
+// AppHost startup* when the value is absent — the committed dev constant is the fallback, so a
+// fresh clone just works.
+var signingKey = builder.AddParameter(
+    "jwt-signing-key",
+    builder.Configuration["Parameters:jwt-signing-key"]
+        ?? "dev-only-insecure-signing-key-change-me-at-least-32-bytes",
+    secret: true);
+
+// The only value a developer actually supplies, and it stays optional: empty means the Agents host
+// still starts and the widget degrades, exactly as it does today. Set it with
+//   dotnet user-secrets set Parameters:gemini-api-key <key> --project api/AppHost
+//
+// The environment fallback is not decoration. Injecting a parameter *overrides* the inherited
+// variable, so without it an empty parameter would mask a GEMINI_API_KEY the developer already had
+// exported — the workflow README and CLAUDE.md still document — and the agents would quietly stop
+// working for someone who changed nothing.
+var geminiKey = builder.AddParameter(
+    "gemini-api-key",
+    builder.Configuration["Parameters:gemini-api-key"]
+        ?? Environment.GetEnvironmentVariable("GEMINI_API_KEY")
+        ?? "",
+    secret: true);
+
+// Resource names match the OTel service names each host sets in its own ConfigureResource, so the
+// dashboard's resource list and its telemetry never disagree. launchProfileName pins them to the
+// http profile — their 5069/5100/5200 become the proxy ports at no extra cost, which is what keeps
+// every checked-in literal true (P1T-206).
+builder.AddProject<Projects.ExpertToJob_Web>("experttojob-web", launchProfileName: "http")
+    .WithReference(db, connectionName: "Default")
+    .WithEnvironment("Auth__Jwt__SigningKey", signingKey)
+    .WaitForCompletion(migrator);
+
+builder.AddProject<Projects.ExpertToJob_Mcp>("experttojob-mcp", launchProfileName: "http")
+    .WithReference(db, connectionName: "Default")
+    .WaitForCompletion(migrator)
+    .WaitFor(keycloak);
+
+builder.AddProject<Projects.ExpertToJob_Agents>("experttojob-agents", launchProfileName: "http")
+    .WithReference(db, connectionName: "Default")
+    .WithEnvironment("Auth__Jwt__SigningKey", signingKey)
+    .WithEnvironment("GEMINI_API_KEY", geminiKey)
+    .WaitForCompletion(migrator)
+    .WaitFor(keycloak);
 
 builder.Build().Run();
