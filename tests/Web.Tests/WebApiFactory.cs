@@ -19,7 +19,7 @@ namespace ExpertToJob.Web.Tests;
 /// <summary>
 /// The real Web API host over a throwaway Postgres. Only the connection string is overridden — the
 /// host boots exactly as it does in development, so these tests exercise the production startup
-/// path: the real EF migrations, the real dev seed, the app-wide authorization fallback policy, and
+/// path: the real schema (applied first, as `api/Migrator` does), the app-wide fallback policy, and
 /// the real <c>GlobalExceptionHandler</c>. Anything Postgres-specific (partial unique indexes,
 /// cascade deletes, date/enum mapping) is therefore in scope here in a way EF InMemory can never be.
 /// </summary>
@@ -37,8 +37,17 @@ public sealed class WebApiFactory : WebApplicationFactory<Program>, IAsyncLifeti
     public async Task InitializeAsync()
     {
         await _postgres.StartAsync();
-        // Force the host to build now, so migrations and the seed run inside InitializeAsync
-        // rather than inside the first test that happens to touch the API.
+
+        // The schema is `api/Migrator`'s now, not the host's (P1T-215), so the fixture applies it
+        // the way a real run does: migrator first, API second. Doing it here also keeps the cost
+        // inside InitializeAsync rather than inside the first test that happens to touch the API.
+        using (var scope = Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            await db.Database.MigrateAsync();
+            await DbInitializer.SeedAsync(db);
+        }
+
         using var _ = CreateClient();
     }
 
@@ -50,9 +59,9 @@ public sealed class WebApiFactory : WebApplicationFactory<Program>, IAsyncLifeti
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        // Development explicitly: it is the environment whose startup path applies migrations and
-        // the seed, and whose appsettings supply the dev signing key. Left to default, the host
-        // would boot as Production and refuse to start on the placeholder key.
+        // Development explicitly: it is the environment whose appsettings supply the dev signing
+        // key. Left to default, the host would boot as Production and refuse to start on the
+        // placeholder key.
         builder.UseEnvironment("Development");
         builder.UseSetting("ConnectionStrings:Default", _postgres.GetConnectionString());
     }

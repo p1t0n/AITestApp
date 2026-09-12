@@ -12,6 +12,9 @@
   <Folder Name="/api/Infrastructure/">
     <Project Path="api/Infrastructure/ExpertToJob.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/api/Migrator/">
+    <Project Path="api/Migrator/ExpertToJob.Migrator.csproj" />
+  </Folder>
   <Folder Name="/api/Mcp/">
     <Project Path="api/Mcp/ExpertToJob.Mcp.csproj" />
   </Folder>
@@ -30,6 +33,9 @@
   </Folder>
   <Folder Name="/tests/Mcp.Tests/">
     <Project Path="tests/Mcp.Tests/ExpertToJob.Mcp.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tests/Migrator.Tests/">
+    <Project Path="tests/Migrator.Tests/ExpertToJob.Migrator.Tests.csproj" />
   </Folder>
   <Folder Name="/tests/ServiceDefaults.Tests/">
     <Project Path="tests/ServiceDefaults.Tests/ExpertToJob.ServiceDefaults.Tests.csproj" />

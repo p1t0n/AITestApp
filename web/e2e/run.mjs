@@ -1,9 +1,9 @@
 // Entry point for the e2e suite: owns the whole stack for one run.
 //
-// Why a script instead of Playwright's own `webServer`: the API cannot start until a database
-// exists, and the database is a container this run creates. Sequencing that here keeps the
-// ordering explicit — container, then API, then Playwright (which starts the SPA itself) — and
-// guarantees the container is removed on every exit path, including Ctrl-C.
+// Why a script instead of Playwright's own `webServer`: the API cannot start until a database with
+// a schema exists, and the database is a container this run creates. Sequencing that here keeps the
+// ordering explicit — container, then the migrator, then the API, then Playwright (which starts the
+// SPA itself) — and guarantees the container is removed on every exit path, including Ctrl-C.
 //
 // Nothing here touches the dev stack: its own ports, its own container, its own database.
 import { spawn, spawnSync } from "node:child_process";
@@ -14,6 +14,9 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."
 
 export const PORTS = { db: 55433, api: 5079, spa: 5174, browser: 5175 };
 const CONTAINER = "experttojob-e2e-db";
+/** The migrator and the API have to name the same database; one copy is how they keep agreeing. */
+const DB_CONNECTION =
+  `Host=localhost;Port=${PORTS.db};Database=experttojob_e2e;Username=postgres;Password=postgres`;
 const IMAGE = "pgvector/pgvector:pg17";
 
 /**
@@ -129,6 +132,22 @@ async function startDatabase() {
       .status === 0);
 }
 
+async function runMigrator() {
+  // The API stopped applying migrations when the schema moved to `api/Migrator` (P1T-215), so this
+  // is now the step that creates it. Synchronous and gated on the exit code: the API would boot
+  // against an empty database, and the whole suite fail, if this were allowed to be in flight.
+  const migrator = run("dotnet", [
+    "run", "--project", "api/Migrator", "--no-launch-profile",
+  ], {
+    cwd: repoRoot,
+    stdio: process.env.E2E_VERBOSE ? "inherit" : "ignore",
+    env: { ...process.env, ConnectionStrings__Default: DB_CONNECTION },
+  });
+  if (migrator.status !== 0) {
+    throw new Error(`The migrator failed (exit ${migrator.status}). Run with E2E_VERBOSE=1 to see why.`);
+  }
+}
+
 async function waitFor(what, timeoutMs, isReady) {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
@@ -146,11 +165,11 @@ async function startApi() {
     stdio: process.env.E2E_VERBOSE ? "inherit" : "ignore",
     env: {
       ...process.env,
-      // Development is the environment that applies migrations and the seed on startup.
+      // Development for Swagger and the dev signing key. The schema is already there by now —
+      // `runMigrator` put it there before this process started.
       ASPNETCORE_ENVIRONMENT: "Development",
       ASPNETCORE_URLS: `http://localhost:${PORTS.api}`,
-      ConnectionStrings__Default:
-        `Host=localhost;Port=${PORTS.db};Database=experttojob_e2e;Username=postgres;Password=postgres`,
+      ConnectionStrings__Default: DB_CONNECTION,
       // The passkey relying party checks the browser's origin against this list, and the suite
       // serves the SPA on its own port. The visual pass borrows the same origin — see
       // `FORWARD_TO_HOST` for why its containerised browser also says `localhost`.
@@ -184,6 +203,7 @@ async function main() {
 
   try {
     await startDatabase();
+    await runMigrator();
     api = await startApi();
     if (VISUAL) await startBrowserServer();
 
