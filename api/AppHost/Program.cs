@@ -84,7 +84,7 @@ var geminiKey = builder.AddParameter(
 // dashboard's resource list and its telemetry never disagree. launchProfileName pins them to the
 // http profile — their 5069/5100/5200 become the proxy ports at no extra cost, which is what keeps
 // every checked-in literal true (P1T-206).
-builder.AddProject<Projects.ExpertToJob_Web>("experttojob-web", launchProfileName: "http")
+var webHost = builder.AddProject<Projects.ExpertToJob_Web>("experttojob-web", launchProfileName: "http")
     .WithReference(db, connectionName: "Default")
     .WithEnvironment("Auth__Jwt__SigningKey", signingKey)
     .WaitForCompletion(migrator);
@@ -94,11 +94,26 @@ builder.AddProject<Projects.ExpertToJob_Mcp>("experttojob-mcp", launchProfileNam
     .WaitForCompletion(migrator)
     .WaitFor(keycloak);
 
-builder.AddProject<Projects.ExpertToJob_Agents>("experttojob-agents", launchProfileName: "http")
+var agentsHost = builder.AddProject<Projects.ExpertToJob_Agents>("experttojob-agents", launchProfileName: "http")
     .WithReference(db, connectionName: "Default")
     .WithEnvironment("Auth__Jwt__SigningKey", signingKey)
     .WithEnvironment("GEMINI_API_KEY", geminiKey)
     .WaitForCompletion(migrator)
     .WaitFor(keycloak);
+
+// 5173 is pinned rather than injected, and that is an auth decision rather than a preference:
+// api/Web/Program.cs carries the CORS origins as literals *in code*, and AddPasskeyAuth reads
+// Auth:Passkey:Origins eagerly at startup, matching scheme://host:port by exact set membership.
+// A moving SPA origin would mean editing the auth surface to suit the orchestrator (P1T-206).
+//
+// No WithReference: nothing needs injecting. With 5069 and 5200 pinned, vite.config.ts's existing
+// VITE_API_TARGET ?? "http://localhost:5069" literals are already correct under the AppHost, and
+// an unused injected variable is just a second source of truth waiting to disagree with them.
+// WithHttpEndpoint is rejected on a Vite resource; WithEndpoint on the one it already declares is
+// the supported way to pin the port.
+builder.AddViteApp("spa", "../../web")
+    .WithEndpoint("http", e => e.Port = 5173)
+    .WaitFor(webHost)
+    .WaitFor(agentsHost);
 
 builder.Build().Run();
