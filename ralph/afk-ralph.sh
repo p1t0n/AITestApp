@@ -7,10 +7,25 @@
 # one Linear ticket. The loop stops early when the agent reports the queue is drained by
 # emitting <promise>COMPLETE</promise>.
 #
+# WHICH TREE THE LOOP OWNS (P1T-224)
+#
+# The sandbox runs in `--clone` mode: the agent works on a private clone *inside* the container,
+# and this checkout is mounted read-only at /run/sandbox/source. That is not a nicety. Under the
+# old bind mount the agent's `git checkout` moved HEAD in this working tree, and a developer
+# committing here at the wrong moment landed their work on whatever branch the agent had left
+# behind — which is how P1T-216 went straight to `main`.
+#
+# The agent's commits come back as refs under refs/sandboxes/<sandbox>/<branch>; it also has a
+# real GitHub `origin`, so its own `git push` and `gh pr create` work unchanged.
+#
 # Prerequisites:
 #   - sbx installed, Docker running
 #   - the Linear MCP server authorized INSIDE the sandbox:  sbx mcp auth linear-server
 #     (an expired credential is the usual cause of a loop that burns iterations doing nothing)
+#   - a stored GitHub secret the sandbox can use:  sbx secret ls
+#     A freshly created sandbox with no github secret gets "Bad credentials" from every gh call,
+#     so it can do the work and then fail to open the PR. Scope it globally rather than to one
+#     sandbox name, or the next recreate loses it again.
 
 set -euo pipefail
 
@@ -30,12 +45,20 @@ for ((i = 1; i <= $1; i++)); do
   LOG="$LOGDIR/$(date -u +%Y%m%dT%H%M%SZ)-iter$i.jsonl"
   echo "=== ralph iteration $i/$1 -> $LOG ==="
 
-  # --static-mcp is fixed when the sandbox is created and is rejected on re-attach, so only the
-  # iteration that actually creates the sandbox may pass it. Re-attaching keeps the same MCP set
-  # (and its authorization), which is why the sandbox is reused rather than recreated per run.
-  mcp_flags=()
+  # --static-mcp and --clone are both fixed when the sandbox is created and are rejected on
+  # re-attach, so only the iteration that actually creates the sandbox may pass them. Re-attaching
+  # keeps the same MCP set (and its authorization), which is why the sandbox is reused rather than
+  # recreated per run.
+  create_flags=()
   if ! sbx list 2>/dev/null | awk 'NR > 1 { print $1 }' | grep -qx "$SANDBOX"; then
-    mcp_flags=(--static-mcp linear-server)
+    create_flags=(--clone --static-mcp linear-server)
+  elif ! sbx exec "$SANDBOX" -- test -d /run/sandbox/source >/dev/null 2>&1; then
+    # An existing bind-mount sandbox would silently reintroduce P1T-224: its container can write
+    # this working tree and move HEAD under whoever else is using it. Refuse rather than re-attach.
+    echo "!! sandbox '$SANDBOX' predates --clone: it bind-mounts this checkout and can move HEAD" >&2
+    echo "   under a concurrent session. Recreate it, then re-check the GitHub secret:" >&2
+    echo "     sbx rm --force $SANDBOX && sbx secret ls" >&2
+    exit 1
   fi
 
   # sbx's own -p means --publish, so every agent flag goes after the -- separator.
@@ -43,7 +66,7 @@ for ((i = 1; i <= $1; i++)); do
   set +e
   # ${a[@]+"${a[@]}"} rather than plain "${a[@]}": macOS ships bash 3.2, where `set -u` treats an
   # empty array expansion as an unbound variable, and the array is empty on every re-attach.
-  sbx run claude --name "$SANDBOX" ${mcp_flags[@]+"${mcp_flags[@]}"} -- \
+  sbx run claude --name "$SANDBOX" ${create_flags[@]+"${create_flags[@]}"} -- \
     --permission-mode acceptEdits \
     --output-format stream-json \
     --verbose \
