@@ -122,8 +122,9 @@ cd api/Web
 dotnet run
 ```
 
-On first run in Development it applies EF migrations and seeds the skill catalog + sample
-experts. API listens on `http://localhost:5069`; Swagger UI at `http://localhost:5069/swagger`.
+Against a fresh database, run `dotnet run --project api/Migrator` first — it applies the EF
+migrations and seeds the skill catalog + sample experts, and no host does that for itself any
+more. API listens on `http://localhost:5069`; Swagger UI at `http://localhost:5069/swagger`.
 
 ### 3. Start the SPA
 

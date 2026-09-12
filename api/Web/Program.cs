@@ -4,7 +4,6 @@ using ExpertToJob.Infrastructure;
 using ExpertToJob.Infrastructure.Persistence;
 using ExpertToJob.Web.Auth;
 using ExpertToJob.Web.Infrastructure;
-using Microsoft.EntityFrameworkCore;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -88,28 +87,14 @@ var app = builder.Build();
 
 app.UseExceptionHandler();
 
+// This host no longer owns the schema (P1T-215). `api/Migrator` applies the migrations and seeds
+// the catalog, and it runs before anything that needs a database — which is what lets the MCP
+// server start against a fresh one without the API ever having run. The demo roster went with it:
+// `tools/SeedDemoRoster` is the only path that loads it now.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-
-    // Apply migrations + seed sample data on startup for a frictionless dev experience.
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.MigrateAsync();
-    await DbInitializer.SeedAsync(db);
-
-    // Optional demo roster seed (P1T-51): off by default. Flip Seed:DemoRoster to load the
-    // committed 500-expert dataset; Seed:DemoRosterCount limits it to the first N experts.
-    // Idempotent — experts whose email already exists are skipped.
-    if (app.Configuration.GetValue("Seed:DemoRoster", false))
-    {
-        var demoCount = app.Configuration.GetValue<int?>("Seed:DemoRosterCount");
-        var demoResult = await DemoRosterSeeder.SeedAsync(db, DemoRosterSeeder.LoadCommittedDataset(), demoCount);
-        app.Logger.LogInformation(
-            "Demo roster seed: {Seeded} experts seeded, {Skipped} already present.",
-            demoResult.Seeded, demoResult.Skipped);
-    }
 }
 
 // The first Service Manager (P1T-181). Runs in every environment: signup only makes Experts, so

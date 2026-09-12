@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="FluentAssertions" Version="8.10.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Testcontainers.PostgreSql" Version="4.12.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\api\Migrator\ExpertToJob.Migrator.csproj" />
+  </ItemGroup>
+
+  <!--
+    The two startup files this slice moved work between, read as data by the boundary freeze — the
+    same move `tests/ServiceDefaults.Tests` makes on the three hosts. A project reference to
+    api/Web would drag the whole API into a test that only needs to read what its Program.cs says.
+  -->
+  <ItemGroup>
+    <None Include="..\..\api\Web\Program.cs" Link="hosts\web-Program.cs.txt" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\api\Migrator\Program.cs" Link="hosts\migrator-Program.cs.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

@@ -87,10 +87,12 @@ jobs:
         run: npx playwright install --with-deps chromium
         working-directory: web
 
-      - name: Build the Web API
-        # The e2e runner starts the API with `dotnet run`; building here keeps that start fast
-        # and surfaces a build break as a build break.
-        run: dotnet build api/Web/ExpertToJob.Web.csproj --configuration Debug
+      - name: Build the Web API and the migrator
+        # The e2e runner starts both with `dotnet run` — the migrator first, then the API; building
+        # here keeps those starts fast and surfaces a build break as a build break.
+        run: |
+          dotnet build api/Migrator/ExpertToJob.Migrator.csproj --configuration Debug
+          dotnet build api/Web/ExpertToJob.Web.csproj --configuration Debug
 
       - name: Run e2e
         # Owns its stack: a throwaway pgvector container (Docker is preinstalled on the runner),

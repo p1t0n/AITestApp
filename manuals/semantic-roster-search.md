@@ -403,7 +403,8 @@ it doesn't claim perfection at scale.
   is the deterministic output (seed 48).
 - **Seed**: `dotnet run --project tools/SeedDemoRoster -- [--count N] [--wipe]` — idempotent by
   email; `--wipe` deletes exactly the `@demo.example.com` experts (cascades children + chunks).
-  Or set `Seed:DemoRoster=true` (+ `Seed:DemoRosterCount`) for seed-on-boot demo environments.
+  This is the only path that loads the demo roster: the `Seed:DemoRoster` boot flag went with the
+  Web host's startup seeding (P1T-215).
 - After seeding, the reconcile worker embeds the new chunks on its own (real embeddings; 500
   experts ≈ 75–150k embedding tokens once — infra cost, not user caps).
 
