@@ -30,10 +30,20 @@ for ((i = 1; i <= $1; i++)); do
   LOG="$LOGDIR/$(date -u +%Y%m%dT%H%M%SZ)-iter$i.jsonl"
   echo "=== ralph iteration $i/$1 -> $LOG ==="
 
+  # --static-mcp is fixed when the sandbox is created and is rejected on re-attach, so only the
+  # iteration that actually creates the sandbox may pass it. Re-attaching keeps the same MCP set
+  # (and its authorization), which is why the sandbox is reused rather than recreated per run.
+  mcp_flags=()
+  if ! sbx list 2>/dev/null | awk 'NR > 1 { print $1 }' | grep -qx "$SANDBOX"; then
+    mcp_flags=(--static-mcp linear-server)
+  fi
+
   # sbx's own -p means --publish, so every agent flag goes after the -- separator.
   # tee keeps the raw stream for the promise check; format.sh renders it live.
   set +e
-  sbx run claude --name "$SANDBOX" --static-mcp linear-server -- \
+  # ${a[@]+"${a[@]}"} rather than plain "${a[@]}": macOS ships bash 3.2, where `set -u` treats an
+  # empty array expansion as an unbound variable, and the array is empty on every re-attach.
+  sbx run claude --name "$SANDBOX" ${mcp_flags[@]+"${mcp_flags[@]}"} -- \
     --permission-mode acceptEdits \
     --output-format stream-json \
     --verbose \
