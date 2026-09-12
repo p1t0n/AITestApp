@@ -26,6 +26,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Web\ExpertToJob.Web.csproj" />
+    <ProjectReference Include="..\Mcp\ExpertToJob.Mcp.csproj" />
+    <ProjectReference Include="..\Agents\ExpertToJob.Agents.csproj" />
     <ProjectReference Include="..\Migrator\ExpertToJob.Migrator.csproj" />
     <ProjectReference Include="..\..\tools\SeedDemoRoster\SeedDemoRoster.csproj" />
   </ItemGroup>
