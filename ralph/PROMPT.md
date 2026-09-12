@@ -59,6 +59,12 @@ Linear issue state *is* the progress file.
 ## Rules
 
 - **One ticket per iteration.** Not two, not "while I'm in here". The loop gives you another turn.
+- **The tree you are in is yours alone.** You work on a private clone inside the sandbox; the
+  developer's checkout is mounted read-only at `/run/sandbox/source` and you cannot write it. So
+  branch and commit freely — but never assume the human's checkout looks like yours, and never
+  reach into `/run/sandbox/source` to "fix" anything. Your commits reach the host as refs under
+  `refs/sandboxes/<sandbox>/<branch>`, and your `origin` is the real GitHub remote, so pushing a
+  branch and opening a PR works exactly as it reads (P1T-224).
 - Respect the repo's standing conventions: tracked docs go in `/manuals` (`/docs` is gitignored),
   no stacked PRs — branch from `main`, and never from another unmerged branch.
 - If the ticket turns out to be wrong, blocked in reality, or already done, say so in a Linear
