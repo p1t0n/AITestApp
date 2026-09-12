@@ -65,8 +65,14 @@ public class EndpointClassificationTests(WebApiFactory factory)
         // and demanding somebody acknowledge a text they need an account to read would be an
         // Art. 13 failure wearing an auth rule. Acknowledging it is not on this list — that needs
         // a session, because it is recorded against one.
+        //
+        // The two health probes (P1T-214) are anonymous for the same reason the Agents host's
+        // always was: an orchestrator has no session token, and a probe that 401s makes a healthy
+        // service look dead. They carry no personal data and say nothing but "Healthy" — the only
+        // check registered is a liveness "self".
         anonymous.Should().OnlyContain(route =>
-            route.StartsWith("api/auth/") || route == "api/notice" || route == "api/notice/{version}");
+            route.StartsWith("api/auth/") || route == "api/notice" || route == "api/notice/{version}"
+            || route == "/health" || route == "/alive");
     }
 
     /// <summary>

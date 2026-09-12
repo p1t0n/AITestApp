@@ -5,6 +5,9 @@ using ExpertToJob.Infrastructure.Persistence;
 using ExpertToJob.Web.Auth;
 using ExpertToJob.Web.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,6 +23,21 @@ if (builder.Environment.IsProduction())
             "environment (Auth__Jwt__SigningKey) or a secrets store before running in Production.");
     }
 }
+
+// The shared spine (P1T-214): OTLP export — only when OTEL_EXPORTER_OTLP_ENDPOINT is set — plus
+// AspNetCore/HttpClient/Runtime instrumentation, HTTP resilience and the health checks. This host
+// emitted no telemetry at all before; it was invisible in the dashboard while the other two were
+// not.
+builder.AddServiceDefaults();
+
+// What this host adds on top of the generic instrumentation: Npgsql, whose tracing is native, so
+// the passkey ceremonies and the retention sweep show the queries they run. Nothing else — an
+// ExpertToJob.Web activity source is new instrumentation, not this refactor. Frozen in
+// tests/ServiceDefaults.Tests/HostTelemetryFreezeTests.cs.
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(r => r.AddService("experttojob-web"))
+    .WithTracing(t => t.AddSource("Npgsql"))
+    .WithMetrics(m => m.AddMeter("Npgsql"));
 
 const string SpaCors = "spa";
 
@@ -110,6 +128,7 @@ if (app.Environment.IsDevelopment())
 app.UseCors(SpaCors);
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapDefaultEndpoints();
 app.MapControllers();
 
 app.Run();

@@ -45,15 +45,21 @@ if (builder.Environment.IsProduction())
     }
 }
 
+// The shared spine (P1T-214): OTLP export — only when OTEL_EXPORTER_OTLP_ENDPOINT is set — plus
+// AspNetCore/HttpClient/Runtime instrumentation, HTTP resilience and the health checks. The
+// resilience handler attaches to IHttpClientFactory clients only; the Gemini and MCP clients are
+// both hand-built, so no model call is retried by it.
+builder.AddServiceDefaults();
+
 // Tracing spine (P1T-94, see manuals/maf-otel-telemetry.md): every layer already emits spans as
-// opt-in decorators; this host subscription + OTLP export is what turns them on. Exporter target
-// is the Aspire dashboard from docker-compose (OTLP gRPC on localhost:4317 by default, override
-// via OTEL_EXPORTER_OTLP_ENDPOINT). The exporter buffers and drops when the dashboard is down —
-// the app runs unchanged without it. Sensitive content capture stays OFF (no prompts in spans).
+// opt-in decorators; this host subscription is what turns them on. It stays here, next to the code
+// that emits them — ServiceDefaults knows nothing about the agent framework, and a source dropped
+// from this list stops collecting silently. Frozen in
+// tests/ServiceDefaults.Tests/HostTelemetryFreezeTests.cs. Sensitive content capture stays OFF
+// (no prompts in spans).
 builder.Services.AddOpenTelemetry()
     .ConfigureResource(r => r.AddService("experttojob-agents"))
     .WithTracing(t => t
-        .AddAspNetCoreInstrumentation()
         .AddSource(
             "Experimental.Microsoft.Extensions.AI",   // chat + execute_tool spans
             "Experimental.Microsoft.Agents.AI",       // invoke_agent spans
@@ -61,16 +67,13 @@ builder.Services.AddOpenTelemetry()
             "Experimental.ModelContextProtocol",      // MCP client RPCs (context propagates via _meta)
             "ExpertToJob.Agents.RosterScan",             // roster_scan.job spans (P1T-124/125)
             "System.Net.Http",
-            "Npgsql")
-        .AddOtlpExporter())
+            "Npgsql"))
     .WithMetrics(m => m
-        .AddAspNetCoreInstrumentation()
         .AddMeter(
             "Experimental.Microsoft.Extensions.AI",   // gen_ai.client.token.usage / operation.duration
             "Experimental.ModelContextProtocol",
             "System.Net.Http",
-            "Npgsql")
-        .AddOtlpExporter());
+            "Npgsql"));
 
 builder.Services.AddOptions<McpServerOptions>()
     .Bind(builder.Configuration.GetSection(McpServerOptions.Section));
@@ -240,7 +243,8 @@ app.UseAuthorization();
 
 // Liveness, deliberately anonymous: an orchestrator has no session token, and the fallback policy
 // is staff-only, so without this the health probe would 401 and the service would look dead.
-app.MapGet("/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
+// /health and /alive are ServiceDefaults' now, and MapDefaultEndpoints keeps them anonymous.
+app.MapDefaultEndpoints();
 
 // Structured 429 the SPA renders in the Usage tab: which window, how much, and when it resets.
 static IResult CapReached(WindowUsage w) => Results.Json(
