@@ -151,6 +151,10 @@ public static class CostFloors
             ["experience_update"] = 443,
             ["language_add"] = 310,
             ["language_delete"] = 121,
+            // 246 with zero slack, and it stays there: the run that measured 256 was a
+            // Microsoft.Extensions.AI.Abstractions 10.7.0 race publishing this tool's injected
+            // ILanguageService parameter (P1T-223). api/Mcp pins 10.9.0 and
+            // ToolSurfaceServiceLeakTests asserts the invariant directly.
             ["language_update"] = 246,
             ["qualification_add"] = 506,
             ["qualification_delete"] = 121,
