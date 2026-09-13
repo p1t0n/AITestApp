@@ -57,7 +57,7 @@ for ((i = 1; i <= $1; i++)); do
   create_flags=()
   if ! sbx list 2>/dev/null | awk 'NR > 1 { print $1 }' | grep -qx "$SANDBOX"; then
     create_flags=(--clone --static-mcp linear-server -t "$TEMPLATE")
-  elif ! sbx exec "$SANDBOX" -- command -v dotnet >/dev/null 2>&1; then
+  elif ! sbx exec "$SANDBOX" -- sh -c 'command -v dotnet' >/dev/null 2>&1; then
     # The template is what puts the .NET SDK in the sandbox, and it cannot be added afterwards:
     # the egress allowlist permits api.nuget.org but 403s every SDK download host. A sandbox
     # created without it looks fine and then cannot build or test anything — which is exactly how
