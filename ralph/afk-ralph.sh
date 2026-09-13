@@ -37,6 +37,11 @@ if [ -z "${1:-}" ]; then
 fi
 
 SANDBOX="claude-AITestApp"
+# The sandbox image, and the only way the .NET SDK gets in: the egress allowlist permits
+# api.nuget.org but returns 403 for every SDK download host, so an agent cannot install it for
+# itself. Recreating the sandbox without this silently costs the loop `dotnet build` and
+# `dotnet test` (P1T-226). Rebuild it with: sbx template save <a sandbox with the SDK> "$TEMPLATE"
+TEMPLATE="claude-dotnet10:v1"
 PROMPT="$(cat ralph/PROMPT.md)"
 LOGDIR="ralph/logs"
 mkdir -p "$LOGDIR"
@@ -51,7 +56,16 @@ for ((i = 1; i <= $1; i++)); do
   # recreated per run.
   create_flags=()
   if ! sbx list 2>/dev/null | awk 'NR > 1 { print $1 }' | grep -qx "$SANDBOX"; then
-    create_flags=(--clone --static-mcp linear-server)
+    create_flags=(--clone --static-mcp linear-server -t "$TEMPLATE")
+  elif ! sbx exec "$SANDBOX" -- command -v dotnet >/dev/null 2>&1; then
+    # The template is what puts the .NET SDK in the sandbox, and it cannot be added afterwards:
+    # the egress allowlist permits api.nuget.org but 403s every SDK download host. A sandbox
+    # created without it looks fine and then cannot build or test anything — which is exactly how
+    # P1T-226 happened. Refuse, rather than let an agent quietly fall back to "CI will tell me".
+    echo "!! sandbox '$SANDBOX' has no dotnet: it was created without -t $TEMPLATE" >&2
+    echo "   Recreate it so the loop can build and test:" >&2
+    echo "     sbx rm --force $SANDBOX" >&2
+    exit 1
   elif ! sbx exec "$SANDBOX" -- test -d /run/sandbox/source >/dev/null 2>&1; then
     # An existing bind-mount sandbox would silently reintroduce P1T-224: its container can write
     # this working tree and move HEAD under whoever else is using it. Refuse rather than re-attach.
