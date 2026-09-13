@@ -328,7 +328,7 @@ For a full per-call token breakdown of a live run, attach an
 `gen_ai.usage.input_tokens` off each `chat` span plus the tool name off each `execute_tool` span.
 The `orchestrate_tools` span carries the run total.
 
-Note that the Aspire dashboard (`docker-compose.yml`, port 18888) receives these spans but holds
+Note that the Aspire dashboard (served by `api/AppHost`) receives these spans but holds
 them in memory only — the 2026-08-30 traces were already gone by the time this was investigated,
 which is the argument for P1T-144's ledger columns.
 

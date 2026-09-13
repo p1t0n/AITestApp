@@ -8,34 +8,40 @@ description: Build, launch, and drive this app (Postgres+Keycloak, Web, MCP, Age
 ## Launch the stack
 
 ```bash
-docker compose up -d                       # pgvector Postgres (:5432) + Keycloak (:8080) + Aspire dashboard (:18888)
-# If keycloak/realm-export.json changed since the container was created, the realm is STALE:
-docker compose up -d --force-recreate keycloak
+# The Gemini key is optional and lives in user-secrets, not the environment; without it the
+# Agents host still starts and the widget degrades.
+dotnet user-secrets set Parameters:gemini-api-key <key> --project api/AppHost
 
-dotnet build ExpertToJob.slnx          # build ONCE, then run with --no-build
-                                           # (three parallel `dotnet run` builds clash on obj/)
-GEMINI_API_KEY=<key> ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5069 dotnet run --project api/Web --no-launch-profile --no-build &
-GEMINI_API_KEY=<key> ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5100 dotnet run --project api/Mcp --no-launch-profile --no-build &
-GEMINI_API_KEY=<key> ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5200 dotnet run --project api/Agents --no-launch-profile --no-build &
-cd web && npm run dev &                    # :5173, proxies /api → 5069 and /agents → 5200
+dotnet run --project api/AppHost
 ```
 
-`ASPNETCORE_ENVIRONMENT=Development` is required — migrations + base seed only run in Development.
-Health probes: Web `GET /swagger/index.html` = 200; Mcp `/` = 401; Agents `/` = 404 (both mean "alive").
+One command brings up everything: pgvector Postgres (:5432), Keycloak (:8080), the one-shot
+migrator, Web (:5069), Mcp (:5100), Agents (:5200) and the SPA (:5173) — in that dependency order,
+with the three hosts waiting for the migrator to exit cleanly. The AppHost prints the dashboard URL
+on startup; open it for per-resource logs, traces and metrics, and to start `demo-roster`.
+
+There is **no stale-realm step**. Keycloak gets a fresh container and a fresh realm import on every
+start (it has no data volume, deliberately), so an edit to `keycloak/realm-export.json` takes effect
+on the next start and cannot be stale.
+
+Health probes: Web `GET /swagger/index.html` = 200; Mcp `/` = 401; Agents `/` = 404 (both mean
+"alive"). The dashboard shows the same thing per resource, which is usually faster than curling.
 
 ## Traces & metrics
 
-Open http://localhost:18888 (Aspire dashboard, anonymous). Every agent request renders as one
-trace across `experttojob-agents` and `experttojob-mcp` (workflow executors, chat spans, MCP RPCs,
-SQL); the Metrics page has `gen_ai.client.token.usage` by model. In-memory — restarting the
-container clears history. The services run fine when it is down.
+Open the dashboard URL the AppHost printed. Every agent request renders as one trace across
+`experttojob-agents` and `experttojob-mcp` (workflow executors, chat spans, MCP RPCs, SQL); the
+Metrics page has `gen_ai.client.token.usage` by model. In-memory — stopping the AppHost clears
+history. Each host boots fine with no OTLP endpoint set, which is what a solo `dotnet run` gives it.
 
 ## Demo data + embeddings
 
 ```bash
-dotnet run --project tools/SeedDemoRoster --no-build -- --count 40   # idempotent; --wipe to remove
-# The Mcp service's reconcile worker embeds new experts every ~30s. Watch progress:
-docker exec experttojob-db psql -U postgres -d experttojob -tAc \
+dotnet run --project tools/SeedDemoRoster -- --count 40   # idempotent; --wipe to remove
+# The Mcp service's reconcile worker embeds new experts every ~30s. Watch progress over the pinned
+# port — the AppHost names its containers itself, so `docker exec <a-name-you-guessed>` will not
+# find one:
+PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d experttojob -tAc \
   'SELECT count(*) FILTER (WHERE "Embedding" IS NOT NULL) || \'/\' || count(*) FROM "ExpertSearchChunks";'
 ```
 
@@ -83,9 +89,13 @@ Then `curl -H "Authorization: Bearer $JWT" http://localhost:5200/agents/shortlis
 ## Gotchas
 
 - `UID` is readonly in zsh — don't use it as a shell variable name.
-- Logs to `/tmp/emgr-logs/*.log`; the MCP log shows `"<tool>" completed. IsError = False` per tool
-  call — the ground truth for "did the agent actually call the tool".
-- Keycloak has no persistent volume, but the container itself persists — realm changes need
-  `--force-recreate keycloak` (symptom: agent token requests return 401).
-- The local `api/Agents/appsettings.json` may carry a dev PAT (or see `git stash list`); prefer
-  `GEMINI_API_KEY` env. Never commit it.
+- Per-resource logs are in the dashboard (Console logs → `experttojob-mcp`), and the MCP log shows
+  `"<tool>" completed. IsError = False` per tool call — the ground truth for "did the agent
+  actually call the tool". A solo `dotnet run` still writes to its own terminal.
+- Keycloak gets a new container every start, so realm edits land on the next start — never live.
+  (Symptom of running against the old one: agent token requests return 401.)
+- The local `api/Agents/appsettings.json` may carry a dev PAT (or see `git stash list`); prefer the
+  AppHost's `Parameters:gemini-api-key` user-secret. Never commit it.
+- Pinned ports are **proxy** ports: Aspire listens on 5069/5100/5200/5173/5432/8080 and forwards to
+  a random port the resource actually bound. `docker ps` shows the random one; it is not the
+  contract, and nothing should be read off it.
