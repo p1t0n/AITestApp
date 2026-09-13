@@ -1,0 +1,146 @@
+<!--
+  Central Package Management: the single version list for ExpertToJob.slnx (P1T-222).
+
+  Every `PackageReference` in the repo names a package; none of them names a version. The version
+  lives here, once, and NuGet resolves the pair by package id. A project that wants a package still
+  declares it — CPM centralises *versions*, not *dependencies*, so the dependency graph a csproj
+  describes is unchanged.
+
+  This file was a pure relocation. The migration that created it changed no version: all 89
+  `PackageReference` elements across 24 projects already agreed, at 43 distinct package ids with
+  zero id pinned at two versions. That is recorded in P1T-222 because it is the interesting part —
+  the agreement was maintained by hand, one ticket at a time (P1T-214 consolidated OpenTelemetry,
+  P1T-223 set the Microsoft.Extensions.AI floor), and this file is what makes the next one
+  unnecessary rather than merely overdue.
+
+  Where a comment goes. A comment explaining *why this version* moved here with the version — those
+  are below. A comment explaining *why this project takes this dependency at all* stayed on the
+  `PackageReference` in its csproj, because that is what it is about.
+
+  No `<packageSources>` is declared here and no `NuGet.config` exists in this repo. That is
+  load-bearing: the Aspire SDK resolves from nuget.org before any `PackageReference` is considered,
+  so a restricted feed breaks the AppHost build in a way that looks nothing like a package problem
+  (manuals/adr-aspire-apphost.md). This file configures versions and nothing else.
+-->
+<Project>
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!--
+      Off, deliberately, and written out rather than left to the default so that its absence reads
+      as a decision. Transitive pinning promotes every indirectly-referenced package to a version
+      this repo owns and must maintain — versions nobody here chose, on a list nobody here reads.
+      The one place transitive versions actually needed a hand (EF Core Relational, below) is
+      handled by a direct reference that says so in one line.
+    -->
+    <CentralPackageTransitivePinningEnabled>false</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <!-- Orchestration -->
+  <ItemGroup>
+    <!--
+      Must stay in lockstep with the AppHost SDK attribute, which CPM cannot reach:
+      `Sdk="Aspire.AppHost.Sdk/13.5.3"` on the first line of api/AppHost/ExpertToJob.AppHost.csproj.
+      Changing one without the other throws at AppHost *startup*, not at restore —
+      MissingMethodException on ProjectResource.get_DefaultHttpsEndpoint, or TypeLoadException on
+      ExecutableLaunchConfiguration (microsoft/aspire#13636). Edit both, always.
+      No prerelease Aspire package enters this solution (manuals/adr-aspire-apphost.md).
+    -->
+    <PackageVersion Include="Aspire.Hosting.JavaScript" Version="13.5.3" />
+    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.5.3" />
+  </ItemGroup>
+
+  <!-- Web hosts and API surface -->
+  <ItemGroup>
+    <PackageVersion Include="Fido2.AspNet" Version="4.0.1" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.7" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.7" />
+    <!--
+      10.2.1 rather than 10.2.0 for CVE-2026-49451 (P1T-220): Swashbuckle.AspNetCore.Swagger 10.2.0
+      pins Microsoft.OpenApi 2.4.1, whose reader stack-overflows on a circular schema reference. The
+      patch bump moves that transitive pin to 2.7.5, so no direct reference to a package nothing
+      here names is needed.
+    -->
+    <PackageVersion Include="Swashbuckle.AspNetCore" Version="10.2.1" />
+  </ItemGroup>
+
+  <!-- Application layer -->
+  <ItemGroup>
+    <PackageVersion Include="FluentValidation" Version="12.1.1" />
+    <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.8" />
+  </ItemGroup>
+
+  <!-- Persistence -->
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.8" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.8" />
+    <!--
+      The one version here that exists to settle a *transitive* disagreement rather than to serve a
+      direct consumer: Web pulls 10.0.8 via Design, Npgsql 10.0.2 pulls 10.0.4, and without the pin
+      that is an MSB3277 version-conflict warning. Kept as a direct reference from Infrastructure
+      (and Application.Tests) rather than as transitive pinning, which would solve this one case by
+      taking ownership of every other transitive version in the repo.
+    -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.8" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
+    <PackageVersion Include="Pgvector" Version="0.3.2" />
+    <PackageVersion Include="Pgvector.EntityFrameworkCore" Version="0.3.0" />
+  </ItemGroup>
+
+  <!-- Agents, AI and MCP -->
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.Agents.AI" Version="1.10.0" />
+    <PackageVersion Include="Microsoft.Agents.AI.OpenAI" Version="1.10.0" />
+    <PackageVersion Include="Microsoft.Agents.AI.Workflows" Version="1.10.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI" Version="10.9.0" />
+    <!--
+      Lifted past the MCP SDK's own 10.7.0 (P1T-223). Every MCP tool's input schema is generated by
+      Microsoft.Extensions.AI.Abstractions, and 10.7.0 keyed a method's parameter-binding options on
+      ParameterInfo object IDENTITY while the schema generator re-fetched its own ParameterInfo
+      instances from MethodInfo.GetParameters(). Two threads racing that method's non-atomic lazy
+      parameter cache — which is exactly what several test hosts starting at once does — made the
+      identity lookup miss, silently dropping ExcludeFromSchema and PUBLISHING the tool's injected
+      service parameter to the model. dotnet/extensions#7677 re-keyed it by position; 10.9.0 is the
+      first release carrying that fix. Do not float this back below 10.9.0.
+    -->
+    <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="10.9.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.9.0" />
+    <PackageVersion Include="ModelContextProtocol" Version="1.4.0" />
+    <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="1.4.0" />
+    <PackageVersion Include="System.ClientModel" Version="1.10.0" />
+  </ItemGroup>
+
+  <!-- Telemetry and resilience spine (api/ServiceDefaults, P1T-214) -->
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.3.0" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.17.0" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.17.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.17.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.17.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.17.0" />
+  </ItemGroup>
+
+  <!-- Documents -->
+  <ItemGroup>
+    <PackageVersion Include="QuestPDF" Version="2026.8.0" />
+  </ItemGroup>
+
+  <!-- Test-only -->
+  <ItemGroup>
+    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+    <PackageVersion Include="FluentAssertions" Version="8.10.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.7" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.8" />
+    <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.9.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.16.0" />
+    <PackageVersion Include="Testcontainers.Keycloak" Version="4.12.0" />
+    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.12.0" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <PackageVersion Include="Xunit.SkippableFact" Version="1.5.23" />
+  </ItemGroup>
+
+</Project>

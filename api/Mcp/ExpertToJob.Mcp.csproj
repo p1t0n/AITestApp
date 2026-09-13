@@ -7,19 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="1.4.0" />
-    <!--
-      Lifted past the SDK's own 10.7.0 (P1T-223). Every tool's input schema is generated here, by
-      Microsoft.Extensions.AI.Abstractions, and 10.7.0 keyed a method's parameter-binding options on
-      ParameterInfo object IDENTITY while the schema generator re-fetched its own ParameterInfo
-      instances from MethodInfo.GetParameters(). Two threads racing that method's non-atomic
-      lazy parameter cache — which is exactly what several test hosts starting at once does — made
-      the identity lookup miss, silently dropping ExcludeFromSchema and PUBLISHING the tool's
-      injected service parameter to the model. dotnet/extensions#7677 re-keyed it by position;
-      10.9.0 is the first release carrying that fix. Do not float this back below 10.9.0.
-    -->
-    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="10.9.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.7" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" />
+    <!-- Floored at 10.9.0 for a schema-generation race; the reason is in Directory.Packages.props. -->
+    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
   </ItemGroup>
 
   <ItemGroup>

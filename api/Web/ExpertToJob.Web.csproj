@@ -7,20 +7,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Fido2.AspNet" Version="4.0.1" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.7" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.7" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.8">
+    <PackageReference Include="Fido2.AspNet" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <!--
-      10.2.1 rather than 10.2.0 for CVE-2026-49451 (P1T-220): Swashbuckle.AspNetCore.Swagger
-      10.2.0 pins Microsoft.OpenApi 2.4.1, whose reader stack-overflows on a circular schema
-      reference. The patch bump moves that transitive pin to 2.7.5, so no direct reference to a
-      package nothing here names is needed.
-    -->
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.1" />
+    <!-- Held at 10.2.1 for CVE-2026-49451; the reason is in Directory.Packages.props. -->
+    <PackageReference Include="Swashbuckle.AspNetCore" />
   </ItemGroup>
 
   <ItemGroup>
