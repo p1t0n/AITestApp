@@ -102,6 +102,13 @@ describes the original POC and has drifted (e.g. it still names GitHub Models as
 `manuals/spa-design-system.md` are the governing specs for the SPA — read them before changing the
 shell, the theme, or anything they name as frozen.
 
+**Package versions are central.** `Directory.Packages.props` at the repo root holds every version
+once; a `PackageReference` names a package and never a `Version=` (P1T-222). Adding a package means
+two edits — the reference in the csproj, and a `PackageVersion` entry — and a version that appears
+in a csproj is a build error, not a preference. The one pin this does not cover is the AppHost's
+`Sdk="Aspire.AppHost.Sdk/<version>"` attribute, which must move in lockstep with the
+`Aspire.Hosting.*` versions or the AppHost throws at startup rather than at restore.
+
 **Frozen surfaces.** `web/src/frozenHooks.test.ts` reads the app's own source and fails on any
 rename or silent addition of a `data-testid` (39 hooks). Several accessible names (`Sign in`,
 `Sign out`, `CVs`, `Search`, `Open the agents assistant`, …) and the rail/dock push contracts are
