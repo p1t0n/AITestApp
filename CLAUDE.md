@@ -44,20 +44,35 @@ dotnet ef migrations add <Name> \
 
 ## Running the stack
 
-`docker compose up -d` brings up Postgres (pgvector image), Keycloak (imports the
-`expert-to-job` realm), and the Aspire dashboard (`:18888`, OTLP on `:4317` — the app runs fine
-when it is down). Then, each in its own terminal:
+One command, with Docker running — the Aspire AppHost owns the whole local stack:
 
-| Process | Command | Port |
+```bash
+dotnet run --project api/AppHost
+```
+
+| Resource | What it is | Port |
 |---|---|---|
-| Web API | `dotnet run` in `api/Web` | 5069 (Swagger at `/swagger`) |
-| SPA | `npm run dev` in `web` | 5173 |
-| MCP server | `dotnet run` in `api/Mcp` | 5100 |
-| Agents | `GEMINI_API_KEY=… dotnet run` in `api/Agents` | 5200 |
+| `postgres` | PostgreSQL 17 + pgvector, persistent volume `aitestapp_experttojob-pgdata` | 5432 |
+| `keycloak` | Authorization Server; the `expert-to-job` realm is imported on every start | 8080 |
+| `migrator` | one-shot: EF migrations + base seed, then exits; the three hosts wait on it | — |
+| `experttojob-web` | Web API (Swagger at `/swagger`) | 5069 |
+| `experttojob-mcp` | MCP server | 5100 |
+| `experttojob-agents` | Agents host | 5200 |
+| `spa` | Vite dev server, proxies `/api` and `/agents` | 5173 |
+| `demo-roster` | 500 synthetic experts — explicit start, never runs with the stack | — |
 
-The Web API applies migrations and seeds the catalog + sample experts on first Development run.
-Agents needs the MCP server *and* Keycloak up. `dotnet run --project tools/SeedDemoRoster` adds
-500 synthetic experts (`--wipe` removes exactly those rows).
+The AppHost prints the dashboard URL on startup; that is where the logs, traces and metrics are,
+and where an explicit-start resource is started. Every port above is pinned, so every checked-in
+literal (`vite.config.ts`, the `appsettings.json` files, the realm export) stays true —
+`manuals/adr-aspire-apphost.md` says why, and lists the tripwires that silently do the wrong thing.
+
+The one optional secret is the Gemini key, and only to stop the agents degrading:
+`dotnet user-secrets set Parameters:gemini-api-key <key> --project api/AppHost`.
+
+A solo `dotnet run` in one project still works — each keeps its own launch profile — but **no host
+applies migrations any more**, so against a fresh database run `dotnet run --project api/Migrator`
+first. `dotnet run --project tools/SeedDemoRoster` adds the 500 synthetic experts outside the
+AppHost (`--wipe` removes exactly those rows).
 
 ## Architecture
 

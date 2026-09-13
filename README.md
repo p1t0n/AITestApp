@@ -69,7 +69,8 @@ See [SPEC.md](SPEC.md).
 - **Backend:** ASP.NET Core Web API (.NET 10), layered Domain / Application / Infrastructure / Web
 - **MCP server:** ModelContextProtocol (Streamable HTTP), thin adapters over the Application layer, OAuth 2.1 (Keycloak) with per-tool scopes
 - **AI agents:** Microsoft Agent Framework over provider-agnostic `IChatClient` (Gemini free tier by default); embeddings via `gemini-embedding-001` (1536 dims)
-- **Observability:** OpenTelemetry tracing + metrics from both services (MAF workflow/executor spans, gen_ai chat spans, MCP RPCs, SQL) into the Aspire dashboard at `http://localhost:18888` (docker-compose)
+- **Local orchestration:** .NET Aspire AppHost (`api/AppHost`) — one command starts every container and process (see `manuals/adr-aspire-apphost.md`)
+- **Observability:** OpenTelemetry tracing + metrics from both services (MAF workflow/executor spans, gen_ai chat spans, MCP RPCs, SQL) into the Aspire dashboard the AppHost serves (it prints the URL on startup)
 - **Vector search:** PostgreSQL + pgvector (cosine), EF Core mapping via Pgvector.EntityFrameworkCore
 - **Frontend:** React + Vite + TypeScript, MUI, TanStack Query (+ vitest component tests)
 - **Database:** PostgreSQL via EF Core
@@ -87,6 +88,9 @@ api/
   Mcp/             MCP server: tools (incl. semantic, shortlist + style-exemplar search), bearer auth, reconcile worker
   Agents/          AI agents service: Roster Q&A, CV Tailoring, Match, Shortlist, the staffing
                    workflow (MAF WorkflowBuilder + SSE) + usage caps
+  Migrator/        one-shot: applies the EF migrations + base seed, then exits
+  ServiceDefaults/ OTLP exporter, health checks, HTTP resilience — shared by the three hosts
+  AppHost/         Aspire orchestrator: the whole local stack in one command
 web/               React SPA (incl. the agent widget; architecture in
                    `manuals/spa-architecture.md`)
   e2e/             Playwright browser journeys (passkey ceremonies via a CDP virtual authenticator)
@@ -103,52 +107,67 @@ tests/
   Agents.Tests/       agent + endpoint tests (fake chat client / tool source)
   Mcp.Tests/          MCP integration tests (in-process client, Testcontainers pgvector, Keycloak e2e)
   Web.Tests/          Web API integration tests (WebApplicationFactory + Testcontainers Postgres)
-docker-compose.yml Postgres (pgvector image) + Keycloak
 SPEC.md            full design + decisions
 ```
 
 ## Run it
 
-### 1. Start Postgres
+You need Docker running and the .NET 10 SDK. Then, one command:
 
 ```bash
-docker compose up -d
+dotnet run --project api/AppHost
 ```
 
-### 2. Start the API
+That is the whole stack — containers, processes and the SPA — declared in C# by the Aspire
+**AppHost** and started together. It prints the dashboard URL on startup; open it to watch the
+resources come up, read their logs, and see the traces and metrics every service exports.
+
+| Resource | What it is | Port |
+|---|---|---|
+| `postgres` | PostgreSQL 17 + pgvector, on a persistent volume | 5432 |
+| `keycloak` | OAuth 2.1 Authorization Server, `expert-to-job` realm imported at start | 8080 |
+| `migrator` | one-shot: applies the EF migrations + base seed, then exits | — |
+| `experttojob-web` | Web API, Swagger at `/swagger` | 5069 |
+| `experttojob-mcp` | MCP server (Streamable HTTP) | 5100 |
+| `experttojob-agents` | AI agents service | 5200 |
+| `spa` | the React app; proxies `/api/*` → 5069 and `/agents/*` → 5200 | 5173 |
+| `demo-roster` | 500 synthetic experts — **explicit start**, from the dashboard | — |
+
+Optional, and only if you want the AI agents to answer rather than degrade — a free **Gemini**
+key from https://aistudio.google.com/apikey:
 
 ```bash
-cd api/Web
-dotnet run
+dotnet user-secrets set Parameters:gemini-api-key <your-key> --project api/AppHost
 ```
 
-Against a fresh database, run `dotnet run --project api/Migrator` first — it applies the EF
-migrations and seeds the skill catalog + sample experts, and no host does that for itself any
-more. API listens on `http://localhost:5069`; Swagger UI at `http://localhost:5069/swagger`.
+Nothing else is required on a fresh clone. Every other dev secret (the session JWT signing key,
+the dev Keycloak client secrets) ships committed and pairs with the committed dev realm;
+Production refuses to boot on any placeholder and takes real values from the environment
+(`Auth__Jwt__SigningKey`, `McpAuth__<agent>__ClientSecret`, `GEMINI_API_KEY`).
 
-### 3. Start the SPA
+Reasoning for all of the above — including why every port is pinned rather than discovered, and
+the tripwires that will silently do the wrong thing if you change it — is in
+`manuals/adr-aspire-apphost.md`.
 
-```bash
-cd web
-npm install
-npm run dev
-```
+### Running one process on its own
 
-Opens on `http://localhost:5173` and proxies `/api/*` to the backend.
+Each project still gets its port from its own launch profile, with or without the AppHost, so
+`dotnet run` in `api/Web`, `api/Mcp` or `api/Agents` works as it always did. The one thing it does
+not do is set up the database: **run `dotnet run --project api/Migrator` first against a fresh
+one**. No host applies migrations for itself any more, and none applies them for another.
 
-### 4. Start the MCP server (optional)
+### What the parts are
 
-The MCP server is an **OAuth 2.1 Resource Server**. Keycloak (the Authorization Server)
-runs in `docker compose up -d` and imports an `expert-to-job` realm with a public PKCE client
+#### The MCP server (5100)
+
+The MCP server is an **OAuth 2.1 Resource Server**. Keycloak (the Authorization Server) comes up
+with the stack and imports an `expert-to-job` realm with a public PKCE client
 (`expert-to-job-mcp`), the `mcp:read` / `mcp:write` / `mcp:admin` scopes, and an audience mapper.
-
-```bash
-cd api/Mcp
-dotnet run
-```
+The realm is imported into a fresh container on every start, so an edit to
+`keycloak/realm-export.json` takes effect on the next one.
 
 Config (`Mcp:Authority` = Keycloak realm issuer, `Mcp:Resource` = this server's audience)
-defaults to the compose Keycloak. An MCP-capable agent discovers the AS via
+defaults to that Keycloak. An MCP-capable agent discovers the AS via
 `/.well-known/oauth-protected-resource`, runs the **authorization-code + PKCE** flow against
 Keycloak, and calls tools with `Authorization: Bearer <access-token>`. Tokens are validated
 against Keycloak's JWKS (issuer, audience, signature, lifetime). The server shares the API's
@@ -162,27 +181,16 @@ grant — and Keycloak stamps the OAuth 2.1 baseline onto it at registration tim
 implicit grant, no password grant, no full scope. Both halves are declared in
 `keycloak/realm-export.json` and documented in `manuals/mcp-dcr-policy.md` (P1T-157).
 
-The MCP server binds `http://localhost:5100` (its launch profile).
-
-### 5. Start the Agents service (optional)
+#### The Agents service (5200)
 
 AI agents built on the **Microsoft Agent Framework** that *consume* the MCP server (they hold
 a `mcp:read` token from the `agent-roster-qa` Keycloak service-account client, so the MCP server
 shows them read tools only — and, since that client also carries per-tool `mcp:tool:*` grants,
-only the four read tools Roster Q&A actually uses). Needs a free **Gemini** API key (https://aistudio.google.com/apikey). All other dev secrets
-(the session JWT signing key, the dev Keycloak agent client secrets) ship in
-`appsettings.Development.json` and pair with the committed dev realm — Production refuses to boot
-on any placeholder and takes real values from the environment (`Auth__Jwt__SigningKey`,
-`McpAuth__<agent>__ClientSecret`, `GEMINI_API_KEY`).
+only the four read tools Roster Q&A actually uses). This is the one part of the stack that wants
+the optional Gemini key: without it the host still starts and the widget degrades.
 
-```bash
-export GEMINI_API_KEY=<your-gemini-api-key>
-cd api/Agents
-dotnet run
-```
-
-Binds `http://localhost:5200`. Four agents plus a staffing pipeline that composes them (all also
-available as tabs in the in-app widget):
+Four agents plus a staffing pipeline that composes them (all also available as tabs in the in-app
+widget):
 
 - `POST /agents/roster-qa {question}` — Q&A over the roster; uses `roster_semantic_search` for
   capability questions and cites evidence snippets. The first model call is forced to a tool
@@ -236,15 +244,16 @@ curl -N http://localhost:5200/agents/staffing \
   -d '{"jobDescription":"Senior backend engineer: event streaming, cloud infrastructure.","matchTop":2}'
 ```
 
-Requires the MCP server (step 4) + Keycloak (step 1) running. Model/auth/MCP-URL are configurable
-in `api/Agents/appsettings.json`; the chat backend is provider-agnostic (`IChatClient`) and swaps
+The AppHost starts the MCP server and Keycloak before this host, which needs both. Model, auth
+and MCP URL are configurable in `api/Agents/appsettings.json`; the chat backend is provider-agnostic (`IChatClient`) and swaps
 to Azure OpenAI / OpenAI / Anthropic / Ollama in one line. Every agent call is metered against
 per-user token caps (defaults 50k/150k/500k daily/weekly/monthly).
 
-### 6. Seed the demo roster (optional)
+#### The demo roster (optional)
 
 500 synthetic experts across 10 industries, with narratives rich enough to make semantic search
-worth demoing:
+worth demoing. It is an **explicit start** resource — declared in the AppHost but never started
+with the stack; press start on `demo-roster` in the dashboard, or run it yourself:
 
 ```bash
 dotnet run --project tools/SeedDemoRoster            # seed all 500 (idempotent)

@@ -122,8 +122,13 @@ Facts worth pinning:
 | Grafana + Tempo + Prometheus | ✅ | ✅ | 3 services + per-tool config files | Skip for showcase — real dashboards, not worth the setup now; the OTLP wiring is identical if we graduate later |
 | Azure Monitor / App Insights | ✅ | ✅ | needs an Azure resource | **Not allowed by default in this project** |
 
-Add `aspire-dashboard` to `docker-compose.yml` next to postgres/keycloak; both services get
-`OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318` (HTTP) or `:4317` (gRPC). Effort: minutes.
+**Where this landed (2026-09, P1T-201).** The standalone container was the right call and then
+stopped being a container at all: the Aspire AppHost (`api/AppHost`) *is* the dashboard, and it sets
+`OTEL_EXPORTER_OTLP_ENDPOINT` on every resource it starts. Nothing to add and no port to remember —
+`dotnet run --project api/AppHost` prints the URL. Export became conditional on that variable being
+set, so a host started on its own is quiet rather than dropping spans into a closed socket; the
+boots-without-OTLP invariant has its own test (`tests/ServiceDefaults.Tests`). See
+`manuals/adr-aspire-apphost.md`.
 
 ## 5. Trace propagation SPA → Agents → MCP → Postgres
 
@@ -156,8 +161,8 @@ Add `aspire-dashboard` to `docker-compose.yml` next to postgres/keycloak; both s
 `Microsoft.Agents.AI.Workflows`, `Experimental.ModelContextProtocol`, `System.Net.Http`, `Npgsql`
 + ASP.NET Core instrumentation; wrap the default and keyed chat clients with `UseOpenTelemetry`
 in `GeminiServiceCollectionExtensions`; add `.WithOpenTelemetry()` to the staffing
-`WorkflowBuilder`; add the Aspire dashboard to `docker-compose.yml` and `OTEL_EXPORTER_OTLP_*`
-env to both services. Sensitive data stays off. Acceptance: one staffing run renders as a single
+`WorkflowBuilder`; stand up the Aspire dashboard and point `OTEL_EXPORTER_OTLP_*` at it (now the
+AppHost's job, see §4). Sensitive data stays off. Acceptance: one staffing run renders as a single
 trace — request → `workflow_invoke` → `executor.process` per step → `chat`/`invoke_agent` → MCP
 RPC → SQL — and the metrics page shows `gen_ai.client.token.usage` by model. Small ticket; all
 seams are one-file changes.

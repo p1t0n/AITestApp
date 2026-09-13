@@ -109,7 +109,8 @@ New entity `ExpertSearchChunk` (Domain/Entities, mapped in `AppDbContext`, prece
 Small tracer-bullet slices; each is independently reviewable and leaves the app green.
 
 ### Slice 1 — pgvector foundation
-- docker-compose: stock `postgres` → `pgvector/pgvector:pg<major>` (confirm major first).
+- Local Postgres image: stock `postgres` → `pgvector/pgvector:pg<major>` (confirm major first).
+  It was a compose service when this was written; it is `api/AppHost`'s `postgres` resource now.
 - EF migration: `CREATE EXTENSION IF NOT EXISTS vector;` + `ExpertSearchChunk` table with `vector(1536)` column, `(SourceType,SourceId)` unique index, FK+cascade.
 - `Pgvector.EntityFrameworkCore` package; `ExpertSearchChunk` entity + `AppDbContext` mapping (`HasPostgresExtension("vector")`, `.HasColumnType("vector(1536)")`).
 - **Accept:** migration applies on the pgvector image; empty table exists; existing suites green.

@@ -158,8 +158,10 @@ and is there as a guard on the statically-shipped half of the realm, not as a ch
 2. `dotnet test --filter "FullyQualifiedName~KeycloakDcrPolicyTests"` — fast, no Docker.
 3. `dotnet test --filter "FullyQualifiedName~KeycloakDcrE2ETests"` — ~50s, needs Docker, and is
    the only thing that will tell you Keycloak agrees.
-4. Recreate the local container: the realm is imported once, so a running `experttojob-keycloak`
-   keeps the old policy until `docker compose down -v && docker compose up -d`.
+4. Restart the AppHost. The realm is imported once per container and a running Keycloak keeps the
+   old policy, but the AppHost builds a fresh container every start and gives Keycloak no data
+   volume, so the next `dotnet run --project api/AppHost` has the new policy and there is nothing
+   to recreate by hand.
 
 ## Still open
 
