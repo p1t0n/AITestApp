@@ -44,7 +44,7 @@ public class AuthBoundaryTests(WebApiFactory factory)
     /// weakening the rule for everything else. What stays is what would leak other people's data:
     /// the whole roster, user administration, deletion, and the rendered CV of any id you name.
     /// </summary>
-    public static TheoryData<string, string> ServiceManagerOnlyEndpoints() => new()
+    public static TheoryData<string, string> AdministratorOnlyEndpoints() => new()
     {
         { "GET", "/api/experts" },
         { "GET", "/api/experts/00000000-0000-0000-0000-000000000001/cv" },
@@ -64,10 +64,10 @@ public class AuthBoundaryTests(WebApiFactory factory)
     /// reaches none of the staff surface.
     /// </summary>
     [Theory]
-    [MemberData(nameof(ServiceManagerOnlyEndpoints))]
+    [MemberData(nameof(AdministratorOnlyEndpoints))]
     public async Task Refuses_an_expert_token_on_every_service_manager_endpoint(string method, string path)
     {
-        using var expert = factory.CreateExpertClient();
+        using var expert = factory.CreateUserClient();
 
         var response = await expert.SendAsync(new HttpRequestMessage(new HttpMethod(method), path));
 
@@ -82,7 +82,7 @@ public class AuthBoundaryTests(WebApiFactory factory)
     [Fact]
     public async Task A_superseded_token_version_refuses_a_previously_valid_token()
     {
-        var (client, account) = factory.CreateClientFor(UserRole.ServiceManager);
+        var (client, account) = factory.CreateClientFor(UserRole.Administrator);
         using var _ = client;
 
         (await client.GetAsync("/api/experts")).StatusCode.Should().Be(HttpStatusCode.OK);
@@ -99,7 +99,7 @@ public class AuthBoundaryTests(WebApiFactory factory)
     [Fact]
     public async Task Refuses_a_token_whose_account_no_longer_exists()
     {
-        var (client, account) = factory.CreateClientFor(UserRole.ServiceManager);
+        var (client, account) = factory.CreateClientFor(UserRole.Administrator);
         using var _ = client;
 
         factory.DeleteAccount(account.Id);

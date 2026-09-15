@@ -38,15 +38,19 @@ public enum UserStatus
 }
 
 /// <summary>
-/// What an account is allowed to be. <see cref="ServiceManager"/> is staff: the roster, the skill
-/// catalog, user administration, the agent surfaces. <see cref="Expert"/> is the person the CV is
-/// about — they reach their own data and nothing else. Signup creates an Expert; staff are made,
-/// not self-declared (bootstrap config or promotion by another Service Manager).
+/// What an account is allowed to be. <see cref="Administrator"/> is staff: the roster, the skill
+/// catalog, user administration, the agent surfaces. <see cref="User"/> is the person the CV is
+/// about — they reach their own data and nothing else. Signup creates a User; Administrators are
+/// made, not self-declared (bootstrap config or promotion by another Administrator).
+///
+/// <para>Persisted <em>by name</em> (see <c>AppDbContext</c>), so renaming a member here is a data
+/// migration and not a refactor. <c>User</c> also names the account entity; in prose, "a User" means
+/// this role.</para>
 /// </summary>
 public enum UserRole
 {
-    ServiceManager = 1,
-    Expert = 2
+    Administrator = 1,
+    User = 2
 }
 
 /// <summary>

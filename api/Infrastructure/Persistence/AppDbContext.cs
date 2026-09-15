@@ -234,10 +234,11 @@ public class AppDbContext : DbContext, IAppDbContext
             e.HasIndex(x => x.Email).IsUnique();
             e.Property(x => x.ControlWordHash).HasMaxLength(512).IsRequired();
             e.Property(x => x.AcknowledgedNoticeVersion).HasMaxLength(32);
-            // ServiceManager is the store default because a row written without a role predates
-            // the split, and every account from then was staff. EF writes new accounts explicitly.
-            e.Property(x => x.Role).HasMaxLength(30).IsRequired()
-                .HasDefaultValue(Domain.Enums.UserRole.ServiceManager);
+            // No store default (P1T-236). It was 'ServiceManager', speaking for rows written
+            // before the role split; past the rename it would mean a row inserted without a role
+            // silently becomes an Administrator. EF names the role on every insert, and the
+            // CK_Users_Role check refuses anything the enum does not have.
+            e.Property(x => x.Role).HasMaxLength(30).IsRequired();
             // Session generation starts at 1 so "absent" and "first" stay distinguishable.
             e.Property(x => x.TokenVersion).HasDefaultValue(1);
 

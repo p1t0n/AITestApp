@@ -101,11 +101,11 @@ function PublicTopBar() {
 export default function App() {
   const authed = useIsAuthenticated();
   const role = useSessionRole();
-  // The agent surfaces read and act on the whole roster, so they are staff's. An Expert gets the
+  // The agent surfaces read and act on the whole roster, so they are staff's. A User gets the
   // same shell with the dock simply not mounted (P1T-190) — not a second layout mode: the dock is
   // already closeable, so "rail only" is a state the Content Floor handles today, and forking the
   // layout would be a second thing to keep in step for no gain.
-  const showsDock = authed && role === "ServiceManager";
+  const showsDock = authed && role === "Administrator";
   // Two edges, one contract. Both are `position: fixed`, both publish how much of the viewport they
   // are covering, and the root Box below pads by both — it knows neither one's state, neither one's
   // breakpoint, and neither one's width. Unset (no rail on the auth pages, no dock while signed
@@ -143,8 +143,8 @@ export default function App() {
           <Route path="/recover" element={<RecoverPage />} />
 
           {/* Staff surfaces. The roster, the catalog and user administration are all staffing
-              data — an Expert reaching any of them would be reading other people's CVs. */}
-          <Route element={<RequireAuth role="ServiceManager" />}>
+              data — a User reaching any of them would be reading other people's CVs. */}
+          <Route element={<RequireAuth role="Administrator" />}>
             <Route path="/" element={<ExpertsPage />} />
             <Route path="/experts/:id" element={<ExpertDetailPage />} />
             <Route path="/experts/:id/cv" element={<CvPage />} />
@@ -152,11 +152,11 @@ export default function App() {
             <Route path="/users" element={<UsersPage />} />
           </Route>
 
-          {/* The Expert's two places (P1T-190). My CV is the landing, because editing it is what
+          {/* The User's two places (P1T-190). My CV is the landing, because editing it is what
               they came to do; Privacy & data holds every right in one page. Somebody who owns no
               record is sent to claim status instead — there is nothing to edit, and an empty
               editor would misrepresent what is happening to them. */}
-          <Route element={<RequireAuth role="Expert" />}>
+          <Route element={<RequireAuth role="User" />}>
             <Route path="/me" element={<Navigate to="/me/cv" replace />} />
             <Route path="/me/cv" element={<MyCvPage />} />
             <Route path="/me/claim" element={<ClaimStatusPage />} />

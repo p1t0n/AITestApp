@@ -6,8 +6,8 @@ namespace ExpertToJob.Domain.Entities;
 /// An authenticated account. Auth is passwordless: the only login credential is a
 /// passkey (see <see cref="PasskeyCredential"/>). The <see cref="ControlWordHash"/> is
 /// the sole account-recovery secret — used to register a new passkey after device loss.
-/// <see cref="Role"/> splits staff (<c>ServiceManager</c>) from the people the CVs are about
-/// (<c>Expert</c>); <see cref="TokenVersion"/> is how a live session is revoked.
+/// <see cref="Role"/> splits staff (<c>Administrator</c>) from the people the CVs are about
+/// (<c>User</c>); <see cref="TokenVersion"/> is how a live session is revoked.
 /// </summary>
 public class User
 {
@@ -25,12 +25,12 @@ public class User
     public UserStatus Status { get; set; } = UserStatus.Active;
 
     /// <summary>
-    /// What the account may reach. Defaults to <see cref="UserRole.Expert"/> because signup is
+    /// What the account may reach. Defaults to <see cref="UserRole.User"/> because signup is
     /// open self-serve — staff are made deliberately (bootstrap config, or promotion), never by
-    /// signing up. Existing accounts were migrated to <see cref="UserRole.ServiceManager"/>: they
+    /// signing up. Existing accounts were migrated to <see cref="UserRole.Administrator"/>: they
     /// were all staff before the split existed.
     /// </summary>
-    public UserRole Role { get; set; } = UserRole.Expert;
+    public UserRole Role { get; set; } = UserRole.User;
 
     /// <summary>
     /// Session generation. Minted into every token and re-checked against this column on every

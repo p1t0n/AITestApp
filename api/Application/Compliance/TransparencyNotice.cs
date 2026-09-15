@@ -57,13 +57,13 @@ public static class TransparencyNotice
     /// nothing to say. This <em>notifies</em>: no data is gated on it, nothing is re-collected, and
     /// no surface is frozen pending a click.
     ///
-    /// <para>Experts only. The notice is addressed to the person a bench record is about; a Service
-    /// Manager reads a row's basis on the row. A Service Manager who is also on the bench owns an
-    /// Expert row and sees it there (P1T-187) — role decides who is <em>told</em>, ownership decides
-    /// whose record it is, and the two are independent by design (P1T-182).</para>
+    /// <para>Users only. The notice is addressed to the person a bench record is about; an
+    /// Administrator reads a row's basis on the row. An Administrator who is also on the bench owns
+    /// an Expert row and sees it there (P1T-187) — role decides who is <em>told</em>, ownership
+    /// decides whose record it is, and the two are independent by design (P1T-182).</para>
     /// </summary>
     public static string? PendingFor(UserRole role, string? acknowledgedVersion) =>
-        role == UserRole.Expert && !string.Equals(acknowledgedVersion, CurrentVersion, StringComparison.Ordinal)
+        role == UserRole.User && !string.Equals(acknowledgedVersion, CurrentVersion, StringComparison.Ordinal)
             ? CurrentVersion
             : null;
 

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { addVirtualAuthenticator, signUpAsExpert } from "./passkey";
+import { addVirtualAuthenticator, signUpAsUser } from "./passkey";
 
 /**
  * A fresh address on a domain that is <b>not</b> RFC 2606 reserved.
@@ -28,7 +28,7 @@ function realPersonEmail(): string {
 test.describe("privacy and data", () => {
   test("the page states what is held, who sees it, and how long", async ({ context, page }) => {
     await addVirtualAuthenticator(context, page);
-    await signUpAsExpert(page, realPersonEmail());
+    await signUpAsUser(page, realPersonEmail());
 
     await page.getByRole("link", { name: "Privacy & data" }).click();
 
@@ -41,7 +41,7 @@ test.describe("privacy and data", () => {
 
   test("the export downloads as a file, labelled a right", async ({ context, page }) => {
     await addVirtualAuthenticator(context, page);
-    await signUpAsExpert(page, realPersonEmail());
+    await signUpAsUser(page, realPersonEmail());
     await page.goto("/me/privacy");
 
     await expect(page.getByText(/right to data portability/)).toBeVisible();
@@ -60,7 +60,7 @@ test.describe("privacy and data", () => {
    */
   test("pausing and resuming changes the sentence at the top", async ({ context, page }) => {
     await addVirtualAuthenticator(context, page);
-    await signUpAsExpert(page, realPersonEmail());
+    await signUpAsUser(page, realPersonEmail());
     await page.goto("/me/privacy");
 
     await page.getByRole("button", { name: "Pause" }).click();
@@ -77,7 +77,7 @@ test.describe("privacy and data", () => {
    */
   test("deleting refuses a wrong control word and keeps the session", async ({ context, page }) => {
     await addVirtualAuthenticator(context, page);
-    await signUpAsExpert(page, realPersonEmail());
+    await signUpAsUser(page, realPersonEmail());
     await page.goto("/me/privacy");
 
     const remove = page.getByRole("button", { name: "Delete everything" });
@@ -92,7 +92,7 @@ test.describe("privacy and data", () => {
 
   test("deleting with the right control word ends the session", async ({ context, page }) => {
     await addVirtualAuthenticator(context, page);
-    await signUpAsExpert(page, realPersonEmail());
+    await signUpAsUser(page, realPersonEmail());
     await page.goto("/me/privacy");
 
     // The word every e2e signup uses (see `signUpThroughTheForm`).

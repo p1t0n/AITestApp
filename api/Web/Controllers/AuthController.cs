@@ -65,7 +65,7 @@ public class AuthController(
         }
 
         // An invite row (created by the Service Manager bootstrap) carries the address but no
-        // credential; signing up *adopts* it, keeping its id and its ServiceManager role. Any other
+        // credential; signing up *adopts* it, keeping its id and its Administrator role. Any other
         // existing account is a real one and the address is taken.
         var invite = await FindAdoptableInviteAsync(email, ct);
         if (invite is null && await db.Users.AnyAsync(u => u.Email == email, ct))

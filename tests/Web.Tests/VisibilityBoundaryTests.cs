@@ -24,7 +24,7 @@ public class VisibilityBoundaryTests(WebApiFactory factory)
     {
         var staff = factory.CreateAuthenticatedClient();
         var row = await staff.CreateExpertAsync(ApiClientExtensions.NewExpert());
-        var (client, _) = factory.CreateExpertClientOwning(row.Id);
+        var (client, _) = factory.CreateUserClientOwning(row.Id);
         using var _client = client;
 
         (await (await client.GetAsync("/api/me/visibility")).ReadOkAsync<ExpertVisibilityDto>())
@@ -55,7 +55,7 @@ public class VisibilityBoundaryTests(WebApiFactory factory)
     {
         var staff = factory.CreateAuthenticatedClient();
         var row = await staff.CreateExpertAsync(ApiClientExtensions.NewExpert());
-        var (client, _) = factory.CreateExpertClientOwning(row.Id);
+        var (client, _) = factory.CreateUserClientOwning(row.Id);
         using var _client = client;
 
         var first = await (await client.PostAsJsonAsync("/api/me/visibility/hide", new { }))
@@ -110,7 +110,7 @@ public class VisibilityBoundaryTests(WebApiFactory factory)
     {
         var staff = factory.CreateAuthenticatedClient();
         var row = await staff.CreateExpertAsync(ApiClientExtensions.NewExpert());
-        var (client, account) = factory.CreateClientFor(UserRole.ServiceManager);
+        var (client, account) = factory.CreateClientFor(UserRole.Administrator);
         using var _client = client;
         factory.SetOwner(row.Id, account.Id);
 
@@ -152,7 +152,7 @@ public class VisibilityBoundaryTests(WebApiFactory factory)
     {
         var staff = factory.CreateAuthenticatedClient();
         var row = await staff.CreateExpertAsync(ApiClientExtensions.NewExpert());
-        var (client, _) = factory.CreateExpertClientOwning(row.Id);
+        var (client, _) = factory.CreateUserClientOwning(row.Id);
         using var _client = client;
 
         await client.PostAsJsonAsync("/api/me/visibility/hide", new { });

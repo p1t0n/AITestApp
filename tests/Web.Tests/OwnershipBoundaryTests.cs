@@ -49,7 +49,7 @@ public class OwnershipBoundaryTests(WebApiFactory factory)
         var staff = factory.CreateAuthenticatedClient();
         var a = await Fixture.CreateAsync(staff, "owner-a");
         var b = await Fixture.CreateAsync(staff, "owner-b");
-        var (clientA, _) = factory.CreateExpertClientOwning(a.ExpertId);
+        var (clientA, _) = factory.CreateUserClientOwning(a.ExpertId);
         using var _ = clientA;
 
         var refusals = new List<string>();
@@ -72,7 +72,7 @@ public class OwnershipBoundaryTests(WebApiFactory factory)
     {
         var staff = factory.CreateAuthenticatedClient();
         var a = await Fixture.CreateAsync(staff, "self");
-        var (clientA, _) = factory.CreateExpertClientOwning(a.ExpertId);
+        var (clientA, _) = factory.CreateUserClientOwning(a.ExpertId);
         using var _ = clientA;
 
         // Keeps the refusals above honest: they must come from ownership, not from the whole
@@ -99,7 +99,7 @@ public class OwnershipBoundaryTests(WebApiFactory factory)
     {
         var staff = factory.CreateAuthenticatedClient();
         var someone = await Fixture.CreateAsync(staff, "unclaimed");
-        using var unclaimed = factory.CreateExpertClient();
+        using var unclaimed = factory.CreateUserClient();
 
         var statuses = new List<HttpStatusCode>();
         foreach (var (method, path) in ForeignRoutes(someone))
@@ -113,7 +113,7 @@ public class OwnershipBoundaryTests(WebApiFactory factory)
     [Fact]
     public async Task An_expert_reads_the_catalog_but_cannot_write_it()
     {
-        using var expert = factory.CreateExpertClient();
+        using var expert = factory.CreateUserClient();
 
         (await expert.GetAsync("/api/catalog/categories")).StatusCode.Should().Be(HttpStatusCode.OK);
         (await expert.GetAsync("/api/catalog/categories/tree")).StatusCode.Should().Be(HttpStatusCode.OK);
@@ -135,7 +135,7 @@ public class OwnershipBoundaryTests(WebApiFactory factory)
         var staff = factory.CreateAuthenticatedClient();
         var first = await Fixture.CreateAsync(staff, "one-row");
         var second = await Fixture.CreateAsync(staff, "two-rows");
-        var (client, account) = factory.CreateExpertClientOwning(first.ExpertId);
+        var (client, account) = factory.CreateUserClientOwning(first.ExpertId);
         client.Dispose();
 
         var act = () => factory.SetOwner(second.ExpertId, account.Id);

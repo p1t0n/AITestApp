@@ -31,7 +31,7 @@ public class ExpertsController : ControllerBase
         _pdf = pdf;
     }
 
-    [Authorize(Policy = AuthPolicies.ServiceManager)]
+    [Authorize(Policy = AuthPolicies.Administrator)]
     [HttpGet]
     public Task<IReadOnlyList<ExpertSummaryDto>> List(
         [FromQuery] bool includeDrafts, CancellationToken ct) => _experts.ListAsync(includeDrafts, ct);
@@ -39,7 +39,7 @@ public class ExpertsController : ControllerBase
     [HttpGet("{id:guid}")]
     public Task<ExpertDetailDto> Get(Guid id, CancellationToken ct) => _experts.GetAsync(id, ct);
 
-    [Authorize(Policy = AuthPolicies.ServiceManager)]
+    [Authorize(Policy = AuthPolicies.Administrator)]
     [HttpPost]
     public async Task<ActionResult<ExpertDetailDto>> Create(SaveExpertDto dto, CancellationToken ct)
     {
@@ -49,7 +49,7 @@ public class ExpertsController : ControllerBase
 
     /// <summary>The human publication gate for agent-staged drafts (P1T-92): flips Draft → Active.
     /// Deliberately a Web API action (user session), never an MCP tool — humans hold write authority.</summary>
-    [Authorize(Policy = AuthPolicies.ServiceManager)]
+    [Authorize(Policy = AuthPolicies.Administrator)]
     [HttpPost("{id:guid}/promote")]
     public Task<ExpertDetailDto> Promote(Guid id, CancellationToken ct) => _experts.PromoteAsync(id, ct);
 
@@ -59,12 +59,12 @@ public class ExpertsController : ControllerBase
 
     /// <summary>Partial update — only the fields present in <paramref name="dto"/> change (P1T-137).
     /// PUT above keeps full-replace semantics; this is the patch-shaped sibling.</summary>
-    [Authorize(Policy = AuthPolicies.ServiceManager)]
+    [Authorize(Policy = AuthPolicies.Administrator)]
     [HttpPatch("{id:guid}")]
     public Task<ExpertDetailDto> Patch(Guid id, UpdateExpertDto dto, CancellationToken ct) =>
         _experts.PatchAsync(id, dto, ct);
 
-    [Authorize(Policy = AuthPolicies.ServiceManager)]
+    [Authorize(Policy = AuthPolicies.Administrator)]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
@@ -78,7 +78,7 @@ public class ExpertsController : ControllerBase
     /// it writes a record of the staff member who did it. That record is about them, not about the
     /// Expert, and it is deliberately not a log of who viewed whom.
     /// </summary>
-    [Authorize(Policy = AuthPolicies.ServiceManager)]
+    [Authorize(Policy = AuthPolicies.Administrator)]
     [HttpPost("{id:guid}/export")]
     public async Task<IActionResult> ExportOnBehalf(
         Guid id, IAccessAndExportService transparency, CancellationToken ct)
@@ -91,13 +91,13 @@ public class ExpertsController : ControllerBase
             "application/json", $"experttojob-export-{id}.json");
     }
 
-    [Authorize(Policy = AuthPolicies.ServiceManager)]
+    [Authorize(Policy = AuthPolicies.Administrator)]
     [HttpGet("{id:guid}/cv")]
     public Task<CvDto> GetCv(Guid id, CancellationToken ct) => _cv.BuildAsync(id, ct);
 
     /// <summary>Server-side CV render (P1T-139) — the headless sibling of the SPA's browser print.
     /// Thin adapter: the CV projection and the renderer both live below the Web layer.</summary>
-    [Authorize(Policy = AuthPolicies.ServiceManager)]
+    [Authorize(Policy = AuthPolicies.Administrator)]
     [HttpGet("{id:guid}/cv.pdf")]
     [Produces("application/pdf")]
     public async Task<IActionResult> GetCvPdf(Guid id, CancellationToken ct)

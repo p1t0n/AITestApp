@@ -65,19 +65,19 @@ public static class SessionAuthExtensions
 
         // Same default-deny as the Web host: the agent surfaces are staff surfaces today, and every
         // one of them declares a bare .RequireAuthorization(), which resolves to the default policy.
-        // Making that policy ServiceManager closes the whole surface to Experts in one place —
+        // Making that policy Administrator closes the whole surface to Users in one place —
         // including an endpoint added later, until it opts in explicitly.
         services.AddAuthorization(options =>
         {
-            options.AddPolicy(AuthPolicies.ServiceManager, policy => policy
+            options.AddPolicy(AuthPolicies.Administrator, policy => policy
                 .RequireAuthenticatedUser()
-                .RequireRole(AuthPolicies.ServiceManager));
+                .RequireRole(AuthPolicies.Administrator));
 
-            options.AddPolicy(AuthPolicies.Expert, policy => policy
+            options.AddPolicy(AuthPolicies.User, policy => policy
                 .RequireAuthenticatedUser()
-                .RequireRole(AuthPolicies.Expert));
+                .RequireRole(AuthPolicies.User));
 
-            options.DefaultPolicy = options.GetPolicy(AuthPolicies.ServiceManager)!;
+            options.DefaultPolicy = options.GetPolicy(AuthPolicies.Administrator)!;
             options.FallbackPolicy = options.DefaultPolicy;
         });
 

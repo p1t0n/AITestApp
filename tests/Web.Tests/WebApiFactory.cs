@@ -67,14 +67,14 @@ public sealed class WebApiFactory : WebApplicationFactory<Program>, IAsyncLifeti
     }
 
     /// <summary>
-    /// A client carrying a valid session bearer token for a Service Manager, minted from the host's
+    /// A client carrying a valid session bearer token for an Administrator, minted from the host's
     /// own Auth:Jwt config so it passes the same JWT validation the running app enforces. Mirrors
     /// <c>Agents.Tests/AuthTestExtensions</c> — the two hosts share one session token by design.
     /// </summary>
-    public HttpClient CreateAuthenticatedClient() => CreateClientFor(UserRole.ServiceManager).Client;
+    public HttpClient CreateAuthenticatedClient() => CreateClientFor(UserRole.Administrator).Client;
 
-    /// <summary>A client whose session belongs to an Expert — the role a self-serve signup gets.</summary>
-    public HttpClient CreateExpertClient() => CreateClientFor(UserRole.Expert).Client;
+    /// <summary>A client whose session belongs to a User — the role a self-serve signup gets.</summary>
+    public HttpClient CreateUserClient() => CreateClientFor(UserRole.User).Client;
 
     /// <summary>
     /// A client plus the account it belongs to. The account is a real row: the session token names
@@ -129,12 +129,12 @@ public sealed class WebApiFactory : WebApplicationFactory<Program>, IAsyncLifeti
     }
 
     /// <summary>
-    /// An Expert session that owns the given roster row (P1T-182) — the pairing every own-row test
+    /// A User session that owns the given roster row (P1T-182) — the pairing every own-row test
     /// needs: an account, a row, and the link between them written the way the claim flow will.
     /// </summary>
-    public (HttpClient Client, User Account) CreateExpertClientOwning(Guid expertId)
+    public (HttpClient Client, User Account) CreateUserClientOwning(Guid expertId)
     {
-        var account = CreateAccount(UserRole.Expert);
+        var account = CreateAccount(UserRole.User);
         using (var scope = Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();

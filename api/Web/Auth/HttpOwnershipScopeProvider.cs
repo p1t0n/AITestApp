@@ -33,7 +33,7 @@ public sealed class HttpOwnershipScopeProvider(
             return _resolved = OwnershipScope.OwnedBy(null);
         }
 
-        if (user.IsInRole(AuthPolicies.ServiceManager))
+        if (user.IsInRole(AuthPolicies.Administrator))
         {
             return _resolved = OwnershipScope.Unrestricted;
         }

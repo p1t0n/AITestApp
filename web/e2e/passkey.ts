@@ -39,33 +39,32 @@ const DB_CONTAINER = "experttojob-e2e-db";
 const DB_NAME = "experttojob_e2e";
 
 /**
- * Signs a brand-new **Service Manager** up through the real UI: the form, the registration
- * ceremony, and the redirect onto the roster. Returns the email so a test can sign the same account
- * back in.
+ * Signs a brand-new **Administrator** up through the real UI: the form, the registration ceremony,
+ * and the redirect onto the roster. Returns the email so a test can sign the same account back in.
  *
- * Staff, not an Expert, because that is what the rest of this suite is about — the roster, the
- * catalog, the agent dock. Since P1T-181 a self-serve signup is an Expert, so this pre-creates the
- * account the way an operator's own first sign-up works: the invite row the Service Manager
+ * Staff, not a User, because that is what the rest of this suite is about — the roster, the
+ * catalog, the agent dock. Since P1T-181 a self-serve signup is a User, so this pre-creates the
+ * account the way an operator's own first sign-up works: the invite row the Administrator
  * bootstrap writes (an address with no credential), which signup then adopts. That path is
- * production's, not a test-only door — see `api/Web/Auth/ServiceManagerBootstrapper.cs`.
+ * production's, not a test-only door — see `api/Web/Auth/AdministratorBootstrapper.cs`.
  */
 export async function signUp(page: Page, email = uniqueEmail("e2e")): Promise<string> {
-  inviteServiceManager(email);
+  inviteAdministrator(email);
   await signUpThroughTheForm(page, email);
   await page.waitForURL("**/", { timeout: 30_000 });
   return email;
 }
 
 /**
- * Signs a brand-new Expert up — the plain self-serve path, with nothing pre-created.
+ * Signs a brand-new User up — the plain self-serve path, with nothing pre-created.
  *
  * Waits for anywhere under `/me` rather than for one page, because which page they land on is a
  * fact about their data, not about signing up (P1T-190): an address that matched nothing gets a
- * record of its own and lands on `/me/cv`, while one that matched a record a Service Manager
+ * record of its own and lands on `/me/cv`, while one that matched a record an Administrator
  * entered raises a claim and lands on `/me/claim`. A helper that insisted on either would be
  * asserting the caller's fixture rather than waiting for the app.
  */
-export async function signUpAsExpert(page: Page, email = uniqueEmail("expert")): Promise<string> {
+export async function signUpAsUser(page: Page, email = uniqueEmail("user")): Promise<string> {
   await signUpThroughTheForm(page, email);
   await page.waitForURL(/\/me\//, { timeout: 30_000 });
   return email;
@@ -84,15 +83,19 @@ async function signUpThroughTheForm(page: Page, email: string): Promise<void> {
 
 /**
  * Writes the invite row for a staff address straight into the run's database: an account with the
- * email, the ServiceManager role, and neither a passkey nor a control word — exactly what the
- * bootstrap creates for the configured first Service Manager. Signup adopts it and enrols the
+ * email, the Administrator role, and neither a passkey nor a control word — exactly what the
+ * bootstrap creates for the configured first Administrator. Signup adopts it and enrols the
  * passkey, so the account that results is a real one, made through the real ceremony.
+ *
+ * <p>The role is a raw string here, untyped and uncheckable — nothing but a failing e2e catches it
+ * drifting from the enum, which is why the rename named this line (P1T-236). The `CK_Users_Role`
+ * check the same migration added now refuses a stale value outright.</p>
  */
-function inviteServiceManager(email: string): void {
+function inviteAdministrator(email: string): void {
   execFileSync("docker", [
     "exec", DB_CONTAINER,
     "psql", "-U", "postgres", "-d", DB_NAME, "-v", "ON_ERROR_STOP=1", "-c",
     `INSERT INTO "Users" ("Id", "Email", "ControlWordHash", "Status", "Role", "TokenVersion", "CreatedAt", "UpdatedAt")
-     VALUES ('${randomUUID()}', '${email}', '', 'Active', 'ServiceManager', 1, now(), now());`,
+     VALUES ('${randomUUID()}', '${email}', '', 'Active', 'Administrator', 1, now(), now());`,
   ], { stdio: "pipe" });
 }

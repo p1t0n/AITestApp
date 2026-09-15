@@ -24,30 +24,30 @@ namespace ExpertToJob.Web.Controllers;
 public class ClaimsController(IClaimService claims) : ControllerBase
 {
     /// <summary>Open claims and raised flags, oldest first.</summary>
-    [Authorize(Policy = AuthPolicies.ServiceManager)]
+    [Authorize(Policy = AuthPolicies.Administrator)]
     [HttpGet]
     public Task<IReadOnlyList<ClaimQueueItemDto>> Open(CancellationToken ct) => claims.OpenAsync(ct);
 
     /// <summary>Who owns one roster row. Read separately from the row itself so the agent-facing
     /// projection does not carry a staff-only field on every model call.</summary>
-    [Authorize(Policy = AuthPolicies.ServiceManager)]
+    [Authorize(Policy = AuthPolicies.Administrator)]
     [HttpGet("ownership/{expertId:guid}")]
     public Task<ExpertOwnershipDto> Ownership(Guid expertId, CancellationToken ct) =>
         claims.OwnershipAsync(expertId, ct);
 
-    [Authorize(Policy = AuthPolicies.ServiceManager)]
+    [Authorize(Policy = AuthPolicies.Administrator)]
     [HttpPost("{id:guid}/approve")]
     public Task<ClaimQueueItemDto> Approve(Guid id, CancellationToken ct) =>
         claims.ApproveAsync(id, ActingUserId(), ct);
 
-    [Authorize(Policy = AuthPolicies.ServiceManager)]
+    [Authorize(Policy = AuthPolicies.Administrator)]
     [HttpPost("{id:guid}/reject")]
     public Task<ClaimQueueItemDto> Reject(Guid id, CancellationToken ct) =>
         claims.RejectAsync(id, ActingUserId(), ct);
 
     /// <summary>Issues a single-use code for a row. The plaintext in the response is the only copy
     /// that will ever exist — the database keeps a hash — so the screen must say so.</summary>
-    [Authorize(Policy = AuthPolicies.ServiceManager)]
+    [Authorize(Policy = AuthPolicies.Administrator)]
     [HttpPost("codes")]
     public Task<ClaimCodeIssuedDto> IssueCode(IssueClaimCodeRequest request, CancellationToken ct) =>
         claims.IssueCodeAsync(request.ExpertId, ActingUserId(), ct);
@@ -68,7 +68,7 @@ public class ClaimsController(IClaimService claims) : ControllerBase
     /// unowned, which means legitimate interest, which means the row is no longer scanned — so this
     /// button removes somebody from consideration.
     /// </summary>
-    [Authorize(Policy = AuthPolicies.ServiceManager)]
+    [Authorize(Policy = AuthPolicies.Administrator)]
     [HttpPost("revoke")]
     public async Task<IActionResult> Revoke(RevokeOwnershipRequest request, CancellationToken ct)
     {

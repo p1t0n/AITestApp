@@ -65,13 +65,13 @@ export const NAV: NavPlace[] = [
 ];
 
 /**
- * An Expert's two places (P1T-190). Two, and not more: they have no other account settings worth a
+ * A User's two places (P1T-190). Two, and not more: they have no other account settings worth a
  * page — their email is immutable to them (P1T-184) and they do not set their own token caps — so a
  * third place would be a page with nothing on it.
  *
  * <p>My CV first, because it is the landing and what they came to do.</p>
  */
-export const EXPERT_NAV: NavPlace[] = [
+export const USER_NAV: NavPlace[] = [
   { label: "My CV", to: "/me/cv", icon: <BadgeOutlinedIcon /> },
   { label: "Privacy & data", to: "/me/privacy", icon: <ShieldOutlinedIcon /> },
 ];
@@ -84,12 +84,12 @@ export interface NavPlace {
 
 /**
  * The places this session may go. One function, used by the rail and by ⌘K, so the two cannot
- * disagree about what a role can reach. An unknown role (a session stored before the split) keeps
- * the staff list: its token is refused by the server on the next call anyway, and guessing "Expert"
- * would silently hide the app from a Service Manager mid-session.
+ * disagree about what a role can reach. An unknown role (a session stored before the split, or
+ * before the rename) keeps the staff list: its token is refused by the server on the next call
+ * anyway, and guessing "User" would silently hide the app from an Administrator mid-session.
  */
 export function navFor(role: SessionRole | null): NavPlace[] {
-  return role === "Expert" ? EXPERT_NAV : NAV;
+  return role === "User" ? USER_NAV : NAV;
 }
 
 const THEME_CHOICES: { value: ThemeModeChoice; label: string; icon: ReactNode }[] = [

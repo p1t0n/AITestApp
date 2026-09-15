@@ -203,7 +203,7 @@ public class ErasureTests(WebApiFactory factory)
 
         // Registration's own matching decides this (P1T-184): nothing matches the address any more,
         // so the returning person gets a fresh row owned on the spot.
-        var returning = factory.CreateAccount(UserRole.Expert);
+        var returning = factory.CreateAccount(UserRole.User);
         SetEmail(returning.Id, world.Email);
         var binding = await BindOnRegistrationAsync(returning.Id, world.Email);
 
@@ -243,7 +243,7 @@ public class ErasureTests(WebApiFactory factory)
         var expert = await staff.CreateExpertAsync(
             ApiClientExtensions.NewExpert(firstName: fingerprint, lastName: "Erasable", email: email));
 
-        var (client, account) = factory.CreateExpertClientOwning(expert.Id);
+        var (client, account) = factory.CreateUserClientOwning(expert.Id);
         var experienceId = Guid.NewGuid();
         var proposalId = Guid.NewGuid();
 

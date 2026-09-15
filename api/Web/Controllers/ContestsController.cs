@@ -30,7 +30,7 @@ public class ContestsController(IContestService contests) : ControllerBase
         contests.ContestAsync(request.ScoringCandidateId, request.View, ct);
 
     /// <summary>Everything waiting for a human. Lives beside the claim queue on the Users page.</summary>
-    [Authorize(Policy = AuthPolicies.ServiceManager)]
+    [Authorize(Policy = AuthPolicies.Administrator)]
     [HttpGet]
     public Task<IReadOnlyList<ContestQueueItemDto>> Open(CancellationToken ct) =>
         contests.OpenAsync(ct);
@@ -40,7 +40,7 @@ public class ContestsController(IContestService contests) : ControllerBase
     /// Art. 22(3) asks for human intervention, and an intervention nobody can evidence did not
     /// happen as far as an audit is concerned.
     /// </summary>
-    [Authorize(Policy = AuthPolicies.ServiceManager)]
+    [Authorize(Policy = AuthPolicies.Administrator)]
     [HttpPost("{id:guid}/review")]
     public Task<ContestReviewDto> Review(Guid id, ReviewContestRequest request, CancellationToken ct) =>
         contests.ReviewAsync(id, request.Outcome, request.Response, ActingUserId(), ct);

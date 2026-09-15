@@ -16,19 +16,36 @@ employed by whoever runs the instance, and the word has to survive contractors a
 _Avoid_: employee, candidate (a candidate is an Expert in the context of one Job), resource
 
 **Job**:
-The work an Expert is being considered for, as described by the job description a Service Manager
+The work an Expert is being considered for, as described by the job description an Administrator
 brings in. The unit a Match, a Shortlist and a Proposal are all _about_: none of them mean
 anything without the Job they were run against. Not yet a persisted entity — today a Job arrives
 as JD text on the request and lives only for that run.
-_Avoid_: position, vacancy, role (role means authorization here), requisition
+_Avoid_: position, vacancy, role (role means authorization here — see **Role**), requisition
 
-**Service Manager**:
+**Administrator**:
 The staff user who selects Experts for a Job and holds the decision. The only actor who can
-approve or reject a Proposal — agents propose, a Service Manager disposes — and the identity
-behind the session token the Web host mints. The code still calls this `User`; the rename rides
-with the role split (P1T-167) rather than with the Expert rename, so the term is pinned here
-first and the type follows.
-_Avoid_: staffer, recruiter, admin (admin is an MCP scope), approver (says the one act, not the role)
+approve or reject a Proposal — agents propose, an Administrator disposes — and the identity behind
+the session token the Web host mints. Named for reach rather than errand: the same account
+administers the roster, the catalog and the other accounts. Called Service Manager until the role
+pair was renamed; the code calls the account `User` and the role `Administrator`.
+_Avoid_: Service Manager (retired), staffer, recruiter, approver (says the one act, not the role);
+bare "admin" where the MCP scope is meant — write "the MCP admin scope"
+
+**Role**:
+What an account may reach, as one of exactly two values: `Administrator` or `User`. Minted into
+the session token by name and re-decided from that token on every request by both hosts, so it is
+the authorization axis and not a description of anybody's job. Held on the account, changed only
+by an Administrator, and never inferred from what a person owns — an Administrator may own a
+roster row, and a User may own none.
+_Avoid_: permission, access level, group, MCP scope (a scope bounds a registered client, not a
+person)
+
+**User**:
+The Role every self-serve account gets: their own record and nothing else. An [Expert] is what a
+CV is about; User is what that person's account may do — one person is normally both, and the two
+words are not interchangeable. `User` is also the account class in code, which is a collision the
+codebase accepts: in prose, "a User" means the Role.
+_Avoid_: Expert (that is the roster row), member, regular user, non-admin, end user
 
 **Processing Record**:
 One append-only row stating why the service may hold one Expert's data at one moment: the
@@ -40,13 +57,13 @@ _Avoid_: consent record (there is no consent here), audit log, basis flag
 
 **Claim**:
 One person's request to be recognised as the subject of one roster row. Raised when the address they
-registered with matches a bench row, decided by a Service Manager, and **kept after it is decided** —
+registered with matches a bench row, decided by an Administrator, and **kept after it is decided** —
 the history has to be able to say "rejected, then claimed again by somebody else". A claim grants
 nothing while it waits: the claimant owns no row, which is indistinguishable from owning none at all.
 _Avoid_: request, application (an application is for a Job), verification (nothing is verified here)
 
 **Claim Code**:
-A single-use secret a Service Manager generates for one roster row and hands over out of band — in
+A single-use secret an Administrator generates for one roster row and hands over out of band — in
 person or by phone, never by email. Redeeming it binds ownership with no approval step, because the
 code *is* the proof: it is the only evidence this service can offer that is stronger than a matching
 email address, and it exists precisely because email is never verified here.
@@ -55,7 +72,7 @@ _Avoid_: invite, token (a token is a session), magic link (there is no link and 
 **Paused**:
 An Expert who has taken themselves off the bench: they stop being offered for work — no search, no
 match, no scan reaches them — while their record and everything in it stays exactly as it was. Their
-own act and nobody else's; a Service Manager who wants somebody off the bench deactivates the
+own act and nobody else's; an Administrator who wants somebody off the bench deactivates the
 account instead. Reversible and free: nothing is deleted, so nothing is re-embedded coming back.
 _Avoid_: inactive (status means published-or-draft), disabled, deactivated (that is the account),
 archived, soft-deleted (nothing is deleted)

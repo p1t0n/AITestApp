@@ -29,14 +29,14 @@ public static class SessionClaims
 public static class AuthPolicies
 {
     /// <summary>Staff. The default and the fallback: an endpoint that says nothing is staff-only.</summary>
-    public const string ServiceManager = nameof(UserRole.ServiceManager);
+    public const string Administrator = nameof(UserRole.Administrator);
 
     /// <summary>The person the CV is about. Opt-in, always explicit on the endpoint.</summary>
-    public const string Expert = nameof(UserRole.Expert);
+    public const string User = nameof(UserRole.User);
 
     /// <summary>
     /// Either audience, still an explicit declaration (P1T-182). For the few endpoints both roles
-    /// genuinely share — the skill catalog's reads, an Expert's own row — where the row-level answer
+    /// genuinely share — the skill catalog's reads, a User's own row — where the row-level answer
     /// comes from the ownership scope in the Application layer rather than from the policy.
     /// </summary>
     public const string AnyRole = "AnyRole";
