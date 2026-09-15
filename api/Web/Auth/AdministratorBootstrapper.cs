@@ -1,3 +1,5 @@
+using ExpertToJob.Application.Abstractions;
+using ExpertToJob.Application.Users;
 using ExpertToJob.Domain.Entities;
 using ExpertToJob.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -16,6 +18,11 @@ namespace ExpertToJob.Web.Auth;
 /// <c>AuthController</c>), so the operator enrols their own passkey and lands as staff.</para>
 ///
 /// <para>Idempotent: running it again on an already-promoted account changes nothing.</para>
+///
+/// <para>The promotion itself goes through <see cref="IUserService.ChangeRoleAsync"/> (P1T-238), so
+/// "set the role, bump the token version" exists in exactly one place. Both of that method's
+/// refusals are unreachable from here by construction: this only ever promotes, and it runs at
+/// startup with nobody signed in to be the acting account.</para>
 /// </summary>
 public static class AdministratorBootstrapper
 {
@@ -24,7 +31,8 @@ public static class AdministratorBootstrapper
     /// log it — a promotion is a privilege change and should not be silent.
     /// </summary>
     public static async Task<BootstrapOutcome> EnsureAsync(
-        DbContext db, string? email, TimeProvider clock, CancellationToken ct = default)
+        IAppDbContext db, IUserService users, string? email, TimeProvider clock,
+        CancellationToken ct = default)
     {
         var normalized = email?.Trim().ToLowerInvariant();
         if (string.IsNullOrWhiteSpace(normalized))
@@ -32,13 +40,12 @@ public static class AdministratorBootstrapper
             return BootstrapOutcome.NotConfigured;
         }
 
-        var users = db.Set<User>();
-        var existing = await users.FirstOrDefaultAsync(u => u.Email == normalized, ct);
+        var existing = await db.Users.FirstOrDefaultAsync(u => u.Email == normalized, ct);
 
         if (existing is null)
         {
             var now = clock.GetUtcNow();
-            users.Add(new User
+            db.Users.Add(new User
             {
                 Id = Guid.NewGuid(),
                 Email = normalized,
@@ -60,12 +67,9 @@ public static class AdministratorBootstrapper
             return BootstrapOutcome.AlreadyAdministrator;
         }
 
-        existing.Role = UserRole.Administrator;
-        existing.UpdatedAt = clock.GetUtcNow();
-        // The role travels in the token, so a live User session would keep its old claim.
-        // Bumping the version forces a fresh sign-in and with it a token that says Administrator.
-        existing.TokenVersion++;
-        await db.SaveChangesAsync(ct);
+        // No acting account exists at startup, so the id that would trigger the self-change refusal
+        // is one no row can have. The write and the token-version bump live in the service.
+        await users.ChangeRoleAsync(existing.Id, UserRole.Administrator, Guid.Empty, ct);
         return BootstrapOutcome.Promoted;
     }
 }

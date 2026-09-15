@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using ExpertToJob.Application;
+using ExpertToJob.Application.Users;
 using ExpertToJob.Infrastructure;
 using ExpertToJob.Infrastructure.Persistence;
 using ExpertToJob.Web.Auth;
@@ -106,8 +107,10 @@ if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
     var seedEmail = app.Configuration[$"{AuthOptions.Section}:SeedAdministratorEmail"];
-    var outcome = await AdministratorBootstrapper.EnsureAsync(db, seedEmail, TimeProvider.System);
+    var outcome = await AdministratorBootstrapper.EnsureAsync(
+        db, userService, seedEmail, TimeProvider.System);
     if (outcome != BootstrapOutcome.NotConfigured)
     {
         app.Logger.LogInformation("Administrator bootstrap for {Email}: {Outcome}.", seedEmail, outcome);
