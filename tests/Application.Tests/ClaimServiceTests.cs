@@ -193,7 +193,7 @@ public class ClaimServiceTests
         await world.Claims.BindOnRegistrationAsync(
             user.Id, "claimant@example.com", TransparencyNotice.CurrentVersion);
 
-        var staff = await world.RegisterAsync("staff@example.com", UserRole.ServiceManager);
+        var staff = await world.RegisterAsync("staff@example.com", UserRole.Administrator);
         var claimId = (await world.Claims.OpenAsync()).Single().Id;
         var decided = await world.Claims.ApproveAsync(claimId, staff.Id);
 
@@ -224,7 +224,7 @@ public class ClaimServiceTests
         await using var world = await World.CreateAsync();
         var expertId = await world.BenchRowAsync("roundtrip@example.com");
         var user = await world.RegisterAsync("roundtrip@example.com");
-        var staff = await world.RegisterAsync("staff@example.com", UserRole.ServiceManager);
+        var staff = await world.RegisterAsync("staff@example.com", UserRole.Administrator);
 
         await world.Claims.BindOnRegistrationAsync(
             user.Id, "roundtrip@example.com", TransparencyNotice.CurrentVersion);
@@ -253,7 +253,7 @@ public class ClaimServiceTests
         await using var world = await World.CreateAsync();
         var expertId = await world.BenchRowAsync("twice@example.com");
         var user = await world.RegisterAsync("twice@example.com");
-        var staff = await world.RegisterAsync("staff@example.com", UserRole.ServiceManager);
+        var staff = await world.RegisterAsync("staff@example.com", UserRole.Administrator);
 
         await world.Claims.BindOnRegistrationAsync(
             user.Id, "twice@example.com", TransparencyNotice.CurrentVersion);
@@ -274,7 +274,7 @@ public class ClaimServiceTests
         await world.BenchRowAsync("twin@example.com");
         await world.BenchRowAsync("twin@example.com");
         var user = await world.RegisterAsync("twin@example.com");
-        var staff = await world.RegisterAsync("staff@example.com", UserRole.ServiceManager);
+        var staff = await world.RegisterAsync("staff@example.com", UserRole.Administrator);
 
         await world.Claims.BindOnRegistrationAsync(
             user.Id, "twin@example.com", TransparencyNotice.CurrentVersion);
@@ -294,7 +294,7 @@ public class ClaimServiceTests
     {
         await using var world = await World.CreateAsync();
         var expertId = await world.BenchRowAsync("unowned@example.com");
-        var staff = await world.RegisterAsync("staff@example.com", UserRole.ServiceManager);
+        var staff = await world.RegisterAsync("staff@example.com", UserRole.Administrator);
 
         var act = async () => await world.Claims.RevokeAsync(expertId, staff.Id);
         await act.Should().ThrowAsync<ConflictException>();
@@ -314,7 +314,7 @@ public class ClaimServiceTests
     {
         await using var world = await World.CreateAsync();
         var expertId = await world.BenchRowAsync("bench@example.com");
-        var staff = await world.RegisterAsync("staff@example.com", UserRole.ServiceManager);
+        var staff = await world.RegisterAsync("staff@example.com", UserRole.Administrator);
         var person = await world.RegisterAsync("person@example.com");
 
         var issued = await world.Claims.IssueCodeAsync(expertId, staff.Id);
@@ -336,7 +336,7 @@ public class ClaimServiceTests
     {
         await using var world = await World.CreateAsync();
         var first = await world.BenchRowAsync("first@example.com");
-        var staff = await world.RegisterAsync("staff@example.com", UserRole.ServiceManager);
+        var staff = await world.RegisterAsync("staff@example.com", UserRole.Administrator);
         var person = await world.RegisterAsync("person@example.com");
         var other = await world.RegisterAsync("other@example.com");
 
@@ -369,7 +369,7 @@ public class ClaimServiceTests
     {
         await using var world = await World.CreateAsync();
         var expertId = await world.BenchRowAsync("bench@example.com");
-        var staff = await world.RegisterAsync("staff@example.com", UserRole.ServiceManager);
+        var staff = await world.RegisterAsync("staff@example.com", UserRole.Administrator);
 
         var issued = await world.Claims.IssueCodeAsync(expertId, staff.Id);
         var stored = await world.Db.ClaimCodes.AsNoTracking().SingleAsync();
@@ -385,7 +385,7 @@ public class ClaimServiceTests
     {
         await using var world = await World.CreateAsync();
         var expertId = await world.BenchRowAsync("bench@example.com");
-        var staff = await world.RegisterAsync("staff@example.com", UserRole.ServiceManager);
+        var staff = await world.RegisterAsync("staff@example.com", UserRole.Administrator);
         var owner = await world.RegisterAsync("owner@example.com");
         await world.BindAsync(expertId, owner.Id);
 
@@ -399,7 +399,7 @@ public class ClaimServiceTests
         await using var world = await World.CreateAsync();
         var matched = await world.BenchRowAsync("person@example.com");
         var real = await world.BenchRowAsync("their-real-row@example.com");
-        var staff = await world.RegisterAsync("staff@example.com", UserRole.ServiceManager);
+        var staff = await world.RegisterAsync("staff@example.com", UserRole.Administrator);
         var person = await world.RegisterAsync("person@example.com");
 
         await world.Claims.BindOnRegistrationAsync(
@@ -522,7 +522,7 @@ public class ClaimServiceTests
             return expert.Id;
         }
 
-        public async Task<User> RegisterAsync(string email, UserRole role = UserRole.Expert)
+        public async Task<User> RegisterAsync(string email, UserRole role = UserRole.User)
         {
             var user = new User
             {

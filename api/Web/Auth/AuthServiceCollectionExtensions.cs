@@ -110,27 +110,27 @@ public static class AuthServiceCollectionExtensions
 
         // Default-deny, and staff-by-default. The fallback policy covers an endpoint that declares
         // no authorization at all; the default policy covers a bare [Authorize]. Both are
-        // ServiceManager, so an endpoint added later is closed to Experts until someone opts it in
-        // with [Authorize(Policy = AuthPolicies.Expert)]. The structural endpoint-classification
+        // Administrator, so an endpoint added later is closed to Users until someone opts it in
+        // with [Authorize(Policy = AuthPolicies.User)]. The structural endpoint-classification
         // test refuses a controller that leaves the audience implicit.
         services.AddAuthorization(options =>
         {
-            options.AddPolicy(AuthPolicies.ServiceManager, policy => policy
+            options.AddPolicy(AuthPolicies.Administrator, policy => policy
                 .RequireAuthenticatedUser()
-                .RequireRole(AuthPolicies.ServiceManager));
+                .RequireRole(AuthPolicies.Administrator));
 
-            options.AddPolicy(AuthPolicies.Expert, policy => policy
+            options.AddPolicy(AuthPolicies.User, policy => policy
                 .RequireAuthenticatedUser()
-                .RequireRole(AuthPolicies.Expert));
+                .RequireRole(AuthPolicies.User));
 
             // Both audiences, still explicit on the endpoint (P1T-182). Used where the row-level
             // answer comes from the ownership scope rather than from the policy: the catalog's
-            // reads, an Expert's own row and its children.
+            // reads, a User's own row and its children.
             options.AddPolicy(AuthPolicies.AnyRole, policy => policy
                 .RequireAuthenticatedUser()
-                .RequireRole(AuthPolicies.ServiceManager, AuthPolicies.Expert));
+                .RequireRole(AuthPolicies.Administrator, AuthPolicies.User));
 
-            options.DefaultPolicy = options.GetPolicy(AuthPolicies.ServiceManager)!;
+            options.DefaultPolicy = options.GetPolicy(AuthPolicies.Administrator)!;
             options.FallbackPolicy = options.DefaultPolicy;
         });
     }

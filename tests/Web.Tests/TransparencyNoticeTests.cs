@@ -113,7 +113,7 @@ public class TransparencyNoticeTests(WebApiFactory factory)
     [Fact]
     public async Task An_expert_who_has_acknowledged_nothing_is_told_a_notice_is_waiting()
     {
-        var (client, _) = factory.CreateClientFor(UserRole.Expert);
+        var (client, _) = factory.CreateClientFor(UserRole.User);
 
         var status = await (await client.GetAsync("/api/notice/status")).ReadOkAsync<NoticeStatusResponse>();
 
@@ -127,7 +127,7 @@ public class TransparencyNoticeTests(WebApiFactory factory)
         // A row of their own, and a notice they have never acknowledged.
         var staff = factory.CreateAuthenticatedClient();
         var expert = await staff.CreateExpertAsync(ApiClientExtensions.NewExpert());
-        var (client, _) = factory.CreateExpertClientOwning(expert.Id);
+        var (client, _) = factory.CreateUserClientOwning(expert.Id);
 
         (await (await client.GetAsync("/api/notice/status")).ReadOkAsync<NoticeStatusResponse>())
             .PendingVersion.Should().NotBeNull();
@@ -141,7 +141,7 @@ public class TransparencyNoticeTests(WebApiFactory factory)
     [Fact]
     public async Task Acknowledging_clears_the_pending_notice_and_records_it_on_the_account()
     {
-        var (client, account) = factory.CreateClientFor(UserRole.Expert);
+        var (client, account) = factory.CreateClientFor(UserRole.User);
 
         var status = await (await client.PostAsJsonAsync(
                 "/api/notice/acknowledge",
@@ -169,7 +169,7 @@ public class TransparencyNoticeTests(WebApiFactory factory)
     {
         var staff = factory.CreateAuthenticatedClient();
         var expert = await staff.CreateExpertAsync(ApiClientExtensions.NewExpert());
-        var (client, _) = factory.CreateExpertClientOwning(expert.Id);
+        var (client, _) = factory.CreateUserClientOwning(expert.Id);
 
         (await client.PostAsJsonAsync(
                 "/api/notice/acknowledge",
@@ -191,7 +191,7 @@ public class TransparencyNoticeTests(WebApiFactory factory)
     [Fact]
     public async Task Acknowledging_a_version_nobody_published_is_refused()
     {
-        var (client, _) = factory.CreateClientFor(UserRole.Expert);
+        var (client, _) = factory.CreateClientFor(UserRole.User);
 
         var response = await client.PostAsJsonAsync(
             "/api/notice/acknowledge", new AcknowledgeNoticeRequest("1999-01-01"), WebApiFactory.Json);

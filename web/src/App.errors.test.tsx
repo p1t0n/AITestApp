@@ -10,7 +10,7 @@ import App from "./App";
 vi.mock("./auth/useAuth", () => ({
   useIsAuthenticated: () => true,
   useSessionEmail: () => null,
-  useSessionRole: () => "ServiceManager",
+  useSessionRole: () => "Administrator",
 }));
 
 // The catalog page throws on render; the roster page is a stand-in so recovery is observable

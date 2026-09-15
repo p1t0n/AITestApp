@@ -15,16 +15,16 @@ namespace ExpertToJob.Web.Tests;
 /// <para>This walks the host's real <see cref="EndpointDataSource"/> rather than a hand-kept list,
 /// because a list is a thing you forget to add to. Add a controller action without declaring its
 /// audience and this test fails, naming it — the endpoint is closed either way (the fallback policy
-/// is ServiceManager), but an implicit audience is how the next Expert-reachable endpoint quietly
+/// is Administrator), but an implicit audience is how the next User-reachable endpoint quietly
 /// becomes a staff endpoint, or worse.</para>
 /// </summary>
 [Collection(WebApiCollection.Name)]
 public class EndpointClassificationTests(WebApiFactory factory)
 {
     // Most restrictive first: an endpoint carrying both a class-level AnyRole and a method-level
-    // ServiceManager must classify as ServiceManager, because both policies have to pass.
+    // Administrator must classify as Administrator, because both policies have to pass.
     private static readonly string[] Audiences =
-        [AuthPolicies.ServiceManager, AuthPolicies.Expert, AuthPolicies.AnyRole];
+        [AuthPolicies.Administrator, AuthPolicies.User, AuthPolicies.AnyRole];
 
     [Fact]
     public void Every_endpoint_declares_its_audience()
@@ -36,7 +36,7 @@ public class EndpointClassificationTests(WebApiFactory factory)
 
         unclassified.Should().BeEmpty(
             "every endpoint must declare its audience explicitly — [Authorize(Policy = " +
-            "AuthPolicies.ServiceManager)], [Authorize(Policy = AuthPolicies.Expert)], " +
+            "AuthPolicies.Administrator)], [Authorize(Policy = AuthPolicies.User)], " +
             "[Authorize(Policy = AuthPolicies.AnyRole)], or a deliberate [AllowAnonymous]. " +
             "Unclassified: " + string.Join(", ", unclassified));
     }

@@ -257,7 +257,7 @@ public class RetentionTests(WebApiFactory factory)
 
         if (claimed)
         {
-            owner = factory.CreateAccount(UserRole.Expert);
+            owner = factory.CreateAccount(UserRole.User);
             factory.SetOwner(expertId, owner.Id);
         }
 

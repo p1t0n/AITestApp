@@ -10,6 +10,10 @@ using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// A configuration key that was renamed is read as absent, not as an error, so the rename is
+// enforced here rather than discovered by an operator with no Administrator account (P1T-236).
+RetiredAuthKeys.ThrowIfPresent(builder.Configuration);
+
 // Production refuses to boot on placeholder secrets (P1T-87): an empty or dev-marked JWT signing
 // key must never sign real sessions. Dev values live in appsettings.Development.json.
 if (builder.Environment.IsProduction())
@@ -97,16 +101,16 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// The first Service Manager (P1T-181). Runs in every environment: signup only makes Experts, so
+// The first Administrator (P1T-181). Runs in every environment: signup only makes Users, so
 // without this a fresh database has no account that can reach the roster. No-op when unconfigured.
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    var seedEmail = app.Configuration[$"{AuthOptions.Section}:SeedServiceManagerEmail"];
-    var outcome = await ServiceManagerBootstrapper.EnsureAsync(db, seedEmail, TimeProvider.System);
+    var seedEmail = app.Configuration[$"{AuthOptions.Section}:SeedAdministratorEmail"];
+    var outcome = await AdministratorBootstrapper.EnsureAsync(db, seedEmail, TimeProvider.System);
     if (outcome != BootstrapOutcome.NotConfigured)
     {
-        app.Logger.LogInformation("Service Manager bootstrap for {Email}: {Outcome}.", seedEmail, outcome);
+        app.Logger.LogInformation("Administrator bootstrap for {Email}: {Outcome}.", seedEmail, outcome);
     }
 }
 

@@ -16,7 +16,7 @@ internal static class AuthTestExtensions
     /// <summary>
     /// A client carrying a valid session bearer token, minted from the host's own Auth:Jwt config
     /// so it passes the same JWT validation the running app enforces (the agent endpoints require
-    /// authorization). The account is seeded as a Service Manager: the agent surfaces are staff
+    /// authorization). The account is seeded as an Administrator: the agent surfaces are staff
     /// surfaces, and since P1T-181 the host re-reads the named account's token version per request,
     /// so a token for a user that does not exist is refused.
     /// </summary>
@@ -26,7 +26,7 @@ internal static class AuthTestExtensions
     /// <summary>Same, for a caller-chosen user id — live smokes that persist user-FK rows (e.g.
     /// roster-scan jobs) seed a real Users row and mint its token, mirroring production.</summary>
     public static HttpClient CreateAuthenticatedClient(this WebApplicationFactory<Program> factory, Guid userId)
-        => factory.CreateClientForRole(userId, UserRole.ServiceManager);
+        => factory.CreateClientForRole(userId, UserRole.Administrator);
 
     /// <summary>
     /// A client for a seeded account in the given role. Seeding is idempotent for a repeated id, so
@@ -61,7 +61,7 @@ internal static class AuthTestExtensions
     /// it is a 401 — the same as production.
     /// </summary>
     public static User EnsureAccount(
-        this WebApplicationFactory<Program> factory, Guid userId, UserRole role = UserRole.ServiceManager)
+        this WebApplicationFactory<Program> factory, Guid userId, UserRole role = UserRole.Administrator)
     {
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();

@@ -11,7 +11,7 @@ namespace ExpertToJob.Web.Controllers;
 /// separate narrow my-account surface instead. Not exposed over MCP.
 /// </summary>
 [ApiController]
-[Authorize(Policy = AuthPolicies.ServiceManager)]
+[Authorize(Policy = AuthPolicies.Administrator)]
 [Route("api/users")]
 public class UsersController(IUserService users) : ControllerBase
 {

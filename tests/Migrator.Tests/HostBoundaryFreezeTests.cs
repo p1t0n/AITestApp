@@ -30,12 +30,12 @@ public class HostBoundaryFreezeTests
     }
 
     [Fact]
-    public void The_web_host_keeps_the_service_manager_bootstrap()
+    public void The_web_host_keeps_the_administrator_bootstrap()
     {
         // Not part of this slice: it runs in every environment, including production, because
-        // signup only makes Experts and a fresh database would otherwise have nobody who can reach
+        // signup only makes Users and a fresh database would otherwise have nobody who can reach
         // the roster (P1T-181).
-        ReadProgram("web").Should().Contain("ServiceManagerBootstrapper.EnsureAsync");
+        ReadProgram("web").Should().Contain("AdministratorBootstrapper.EnsureAsync");
     }
 
     [Fact]

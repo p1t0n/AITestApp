@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { addVirtualAuthenticator, signUp, signUpAsExpert, uniqueEmail } from "./passkey";
+import { addVirtualAuthenticator, signUp, signUpAsUser, uniqueEmail } from "./passkey";
 
 /**
  * The role split at the real surface (P1T-181). Two facts the unit suites cannot show together: a
- * self-serve signup really is an Expert end to end (form → ceremony → token → route), and an Expert
+ * self-serve signup really is a User end to end (form → ceremony → token → route), and a User
  * who asks for a staff route is sent to **their own page** rather than to the sign-in screen.
  *
  * That second one is the whole reason the guard takes a role instead of a boolean: bouncing a
@@ -11,10 +11,10 @@ import { addVirtualAuthenticator, signUp, signUpAsExpert, uniqueEmail } from "./
  * they do not have.
  */
 test.describe("role split", () => {
-  test("a self-serve signup lands on the Expert's own CV", async ({ context, page }) => {
+  test("a self-serve signup lands on the User's own CV", async ({ context, page }) => {
     await addVirtualAuthenticator(context, page);
 
-    await signUpAsExpert(page);
+    await signUpAsUser(page);
 
     // Nothing matched their address, so registration created a record that is theirs immediately
     // (P1T-184) — and editing it is what they came to do (P1T-190).
@@ -29,12 +29,12 @@ test.describe("role split", () => {
     }
   });
 
-  test("an Expert asking for a staff route is redirected to their own landing page", async ({
+  test("a User asking for a staff route is redirected to their own landing page", async ({
     context,
     page,
   }) => {
     await addVirtualAuthenticator(context, page);
-    await signUpAsExpert(page);
+    await signUpAsUser(page);
 
     await page.goto("/users");
 
@@ -44,9 +44,9 @@ test.describe("role split", () => {
     await expect(page.getByRole("heading", { name: "Sign in" })).toHaveCount(0);
   });
 
-  test("the API refuses an Expert's session on a staff endpoint", async ({ context, page }) => {
+  test("the API refuses a User's session on a staff endpoint", async ({ context, page }) => {
     await addVirtualAuthenticator(context, page);
-    await signUpAsExpert(page);
+    await signUpAsUser(page);
 
     // The token the browser is holding, sent at the API rather than through the SPA: the server
     // decides this, and it must not depend on the router having been polite about it.
@@ -61,7 +61,7 @@ test.describe("role split", () => {
   });
 
   /**
-   * The other landing (P1T-190). Somebody whose address matches a record a Service Manager already
+   * The other landing (P1T-190). Somebody whose address matches a record an Administrator already
    * entered does not get that record — an email proves nothing here, so a person has to confirm it
    * (P1T-184). Until then they own nothing, and an empty CV editor would tell them the opposite of
    * what is happening.
@@ -73,7 +73,7 @@ test.describe("role split", () => {
     await addVirtualAuthenticator(context, page);
     const benchEmail = uniqueEmail("bench");
 
-    // A Service Manager puts them on the bench first.
+    // An Administrator puts them on the bench first.
     await signUp(page);
     await page.getByRole("button", { name: "New CV" }).click();
     const dialog = page.getByRole("dialog");
@@ -86,7 +86,7 @@ test.describe("role split", () => {
 
     // Then that person signs up with the same address, in a clean session.
     await page.evaluate(() => localStorage.clear());
-    await signUpAsExpert(page, benchEmail);
+    await signUpAsUser(page, benchEmail);
 
     await expect(page).toHaveURL(/\/me\/claim$/);
     await expect(page.getByRole("heading", { name: "Your record" })).toBeVisible();
@@ -95,7 +95,7 @@ test.describe("role split", () => {
     await expect(page.getByRole("heading", { name: "My CV" })).toHaveCount(0);
   });
 
-  test("a Service Manager still lands on the roster", async ({ context, page }) => {
+  test("an Administrator still lands on the roster", async ({ context, page }) => {
     await addVirtualAuthenticator(context, page);
 
     await signUp(page);

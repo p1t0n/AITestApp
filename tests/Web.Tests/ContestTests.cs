@@ -119,7 +119,7 @@ public class ContestTests(WebApiFactory factory)
     public async Task An_expert_can_only_contest_a_score_about_themselves()
     {
         var world = await GivenAScoredPersonAsync();
-        using var stranger = factory.CreateExpertClient();
+        using var stranger = factory.CreateUserClient();
 
         var response = await stranger.PostAsJsonAsync(
             "/api/contests", new { scoringCandidateId = world.CandidateId, view = "Not mine." });
@@ -203,7 +203,7 @@ public class ContestTests(WebApiFactory factory)
     {
         var staff = factory.CreateAuthenticatedClient();
         var expert = await staff.CreateExpertAsync(ApiClientExtensions.NewExpert(firstName: "Quill"));
-        var account = factory.CreateAccount(UserRole.Expert);
+        var account = factory.CreateAccount(UserRole.User);
         factory.SetOwner(expert.Id, account.Id);
 
         var candidateId = Guid.NewGuid();

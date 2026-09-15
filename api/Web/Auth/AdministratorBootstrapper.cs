@@ -5,10 +5,10 @@ using Microsoft.EntityFrameworkCore;
 namespace ExpertToJob.Web.Auth;
 
 /// <summary>
-/// The first Service Manager. Signup is open but self-serve accounts are Experts, so a fresh
-/// database would otherwise have nobody who can reach the roster — and no way to make one, since
-/// promotion is itself a staff action. The chicken-and-egg is cut by configuration:
-/// <c>Auth:SeedServiceManagerEmail</c> names the account, and startup makes it staff.
+/// The first Administrator. Signup is open but self-serve accounts are Users, so a fresh database
+/// would otherwise have nobody who can reach the roster — and no way to make one, since promotion
+/// is itself a staff action. The chicken-and-egg is cut by configuration:
+/// <c>Auth:SeedAdministratorEmail</c> names the account, and startup makes it staff.
 ///
 /// <para>Two cases, one outcome. The email already has an account → it is promoted. It does not →
 /// an <em>invite</em> row is created: an account with no passkey and no control word, which cannot
@@ -17,10 +17,10 @@ namespace ExpertToJob.Web.Auth;
 ///
 /// <para>Idempotent: running it again on an already-promoted account changes nothing.</para>
 /// </summary>
-public static class ServiceManagerBootstrapper
+public static class AdministratorBootstrapper
 {
     /// <summary>
-    /// Ensures the configured email is a Service Manager. Returns what happened, so startup can
+    /// Ensures the configured email is an Administrator. Returns what happened, so startup can
     /// log it — a promotion is a privilege change and should not be silent.
     /// </summary>
     public static async Task<BootstrapOutcome> EnsureAsync(
@@ -45,7 +45,7 @@ public static class ServiceManagerBootstrapper
                 // No credential and no recovery secret: this row is an invitation, not a login.
                 // Signup fills both in when the operator enrols their passkey.
                 ControlWordHash = string.Empty,
-                Role = UserRole.ServiceManager,
+                Role = UserRole.Administrator,
                 Status = UserStatus.Active,
                 TokenVersion = 1,
                 CreatedAt = now,
@@ -55,22 +55,22 @@ public static class ServiceManagerBootstrapper
             return BootstrapOutcome.Invited;
         }
 
-        if (existing.Role == UserRole.ServiceManager)
+        if (existing.Role == UserRole.Administrator)
         {
-            return BootstrapOutcome.AlreadyServiceManager;
+            return BootstrapOutcome.AlreadyAdministrator;
         }
 
-        existing.Role = UserRole.ServiceManager;
+        existing.Role = UserRole.Administrator;
         existing.UpdatedAt = clock.GetUtcNow();
-        // The role travels in the token, so a live Expert session would keep its old claim.
-        // Bumping the version forces a fresh sign-in and with it a token that says ServiceManager.
+        // The role travels in the token, so a live User session would keep its old claim.
+        // Bumping the version forces a fresh sign-in and with it a token that says Administrator.
         existing.TokenVersion++;
         await db.SaveChangesAsync(ct);
         return BootstrapOutcome.Promoted;
     }
 }
 
-/// <summary>What <see cref="ServiceManagerBootstrapper.EnsureAsync"/> did.</summary>
+/// <summary>What <see cref="AdministratorBootstrapper.EnsureAsync"/> did.</summary>
 public enum BootstrapOutcome
 {
     /// <summary>No email configured — the bootstrap is off.</summary>
@@ -79,9 +79,9 @@ public enum BootstrapOutcome
     /// <summary>An invite row was created; it awaits the operator's passkey.</summary>
     Invited,
 
-    /// <summary>An existing Expert account was promoted, and its sessions revoked.</summary>
+    /// <summary>An existing User account was promoted, and its sessions revoked.</summary>
     Promoted,
 
     /// <summary>Nothing to do.</summary>
-    AlreadyServiceManager,
+    AlreadyAdministrator,
 }

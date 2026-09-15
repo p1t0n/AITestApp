@@ -300,9 +300,9 @@ public class ProcessingRecordTests
     // ---- Notify, don't gate -------------------------------------------------------------------
 
     [Theory]
-    [InlineData(UserRole.Expert, null, true)]
-    [InlineData(UserRole.Expert, "1999-01-01", true)]
-    [InlineData(UserRole.ServiceManager, null, false)]
+    [InlineData(UserRole.User, null, true)]
+    [InlineData(UserRole.User, "1999-01-01", true)]
+    [InlineData(UserRole.Administrator, null, false)]
     public void A_newer_notice_is_surfaced_to_the_people_it_is_addressed_to(
         UserRole role, string? acknowledged, bool expectPending)
     {
@@ -317,7 +317,7 @@ public class ProcessingRecordTests
     [Fact]
     public void An_up_to_date_expert_is_told_nothing()
     {
-        TransparencyNotice.PendingFor(UserRole.Expert, TransparencyNotice.CurrentVersion)
+        TransparencyNotice.PendingFor(UserRole.User, TransparencyNotice.CurrentVersion)
             .Should().BeNull();
     }
 

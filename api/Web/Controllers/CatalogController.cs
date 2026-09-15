@@ -26,17 +26,17 @@ public class CatalogController : ControllerBase
     [HttpGet("categories/tree")]
     public Task<IReadOnlyList<CategoryNodeDto>> Tree(CancellationToken ct) => _catalog.GetTreeAsync(ct);
 
-    [Authorize(Policy = AuthPolicies.ServiceManager)]
+    [Authorize(Policy = AuthPolicies.Administrator)]
     [HttpPost("categories")]
     public Task<CategoryDto> CreateCategory(SaveCategoryDto dto, CancellationToken ct) =>
         _catalog.CreateCategoryAsync(dto, ct);
 
-    [Authorize(Policy = AuthPolicies.ServiceManager)]
+    [Authorize(Policy = AuthPolicies.Administrator)]
     [HttpPut("categories/{id:guid}")]
     public Task<CategoryDto> UpdateCategory(Guid id, SaveCategoryDto dto, CancellationToken ct) =>
         _catalog.UpdateCategoryAsync(id, dto, ct);
 
-    [Authorize(Policy = AuthPolicies.ServiceManager)]
+    [Authorize(Policy = AuthPolicies.Administrator)]
     [HttpDelete("categories/{id:guid}")]
     public async Task<IActionResult> DeleteCategory(Guid id, CancellationToken ct)
     {
@@ -47,16 +47,16 @@ public class CatalogController : ControllerBase
     [HttpGet("skills")]
     public Task<IReadOnlyList<SkillDto>> Skills(CancellationToken ct) => _catalog.ListSkillsAsync(ct);
 
-    [Authorize(Policy = AuthPolicies.ServiceManager)]
+    [Authorize(Policy = AuthPolicies.Administrator)]
     [HttpPost("skills")]
     public Task<SkillDto> CreateSkill(SaveSkillDto dto, CancellationToken ct) => _catalog.CreateSkillAsync(dto, ct);
 
-    [Authorize(Policy = AuthPolicies.ServiceManager)]
+    [Authorize(Policy = AuthPolicies.Administrator)]
     [HttpPut("skills/{id:guid}")]
     public Task<SkillDto> UpdateSkill(Guid id, SaveSkillDto dto, CancellationToken ct) =>
         _catalog.UpdateSkillAsync(id, dto, ct);
 
-    [Authorize(Policy = AuthPolicies.ServiceManager)]
+    [Authorize(Policy = AuthPolicies.Administrator)]
     [HttpDelete("skills/{id:guid}")]
     public async Task<IActionResult> DeleteSkill(Guid id, CancellationToken ct)
     {

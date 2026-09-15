@@ -12,12 +12,16 @@ public sealed class AuthOptions
     public PasskeyOptions Passkey { get; set; } = new();
 
     /// <summary>
-    /// The email of the first Service Manager. At startup that account is created (as an invite
+    /// The email of the first Administrator. At startup that account is created (as an invite
     /// awaiting its passkey) or promoted if it already exists — see
-    /// <see cref="ServiceManagerBootstrapper"/>. Empty disables the bootstrap: signup is open but
-    /// self-serve signups are Experts, so without this a fresh database has no staff at all.
+    /// <see cref="AdministratorBootstrapper"/>. Empty disables the bootstrap: signup is open but
+    /// self-serve signups are Users, so without this a fresh database has no staff at all.
+    ///
+    /// <para>Renamed from <c>SeedServiceManagerEmail</c> (P1T-236). Configuration binding answers a
+    /// key it does not know with an empty string rather than an error, so the old key is rejected at
+    /// startup by <see cref="RetiredAuthKeys"/> instead of being silently ignored.</para>
     /// </summary>
-    public string SeedServiceManagerEmail { get; set; } = string.Empty;
+    public string SeedAdministratorEmail { get; set; } = string.Empty;
 }
 
 /// <summary>

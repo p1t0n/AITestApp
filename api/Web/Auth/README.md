@@ -6,8 +6,8 @@ Passwordless auth for the app. Established by P1T-13 (epic) / P1T-17 (this plumb
 
 - **Credential:** WebAuthn passkey only. No passwords anywhere. Library: [fido2-net-lib](https://github.com/passwordless-lib/fido2-net-lib) (`Fido2.AspNet` 4.0.1).
 - **Recovery:** a mandatory per-user *control word* (hashed) is the sole account-recovery secret. Lost device → verify email + control word → register a new passkey.
-- **Roles:** two (P1T-181). `ServiceManager` is staff; `Expert` is the person a CV is about. See
-  *Roles and revocation* below.
+- **Roles:** two (P1T-181, renamed in P1T-236). `Administrator` is staff; `User` is the person a CV
+  is about. See *Roles and revocation* below, and *Tripwires* at the end.
 - **Signup:** open self-serve.
 - **Email:** identifier only — no verification, no SMTP.
 
@@ -49,14 +49,14 @@ person's own data:
 
 | Role | Reaches |
 |---|---|
-| `ServiceManager` | The roster, the skill catalog, user administration, the agent surfaces. |
-| `Expert` | Their own data. Nothing on the staff surface. |
+| `Administrator` | The roster, the skill catalog, user administration, the agent surfaces. |
+| `User` | Their own data. Nothing on the staff surface. |
 
 **Default-deny, staff by default.** Both hosts set the authorization *default* and *fallback*
-policies to `ServiceManager`. So an endpoint that declares nothing is staff-only, and an endpoint
-added later is closed to Experts until someone opts it in with
-`[Authorize(Policy = AuthPolicies.Expert)]`. `UsersController` is staff-only wholesale — token-cap
-fields are staffing data an Expert must not set for themselves; the Expert's own narrow account
+policies to `Administrator`. So an endpoint that declares nothing is staff-only, and an endpoint
+added later is closed to Users until someone opts it in with
+`[Authorize(Policy = AuthPolicies.User)]`. `UsersController` is staff-only wholesale — token-cap
+fields are staffing data a User must not set for themselves; the User's own narrow account
 surface is a separate slice (P1T-190), not a filtered view of this one.
 
 `tests/Web.Tests/EndpointClassificationTests.cs` walks the host's real `EndpointDataSource` and
@@ -75,15 +75,15 @@ is the blast radius if the version check ever stops running).
 A token with no `tv` claim is refused. Otherwise omitting the claim would be a way to opt out of
 revocation entirely.
 
-**Where staff come from.** Signup is open and self-serve, and a self-serve signup is an `Expert`.
-The first `ServiceManager` therefore comes from configuration: `Auth:SeedServiceManagerEmail` is
+**Where staff come from.** Signup is open and self-serve, and a self-serve signup is a `User`.
+The first `Administrator` therefore comes from configuration: `Auth:SeedAdministratorEmail` is
 promoted at startup if it already has an account, or given an *invite* row if it does not — an
 account with no passkey and no control word, which cannot be signed into. Signup adopts that row
 instead of refusing the address as taken, so the operator enrols their own passkey and lands as
-staff (`ServiceManagerBootstrapper`, idempotent on every boot). An account with either a credential
+staff (`AdministratorBootstrapper`, idempotent on every boot). An account with either a credential
 or a recovery secret is never adoptable; that would be account takeover by signup.
 
-The migration made every pre-existing account a `ServiceManager`: they were all staff, and demoting
+The migration made every pre-existing account an `Administrator`: they were all staff, and demoting
 them would have locked everyone out of the app they administer.
 
 **The SPA mirrors this, and only as chrome.** `RequireAuth` takes a required role and each route
@@ -94,18 +94,18 @@ request from the token; nothing stored in the browser is a boundary.
 
 ## Row ownership (P1T-182)
 
-The role answers "which endpoints?". It cannot answer "which rows?" — an Expert reaches the roster's
+The role answers "which endpoints?". It cannot answer "which rows?" — a User reaches the roster's
 child endpoints, and eleven of the seventeen name a row by its own id with no expert anywhere in the
 URL (`PUT /api/languages/{id}`, `PATCH /api/achievements/{id}`). So there is a second, narrower
 question, and it is answered one layer down.
 
 `Expert.OwnerUserId` (nullable, with a **unique partial index where non-null**) is who a row belongs
 to. One person, one row, as database truth rather than service convention; any number of rows may
-stay unclaimed, and ownership is independent of role — a Service Manager can be on the bench and own
+stay unclaimed, and ownership is independent of role — an Administrator can be on the bench and own
 a row too.
 
-`ExpertToJob.Application.Auth.OwnershipScope` is the caller's reach: `Unrestricted` (Service
-Managers, and every MCP agent) or `OwnedBy(expertId)` — including `OwnedBy(null)`, a legitimate
+`ExpertToJob.Application.Auth.OwnershipScope` is the caller's reach: `Unrestricted` (Administrators,
+and every MCP agent) or `OwnedBy(expertId)` — including `OwnedBy(null)`, a legitimate
 state for someone registered whose claim is not approved yet. Each Application service applies it
 when loading. Two alternatives were rejected on purpose:
 
@@ -143,7 +143,7 @@ For the same reason the unscoped append lives on its own seam, `IOwnershipChange
 than as a method on `IProcessingRecordService` — an exception hidden among scoped methods would make
 the ownership audit quietly stop meaning what it says.
 
-`ClaimsController` is `AnyRole` at the class with `ServiceManager` on every action except
+`ClaimsController` is `AnyRole` at the class with `Administrator` on every action except
 `POST /api/claims/redeem`. That layering is forced: both policies must pass, so a staff-only class
 would refuse the one action an Expert must be able to take. The rules themselves — matching, codes,
 revocation, email immutability — are in `manuals/expert-claims.md`.
@@ -185,13 +185,13 @@ It is **off unless `Retention:Enabled` is set**: for the one job whose normal op
 somebody's data, the safe default is not running.
 
 The other half lives on the way in. `ExpertActivityInterceptor` stamps `Expert.LastActivityAt` when
-— and only when — the ownership scope says an Expert is writing their own record. A Service Manager
+— and only when — the ownership scope says a User is writing their own record. An Administrator
 and every agent resolve to `Unrestricted`, so their writes never move somebody's retention clock.
 That is the rule the whole slice turns on; `manuals/retention.md` §2 has the reasoning.
 
 ## The SPA's half of the split (P1T-190)
 
-The routes mirror this table. An Expert has two places — `/me/cv` and `/me/privacy` — and the guard
+The routes mirror this table. A User has two places — `/me/cv` and `/me/privacy` — and the guard
 sends a signed-in person who asks for a route their role cannot have to **their own landing page**,
 never `/signin`. Nothing there is a security boundary: the server re-decides every request from the
 token, and the router only decides which chrome and which page a session gets.
@@ -204,21 +204,56 @@ token, and the router only decides which chrome and which page a session gets.
 | `GET`/`PUT /api/experts/{id}` | Both — the scope decides *which* row |
 | The 17 child endpoints | Both — the scope decides, and eleven have no expert in the URL |
 | Catalog reads | Both |
-| Catalog writes | Service Manager (a category rename rewrites every CV) |
+| Catalog writes | Administrator (a category rename rewrites every CV) |
 | `POST /api/claims/redeem` | Both — the code is the authorization |
 | `/api/me/visibility` (read, hide, unhide) | Both — and always the caller's own row: no id exists |
 | `POST /api/me/account/erase` | Both — own account only, gated by the control word |
 | `GET /api/me/access`, `GET /api/me/export` | Both — own record only, resolved from the scope |
-| `POST /api/experts/{id}/export` | Service Manager — on behalf, and it writes a record |
+| `POST /api/experts/{id}/export` | Administrator — on behalf, and it writes a record |
 | `POST /api/contests` | Both — own score only, resolved through the ownership scope |
-| `GET /api/contests`, `POST /api/contests/{id}/review` | Service Manager — the human who looks |
-| `GET /api/experts`, promote, delete, `cv`, `cv.pdf`, `/api/users` | Service Manager |
-| `/api/claims` (queue, approve, reject, codes, revoke) | Service Manager |
+| `GET /api/contests`, `POST /api/contests/{id}/review` | Administrator — the human who looks |
+| `GET /api/experts`, promote, delete, `cv`, `cv.pdf`, `/api/users` | Administrator |
+| `/api/claims` (queue, approve, reject, codes, revoke) | Administrator |
 
 `AuthPolicies.AnyRole` is the third explicit audience, for the endpoints both roles genuinely share.
 It is still a declaration — the endpoint-classification audit accepts it and nothing else new — and
-where two policies meet (a class-level `AnyRole` with a method-level `ServiceManager` on the writes),
+where two policies meet (a class-level `AnyRole` with a method-level `Administrator` on the writes),
 both must pass, so the narrower one wins.
+
+## Tripwires
+
+Four things about this file's subject that are invisible until they bite. Written down after the
+`ServiceManager`/`Expert` → `Administrator`/`User` rename (P1T-236) walked into all four.
+
+**An enum rename here is a data migration.** `AppDbContext` stores every enum **by name**, so a
+`UserRole` member's identifier *is* the value in the `Role` column and in the `role` claim.
+Renaming one without rewriting the rows leaves accounts carrying a string the enum no longer has —
+which EF reports as a failure to materialise a `User`, not as a wrong answer. The rename migration
+rewrites the rows, drops the column default (it was `'ServiceManager'`, and past a rename an omitted
+role would mint the most privileged account there is), adds `CK_Users_Role` so raw SQL cannot write
+a value the enum lacks, and bumps `TokenVersion` on every row **last**, so no token is minted against
+a half-renamed row. Everybody signs in again once; that is the cost of the rename, and it is paid
+deliberately.
+
+**The configuration key fails silently if you miss it.** `IConfiguration` answers a key nobody wrote
+with `null`, and binding fills the property with its default — so a host still reading
+`Auth:SeedServiceManagerEmail` after the rename boots clean, seeds nothing, and says nothing. The
+first sign would be an operator who cannot reach the roster they were promised. `RetiredAuthKeys`
+therefore makes the *presence* of a retired key a startup failure, naming its replacement. Empty
+counts as present: an empty value is somebody's deliberate "bootstrap off", and reading it as absent
+would let the one deployment that meant it through unrenamed.
+
+**`Expert` names three different things.** The roster entity (`Expert`, which keeps its name and has
+nothing to do with authorization), the `SkillLevel` member `"Expert"` in the SPA, and — until this
+rename — the role. A blind find-and-replace across the repo breaks two of the three. The same trap
+runs the other way for `Admin`: `McpScopes.Admin` bounds a registered MCP client and is not a session
+role at all.
+
+**The Agents host registers its own policies.** `api/Agents/Auth/SessionAuthExtensions.cs` keeps a
+second copy of the policy registration and the default/fallback wiring, because the two hosts share a
+token but not a service collection. Only `AuthPolicies` and `SessionRevocation` are shared, in the
+Application layer. A policy changed in `api/Web/Auth/AuthServiceCollectionExtensions.cs` alone leaves
+the agent surfaces on the old rule, and the Web suite stays green while it does.
 
 ## Ceremony challenge handling
 

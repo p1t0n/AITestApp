@@ -203,7 +203,7 @@ public class TransparencyTests(WebApiFactory factory)
     public async Task A_service_manager_export_writes_its_own_record_and_a_self_export_does_not()
     {
         var world = await GivenAScoredPersonAsync();
-        var (staff, staffAccount) = factory.CreateClientFor(UserRole.ServiceManager);
+        var (staff, staffAccount) = factory.CreateClientFor(UserRole.Administrator);
         using var _staff = staff;
 
         await world.Client.GetAsync("/api/me/export");
@@ -227,7 +227,7 @@ public class TransparencyTests(WebApiFactory factory)
     public async Task An_expert_cannot_export_somebody_elses_record()
     {
         var world = await GivenAScoredPersonAsync();
-        using var stranger = factory.CreateExpertClient();
+        using var stranger = factory.CreateUserClient();
 
         (await stranger.PostAsJsonAsync($"/api/experts/{world.ExpertId}/export", new { }))
             .StatusCode.Should().Be(HttpStatusCode.Forbidden);
@@ -259,7 +259,7 @@ public class TransparencyTests(WebApiFactory factory)
         var staff = factory.CreateAuthenticatedClient();
         var expert = await staff.CreateExpertAsync(
             ApiClientExtensions.NewExpert(firstName: fingerprint, lastName: "Quantrell"));
-        var (client, _) = factory.CreateExpertClientOwning(expert.Id);
+        var (client, _) = factory.CreateUserClientOwning(expert.Id);
 
         using (var scope = factory.Services.CreateScope())
         {

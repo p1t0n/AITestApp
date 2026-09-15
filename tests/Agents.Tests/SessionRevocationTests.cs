@@ -90,7 +90,7 @@ public class SessionRevocationTests
 
         // Signature, issuer, audience and lifetime all valid; there is simply nobody behind it.
         using var client = factory.CreateClientWithClaims(
-            Guid.NewGuid(), nameof(UserRole.ServiceManager), tokenVersion: 1);
+            Guid.NewGuid(), nameof(UserRole.Administrator), tokenVersion: 1);
 
         (await client.GetAsync($"{AuthorizedProbe}{Guid.NewGuid()}"))
             .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
@@ -108,7 +108,7 @@ public class SessionRevocationTests
         factory.EnsureAccount(userId);
 
         using var client = factory.CreateClientWithClaims(
-            userId, nameof(UserRole.ServiceManager), tokenVersion: null);
+            userId, nameof(UserRole.Administrator), tokenVersion: null);
 
         (await client.GetAsync($"{AuthorizedProbe}{Guid.NewGuid()}"))
             .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
@@ -116,7 +116,7 @@ public class SessionRevocationTests
 
     /// <summary>
     /// Default-deny on the agent surface too. Every agent endpoint declares a bare
-    /// <c>RequireAuthorization()</c>, and the host's default policy is ServiceManager — so an
+    /// <c>RequireAuthorization()</c>, and the host's default policy is Administrator — so an
     /// Expert's session, valid in every other respect, reaches none of them.
     /// </summary>
     [Fact]
@@ -124,8 +124,8 @@ public class SessionRevocationTests
     {
         using var factory = AgentsHost();
         var userId = Guid.NewGuid();
-        factory.EnsureAccount(userId, UserRole.Expert);
-        using var client = factory.CreateClientForRole(userId, UserRole.Expert);
+        factory.EnsureAccount(userId, UserRole.User);
+        using var client = factory.CreateClientForRole(userId, UserRole.User);
 
         var response = await client.GetAsync($"{AuthorizedProbe}{Guid.NewGuid()}");
 

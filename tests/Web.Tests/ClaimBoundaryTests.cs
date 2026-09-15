@@ -25,7 +25,7 @@ public class ClaimBoundaryTests(WebApiFactory factory)
     [Fact]
     public async Task The_queue_and_the_codes_are_staff_only()
     {
-        using var expert = factory.CreateExpertClient();
+        using var expert = factory.CreateUserClient();
 
         (await expert.GetAsync("/api/claims")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await expert.GetAsync($"/api/claims/ownership/{Guid.NewGuid()}"))
@@ -43,7 +43,7 @@ public class ClaimBoundaryTests(WebApiFactory factory)
     [Fact]
     public async Task An_expert_may_reach_redemption_and_nothing_else_here()
     {
-        using var expert = factory.CreateExpertClient();
+        using var expert = factory.CreateUserClient();
 
         var response = await expert.PostAsJsonAsync(
             "/api/claims/redeem", new { code = "ZZZZZZZZ-ZZZZZZZZ-ZZZZZZZZ-ZZZZZZZZ" });
@@ -67,13 +67,13 @@ public class ClaimBoundaryTests(WebApiFactory factory)
         var email = ApiClientExtensions.UniqueEmail("claimed");
         var target = await staff.CreateExpertAsync(ApiClientExtensions.NewExpert(email: email));
 
-        var claimant = factory.CreateAccount(UserRole.Expert);
+        var claimant = factory.CreateAccount(UserRole.User);
         SetAccountEmail(claimant.Id, email);
         var binding = await BindOnRegistrationAsync(claimant.Id, email);
         binding.Outcome.Should().Be(RegistrationBinding.ClaimPending);
 
         using var claimantClient = factory.ClientForAccount(claimant);
-        using var stranger = factory.CreateExpertClient();
+        using var stranger = factory.CreateUserClient();
 
         foreach (var path in new[]
                  {
@@ -104,7 +104,7 @@ public class ClaimBoundaryTests(WebApiFactory factory)
         var staff = factory.CreateAuthenticatedClient();
         var first = await staff.CreateExpertAsync(ApiClientExtensions.NewExpert());
         var second = await staff.CreateExpertAsync(ApiClientExtensions.NewExpert());
-        var claimant = factory.CreateAccount(UserRole.Expert);
+        var claimant = factory.CreateAccount(UserRole.User);
 
         AddClaimDirectly(claimant.Id, first.Id);
         var again = () => AddClaimDirectly(claimant.Id, second.Id);
@@ -119,8 +119,8 @@ public class ClaimBoundaryTests(WebApiFactory factory)
         var staff = factory.CreateAuthenticatedClient();
         var row = await staff.CreateExpertAsync(ApiClientExtensions.NewExpert());
 
-        AddClaimDirectly(factory.CreateAccount(UserRole.Expert).Id, row.Id);
-        var second = () => AddClaimDirectly(factory.CreateAccount(UserRole.Expert).Id, row.Id);
+        AddClaimDirectly(factory.CreateAccount(UserRole.User).Id, row.Id);
+        var second = () => AddClaimDirectly(factory.CreateAccount(UserRole.User).Id, row.Id);
 
         second.Should().Throw<DbUpdateException>();
     }
@@ -144,10 +144,10 @@ public class ClaimBoundaryTests(WebApiFactory factory)
         var staff = factory.CreateAuthenticatedClient();
         var email = ApiClientExtensions.UniqueEmail("taken");
         var row = await staff.CreateExpertAsync(ApiClientExtensions.NewExpert(email: email));
-        var owner = factory.CreateAccount(UserRole.Expert);
+        var owner = factory.CreateAccount(UserRole.User);
         factory.SetOwner(row.Id, owner.Id);
 
-        var intruder = factory.CreateAccount(UserRole.Expert);
+        var intruder = factory.CreateAccount(UserRole.User);
         SetAccountEmail(intruder.Id, email);
 
         var binding = await BindOnRegistrationAsync(intruder.Id, email);
@@ -171,7 +171,7 @@ public class ClaimBoundaryTests(WebApiFactory factory)
         var email = ApiClientExtensions.UniqueEmail("roundtrip");
         var row = await staff.CreateExpertAsync(ApiClientExtensions.NewExpert(email: email));
 
-        var claimant = factory.CreateAccount(UserRole.Expert);
+        var claimant = factory.CreateAccount(UserRole.User);
         SetAccountEmail(claimant.Id, email, TransparencyNotice.CurrentVersion);
         await BindOnRegistrationAsync(claimant.Id, email);
 
@@ -208,8 +208,8 @@ public class ClaimBoundaryTests(WebApiFactory factory)
         var issued = await (await staff.PostAsJsonAsync("/api/claims/codes", new { expertId = row.Id }))
             .ReadOkAsync<ClaimCodeIssuedDto>();
 
-        var first = factory.CreateAccount(UserRole.Expert);
-        var second = factory.CreateAccount(UserRole.Expert);
+        var first = factory.CreateAccount(UserRole.User);
+        var second = factory.CreateAccount(UserRole.User);
         using var firstClient = factory.ClientForAccount(first);
         using var secondClient = factory.ClientForAccount(second);
 
@@ -230,7 +230,7 @@ public class ClaimBoundaryTests(WebApiFactory factory)
     {
         var staff = factory.CreateAuthenticatedClient();
         var row = await staff.CreateExpertAsync(ApiClientExtensions.NewExpert());
-        var (owner, _) = factory.CreateExpertClientOwning(row.Id);
+        var (owner, _) = factory.CreateUserClientOwning(row.Id);
         using var _owner = owner;
 
         var theirAttempt = await owner.PutAsJsonAsync(

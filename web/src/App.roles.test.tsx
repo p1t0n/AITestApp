@@ -10,7 +10,7 @@ import { setSession } from "./auth/session";
 vi.mock("./pages/ExpertsPage", () => ({ default: () => <div>the roster page</div> }));
 vi.mock("./pages/UsersPage", () => ({ default: () => <div>the users page</div> }));
 vi.mock("./pages/CatalogPage", () => ({ default: () => <div>the catalog page</div> }));
-// The Expert's two places, stood in for the same reason: this file asks which route renders.
+// The User's two places, stood in for the same reason: this file asks which route renders.
 vi.mock("./pages/MyCvPage", () => ({ default: () => <div>the my-cv page</div> }));
 vi.mock("./pages/PrivacyDataPage", () => ({ default: () => <div>the privacy page</div> }));
 vi.mock("./pages/ClaimStatusPage", () => ({ default: () => <div>the claim-status page</div> }));
@@ -24,13 +24,13 @@ vi.mock("./components/AgentWidget", () => ({
 // The gate is only ever asserted here as a destination, never driven.
 vi.mock("./pages/SigninPage", () => ({ default: () => <div>the sign-in gate</div> }));
 
-function signedInAs(role: "ServiceManager" | "Expert") {
+function signedInAs(role: "Administrator" | "User") {
   localStorage.clear();
   setSession("a-token", `${role}@example.com`, role);
 }
 
 /**
- * The app under a throwaway query client. The Expert landing page asks the server whether a newer
+ * The app under a throwaway query client. The User landing page asks the server whether a newer
  * transparency notice is waiting (P1T-183), so a client has to exist — but nothing here is about
  * that answer, and with no server the query simply fails and the banner renders nothing. Retries
  * are off so a failing query does not keep the test alive for three backoffs.
@@ -47,8 +47,8 @@ function renderApp(path: string) {
 }
 
 describe("route audiences (P1T-181)", () => {
-  it("lands a Service Manager on the roster", () => {
-    signedInAs("ServiceManager");
+  it("lands an Administrator on the roster", () => {
+    signedInAs("Administrator");
 
     renderApp("/");
 
@@ -60,7 +60,7 @@ describe("route audiences (P1T-181)", () => {
   it.each(["/", "/users", "/catalog", "/experts/abc"])(
     "sends an Expert asking for %s to their own landing page, not /signin",
     (path) => {
-      signedInAs("Expert");
+      signedInAs("User");
 
       renderApp(path);
 
@@ -70,16 +70,16 @@ describe("route audiences (P1T-181)", () => {
     },
   );
 
-  it("sends a Service Manager asking for the Expert page to the roster", () => {
-    signedInAs("ServiceManager");
+  it("sends an Administrator asking for the User page to the roster", () => {
+    signedInAs("Administrator");
 
     renderApp("/me");
 
     expect(screen.getByText("the roster page")).toBeInTheDocument();
   });
 
-  it("offers an Expert exactly two places, and none of the staff ones", () => {
-    signedInAs("Expert");
+  it("offers a User exactly two places, and none of the staff ones", () => {
+    signedInAs("User");
 
     renderApp("/me");
 
@@ -91,8 +91,8 @@ describe("route audiences (P1T-181)", () => {
   });
 
   /** /me is a redirect rather than a page, so the landing is the editor and not a flicker. */
-  it("sends an Expert from /me to their CV", () => {
-    signedInAs("Expert");
+  it("sends a User from /me to their CV", () => {
+    signedInAs("User");
 
     renderApp("/me");
 
@@ -104,21 +104,21 @@ describe("route audiences (P1T-181)", () => {
    * they are staff's — and the Content Floor treats "no dock" as the state it already handles when
    * the dock is closed, rather than as a second layout mode.
    */
-  it("mounts no agent dock for an Expert, and does for a Service Manager", () => {
-    signedInAs("Expert");
+  it("mounts no agent dock for a User, and does for an Administrator", () => {
+    signedInAs("User");
     const expertView = renderApp("/me");
     expect(expertView.container.querySelector("[data-testid='agent-widget']")).toBeNull();
     expertView.unmount();
 
-    signedInAs("ServiceManager");
+    signedInAs("Administrator");
     renderApp("/");
     // The staff shell still mounts it — the stand-in above renders null, so what is asserted here
     // is that the mock was reached at all rather than skipped by the guard.
     expect(agentWidgetMounted).toBe(true);
   });
 
-  it("gives an Expert their privacy page", () => {
-    signedInAs("Expert");
+  it("gives a User their privacy page", () => {
+    signedInAs("User");
 
     renderApp("/me/privacy");
 
