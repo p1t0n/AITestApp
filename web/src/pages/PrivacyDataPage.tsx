@@ -26,6 +26,7 @@ import NoticeUpdateBanner from "../components/NoticeUpdateBanner";
 import PageHeader, { PageContainer } from "../components/PageHeader";
 import RedeemClaimCode from "../components/RedeemClaimCode";
 import { clearSession } from "../auth/session";
+import { useSessionRole } from "../auth/useAuth";
 
 /**
  * One labelled row of the record. A definition-list rhythm: the label on the left, prose in the
@@ -192,6 +193,8 @@ function TheRecord({
       </Typography>
       <Divider />
 
+      <YourRole />
+
       <Row
         label="Your CV"
         action={
@@ -345,6 +348,25 @@ function TheRecord({
       <DeleteEverything holdsRecord />
     </PageHeader>
   );
+}
+
+/**
+ * Which audience the signed-in person belongs to (P1T-240).
+ *
+ * <p>A role change ends their session and lands them somewhere else on their next sign-in — a
+ * different landing page, different chrome, no explanation. This service has no email, so there is
+ * nothing to send; this row is the only place the change can ever be accounted for, and it sits
+ * among the other facts held about them rather than in a settings screen.</p>
+ *
+ * <p>Read from the session the SPA already holds, not from a new field on any DTO. A session with
+ * no role predates the role split and the server refuses its token anyway, so the row is simply
+ * absent rather than guessing an audience — the page never states a fact it does not hold.</p>
+ */
+function YourRole() {
+  const role = useSessionRole();
+  if (role === null) return null;
+
+  return <Row label="Your role">{role}</Row>;
 }
 
 function StateSentence({

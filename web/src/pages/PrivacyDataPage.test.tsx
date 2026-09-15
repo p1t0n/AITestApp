@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import PrivacyDataPage from "./PrivacyDataPage";
 import type { AccessView } from "../api";
+import { clearSession, setSession } from "../auth/session";
 
 type Visibility = { expertId: string; hidden: boolean; hiddenSince: string | null };
 
@@ -107,6 +108,9 @@ beforeEach(() => {
   visibility = { expertId: "e1", hidden: false, hiddenSince: null };
   access = accessView();
   ownsNothing = false;
+  // The role row reads the real session store rather than a mock, so each test starts signed out
+  // and says for itself which session it is rendering for.
+  clearSession();
   vi.clearAllMocks();
 });
 
@@ -184,6 +188,61 @@ describe("the state is one sentence, not a second surface (P1T-175 Variant A)", 
 
     expect(screen.getAllByText(/Your record is paused/)).toHaveLength(1);
     expect(screen.queryAllByRole("alert")).toHaveLength(0);
+  });
+});
+
+/**
+ * A role change ends the session and lands the person somewhere else on their next sign-in, with
+ * different chrome and a different landing page. There is no email on this service, so this row is
+ * the only place that can ever explain it (P1T-240).
+ */
+describe("your own role, on the page that lists what is held about you (P1T-240)", () => {
+  it("shows an Administrator their role", () => {
+    setSession("t", "a@example.com", "Administrator");
+    renderPage();
+
+    expect(within(row("Your role")).getByText("Administrator")).toBeInTheDocument();
+  });
+
+  it("shows a User their role", () => {
+    setSession("t", "u@example.com", "User");
+    renderPage();
+
+    expect(within(row("Your role")).getByText("User")).toBeInTheDocument();
+  });
+
+  /** It is a fact held about you, not a right over it — so it carries no action. */
+  it("offers nothing to press", () => {
+    setSession("t", "u@example.com", "User");
+    renderPage();
+
+    expect(within(row("Your role")).queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  /** Beside the CV, and without splitting the CV from the list of what is in it. */
+  it("sits in What we hold about you, next to Your CV", () => {
+    setSession("t", "u@example.com", "User");
+    renderPage();
+
+    const heading = screen.getByRole("heading", { name: "What we hold about you" });
+    const role = row("Your role");
+    const cv = row("Your CV");
+    const inIt = row("Everything in it");
+
+    expect(heading.compareDocumentPosition(role) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(role.compareDocumentPosition(cv) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(cv.compareDocumentPosition(inIt) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  /**
+   * A session stored before the role split holds no role, and the server refuses its token anyway.
+   * The page says nothing rather than guessing an audience — the same rule the rest of it follows.
+   */
+  it("says nothing at all when the session holds no role", () => {
+    setSession("t", "u@example.com", null);
+    renderPage();
+
+    expect(screen.queryByTestId("row-Your role")).not.toBeInTheDocument();
   });
 });
 
