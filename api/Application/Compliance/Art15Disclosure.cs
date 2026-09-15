@@ -33,7 +33,7 @@ public static class Art15Disclosure
     [
         "Identity and contact details: your name, professional title, email address, phone number "
         + "and location.",
-        "Career history you or a Service Manager entered: roles, employers, dates, what you did, "
+        "Career history you or an Administrator entered: roles, employers, dates, what you did, "
         + "and the achievements written under each role.",
         "Skills with a level and years of experience, spoken languages, degrees and certifications.",
         "Your availability over time, as a schedule of capacity percentages.",
@@ -56,7 +56,7 @@ public static class Art15Disclosure
     /// </summary>
     public static IReadOnlyList<RecipientCategory> Recipients { get; } =
     [
-        new("Service Managers of this organisation",
+        new("Administrators of this organisation",
             "They maintain the bench and decide who is put forward for a job. They see your record "
             + "in full."),
         new("Google (Gemini), as our AI model provider",
@@ -77,7 +77,7 @@ public static class Art15Disclosure
     public const string Retention =
         "We keep your record while it is in use. If nothing happens on it for an extended period it "
         + "expires and is removed. You can have it removed sooner, at any time, by deleting it "
-        + "yourself — and a record kept only because a Service Manager entered it can be objected "
+        + "yourself — and a record kept only because an Administrator entered it can be objected "
         + "to, which we honour by deleting it.";
 
     /// <summary>
@@ -93,7 +93,7 @@ public static class Art15Disclosure
         """
         ### How the scoring works, and what it does to you
 
-        When a Service Manager brings in a job description, the software first distils it into a
+        When an Administrator brings in a job description, the software first distils it into a
         list of requirements. Your record is then matched against those requirements in two steps.
 
         1. **Retrieval.** Your career narrative — your summary and what is written under each role —
@@ -103,10 +103,10 @@ public static class Art15Disclosure
         2. **Assessment.** Those passages, your skills, and your availability are sent to an AI
            model together with the job description. The model returns a score out of 100, a band,
            and a short written rationale explaining the score. Nothing else about you is used: not
-           your name's origin, not your location beyond a filter a Service Manager set, and no
+           your name's origin, not your location beyond a filter an Administrator set, and no
            characteristic we could infer about you — we never attempt such inferences.
 
-        The ranking that comes out of this decides who a Service Manager is shown first, and in
+        The ranking that comes out of this decides who an Administrator is shown first, and in
         practice that decides who is considered. We do not claim a person meaningfully reviews each
         score before that happens: the assessment is automated, and we rely on it being necessary to
         place people on jobs at all.
@@ -116,7 +116,7 @@ public static class Art15Disclosure
         should not have been written. And you can ask for a human to look at any score, say why you
         disagree, and have the outcome reconsidered.
 
-        **What is not scored.** If your record is held only because a Service Manager entered it,
+        **What is not scored.** If your record is held only because an Administrator entered it,
         rather than because you registered, it is excluded from this scoring entirely.
         """;
 
@@ -128,7 +128,7 @@ public static class Art15Disclosure
         "Correct your own content yourself, at any time.",
         "Stop being offered for work without deleting anything, and start again later.",
         "Have a human look at a score, say why you disagree, and have it reconsidered.",
-        "Object to us holding a record a Service Manager created; we honour that by deleting it.",
+        "Object to us holding a record an Administrator created; we honour that by deleting it.",
         "Have everything erased. This is permanent and cannot be undone.",
     ];
 
@@ -144,7 +144,7 @@ public static class Art15Disclosure
     /// does, and this service can never have told them at the time (there is no email).</summary>
     public static string? SourceFor(Domain.Enums.ProcessingOrigin origin) =>
         origin == Domain.Enums.ProcessingOrigin.StaffCreated
-            ? "A Service Manager at this company entered your record. You did not give us this data "
+            ? "An Administrator at this company entered your record. You did not give us this data "
               + "yourself, and because this service sends no email we had no way to tell you at the "
               + "time — you are reading this because you signed in and found it."
             : null;

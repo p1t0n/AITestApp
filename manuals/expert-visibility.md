@@ -50,7 +50,7 @@ has to disclose.
 lexical quota fallback, style exemplars, Roster Scan enumeration, Match, `cv_get`, every MCP read
 tool.
 
-**Seen and marked** — Service Manager surfaces. Staff must be able to tell a paused Expert from one
+**Seen and marked** — Administrator surfaces. Staff must be able to tell a paused Expert from one
 who never existed; a bench that silently loses somebody is a bench nobody can explain. The roster
 row carries a *Paused* chip and the detail page an explanatory banner.
 
@@ -66,7 +66,7 @@ timestamps are untouched across a pause/resume cycle.
 ### The audience, and why there is one
 
 Most surfaces never ask: search, digests and the scan filter unconditionally, because they are about
-*availability for work* no matter who triggered them — a Service Manager running a semantic search
+*availability for work* no matter who triggered them — an Administrator running a semantic search
 must not get a paused person either.
 
 The record-shaped surfaces do ask, through `IRosterAudienceProvider`, and the answer falls along the
@@ -112,7 +112,7 @@ Two consequences worth knowing before they surprise somebody:
 
 ## 6. Who may pause
 
-**The Expert, and nobody else.** A Service Manager who wants somebody off the bench deactivates the
+**The Expert, and nobody else.** An Administrator who wants somebody off the bench deactivates the
 account (`User.Status = Deactivated`) — a different mechanism with a different meaning, so there is
 never ambiguity about who hid whom. Staff cannot un-hide somebody who hid themselves. Staff keep
 full write on CV *content*: this is an exit control, not content, and a paused record stays

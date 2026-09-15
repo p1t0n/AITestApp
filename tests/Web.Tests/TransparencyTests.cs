@@ -71,7 +71,7 @@ public class TransparencyTests(WebApiFactory factory)
 
         var view = await (await world.Client.GetAsync("/api/me/access")).ReadOkAsync<AccessViewDto>();
         view.Origin.Should().Be(ProcessingOrigin.StaffCreated);
-        view.Source.Should().Contain("A Service Manager");
+        view.Source.Should().Contain("An Administrator");
 
         await ApproveIntoContractNecessityAsync(world.ExpertId);
 

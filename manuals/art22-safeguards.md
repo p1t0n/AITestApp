@@ -1,5 +1,7 @@
 # Automated scoring: the necessity argument, and the safeguards it obliges
 
+> *2026-09: the staff actor called Service Manager throughout this document is now called Administrator. Nothing else about this assessment changed.*
+
 > **Status (2026-09-02):** shipped as P1T-189. The contest control is on the Expert's workspace, the
 > queue is on the Users page beside claim approvals, and the outcome is recorded on the scan row.
 > Decision: [P1T-179](https://linear.app/p1t0ns-nest/issue/P1T-179). Lawful basis:

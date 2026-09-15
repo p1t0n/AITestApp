@@ -24,7 +24,7 @@ import { ErrorNotice } from "./ErrorNotice";
 export const REVOKE_CONSEQUENCE =
   "This record becomes unclaimed, returns to legitimate interest, and is no longer scanned for " +
   "Jobs — so this person stops being considered. They lose access to it; the record itself is kept " +
-  "and stays visible to Service Managers.";
+  "and stays visible to Administrators.";
 
 /**
  * Who a roster row belongs to, and the two ways that changes (P1T-184). Unclaimed is a legitimate,

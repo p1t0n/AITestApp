@@ -12,7 +12,7 @@ namespace ExpertToJob.Application.Claims;
 /// email is never verified and no mail can ever be sent.
 ///
 /// <para>Deliberately outside the own-row ownership scope every other roster service applies
-/// (P1T-182), because this is the surface that <em>decides</em> ownership: a Service Manager acts on
+/// (P1T-182), because this is the surface that <em>decides</em> ownership: an Administrator acts on
 /// rows nobody owns, and a claimant redeeming a code reaches a row precisely because they do not own
 /// it yet. Authorization here is the endpoint policy above it and the claim code itself, and the
 /// acting account is passed in rather than inferred, so a caller cannot decide on somebody's behalf
@@ -29,7 +29,7 @@ public interface IClaimService
     Task<RegistrationBindingDto> BindOnRegistrationAsync(
         Guid userId, string email, string? acknowledgedNoticeVersion, CancellationToken ct = default);
 
-    /// <summary>Everything waiting on a Service Manager: open claims and raised flags, oldest first.</summary>
+    /// <summary>Everything waiting on an Administrator: open claims and raised flags, oldest first.</summary>
     Task<IReadOnlyList<ClaimQueueItemDto>> OpenAsync(CancellationToken ct = default);
 
     /// <summary>Who owns one row, and under what address. What the expert page reads to decide
@@ -53,7 +53,7 @@ public interface IClaimService
 
     /// <summary>
     /// Spends a code and binds ownership with no approval step, because the code <em>is</em> the
-    /// proof: a Service Manager handed it over in person. Returns the row now owned.
+    /// proof: an Administrator handed it over in person. Returns the row now owned.
     /// </summary>
     Task<Guid> RedeemCodeAsync(string code, Guid claimantUserId, CancellationToken ct = default);
 
@@ -185,7 +185,7 @@ public class ClaimService(
         // transaction, so the row is never owned-but-recorded-as-legitimate-interest.
         await records.AppendForOwnershipChangeAsync(
             expert.Id, ProcessingOrigin.SelfRegistered, noticeVersion,
-            "Claim on this row approved by a Service Manager; the person registered and " +
+            "Claim on this row approved by an Administrator; the person registered and " +
             "acknowledged the transparency notice.",
             ct);
 
@@ -260,14 +260,14 @@ public class ClaimService(
         var claimant = await db.Users.FirstOrDefaultAsync(u => u.Id == claimantUserId, ct);
 
         // Redemption is a decision too, so it leaves the same trail an approval does — with itself
-        // named as the decider, because no Service Manager looked at this one.
+        // named as the decider, because no Administrator looked at this one.
         var open = await db.PendingClaims
             .Where(c => c.ClaimantUserId == claimantUserId && c.State == ClaimState.Pending)
             .ToListAsync(ct);
         foreach (var superseded in open)
         {
             // Superseded, not adjudicated — the decider is whoever issued the code, because that is
-            // the Service Manager whose act ended this request.
+            // the Administrator whose act ended this request.
             Resolve(superseded, ClaimState.Rejected, issued.IssuedByUserId ?? claimantUserId);
         }
 
@@ -286,7 +286,7 @@ public class ClaimService(
 
         await records.AppendForOwnershipChangeAsync(
             expert.Id, ProcessingOrigin.SelfRegistered, claimant?.AcknowledgedNoticeVersion,
-            "Single-use claim code redeemed; a Service Manager handed it over out of band.",
+            "Single-use claim code redeemed; an Administrator handed it over out of band.",
             ct);
 
         return expert.Id;
@@ -306,7 +306,7 @@ public class ClaimService(
 
         await records.AppendForOwnershipChangeAsync(
             expert.Id, ProcessingOrigin.StaffCreated, null,
-            "Ownership revoked by a Service Manager; the row returns to legitimate interest.",
+            "Ownership revoked by an Administrator; the row returns to legitimate interest.",
             ct);
     }
 

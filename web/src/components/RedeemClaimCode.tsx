@@ -4,7 +4,7 @@ import { apiErrorMessage, useRedeemClaimCode } from "../api";
 import { ErrorNotice } from "./ErrorNotice";
 
 /**
- * Where an Expert spends a claim code (P1T-184). The counterpart of the Service Manager's "issue
+ * Where an Expert spends a claim code (P1T-184). The counterpart of the Administrator's "issue
  * claim code": a code handed over in person is the only proof this service can offer that is
  * stronger than an unverified email match, so redeeming binds the record with no approval step.
  *
@@ -22,7 +22,7 @@ export default function RedeemClaimCode() {
           Have a claim code?
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          If a Service Manager gave you a code for your record — in person or by phone — enter it
+          If an Administrator gave you a code for your record — in person or by phone — enter it
           here. It works once, and it links that record to this account straight away.
         </Typography>
 

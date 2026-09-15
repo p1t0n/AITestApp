@@ -1,5 +1,7 @@
 # The Expert workspace, as compliance: what shipped, and where it left the plan
 
+> *2026-09: the staff actor called Service Manager throughout this document is now called Administrator. Nothing else about this assessment changed.*
+
 > **Status (2026-09-02):** shipped as P1T-192, the last slice of the P1T-167 effort. This is the
 > narrative of the built design. The per-slice manuals hold the detail; this file holds the shape,
 > and the places where what shipped is not what the plan said.

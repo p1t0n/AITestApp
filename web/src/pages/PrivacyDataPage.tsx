@@ -79,7 +79,7 @@ function Row({
  *
  * <p><b>One source of truth about state.</b> Every fact about the state is prose in this one
  * column, so there is no second surface that can drift out of agreement with the page. That is
- * exactly what killed Variant B, whose status card claimed "Visible to Service Managers" and
+ * exactly what killed Variant B, whose status card claimed "Visible to Administrators" and
  * offered <em>Pause</em> and <em>Download my data</em> while its own banner said nothing was held
  * yet. <b>Do not add a status card, a sidebar or a sticky summary.</b> The accepted cost is that
  * this page tells you your state only if you read the opening sentence — that is the same property,
@@ -130,7 +130,7 @@ function NoRecordYet() {
           There is nothing held under your name yet, so there is nothing here to show you.
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-          If a Service Manager already had a record for you, a person has to confirm it is yours
+          If an Administrator already had a record for you, a person has to confirm it is yours
           before you can see it. This page fills in once it is.
         </Typography>
       </Paper>
@@ -373,7 +373,7 @@ function StateSentence({
   if (paused) {
     return (
       <>
-        Your record is paused{since}. Service Managers can see that it is paused; nobody is offered
+        Your record is paused{since}. Administrators can see that it is paused; nobody is offered
         it for work.
       </>
     );
@@ -489,7 +489,7 @@ function DeleteEverything({ holdsRecord }: { holdsRecord: boolean }) {
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         {holdsRecord
-          ? "This removes your CV, your search index, your assessments and your sign-in. It cannot be undone, and we have no way to contact you afterwards. Proposals a Service Manager already decided on keep their decision, with your name and everything written about you removed."
+          ? "This removes your CV, your search index, your assessments and your sign-in. It cannot be undone, and we have no way to contact you afterwards. Proposals an Administrator already decided on keep their decision, with your name and everything written about you removed."
           : "This removes your sign-in. There is no record under your name to remove with it. It cannot be undone, and we have no way to contact you afterwards."}
       </Typography>
       {holdsRecord && (

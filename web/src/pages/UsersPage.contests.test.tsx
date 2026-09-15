@@ -53,7 +53,7 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe("the Service Manager's contest queue (P1T-189)", () => {
+describe("the Administrator's contest queue (P1T-189)", () => {
   /**
    * The reviewer is the Art. 22(3) safeguard, not a support desk. If nobody actually reads what the
    * person wrote, the legal basis the whole scan rests on is not being honoured — which is worth

@@ -47,7 +47,7 @@ origin, rather than moving the suite onto the dev port and colliding with a runn
 
 **`signUp` signs up staff, and says how.** Since the role split (P1T-181) a self-serve signup is an
 Expert, and most of this suite is about staff surfaces — the roster, the catalog, the dock. So
-`signUp` first writes the *invite* row the Service Manager bootstrap writes (an address with no
+`signUp` first writes the *invite* row the Administrator bootstrap writes (an address with no
 credential, straight into the run's own database via `docker exec psql`) and then signs up through
 the real form, which adopts it. That is production's own first-Service-Manager path, not a test-only
 door. `signUpAsExpert` is the plain self-serve path, with nothing pre-created.

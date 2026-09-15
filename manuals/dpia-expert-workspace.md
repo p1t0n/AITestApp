@@ -1,5 +1,7 @@
 # Data protection impact assessment: the Expert bench and the roster scan
 
+> *2026-09: the staff actor called Service Manager throughout this document is now called Administrator. Nothing else about this assessment changed.*
+
 > **Status (2026-09-02):** first version, shipped as P1T-192. Assesses the design as built through
 > P1T-183 – P1T-191, not a plan.
 >
