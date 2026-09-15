@@ -5,10 +5,12 @@ import {
   Dialog,
   DialogActions,
   DialogContent,
+  DialogContentText,
   DialogTitle,
   IconButton,
   MenuItem,
   Paper,
+  Select,
   Stack,
   Table,
   TableBody,
@@ -23,7 +25,10 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import {
   apiErrorMessage,
+  LAST_ADMINISTRATOR_REFUSAL,
+  SELF_ROLE_REFUSAL,
   useApproveClaim,
+  useChangeUserRole,
   useClaimQueue,
   useContestQueue,
   useDeleteUser,
@@ -38,12 +43,29 @@ import {
   type UserStatus,
   type UserSummary,
 } from "../api";
+import type { SessionRole } from "../auth/roles";
+import { useSessionUserId } from "../auth/useAuth";
 import { ErrorNotice } from "../components/ErrorNotice";
 import PageHeader from "../components/PageHeader";
 import ClaimQueue from "../components/ClaimQueue";
 import ContestQueue from "../components/ContestQueue";
 
 const capLabel = (v: number | null) => (v === null ? "default" : v.toLocaleString());
+
+/**
+ * What a demotion costs, in one sentence, shown before it happens (P1T-239).
+ *
+ * Exported so the test asserts the wording rather than a paraphrase of it: this is the only warning
+ * anybody gets. There is no email on this service, so the person being demoted finds out by being
+ * signed out — the four surfaces and the session are named here because that is the whole content
+ * of the change.
+ */
+export const DEMOTION_CONSEQUENCE =
+  "They lose the roster, the skill catalog, the agent surfaces and this page, and their session "
+  + "ends immediately — they are signed out, and sign back in to their own CV.";
+
+/** The roles on offer, in the order the column reads them. */
+const ROLES: readonly SessionRole[] = ["Administrator", "User"];
 
 export default function UsersPage() {
   const { data: users, isLoading, isError, error } = useUsers();
@@ -54,7 +76,31 @@ export default function UsersPage() {
   const rejectClaim = useRejectClaim();
   const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
+  const changeRole = useChangeUserRole();
   const [editing, setEditing] = useState<UserSummary | null>(null);
+  // The demotion waiting on an answer, or null. The row rather than the id, because the question
+  // names the account.
+  const [demoting, setDemoting] = useState<UserSummary | null>(null);
+  const signedInUserId = useSessionUserId();
+
+  // Both refusals the server enforces, computed from what this page already holds — the loaded list
+  // and the session. Shown as text beside the control rather than hidden behind a disabled input:
+  // a blocked row with no reason on it reads as broken, not as protected.
+  const administrators = users?.filter((u) => u.role === "Administrator").length ?? 0;
+  const refusalFor = (u: UserSummary): string | null => {
+    if (u.id === signedInUserId) return SELF_ROLE_REFUSAL;
+    if (u.role === "Administrator" && administrators <= 1) return LAST_ADMINISTRATOR_REFUSAL;
+    return null;
+  };
+
+  // Promotion applies on the spot; demotion asks first. Not symmetry for its own sake — a demotion
+  // ends somebody's session and takes four surfaces away, and an undo would have to be done by
+  // somebody else.
+  const chooseRole = (u: UserSummary, next: SessionRole) => {
+    if (next === u.role) return;
+    if (next === "User") setDemoting(u);
+    else changeRole.mutate({ id: u.id, role: next });
+  };
 
   const approve = (claim: ClaimQueueItem) => {
     if (
@@ -87,13 +133,14 @@ export default function UsersPage() {
   };
 
   return (
-    // Seven columns of caps and counts — a table, so the same wide cap as the roster.
+    // Eight columns of roles, caps and counts — a table, so the same wide cap as the roster.
     <PageHeader title="Users" width="wide">
       {/* Stays in the body rather than becoming the header's subtitle: it is two lines of policy,
           and a sticky strip is not where a paragraph belongs. */}
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Anyone signed in can manage any account (flat roles). Token caps blank as "default" inherit
-        the system-wide limit.
+        An Administrator manages every account, their own included — except for its role, which
+        somebody else has to change. Changing a role signs that account out immediately. Token caps
+        blank as "default" inherit the system-wide limit.
       </Typography>
 
       <ErrorNotice
@@ -138,8 +185,8 @@ export default function UsersPage() {
       <ErrorNotice message={isError ? apiErrorMessage(error) : null} />
       <ErrorNotice
         message={
-          updateUser.isError || deleteUser.isError
-            ? apiErrorMessage(updateUser.error ?? deleteUser.error)
+          updateUser.isError || deleteUser.isError || changeRole.isError
+            ? apiErrorMessage(updateUser.error ?? deleteUser.error ?? changeRole.error)
             : null
         }
         sx={{ mb: 2 }}
@@ -150,6 +197,7 @@ export default function UsersPage() {
           <TableHead>
             <TableRow>
               <TableCell>Email</TableCell>
+              <TableCell>Role</TableCell>
               <TableCell>Status</TableCell>
               <TableCell align="right">Passkeys</TableCell>
               <TableCell align="right">Daily</TableCell>
@@ -161,12 +209,20 @@ export default function UsersPage() {
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={7}>Loading…</TableCell>
+                <TableCell colSpan={8}>Loading…</TableCell>
               </TableRow>
             )}
             {users?.map((u) => (
               <TableRow key={u.id} hover>
                 <TableCell>{u.email}</TableCell>
+                <TableCell>
+                  <RoleCell
+                    user={u}
+                    refusal={refusalFor(u)}
+                    busy={changeRole.isPending}
+                    onChoose={(next) => chooseRole(u, next)}
+                  />
+                </TableCell>
                 <TableCell>
                   <Chip
                     label={u.status}
@@ -197,12 +253,26 @@ export default function UsersPage() {
             ))}
             {users?.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7}>No users yet.</TableCell>
+                <TableCell colSpan={8}>No users yet.</TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </Paper>
+
+      {demoting && (
+        <ConfirmDemotionDialog
+          user={demoting}
+          busy={changeRole.isPending}
+          onClose={() => setDemoting(null)}
+          onConfirm={() =>
+            changeRole.mutate(
+              { id: demoting.id, role: "User" },
+              { onSuccess: () => setDemoting(null) },
+            )
+          }
+        />
+      )}
 
       {editing && (
         <EditUserDialog
@@ -283,6 +353,79 @@ function EditUserDialog({
         <Button onClick={onClose}>Cancel</Button>
         <Button variant="contained" onClick={handleSave} disabled={saving}>
           Save
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+/**
+ * One row's role control, with the reason it cannot be used rendered next to it rather than in a
+ * tooltip. The `Select` still carries the current value when it is blocked, so the column reads the
+ * same whether or not this row can be changed.
+ */
+function RoleCell({
+  user,
+  refusal,
+  busy,
+  onChoose,
+}: {
+  user: UserSummary;
+  /** Why this row cannot change, in the server's words — or null when it can. */
+  refusal: string | null;
+  busy: boolean;
+  onChoose: (role: SessionRole) => void;
+}) {
+  return (
+    <Stack spacing={0.5} sx={{ minWidth: 168 }}>
+      <Select
+        size="small"
+        value={user.role}
+        disabled={refusal !== null || busy}
+        onChange={(e) => onChoose(e.target.value as SessionRole)}
+        inputProps={{ "aria-label": `Role for ${user.email}` }}
+        data-testid="users-role-select"
+      >
+        {ROLES.map((role) => (
+          <MenuItem key={role} value={role}>
+            {role}
+          </MenuItem>
+        ))}
+      </Select>
+      {refusal && (
+        <Typography variant="caption" color="text.secondary">
+          {refusal}
+        </Typography>
+      )}
+    </Stack>
+  );
+}
+
+/**
+ * The question asked before a demotion, and only before a demotion — a promotion takes nothing
+ * away, so stopping to confirm one would train people to click through this dialog.
+ */
+function ConfirmDemotionDialog({
+  user,
+  busy,
+  onClose,
+  onConfirm,
+}: {
+  user: UserSummary;
+  busy: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Dialog open onClose={onClose} fullWidth maxWidth="sm" data-testid="users-role-confirm">
+      <DialogTitle>Demote {user.email} to User?</DialogTitle>
+      <DialogContent>
+        <DialogContentText>{DEMOTION_CONSEQUENCE}</DialogContentText>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Cancel</Button>
+        <Button color="error" variant="contained" onClick={onConfirm} disabled={busy}>
+          Demote to User
         </Button>
       </DialogActions>
     </Dialog>

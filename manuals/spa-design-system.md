@@ -488,7 +488,7 @@ now.
 
 | Frozen | Why |
 |---|---|
-| 39 `data-testid` hooks — 26 literal + 13 templated | The unit suite's grip on the DOM; renaming one is a silent test deletion. Held by `src/frozenHooks.test.ts`, which holds the *names*; that a hook is still on the right element is held by the suite that queries it |
+| Every `data-testid` hook the app emits — 39 at the end of the chain, and the count moves | The unit suite's grip on the DOM; renaming one is a silent test deletion. Held by `src/frozenHooks.test.ts`, which holds the *names* and is the inventory — a number in this table is a copy that goes stale (it did: `row-*` in P1T-191, then `users-role-select` and `users-role-confirm` in P1T-239, arrived in the test and not here). That a hook is still on the right element is held by the suite that queries it |
 | Accessible names `Sign out`, `CVs`, `Sign in` | The e2e suite asserts by role + name (`e2e/auth.e2e.ts`) |
 | The dock's push contract (`DOCK_PUSH_VAR`) | The rail copies it; changing it breaks both edges at once |
 | Accessible name `Open the agents assistant` | The dock's own entry point, asserted by the e2e suite and the screenshot pass |

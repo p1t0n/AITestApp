@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import type { SessionRole } from "./roles";
-import { getEmail, getRole, getToken, subscribe } from "./session";
+import { getEmail, getRole, getToken, getUserId, subscribe } from "./session";
 
 /**
  * Reactive auth state. Re-renders subscribers whenever the session token changes (sign-in,
@@ -36,6 +36,19 @@ export function useSessionRole(): SessionRole | null {
   return useSyncExternalStore(
     subscribe,
     getRole,
+    () => null,
+  );
+}
+
+/**
+ * The signed-in account's id, reactively — `null` when signed out, and also `null` for a session
+ * stored before P1T-239. It is the token's `sub`, so a surface that has to tell "this row is you"
+ * from "this row is somebody else" compares ids rather than addresses.
+ */
+export function useSessionUserId(): string | null {
+  return useSyncExternalStore(
+    subscribe,
+    getUserId,
     () => null,
   );
 }
