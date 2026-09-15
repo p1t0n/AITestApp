@@ -1,5 +1,7 @@
 # GDPR obligations for the ExpertToJob data set (research, P1T-168)
 
+> *2026-09: the staff actor called Service Manager throughout this document is now called Administrator. Nothing else about this assessment changed.*
+
 What the regulation actually requires of a system that holds Expert CVs, embeds them for
 retrieval, and copies them into staffing decision ledgers — so the consent, erasure and export
 slices are designed against the text and the guidance rather than against intuition. Every claim

@@ -32,7 +32,7 @@ function accessView(over: Partial<AccessView> = {}): AccessView {
     purposes: ["Maintaining a bench record."],
     dataCategories: ["Your name and contact details.", "Your career history.", "Your skills."],
     recipients: [
-      { recipient: "Service Managers of this organisation", why: "They maintain the bench." },
+      { recipient: "Administrators of this organisation", why: "They maintain the bench." },
       { recipient: "Google (Gemini), as our AI model provider", why: "Scoring happens there." },
     ],
     retention: "We keep your record while it is in use.",

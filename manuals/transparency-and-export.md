@@ -1,5 +1,7 @@
 # What we hold on you, and the copy you can take away
 
+> *2026-09: the staff actor called Service Manager throughout this document is now called Administrator. Nothing else about this assessment changed.*
+
 > **Status (2026-09-02):** shipped as P1T-187. `GET /api/me/access` is the Art. 15 view,
 > `GET /api/me/export` the Art. 20 copy, and `POST /api/experts/{id}/export` the Service Manager's
 > on-behalf export, which writes its own record. Decision:

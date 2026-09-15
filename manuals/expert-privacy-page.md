@@ -15,7 +15,7 @@ settled by looking at three built variants rather than by argument.
 
 **One source of truth about state.** Every fact about the state is prose in one column. There is no
 status card, no sidebar, no sticky summary — and there must not be. Variant B had one, and on first
-contact it claimed *"Visible to Service Managers"* while offering *Pause* and *Download my data*,
+contact it claimed *"Visible to Administrators"* while offering *Pause* and *Download my data*,
 next to its own banner saying nothing was held yet. A persistent status surface drifts out of
 agreement with the page unless every control in it is state-derived, and there are five states plus
 their combinations to keep in step.

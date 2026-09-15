@@ -146,7 +146,7 @@ describe("the Expert's own CV page (P1T-190)", () => {
 
     const email = screen.getByLabelText("Email");
     expect(email).toBeDisabled();
-    expect(screen.getByText(/can only be changed by a Service Manager/)).toBeInTheDocument();
+    expect(screen.getByText(/can only be changed by an Administrator/)).toBeInTheDocument();
   });
 
   /** Offers none of the staff affordances — those belong to the page that administers the bench. */

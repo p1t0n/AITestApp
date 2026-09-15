@@ -135,7 +135,7 @@ be recovered. `GET /api/notice` and `GET /api/notice/{version}` are anonymous by
 cannot require somebody to acknowledge a text they need an account to read.
 
 What it says is constrained by **Art. 5(1)(a)**: a notice that creates a false impression is itself
-a transparency breach. Service Managers keep full write on an Expert's CV and staff-created rows
+a transparency breach. Administrators keep full write on an Expert's CV and staff-created rows
 exist the Expert never authored, so no wording may imply the Expert controls their data. It says
 plainly that the company maintains the bench record, that the Expert supplies and corrects their own
 content, and that their rights are transparency, erasure and export — **not exclusive authorship**.
@@ -157,7 +157,7 @@ Nothing is withheld, nothing is re-collected, nothing is frozen pending a click.
 Both are real, neither is solved, and they are recorded together so neither reads as an oversight.
 **The service never sends email.**
 
-- **Art. 14**: a Service Manager can enter a real person who then must be informed within a month.
+- **Art. 14**: an Administrator can enter a real person who then must be informed within a month.
   We cannot reach them. They learn we hold them only if they happen to register and claim the row.
 - **Art. 13 on change**: an Expert who never signs in again never sees an updated notice.
 

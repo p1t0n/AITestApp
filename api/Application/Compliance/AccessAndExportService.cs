@@ -93,7 +93,7 @@ public sealed record DataExportDto(
 /// one of the two wrong.
 ///
 /// <para>Ownership-scoped like every other roster service (P1T-182): an Expert reaches their own
-/// record and a Service Manager reaches any, which is what makes the on-behalf export a matter of
+/// record and an Administrator reaches any, which is what makes the on-behalf export a matter of
 /// who is asking rather than a second code path.</para>
 /// </summary>
 public interface IAccessAndExportService
@@ -106,7 +106,7 @@ public interface IAccessAndExportService
     Task<DataExportDto> ExportAsync(Guid expertId, CancellationToken ct = default);
 
     /// <summary>
-    /// The same copy, taken by a Service Manager for somebody who asked out of band — phoned in,
+    /// The same copy, taken by an Administrator for somebody who asked out of band — phoned in,
     /// since there is no email to ask by. <b>This act writes its own record</b>, because a staff
     /// member extracting a person's complete file should leave a trace. The row is about the staff
     /// member, not about the Expert.
@@ -179,7 +179,7 @@ public class AccessAndExportService(
 
         if (staffUserId is { } exportedBy)
         {
-            // A record about the Service Manager, not about the Expert: one deliberate staff act of
+            // A record about the Administrator, not about the Expert: one deliberate staff act of
             // extracting somebody's complete file, which should leave a trace. This is not the
             // per-row read log that was rejected — nothing here records anybody merely looking.
             db.DataExportRecords.Add(new DataExportRecord
@@ -217,7 +217,7 @@ public class AccessAndExportService(
         entitlement == ExportEntitlement.Right
             ? "You registered yourself, so this copy is yours by right under Art. 20 GDPR "
               + "(data portability)."
-            : "Your record was created by a Service Manager rather than by you, so Art. 20 "
+            : "Your record was created by an Administrator rather than by you, so Art. 20 "
               + "portability does not apply to it. We are giving you the same copy anyway, as a "
               + "courtesy rather than as a right.";
 

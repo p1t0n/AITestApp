@@ -136,7 +136,7 @@ be redundant — there is no row left to carry it.
 
 An open `PendingClaim` cascades away; a pending Art. 22 contest clears with the
 `ScoringJobCandidate` row it was set on. Both were requests *by* somebody who has now withdrawn
-entirely, so the Service Manager's queue simply loses the items. A decided proposal keeps its
+entirely, so the Administrator's queue simply loses the items. A decided proposal keeps its
 decision, hollowed out.
 
 ## 8. How this is kept honest

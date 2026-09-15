@@ -1,5 +1,7 @@
 # Legitimate interest assessment: Experts a Service Manager entered
 
+> *2026-09: the staff actor called Service Manager throughout this document is now called Administrator. Nothing else about this assessment changed.*
+
 > **Status (2026-09-02):** first version, shipped as P1T-192. Covers **one cohort**: roster rows
 > created by a Service Manager rather than by the person themselves — the population whose
 > `ProcessingRecord` pairs origin `StaffCreated` with basis **Art. 6(1)(f)**.

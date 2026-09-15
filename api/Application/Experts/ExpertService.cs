@@ -66,7 +66,7 @@ public class ExpertService : IExpertService
 
     public async Task<IReadOnlyList<ExpertSummaryDto>> ListAsync(bool includeDrafts = false, CancellationToken ct = default)
     {
-        // Scoped too, though the roster endpoint itself is Service Manager only: this is the one
+        // Scoped too, though the roster endpoint itself is Administrator only: this is the one
         // call that would hand over the whole product, so it does not rely on a single [Authorize]
         // somewhere above it being right.
         var (unrestricted, owned) = await _scope.CurrentAsync(ct);
@@ -94,7 +94,7 @@ public class ExpertService : IExpertService
     /// <summary>
     /// Reads back a row this call has just written, ignoring the caller's scope. Only ever called
     /// with an id the same method already resolved *through* the scope, so the check has happened —
-    /// re-applying it here would 404 the one legitimate case where it must not: a Service Manager
+    /// re-applying it here would 404 the one legitimate case where it must not: an Administrator
     /// creating a row, and an Expert saving their own.
     /// </summary>
     private async Task<ExpertDetailDto> ReadBackAsync(Guid id, CancellationToken ct)
@@ -109,7 +109,7 @@ public class ExpertService : IExpertService
         await _validator.ValidateAndThrowAsync(dto, ct);
         var e = new Expert { Id = Guid.NewGuid() };
         Apply(e, dto);
-        RecordCreation(e, "Added to the bench by a Service Manager.");
+        RecordCreation(e, "Added to the bench by an Administrator.");
         _db.Experts.Add(e);
         await SaveGuardingEmailAsync(e.Email, "Use the existing expert, or give this one a different address.", ct);
         return await ReadBackAsync(e.Id, ct);
@@ -120,7 +120,7 @@ public class ExpertService : IExpertService
         await _validator.ValidateAndThrowAsync(dto, ct);
         var e = new Expert { Id = Guid.NewGuid(), Status = ExpertStatus.Draft };
         Apply(e, dto);
-        RecordCreation(e, "Staged from a resume by an ingestion agent, on behalf of a Service Manager.");
+        RecordCreation(e, "Staged from a resume by an ingestion agent, on behalf of an Administrator.");
         _db.Experts.Add(e);
         await _db.SaveChangesAsync(ct);
 
@@ -207,7 +207,7 @@ public class ExpertService : IExpertService
     ///
     /// <para>The origin is <see cref="ProcessingOrigin.StaffCreated"/> on both creation paths
     /// because both of them <em>are</em> staff creating a row — the API's POST is Service-Manager
-    /// only, and an ingestion agent stages drafts for a Service Manager to promote. This is not a
+    /// only, and an ingestion agent stages drafts for an Administrator to promote. This is not a
     /// default standing in for an unknown: registering does not create a roster row at all, so the
     /// self-registered origin is reached by an approved claim appending a record (P1T-184), never by
     /// a create. The basis itself is not chosen here — <see cref="ProcessingRecord.BasisFor"/> and

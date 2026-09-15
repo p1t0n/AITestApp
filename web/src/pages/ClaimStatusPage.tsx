@@ -10,7 +10,7 @@ import RedeemClaimCode from "../components/RedeemClaimCode";
  * <p>They exist here because an empty CV editor would misrepresent what is happening: nothing of
  * theirs is held, and a form full of blank fields reads as "fill this in" rather than "you are
  * waiting on somebody". Two situations reach this page and it deliberately does not distinguish
- * them — a claim waiting on a Service Manager is indistinguishable from no claim at all, by design
+ * them — a claim waiting on an Administrator is indistinguishable from no claim at all, by design
  * (P1T-182), and telling them apart here would undo the property that stops this surface confirming
  * whose records exist.</p>
  */
@@ -41,7 +41,7 @@ export default function ClaimStatusPage() {
           <Typography variant="body1">What that means, and what happens next.</Typography>
 
           <Typography variant="body2" color="text.secondary">
-            If a Service Manager already had a record for you when you signed up, they have to
+            If an Administrator already had a record for you when you signed up, they have to
             confirm it is yours before you can see it. That is deliberate: an email address is not
             proof of anything here, and handing somebody a CV on the strength of a matching address
             is exactly the mistake this step exists to prevent. Nothing is shown to you until a

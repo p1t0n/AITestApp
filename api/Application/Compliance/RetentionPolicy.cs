@@ -61,7 +61,7 @@ public static class RetentionPolicy
     /// clock is the only mitigation actually available, and it <b>drains that gap over time</b>
     /// instead of letting it accumulate.</para>
     ///
-    /// <para>Consequence, stated rather than discovered: a record a Service Manager enters and
+    /// <para>Consequence, stated rather than discovered: a record an Administrator enters and
     /// nobody claims disappears in six months. It was invisible to the scan for that whole period
     /// anyway, so nothing that was working is lost.</para>
     ///
@@ -144,7 +144,7 @@ public static class RetentionPolicy
             + "something with it. Anything you do here — editing your record, pausing, even signing "
             + "in to read this page — starts the two years again.",
         RetentionClock.Unclaimed =>
-            "Because a Service Manager created this record and nobody has claimed it, we keep it "
+            "Because an Administrator created this record and nobody has claimed it, we keep it "
             + "for six months from the day it was entered, and then delete it. We keep it for a "
             + "shorter time precisely because we have no way to reach the person it is about.",
         _ =>

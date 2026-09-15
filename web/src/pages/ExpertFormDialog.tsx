@@ -83,7 +83,7 @@ export default function ExpertFormDialog(
             disabled={emailLocked}
             helperText={
               emailLocked
-                ? "Your email address is set when you register and can only be changed by a Service Manager. It identifies your account and links you to this record."
+                ? "Your email address is set when you register and can only be changed by an Administrator. It identifies your account and links you to this record."
                 : undefined
             }
           />

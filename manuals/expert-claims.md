@@ -28,8 +28,8 @@ the data model and on the screen alike.
 | Rows matched | What happens | `RegistrationBinding` |
 | --- | --- | --- |
 | none | a fresh row, `Active`, owned on the spot, origin `SelfRegistered` | `OwnsNewRow` |
-| exactly one, unowned | a `PendingClaim` for a Service Manager; **nothing is granted** | `ClaimPending` |
-| anything else | **no claim on any row**, a flag raised for a Service Manager | `AmbiguousRaised` |
+| exactly one, unowned | a `PendingClaim` for an Administrator; **nothing is granted** | `ClaimPending` |
+| anything else | **no claim on any row**, a flag raised for an Administrator | `AmbiguousRaised` |
 
 "Anything else" is two shapes with one answer: more than one row matched, or the single match
 already belongs to somebody. Neither may be resolved automatically. Auto-picking between duplicates
@@ -68,7 +68,7 @@ decided-by, decided-at. Rows are **kept after resolution**, never deleted.
 
 A state flag on the `Expert` cannot express "rejected, then claimed again by somebody else", and
 that is exactly the sequence an audit asks about. `ClaimantEmail` is snapshotted rather than read
-through the FK, because a Service Manager may change the account's address afterwards and the
+through the FK, because an Administrator may change the account's address afterwards and the
 approver's screen must show what was actually matched on.
 
 `ExpertId` is **nullable**, and a null target is not a claim on anything — it is the raised flag
@@ -79,7 +79,7 @@ row, both filtered on `State = 'Pending'` so resolved rows can pile up forever.
 
 ## 5. Approval, and what the approver is told
 
-Any Service Manager, on the existing Users page — an account-shaped decision, sharing the page with
+Any Administrator, on the existing Users page — an account-shaped decision, sharing the page with
 the Art. 22 contest queue (P1T-189).
 
 The screen states, above the table, that **a matching email address proves nothing**
@@ -95,7 +95,7 @@ it lasts.
 
 ## 6. Claim codes: the only real proof available
 
-A Service Manager generates a single-use code from the expert's page and hands it over out of band —
+An Administrator generates a single-use code from the expert's page and hands it over out of band —
 in person, by phone, whatever channel they already use. **Never by email**, which is the thing this
 mechanism replaces. Redeeming binds ownership with **no approval step, because the code is the
 proof**.
@@ -105,7 +105,7 @@ proof**.
   bearer secret readable out of the database would be a second way to take over a CV. A password
   hash would be theatre here: there is nothing to guess in 160 random bits.
 - Case and the grouping dashes are normalised away. Refusing a correct code because it was typed in
-  lower case sends somebody back to the Service Manager for nothing.
+  lower case sends somebody back to the Administrator for nothing.
 - Single-use is a `RedeemedAt` stamp, not a delete, so a replay is a fact somebody can see. A replay
   and a code that never existed are refused with **the same words** — a redemption endpoint must not
   confirm which guesses were once real.
@@ -152,7 +152,7 @@ to claim their rows, which is a better forcing function than a policy nobody rea
 
 ## 10. Two things this slice does not do
 
-- **Reaching the person.** Art. 14 says a Service Manager who enters a real person must inform them
+- **Reaching the person.** Art. 14 says an Administrator who enters a real person must inform them
   within a month. We cannot. A claim code closes it for one person at a time, in person, and nothing
   closes it in general. Recorded in `manuals/gdpr-processing-basis.md` §7 as well, because it is the
   same gap seen from two directions.
