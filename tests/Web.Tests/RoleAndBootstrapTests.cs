@@ -1,3 +1,4 @@
+using ExpertToJob.Application.Users;
 using ExpertToJob.Domain.Entities;
 using ExpertToJob.Domain.Enums;
 using ExpertToJob.Infrastructure.Persistence;
@@ -85,8 +86,9 @@ public class RoleAndBootstrapTests(WebApiFactory factory)
         var email = ApiClientExtensions.UniqueEmail("first-staff");
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var users = scope.ServiceProvider.GetRequiredService<IUserService>();
 
-        var outcome = await AdministratorBootstrapper.EnsureAsync(db, email, TimeProvider.System);
+        var outcome = await AdministratorBootstrapper.EnsureAsync(db, users, email, TimeProvider.System);
 
         outcome.Should().Be(BootstrapOutcome.Invited);
         var invited = await db.Users.AsNoTracking().SingleAsync(u => u.Email == email);
@@ -100,8 +102,9 @@ public class RoleAndBootstrapTests(WebApiFactory factory)
         var expert = factory.CreateAccount(UserRole.User);
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var users = scope.ServiceProvider.GetRequiredService<IUserService>();
 
-        var outcome = await AdministratorBootstrapper.EnsureAsync(db, expert.Email, TimeProvider.System);
+        var outcome = await AdministratorBootstrapper.EnsureAsync(db, users, expert.Email, TimeProvider.System);
 
         outcome.Should().Be(BootstrapOutcome.Promoted);
         var promoted = await db.Users.AsNoTracking().SingleAsync(u => u.Id == expert.Id);
@@ -122,11 +125,12 @@ public class RoleAndBootstrapTests(WebApiFactory factory)
         var email = ApiClientExtensions.UniqueEmail("repeat-staff");
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var users = scope.ServiceProvider.GetRequiredService<IUserService>();
 
-        await AdministratorBootstrapper.EnsureAsync(db, email, TimeProvider.System);
+        await AdministratorBootstrapper.EnsureAsync(db, users, email, TimeProvider.System);
         var afterFirst = await db.Users.AsNoTracking().SingleAsync(u => u.Email == email);
 
-        var second = await AdministratorBootstrapper.EnsureAsync(db, email, TimeProvider.System);
+        var second = await AdministratorBootstrapper.EnsureAsync(db, users, email, TimeProvider.System);
 
         second.Should().Be(BootstrapOutcome.AlreadyAdministrator);
         var rows = await db.Users.AsNoTracking().Where(u => u.Email == email).ToListAsync();
@@ -151,7 +155,8 @@ public class RoleAndBootstrapTests(WebApiFactory factory)
         var email = ApiClientExtensions.UniqueEmail("adopt");
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        await AdministratorBootstrapper.EnsureAsync(db, email, TimeProvider.System);
+        var users = scope.ServiceProvider.GetRequiredService<IUserService>();
+        await AdministratorBootstrapper.EnsureAsync(db, users, email, TimeProvider.System);
         var invite = await db.Users.AsNoTracking().SingleAsync(u => u.Email == email);
 
         // What AuthController.SignupComplete does when it finds an invite for the address.
@@ -217,8 +222,9 @@ public class RoleAndBootstrapTests(WebApiFactory factory)
     {
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var users = scope.ServiceProvider.GetRequiredService<IUserService>();
 
-        var outcome = await AdministratorBootstrapper.EnsureAsync(db, "   ", TimeProvider.System);
+        var outcome = await AdministratorBootstrapper.EnsureAsync(db, users, "   ", TimeProvider.System);
 
         outcome.Should().Be(BootstrapOutcome.NotConfigured);
     }
