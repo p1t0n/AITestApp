@@ -13,6 +13,12 @@ const EMAIL_KEY = "em.session.email";
 // the server returns it from every ceremony, the router needs it on the very first render, and
 // decoding the JWT in the browser to find it would be a second source of truth. Presentation only.
 const ROLE_KEY = "em.session.role";
+// Which account the session belongs to — the token's own `sub` claim, which the server returns
+// beside the token from every ceremony. Stored rather than decoded out of the JWT for the reason
+// the two keys above exist: a second reader of the token would be a second source of truth, and
+// this one is presentation only. The users dictionary needs it to tell a row from *this* row
+// (P1T-239) — an email would work today and stop working the moment an address is editable.
+const USER_ID_KEY = "em.session.userId";
 
 const listeners = new Set<() => void>();
 
@@ -39,12 +45,27 @@ export function getRole(): SessionRole | null {
   return isSessionRole(stored) ? stored : null;
 }
 
-export function setSession(token: string, email?: string | null, role?: SessionRole | null): void {
+/**
+ * The id of the signed-in account (the token's `sub`), or `null` — including for a session stored
+ * before P1T-239. Callers render the absence rather than assuming no row is theirs.
+ */
+export function getUserId(): string | null {
+  return localStorage.getItem(USER_ID_KEY);
+}
+
+export function setSession(
+  token: string,
+  email?: string | null,
+  role?: SessionRole | null,
+  userId?: string | null,
+): void {
   localStorage.setItem(TOKEN_KEY, token);
   if (email) localStorage.setItem(EMAIL_KEY, email);
   else localStorage.removeItem(EMAIL_KEY);
   if (role) localStorage.setItem(ROLE_KEY, role);
   else localStorage.removeItem(ROLE_KEY);
+  if (userId) localStorage.setItem(USER_ID_KEY, userId);
+  else localStorage.removeItem(USER_ID_KEY);
   notify();
 }
 
@@ -52,6 +73,7 @@ export function clearSession(): void {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(EMAIL_KEY);
   localStorage.removeItem(ROLE_KEY);
+  localStorage.removeItem(USER_ID_KEY);
   notify();
 }
 
@@ -60,7 +82,9 @@ export function subscribe(listener: () => void): () => void {
   listeners.add(listener);
   // Cross-tab: another tab signing in/out writes the same keys.
   const onStorage = (e: StorageEvent) => {
-    if (e.key === TOKEN_KEY || e.key === EMAIL_KEY || e.key === ROLE_KEY) listener();
+    if (e.key === TOKEN_KEY || e.key === EMAIL_KEY || e.key === ROLE_KEY || e.key === USER_ID_KEY) {
+      listener();
+    }
   };
   window.addEventListener("storage", onStorage);
   return () => {

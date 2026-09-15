@@ -53,7 +53,7 @@ export function useSignup() {
           attestation,
         })
       ).data;
-      setSession(session.token, session.email, session.role);
+      setSession(session.token, session.email, session.role, session.userId);
       return session;
     },
   });
@@ -79,7 +79,7 @@ export function useSignin() {
           assertion,
         })
       ).data;
-      setSession(session.token, session.email, session.role);
+      setSession(session.token, session.email, session.role, session.userId);
       return session;
     },
   });
@@ -100,7 +100,7 @@ export function useRecover() {
           attestation,
         })
       ).data;
-      setSession(session.token, session.email, session.role);
+      setSession(session.token, session.email, session.role, session.userId);
       return session;
     },
   });

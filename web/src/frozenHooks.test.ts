@@ -95,7 +95,17 @@ const FROZEN_TEMPLATES = [
  * control-word field — objecting and deleting are the same act reached two ways — so a page-wide
  * query cannot tell them apart, and the hook is what lets a test scope to one right.
  */
-const ADDED_SINCE_THE_CHAIN = ["row-*"] as const;
+const TEMPLATES_ADDED_SINCE_THE_CHAIN = ["row-*"] as const;
+
+/**
+ * The same, for literals.
+ *
+ * Both belong to the role selector in the users dictionary (P1T-239). `users-role-select` repeats
+ * once per row on purpose — the suite scopes it to a row before querying, and a per-id hook would
+ * make a test name a fixture's guid. `users-role-confirm` is the demotion question, which is the
+ * only thing standing between a click and somebody else's session ending.
+ */
+const LITERALS_ADDED_SINCE_THE_CHAIN = ["users-role-confirm", "users-role-select"] as const;
 
 // Off the working directory rather than off `import.meta.url`: the jsdom environment rewrites
 // `import.meta.url` to an `http://localhost/…` URL, so `fileURLToPath` throws on it. Vitest runs
@@ -148,7 +158,8 @@ describe("frozen DOM hooks (P1T-158 §9)", () => {
   });
 
   it("still emits the hooks added since", () => {
-    expect(missing(ADDED_SINCE_THE_CHAIN, emittedHooks().templates)).toEqual([]);
+    expect(missing(TEMPLATES_ADDED_SINCE_THE_CHAIN, emittedHooks().templates)).toEqual([]);
+    expect(missing(LITERALS_ADDED_SINCE_THE_CHAIN, emittedHooks().literals)).toEqual([]);
   });
 
   // The other direction, and the reason this is an inventory rather than three presence checks: a
@@ -157,8 +168,9 @@ describe("frozen DOM hooks (P1T-158 §9)", () => {
   // which is exactly the deliberate edit §9 is asking for.
   it("names every hook the app emits", () => {
     const { literals, templates } = emittedHooks();
-    expect([...literals].sort()).toEqual([...FROZEN_LITERALS, ...ADDED_BY_THE_CHAIN].sort());
+    expect([...literals].sort()).toEqual(
+      [...FROZEN_LITERALS, ...ADDED_BY_THE_CHAIN, ...LITERALS_ADDED_SINCE_THE_CHAIN].sort());
     expect([...templates].sort()).toEqual(
-      [...FROZEN_TEMPLATES, ...ADDED_SINCE_THE_CHAIN].sort());
+      [...FROZEN_TEMPLATES, ...TEMPLATES_ADDED_SINCE_THE_CHAIN].sort());
   });
 });
