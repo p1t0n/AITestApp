@@ -1,18 +1,27 @@
 You are one iteration of a Ralph loop on the ExpertToJob repo (formerly CvManager).
 
-The backlog is **Linear**, not a file. Team `P1t0ns nest`, project `AI Test Manager`.
-Reach it through the `linear-server` MCP tools. There is no PRD.md and no progress.txt —
-Linear issue state *is* the progress file.
+The backlog is **Linear**, not a file. Workspace `experttojob`, team `ExpertToJob`, issue keys
+`EXP-*`. **There are no projects** — the team is the whole backlog. Reach it through the
+`linear-server` MCP tools. There is no PRD.md and no progress.txt — Linear issue state *is* the
+progress file.
+
+`P1T-*` numbers appear all over this repo's commits, comments and manuals. They are **history, not
+addresses**: the workspace behind them is gone and no lookup resolves them. Never try to fetch one,
+and never let one block you — read it as a pointer to the commit or manual that explains it.
 
 ## Do exactly one ticket, then stop
 
-1. **Pick the ticket.** List issues in project `AI Test Manager` with label `ready-for-agent`
-   and state `Todo`. Discard any whose `blockedBy` issues are not yet `Done` — blocking is
+1. **Pick the ticket.** List issues on team `ExpertToJob` with label `ready-for-agent`
+   and state `Todo`. A `wayfinder:*` label means the issue is a planning ticket a human resolves —
+   it never carries `ready-for-agent`, and it is not yours.
+   Discard any whose `blockedBy` issues are not yet `Done` — blocking is
    native and load-bearing here, never ignore it. Of what remains take the highest priority
    (1=Urgent first), breaking ties by lowest issue number. If nothing is takeable, skip to
    "Nothing to do" below.
-2. **Claim it.** Set the issue to `In Progress` and assign it to Roman Yurkin before any work,
-   so a concurrent iteration cannot pick it up too.
+2. **Claim it.** Set the issue to `In Progress` and assign it to `me` (the `assignee` field takes
+   that literally, and it is the only spelling that survives a workspace move — this one has a
+   single human member and no display name to hard-code) before any work, so a concurrent
+   iteration cannot pick it up too.
 3. **Branch.** Use the issue's own `gitBranchName` from Linear verbatim — it carries the issue
    key, which is what makes Linear auto-link the PR.
 4. **Build it TDD.** Red, green, refactor. The ticket's acceptance criteria are the spec; do not
