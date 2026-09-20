@@ -1,4 +1,5 @@
 using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.Configuration;
 using ExpertToJob.Application.Abstractions;
 using ExpertToJob.Domain.Entities;
 
@@ -17,7 +18,7 @@ public interface IUsageMeter
 /// </summary>
 public sealed class UsageMeter(
     IAppDbContext db,
-    IConfiguration config,
+    ChatProvider provider,
     TimeProvider clock,
     ILogger<UsageMeter> logger) : IUsageMeter
 {
@@ -25,13 +26,12 @@ public sealed class UsageMeter(
     {
         try
         {
-            // Prefer the model id the response actually reported (captured at the chat seam,
-            // P1T-95); the config lookup is only the fallback for replies that never reached a
-            // model (and mislabels whenever config and reality drift).
-            var model = reply.ModelId
-                ?? config[$"Ai:Gemini:Agents:{agentName}"]
-                ?? config["Ai:Gemini:Model"]
-                ?? string.Empty;
+            // The model id the response actually reported (captured at the chat seam, P1T-95),
+            // and nothing else. There used to be a config fallback here for replies that never
+            // reached a model; it mislabelled whenever config and reality drifted, so EXP-19
+            // deleted it rather than carrying it into new key names. Empty means "no model
+            // answered" — the same fact Iterations = null already records on this row.
+            var model = reply.ModelId ?? string.Empty;
 
             db.AgentUsages.Add(new AgentUsage
             {
@@ -39,6 +39,9 @@ public sealed class UsageMeter(
                 UserId = userId,
                 AgentName = agentName,
                 Model = model,
+                // Which backend served it (EXP-19). Configuration, not a measurement: known even
+                // when no model answered.
+                Provider = provider.ToString(),
                 InputTokens = reply.InputTokens,
                 OutputTokens = reply.OutputTokens,
                 TotalTokens = reply.TotalTokens,

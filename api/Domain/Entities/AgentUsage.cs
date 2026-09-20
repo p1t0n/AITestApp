@@ -14,8 +14,17 @@ public class AgentUsage
     /// <summary>Agent that served the call, e.g. "roster-qa".</summary>
     public string AgentName { get; set; } = string.Empty;
 
-    /// <summary>Model that produced the response, e.g. "gemini-flash-lite-latest".</summary>
+    /// <summary>Model that produced the response, e.g. "gemini-flash-lite-latest". Empty when the
+    /// reply never reached a model — a measurement, never a label read back from configuration.</summary>
     public string Model { get; set; } = string.Empty;
+
+    /// <summary>Chat backend that served the run, the <c>Ai:Chat:Provider</c> enum member's own name
+    /// (e.g. "Gemini", "AzureFoundry"). Null on rows written before providers existed (EXP-19).
+    /// <para>Recorded rather than derived: model ids already differ per provider, but they drift
+    /// across aliases and version suffixes, so parsing one to recover the provider fails exactly
+    /// when cost attribution starts to matter (ADR §2 decision 11). Write-only diagnostic data —
+    /// nothing reads it, deliberately.</para></summary>
+    public string? Provider { get; set; }
 
     public long InputTokens { get; set; }
     public long OutputTokens { get; set; }

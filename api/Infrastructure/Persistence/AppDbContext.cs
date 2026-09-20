@@ -257,6 +257,9 @@ public class AppDbContext : DbContext, IAppDbContext
         {
             e.Property(x => x.AgentName).HasMaxLength(100).IsRequired();
             e.Property(x => x.Model).HasMaxLength(200);
+            // A ChatProvider member name, stored as a string (ADR §2 decision 11) — no enum
+            // property reaches the model, so the enums-persist-by-name loop never sees it.
+            e.Property(x => x.Provider).HasMaxLength(50);
             // Long enough for a pathological loop's full sequence (the worst run behind P1T-144
             // called 9 tools); truncating it would defeat the point of recording it.
             e.Property(x => x.ToolSequence).HasMaxLength(2000);

@@ -1,9 +1,9 @@
 using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.Configuration;
 using ExpertToJob.Agents.Usage;
 using ExpertToJob.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -16,23 +16,18 @@ public class UsageMeterTests
             .UseInMemoryDatabase($"usage-{Guid.NewGuid()}")
             .Options);
 
-    private static IConfiguration Config(params (string Key, string Value)[] values) =>
-        new ConfigurationBuilder()
-            .AddInMemoryCollection(values.ToDictionary(v => v.Key, v => (string?)v.Value))
-            .Build();
+    private static UsageMeter Meter(AppDbContext db, ChatProvider provider = ChatProvider.Gemini) =>
+        new(db, provider, TimeProvider.System, NullLogger<UsageMeter>.Instance);
 
     [Fact]
-    public async Task RecordAsync_persists_a_row_with_tokens_and_resolved_model()
+    public async Task RecordAsync_persists_a_row_with_tokens_and_the_replys_model()
     {
         await using var db = NewDb();
-        var meter = new UsageMeter(
-            db,
-            Config(("Ai:Gemini:Model", "gemini-flash-lite-latest")),
-            TimeProvider.System,
-            NullLogger<UsageMeter>.Instance);
         var userId = Guid.NewGuid();
 
-        await meter.RecordAsync(userId, "match", new AgentReply("answer", 100, 40, 140));
+        await Meter(db).RecordAsync(
+            userId, "match",
+            new AgentReply("answer", 100, 40, 140, ModelId: "gemini-flash-lite-latest"));
 
         var row = await db.AgentUsages.SingleAsync();
         row.UserId.Should().Be(userId);
@@ -43,19 +38,68 @@ public class UsageMeterTests
         row.TotalTokens.Should().Be(140);
     }
 
-    [Fact]
-    public async Task RecordAsync_prefers_the_replys_real_model_id_over_config_and_stores_enrichment()
+    /// <summary>
+    /// Which backend served the run, on the row itself (EXP-19, ADR §2 decision 11). Recorded as
+    /// the enum's own name — an enum at the config edge, a string in the database — so cost
+    /// attribution never has to be inferred by parsing a model id, which drifts across aliases and
+    /// version suffixes exactly when the attribution starts to matter.
+    /// </summary>
+    [Theory]
+    [InlineData(ChatProvider.Gemini, "Gemini")]
+    [InlineData(ChatProvider.AzureFoundry, "AzureFoundry")]
+    public async Task Records_the_active_provider(ChatProvider provider, string expected)
     {
         await using var db = NewDb();
-        var meter = new UsageMeter(
-            db,
-            Config(("Ai:Gemini:Model", "configured-model")),
-            TimeProvider.System,
-            NullLogger<UsageMeter>.Instance);
+
+        await Meter(db, provider).RecordAsync(
+            Guid.NewGuid(), "roster-qa", new AgentReply("a", 1, 1, 2, ModelId: "some-model"));
+
+        (await db.AgentUsages.SingleAsync()).Provider.Should().Be(expected);
+    }
+
+    /// <summary>
+    /// Pins the deletion of the config fallback. The meter used to fall back to
+    /// <c>Ai:Gemini:Agents:&lt;agent&gt;</c> and <c>Ai:Gemini:Model</c> when a reply carried no model
+    /// id, which — in its own comment's words — "mislabels whenever config and reality drift".
+    /// A configuration-shaped dependency is exactly how that fallback would creep back, so the
+    /// constructor is asserted not to take one.
+    /// </summary>
+    [Fact]
+    public void Records_the_response_model_not_a_config_lookup()
+    {
+        typeof(UsageMeter).GetConstructors().Single()
+            .GetParameters().Select(p => p.ParameterType)
+            .Should().NotContain(typeof(Microsoft.Extensions.Configuration.IConfiguration),
+                "a model id read from configuration is a label, not a measurement");
+    }
+
+    /// <summary>
+    /// A reply that never reached a model records an empty model rather than a plausible-looking
+    /// one. <c>Iterations = null</c> already encodes the same fact on the same row.
+    /// </summary>
+    [Fact]
+    public async Task Records_an_empty_model_when_the_reply_never_reached_one()
+    {
+        await using var db = NewDb();
+
+        await Meter(db).RecordAsync(Guid.NewGuid(), "match", new AgentReply("answer", 1, 1, 2));
+
+        var row = await db.AgentUsages.SingleAsync();
+        row.Model.Should().BeEmpty();
+        row.Iterations.Should().BeNull();
+        // The provider is known even when the model is not: it is configuration, not a measurement
+        // of the call.
+        row.Provider.Should().Be("Gemini");
+    }
+
+    [Fact]
+    public async Task RecordAsync_stores_enrichment_alongside_the_real_model_id()
+    {
+        await using var db = NewDb();
         using var activity = new System.Diagnostics.Activity("test-request");
         activity.Start();
 
-        await meter.RecordAsync(
+        await Meter(db).RecordAsync(
             Guid.NewGuid(), "staffing",
             new AgentReply(
                 "answer", 10, 5, 15,
@@ -64,7 +108,7 @@ public class UsageMeterTests
             step: "match");
 
         var row = await db.AgentUsages.SingleAsync();
-        row.Model.Should().Be("gemini-2.5-flash-lite", "the response's real id beats the config label");
+        row.Model.Should().Be("gemini-2.5-flash-lite");
         row.LatencyMs.Should().Be(1234);
         row.Step.Should().Be("match");
         row.TraceId.Should().Be(activity.TraceId.ToString());
@@ -77,10 +121,8 @@ public class UsageMeterTests
     public async Task RecordAsync_leaves_enrichment_null_when_nothing_was_captured()
     {
         await using var db = NewDb();
-        var meter = new UsageMeter(
-            db, Config(("Ai:Gemini:Model", "m")), TimeProvider.System, NullLogger<UsageMeter>.Instance);
 
-        await meter.RecordAsync(Guid.NewGuid(), "roster-qa", new AgentReply("a", 1, 1, 2));
+        await Meter(db).RecordAsync(Guid.NewGuid(), "roster-qa", new AgentReply("a", 1, 1, 2));
 
         var row = await db.AgentUsages.SingleAsync();
         row.LatencyMs.Should().BeNull();
@@ -88,21 +130,5 @@ public class UsageMeterTests
         // Zero iterations means the metering seam saw nothing, not "one cheap call".
         row.Iterations.Should().BeNull();
         row.ToolSequence.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task RecordAsync_prefers_the_per_agent_model_override()
-    {
-        await using var db = NewDb();
-        var meter = new UsageMeter(
-            db,
-            Config(("Ai:Gemini:Model", "gemini-flash-lite-latest"),
-                   ("Ai:Gemini:Agents:match", "gemini-pro-latest")),
-            TimeProvider.System,
-            NullLogger<UsageMeter>.Instance);
-
-        await meter.RecordAsync(Guid.NewGuid(), "match", new AgentReply("answer", 1, 1, 2));
-
-        (await db.AgentUsages.SingleAsync()).Model.Should().Be("gemini-pro-latest");
     }
 }
