@@ -68,7 +68,7 @@ See [SPEC.md](SPEC.md).
 
 - **Backend:** ASP.NET Core Web API (.NET 10), layered Domain / Application / Infrastructure / Web
 - **MCP server:** ModelContextProtocol (Streamable HTTP), thin adapters over the Application layer, OAuth 2.1 (Keycloak) with per-tool scopes
-- **AI agents:** Microsoft Agent Framework over provider-agnostic `IChatClient` (Gemini free tier by default); embeddings via `gemini-embedding-001` (1536 dims)
+- **AI agents:** Microsoft Agent Framework over provider-agnostic `IChatClient`, behind a chat-provider seam that configuration selects — the Gemini free tier (default) or an Azure OpenAI deployment; embeddings always Gemini (`gemini-embedding-001`, 1536 dims), whichever provider chat uses
 - **Local orchestration:** .NET Aspire AppHost (`api/AppHost`) — one command starts every container and process (see `manuals/adr-aspire-apphost.md`)
 - **Observability:** OpenTelemetry tracing + metrics from both services (MAF workflow/executor spans, gen_ai chat spans, MCP RPCs, SQL) into the Aspire dashboard the AppHost serves (it prints the URL on startup)
 - **Vector search:** PostgreSQL + pgvector (cosine), EF Core mapping via Pgvector.EntityFrameworkCore
@@ -140,17 +140,38 @@ key from https://aistudio.google.com/apikey:
 dotnet user-secrets set Parameters:gemini-api-key <your-key> --project api/AppHost
 ```
 
-The chat backend is named by configuration: `Ai:Chat:Provider` picks the provider, and its own
-block holds the rest — `Ai:Gemini:{Endpoint, Model, ApiKey, EmbeddingModel, Dimensions,
-QuotaBreakerSeconds, Agents:<agent>}`. Embeddings share that block because they share the endpoint
-and the key. `GEMINI_API_KEY` is unchanged and still wins over `Ai:Gemini:ApiKey`. A stale
-top-level `Gemini` section now fails the Agents host at startup instead of binding to nothing —
-see `manuals/adr-chat-provider-seam.md`.
+The chat backend is named by configuration: `Ai:Chat:Provider` is `Gemini` or `AzureFoundry`, and
+that provider's own block holds the rest —
+
+```
+Ai:Gemini:{Endpoint, Model, ApiKey, EmbeddingModel, Dimensions, QuotaBreakerSeconds, Agents:<agent>}
+Ai:AzureFoundry:{Endpoint, Model, ApiKey, Agents:<agent>}
+```
+
+Embeddings bind `Ai:Gemini` whatever chat does, because they share that endpoint and key — which is
+also why `Ai:Gemini` keeps the embedding keys. `GEMINI_API_KEY` is unchanged and still wins over
+`Ai:Gemini:ApiKey`; `AZURE_FOUNDRY_API_KEY` is its opposite number.
+
+To run the agents on Azure instead, point them at a deployment — **`Ai:AzureFoundry:Model` holds
+the deployment name, not a model id**, and the endpoint ends in `openai/v1/`:
+
+```bash
+export AZURE_FOUNDRY_API_KEY=<key>
+dotnet run --project api/AppHost   # with Ai:Chat:Provider=AzureFoundry
+```
+
+Two startup rules, deliberately different: an **unknown** `Ai:Chat:Provider` value throws in every
+environment (a typo is wrong everywhere), while a **missing credential** throws only in Production,
+and only for the provider actually selected — an Azure-configured host is never stopped for a
+Gemini chat key it will not use. A stale top-level `Gemini` section fails the Agents host at
+startup rather than binding to nothing. Reasoning, and what the live probe measured before any of
+this was written: `manuals/adr-chat-provider-seam.md`.
 
 Nothing else is required on a fresh clone. Every other dev secret (the session JWT signing key,
 the dev Keycloak client secrets) ships committed and pairs with the committed dev realm;
 Production refuses to boot on any placeholder and takes real values from the environment
-(`Auth__Jwt__SigningKey`, `McpAuth__<agent>__ClientSecret`, `GEMINI_API_KEY`).
+(`Auth__Jwt__SigningKey`, `McpAuth__<agent>__ClientSecret`, and the active chat provider's key —
+`GEMINI_API_KEY` or `AZURE_FOUNDRY_API_KEY`).
 
 Reasoning for all of the above — including why every port is pinned rather than discovered, and
 the tripwires that will silently do the wrong thing if you change it — is in
@@ -252,9 +273,16 @@ curl -N http://localhost:5200/agents/staffing \
 ```
 
 The AppHost starts the MCP server and Keycloak before this host, which needs both. Model, auth
-and MCP URL are configurable in `api/Agents/appsettings.json`; the chat backend is provider-agnostic (`IChatClient`) and swaps
-to Azure OpenAI / OpenAI / Anthropic / Ollama in one line. Every agent call is metered against
-per-user token caps (defaults 50k/150k/500k daily/weekly/monthly).
+and MCP URL are configurable in `api/Agents/appsettings.json`; the chat backend is chosen by
+`Ai:Chat:Provider`, with **Gemini and Azure OpenAI both wired and tested** — one construction
+branch each, and everything after the seam provider-neutral, so a third provider is a branch
+rather than a rewrite. Every agent call is metered against per-user token caps (defaults
+50k/150k/500k daily/weekly/monthly), and each usage row records which provider served it.
+
+A content filter on either provider surfaces as one typed failure, so orchestration degrades a
+filtered stage without knowing whose filter it was. The Art. 15 recipient disclosure on the
+expert's privacy page names the **configured** provider — under Azure it names two recipients,
+Google for embeddings and Microsoft for chat, because embeddings never move.
 
 #### The demo roster (optional)
 
@@ -323,9 +351,13 @@ API, and the SPA on their own ports, so a dev stack and the dev database are unt
 sign-up and sign-in run as real WebAuthn ceremonies against a CDP virtual authenticator. See
 `manuals/playwright-e2e.md`.
 
-Live tests (real embeddings / models) are opt-in: `dotnet test --filter "Category=live"` with
-`GEMINI_API_KEY` set. The retrieval regression gate lives there too, as does the tool-selection
-gate (`--filter "Category=eval"`, ~3 min, 39 model calls).
+Live tests (real embeddings / models) are opt-in: `dotnet test --filter "Category=live"`. Each one
+skips on its own missing key rather than failing, so what runs depends on what is exported —
+`GEMINI_API_KEY` for the incumbent path, `AZURE_FOUNDRY_API_KEY` for the Azure dialect probe
+(`tests/Agents.Tests/AzureFoundryDialectProbeTests.cs`, which proves tool calling, a replayed
+tool-call history and strict JSON schema against a real deployment for well under a cent). The
+retrieval regression gate lives there too, as does the tool-selection gate
+(`--filter "Category=eval"`, ~3 min, 39 model calls, Gemini only).
 
 ## Database migrations
 
