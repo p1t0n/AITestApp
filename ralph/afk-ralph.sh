@@ -22,6 +22,11 @@
 #   - sbx installed, Docker running
 #   - the Linear MCP server authorized INSIDE the sandbox:  sbx mcp auth linear-server
 #     (an expired credential is the usual cause of a loop that burns iterations doing nothing)
+#     The backlog moved to the `experttojob` workspace on 2026-09-20, under a different Linear
+#     account. A sandbox credential minted before that still authorizes the OLD workspace, where
+#     the loop finds an empty queue and reports COMPLETE having done nothing — which looks like a
+#     drained backlog, not a broken credential. Re-auth after the move, and check that the agent's
+#     first tool call sees team `ExpertToJob`.
 #   - a stored GitHub secret the sandbox can use:  sbx secret ls
 #     A freshly created sandbox with no github secret gets "Bad credentials" from every gh call,
 #     so it can do the work and then fail to open the PR. Scope it globally rather than to one
