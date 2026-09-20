@@ -7,6 +7,7 @@ using ExpertToJob.Domain.Entities;
 using ExpertToJob.Domain.Enums;
 using ExpertToJob.Infrastructure.Persistence;
 using FluentAssertions;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -46,17 +47,58 @@ public class TransparencyTests(WebApiFactory factory)
     /// <summary>
     /// The one item here that is new information rather than a restatement: until this slice the
     /// service named its model provider to nobody, while sending every CV to it.
+    ///
+    /// <para>Parameterised over the seam's own values (EXP-21), because the name a data subject
+    /// reads is the one thing in this repo's compliance text that can be a false statement. Both
+    /// deployments must name their model provider, and both must keep the "outside this company"
+    /// floor that makes the sentence a transfer disclosure rather than a vendor mention.</para>
     /// </summary>
-    [Fact]
-    public async Task The_access_view_names_the_model_provider()
+    [Theory]
+    [InlineData("Gemini", "Google")]
+    [InlineData("AzureFoundry", "Microsoft")]
+    public async Task The_access_view_names_the_model_provider(string provider, string expected)
     {
         var world = await GivenAScoredPersonAsync();
 
-        var view = await (await world.Client.GetAsync("/api/me/access")).ReadOkAsync<AccessViewDto>();
+        var view = await AccessViewUnderAsync(world, provider);
 
-        view.Recipients.Should().Contain(r => r.Recipient.Contains("Google"));
-        view.Recipients.Single(r => r.Recipient.Contains("Google")).Why
-            .Should().Contain("outside this company");
+        var modelProvider = view.Recipients.Single(r => r.Recipient.Contains("AI model provider"));
+        modelProvider.Recipient.Should().Contain(expected);
+        modelProvider.Why.Should().Contain("outside this company");
+    }
+
+    /// <summary>
+    /// Embeddings stay on Google whatever chat does (<c>manuals/adr-chat-provider-seam.md</c>), so
+    /// the Azure deployment has genuinely two recipients rather than a renamed one. Collapsing them
+    /// into a single entry would understate the transfer to whichever provider went unnamed.
+    /// </summary>
+    [Fact]
+    public async Task The_access_view_names_the_embeddings_provider_separately_under_azure()
+    {
+        var world = await GivenAScoredPersonAsync();
+
+        var view = await AccessViewUnderAsync(world, "AzureFoundry");
+
+        var embeddings = view.Recipients.Single(r => r.Recipient.Contains("embeddings provider"));
+        embeddings.Recipient.Should().Contain("Google");
+        embeddings.Why.Should().Contain("outside this company");
+
+        view.Recipients.Single(r => r.Recipient.Contains("AI model provider"))
+            .Recipient.Should().Contain("Microsoft");
+    }
+
+    /// <summary>
+    /// The access view this person is served by a host configured for the named chat provider. A
+    /// derived host rather than a second fixture: it inherits the factory's connection string, so
+    /// it is the same database, the same row and the same session — only the seam's value differs.
+    /// </summary>
+    private async Task<AccessViewDto> AccessViewUnderAsync(World world, string provider)
+    {
+        using var host = factory.WithWebHostBuilder(b => b.UseSetting("Ai:Chat:Provider", provider));
+        using var client = host.CreateClient();
+        client.DefaultRequestHeaders.Authorization = world.Client.DefaultRequestHeaders.Authorization;
+
+        return await (await client.GetAsync("/api/me/access")).ReadOkAsync<AccessViewDto>();
     }
 
     /// <summary>
