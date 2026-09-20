@@ -79,9 +79,17 @@ public static class ChatProviderServiceCollectionExtensions
         // Every client is wrapped with OpenTelemetryChatClient (gen_ai spans + token/duration
         // metrics, P1T-94) plus the MeteringChatClient (real model id + latency into the ambient
         // per-run scope, P1T-95). Both no-op when nothing listens; sensitive capture stays off.
+        //
+        // Innermost is the ContentFilterChatClient (EXP-19's sibling decision, ADR §2 decision 8):
+        // it reads the provider's refusal off the wire shape, so it sits closest to the wire — and
+        // strictly INSIDE metering, so a filtered call still lands in the run's ledger. The
+        // provider comes from the container rather than the closure because the seam already
+        // registered it there for the usage row; a second capture would be a second thing to keep
+        // in agreement.
         static IChatClient Instrument(IServiceProvider sp, IChatClient inner) =>
             new Usage.MeteringChatClient(
-                inner.AsBuilder()
+                new ContentFilterChatClient(inner, sp.GetRequiredService<ChatProvider>())
+                    .AsBuilder()
                     .UseOpenTelemetry(sp.GetService<ILoggerFactory>())
                     .Build());
 
