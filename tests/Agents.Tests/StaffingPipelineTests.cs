@@ -1,5 +1,6 @@
 using System.Net;
 using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.Configuration;
 using ExpertToJob.Agents.Staffing;
 using ExpertToJob.Agents.Tests.Fakes;
 using ExpertToJob.Agents.Usage;
@@ -498,6 +499,58 @@ public class StaffingPipelineTests
         report.Recommendation.Should().BeNull();
         report.Degraded.Should().BeTrue();
         report.Notes.Should().Contain(n => n.Contains("narrative", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// A content-filtered narrative degrades like any other narrative failure — the whole point of
+    /// normalizing the two provider shapes into one typed failure below this layer (EXP-20, ADR §2
+    /// decision 8). The pipeline catches <see cref="ChatContentFilteredException"/> without knowing
+    /// who raised it, and the report still ships on templated rationales.
+    ///
+    /// <para>The real <see cref="ContentFilterChatClient"/> is in the stack rather than a
+    /// hand-thrown exception, so this test fails if the normalization stops recognising the shape —
+    /// which is the half of the contract a stub would quietly assume.</para>
+    ///
+    /// <para>And the row is still written: the provider generated an answer and withheld it, so
+    /// those input tokens were spent. Dropping them would silently under-report the cost of exactly
+    /// the runs a person is most likely to come asking about.</para>
+    /// </summary>
+    [Fact]
+    public async Task A_content_filtered_narrative_degrades_and_still_meters_the_tokens_it_spent()
+    {
+        var withheld = new FakeChatClient(() => new ChatResponse(new ChatMessage(ChatRole.Assistant, ""))
+        {
+            FinishReason = ChatFinishReason.ContentFilter,
+            ModelId = "gpt-4.1-mini-2025-04-14",
+            Usage = new UsageDetails { InputTokenCount = 120, OutputTokenCount = 0, TotalTokenCount = 120 },
+        });
+        var meter = new RecordingUsageMeter();
+        var pipeline = Pipeline(
+            new FakeShortlistRunService(ShortlistOk(Candidate(1), Candidate(2))),
+            MatchAlwaysOk(),
+            new ContentFilterChatClient(withheld, ChatProvider.AzureFoundry),
+            meter: meter);
+
+        var outcome = await RunAsync(pipeline);
+
+        outcome.Report.Should().NotBeNull(
+            "a filtered stage is degraded, never propagated as a failed call");
+        var report = outcome.Report!;
+        report.Candidates.Should().OnlyContain(c => c.Rationale.Contains("Matched 2/3"),
+            "the rationales fall back to the template built from shortlist and match evidence");
+        report.Recommendation.Should().BeNull();
+        report.Degraded.Should().BeTrue();
+
+        meter.Records.Should().ContainSingle(r => r.Step == "narrative")
+            .Which.Reply.InputTokens.Should().Be(120, "the withheld answer still cost its prompt");
+        outcome.Package.Degradations.Should().Contain(d =>
+            d.Stage == "narrative" && d.Why.Contains("content filter"),
+            "the handoff package says WHY the narrative is missing, in the provider's own terms");
+        outcome.Package.Slices.Should().ContainSingle(sl => sl.Stage == "narrative")
+            .Which.InputTokens.Should().Be(120,
+                "the failed slice reports the tokens the withheld answer cost, like the "
+                + "unparseable-output slice does");
+        withheld.CallCount.Should().Be(1, "a filtered call is not retried");
     }
 
     [Fact]

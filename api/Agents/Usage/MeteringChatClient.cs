@@ -144,7 +144,25 @@ public sealed class MeteringChatClient(IChatClient inner) : DelegatingChatClient
         IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
     {
         var stopwatch = Stopwatch.StartNew();
-        var response = await base.GetResponseAsync(messages, options, cancellationToken);
+        ChatResponse response;
+        try
+        {
+            response = await base.GetResponseAsync(messages, options, cancellationToken);
+        }
+        catch (Configuration.ChatContentFilteredException filtered)
+        {
+            // A refused call is still a call the run paid for (EXP-20, ADR §2 decision 8), and the
+            // normalizing decorator sits directly beneath this one so that those tokens are not
+            // lost on the way out. Reported and rethrown: the ledger learns what it cost, the
+            // caller still learns it failed. No tool sequence — a filtered call ran none.
+            MeteringScope.Report(
+                filtered.Response?.ModelId,
+                stopwatch.ElapsedMilliseconds,
+                toolCalls: null,
+                filtered.Response?.Usage?.InputTokenCount ?? 0);
+            throw;
+        }
+
         // The tools this call ASKED for, read off the response before FunctionInvokingChatClient
         // runs them — this client sits inside the invocation loop, so it sees every iteration.
         var toolCalls = response.Messages

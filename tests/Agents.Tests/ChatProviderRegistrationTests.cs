@@ -197,6 +197,40 @@ public class ChatProviderRegistrationTests
         }
     }
 
+    /// <summary>
+    /// Content filtering is normalized on the <b>shared</b> stack, for every client the seam hands
+    /// out and on both providers (EXP-20, ADR §2 decision 8). Structural, and on both branches on
+    /// purpose: the decorator that makes orchestration provider-blind is worth nothing if it is
+    /// only attached where someone happened to test it — and the seam composes it in one expression
+    /// that a later branch could easily be written around.
+    ///
+    /// <para>Reachable <em>beneath</em> the metering client is the ordering claim: a filtered call
+    /// has to be seen by the ledger before it escapes, because it cost tokens. That the outermost
+    /// client is <see cref="MeteringChatClient"/> is asserted above; that the normalization is
+    /// under it is asserted here.</para>
+    /// </summary>
+    [Theory]
+    [InlineData("Gemini")]
+    [InlineData("AzureFoundry")]
+    public void EveryClient_NormalizesContentFiltering_UnderMetering(string provider)
+    {
+        var sp = Build(
+            provider,
+            ("Ai:Gemini:Agents:cv-tailoring", "gemini-pro-latest"),
+            ("Ai:AzureFoundry:Agents:cv-tailoring", "gpt-4-1-nano"));
+
+        foreach (var client in new[]
+                 {
+                     sp.GetRequiredService<IChatClient>(),
+                     sp.GetRequiredKeyedService<IChatClient>("cv-tailoring"),
+                     sp.ResolveAgentChatClient("roster-qa"),
+                 })
+        {
+            client.GetService(typeof(ContentFilterChatClient)).Should().BeOfType<ContentFilterChatClient>(
+                $"on {provider}, a filtered call has to reach orchestration as one typed failure");
+        }
+    }
+
     private const BindingFlags Any =
         BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
 

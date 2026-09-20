@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using ExpertToJob.Agents.Agents;
+using ExpertToJob.Agents.Configuration;
 using ExpertToJob.Agents.Handoff;
 using ExpertToJob.Agents.Usage;
 using Microsoft.Agents.AI.Workflows;
@@ -608,11 +609,12 @@ public sealed class StaffingPipeline
             Emit("narrative", "Generating rationales and a recommendation.",
                 status: StaffingStepStatus.Started);
             var startedAt = Now;
+            // Started before the try so the failure paths can still say how long the call took.
+            var narrativeClock = Stopwatch.StartNew();
             try
             {
                 // Tool-less completion on the default chat client: the narrative needs no agent
                 // identity or MCP access — all its facts arrive pre-assembled in the prompt.
-                var narrativeClock = Stopwatch.StartNew();
                 // Schema-constrained since P1T-118; TryParse below stays as the fallback parser.
                 var narrativeOptions = new ChatOptions
                 {
@@ -623,22 +625,31 @@ public sealed class StaffingPipeline
                     [new ChatMessage(ChatRole.System, NarrativeInstructions), new ChatMessage(ChatRole.User, stage.Evidence)],
                     narrativeOptions,
                     ct);
-                var reply = new AgentReply(
-                    response.Text,
-                    response.Usage?.InputTokenCount ?? 0,
-                    response.Usage?.OutputTokenCount ?? 0,
-                    response.Usage?.TotalTokenCount ?? 0,
-                    response.ModelId,
-                    narrativeClock.ElapsedMilliseconds);
+                var reply = ReplyFrom(response, narrativeClock.ElapsedMilliseconds);
                 await MeterAsync(PipelineAgentName, reply, "narrative", ct);
 
                 return ComposeNarrative(match, response.Text, startedAt, reply);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
+                // A content filter is the one failure that arrives with a bill attached: the
+                // provider generated an answer and withheld it, so the input tokens were spent
+                // (EXP-20, ADR §2 decision 8). The normalized failure carries the withheld
+                // response, so the row is written and the slice reports it — the same honesty the
+                // unparseable-output path below keeps, for the same reason. It is one typed failure
+                // rather than two provider shapes, which is what lets this catch stay as
+                // provider-blind as the rest of the pipeline.
+                var spent = ex is ChatContentFilteredException { Response: { } withheld }
+                    ? ReplyFrom(withheld, narrativeClock.ElapsedMilliseconds)
+                    : null;
+                if (spent is not null)
+                {
+                    await MeterAsync(PipelineAgentName, spent, "narrative", ct);
+                }
+
                 pipeline._logger.LogError(ex, "Staffing narrative step failed.");
                 AddSlice(Slice(
-                    "narrative", PipelineAgentName, reply: null, startedAt, StageSliceStatus.Failed,
+                    "narrative", PipelineAgentName, spent, startedAt, StageSliceStatus.Failed,
                     degradeReason: ex.Message));
                 AddDegradation("narrative", "The narrative rationales and recommendation", ex.Message);
                 Emit("narrative", "Narrative step failed; falling back to templated rationales.",
@@ -647,6 +658,14 @@ public sealed class StaffingPipeline
                     ["The narrative step failed; rationales are templated from shortlist and match evidence."],
                     Degraded: true);
             }
+
+            static AgentReply ReplyFrom(ChatResponse response, long latencyMs) => new(
+                response.Text,
+                response.Usage?.InputTokenCount ?? 0,
+                response.Usage?.OutputTokenCount ?? 0,
+                response.Usage?.TotalTokenCount ?? 0,
+                response.ModelId,
+                latencyMs);
         }
 
         /// <summary>Applies the corruption guards to the model's narrative JSON: rationales for
