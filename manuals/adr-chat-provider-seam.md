@@ -92,7 +92,8 @@ No deprecation window. Nothing external consumes this configuration, and a silen
 is exactly the failure the startup throw exists to prevent.
 
 **6. Unknown provider values fail at startup, in every environment.** `EXP-10`
-Missing-credential failure stays Production-only, as today (`api/Agents/Program.cs:30-34`). The two
+Missing-credential failure stays Production-only, and since `EXP-18` it asks for the *active*
+provider's key (`ChatProviderStartupGuard`, called from `api/Agents/Program.cs`). The two
 are different mistakes: a typo'd provider name is wrong everywhere; a missing key is a normal
 condition in dev.
 

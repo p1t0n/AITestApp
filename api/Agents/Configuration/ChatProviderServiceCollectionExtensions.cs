@@ -116,8 +116,12 @@ public static class ChatProviderServiceCollectionExtensions
     /// <para>An absent key means the incumbent. The shipped settings files name it explicitly, so
     /// the default is what a bare <see cref="ServiceCollection"/> in a test gets, not something a
     /// deployment relies on.</para>
+    ///
+    /// <para>Public because <see cref="ChatProviderStartupGuard"/> needs the same answer to know
+    /// whose credential to require (EXP-18), and a second parse of the discriminator is a second
+    /// thing to keep in agreement with this one.</para>
     /// </summary>
-    private static ChatProvider ReadProvider(IConfiguration config)
+    public static ChatProvider ReadProvider(IConfiguration config)
     {
         var configured = config[ProviderKey];
         if (string.IsNullOrWhiteSpace(configured))
@@ -152,7 +156,7 @@ public static class ChatProviderServiceCollectionExtensions
 
         services.AddSingleton(_ =>
         {
-            var apiKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY") is { Length: > 0 } envToken
+            var apiKey = Environment.GetEnvironmentVariable(GeminiOptions.ApiKeyVariable) is { Length: > 0 } envToken
                 ? envToken
                 : cfg.ApiKey;
             var options = new OpenAIClientOptions
@@ -198,7 +202,7 @@ public static class ChatProviderServiceCollectionExtensions
             // Env var first, config second — the same explicit read the Gemini branch does for
             // GEMINI_API_KEY, and for the same reason: a credential is a name read on purpose, not
             // a configuration path bound by the options system (ADR §2 decision 4).
-            var apiKey = Environment.GetEnvironmentVariable("AZURE_FOUNDRY_API_KEY") is { Length: > 0 } envToken
+            var apiKey = Environment.GetEnvironmentVariable(AzureFoundryOptions.ApiKeyVariable) is { Length: > 0 } envToken
                 ? envToken
                 : cfg.ApiKey;
             return new OpenAIClient(

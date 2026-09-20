@@ -10,6 +10,11 @@ public sealed class GeminiOptions
 {
     public const string Section = "Ai:Gemini";
 
+    /// <summary>The environment variable the credential is read from, ahead of <see cref="ApiKey"/>.
+    /// Named once and shared by the construction branch that reads it and the Production guard that
+    /// requires it (EXP-18), so a guard cannot come to demand a variable no branch reads.</summary>
+    public const string ApiKeyVariable = "GEMINI_API_KEY";
+
     /// <summary>OpenAI-compatible inference endpoint.</summary>
     public string Endpoint { get; set; } = "https://generativelanguage.googleapis.com/v1beta/openai";
 
@@ -42,6 +47,11 @@ public sealed class GeminiOptions
 public sealed class AzureFoundryOptions
 {
     public const string Section = "Ai:AzureFoundry";
+
+    /// <summary>The environment variable the credential is read from, ahead of <see cref="ApiKey"/>.
+    /// Shared with the Production guard for the same reason as
+    /// <see cref="GeminiOptions.ApiKeyVariable"/> (EXP-18).</summary>
+    public const string ApiKeyVariable = "AZURE_FOUNDRY_API_KEY";
 
     /// <summary>The resource's OpenAI-compatible v1 endpoint, e.g.
     /// <c>https://&lt;resource&gt;.openai.azure.com/openai/v1/</c>.</summary>
