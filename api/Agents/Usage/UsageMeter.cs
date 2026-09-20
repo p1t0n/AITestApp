@@ -29,8 +29,8 @@ public sealed class UsageMeter(
             // P1T-95); the config lookup is only the fallback for replies that never reached a
             // model (and mislabels whenever config and reality drift).
             var model = reply.ModelId
-                ?? config[$"Gemini:Agents:{agentName}"]
-                ?? config["Gemini:Model"]
+                ?? config[$"Ai:Gemini:Agents:{agentName}"]
+                ?? config["Ai:Gemini:Model"]
                 ?? string.Empty;
 
             db.AgentUsages.Add(new AgentUsage

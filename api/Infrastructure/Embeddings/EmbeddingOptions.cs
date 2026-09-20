@@ -2,7 +2,7 @@ namespace ExpertToJob.Infrastructure.Embeddings;
 
 /// <summary>
 /// Embedding backend wiring for semantic roster search. Reuses the same OpenAI-compatible
-/// <c>Gemini</c> config block as the chat client (endpoint + key), adding the embedding
+/// <c>Ai:Gemini</c> config block as the chat client (endpoint + key), adding the embedding
 /// model id. The token is read from <see cref="ApiKey"/> or the <c>GEMINI_API_KEY</c> env var;
 /// never commit a real token.
 ///
@@ -11,7 +11,7 @@ namespace ExpertToJob.Infrastructure.Embeddings;
 /// </summary>
 public sealed class EmbeddingOptions
 {
-    public const string Section = "Gemini";
+    public const string Section = "Ai:Gemini";
 
     /// <summary>OpenAI-compatible inference endpoint.</summary>
     public string Endpoint { get; set; } = "https://generativelanguage.googleapis.com/v1beta/openai";

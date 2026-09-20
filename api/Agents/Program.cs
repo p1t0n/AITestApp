@@ -28,7 +28,7 @@ if (builder.Environment.IsProduction())
     }
 
     if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GEMINI_API_KEY"))
-        && string.IsNullOrWhiteSpace(builder.Configuration["Gemini:ApiKey"]))
+        && string.IsNullOrWhiteSpace(builder.Configuration[$"{GeminiOptions.Section}:ApiKey"]))
     {
         throw new InvalidOperationException(
             "No Gemini API key. Set GEMINI_API_KEY before running in Production.");
@@ -97,7 +97,7 @@ builder.Services.AddHttpClient();
 
 // Chat model: provider-agnostic IChatClient over Gemini (OpenAI-compatible, free tier with an API
 // PAT). One shared default client, plus a keyed client for any agent that overrides its model via
-// Gemini:Agents:<agent>. Swap the backend here in one place for Azure OpenAI / Anthropic / etc.
+// Ai:Gemini:Agents:<agent>. Swap the backend here in one place for Azure OpenAI / Anthropic / etc.
 builder.Services.AddGeminiChatClient(builder.Configuration);
 
 // MCP access: each agent gets its own keyed client-credentials identity + tool source, bound to

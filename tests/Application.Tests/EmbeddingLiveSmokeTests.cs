@@ -26,8 +26,8 @@ public class EmbeddingLiveSmokeTests
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Gemini:Endpoint"] = "https://generativelanguage.googleapis.com/v1beta/openai",
-                ["Gemini:EmbeddingModel"] = "gemini-embedding-001",
+                ["Ai:Gemini:Endpoint"] = "https://generativelanguage.googleapis.com/v1beta/openai",
+                ["Ai:Gemini:EmbeddingModel"] = "gemini-embedding-001",
             })
             .Build();
 

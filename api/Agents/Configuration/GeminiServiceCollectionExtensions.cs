@@ -11,14 +11,33 @@ namespace ExpertToJob.Agents.Configuration;
 /// <summary>
 /// Registers the Gemini chat clients: one shared default <see cref="IChatClient"/> on the
 /// configured default model, plus a keyed <see cref="IChatClient"/> for each agent that declares a
-/// per-agent model override under <c>Gemini:Agents</c>. All clients share a single
+/// per-agent model override under <c>Ai:Gemini:Agents</c>. All clients share a single
 /// <see cref="OpenAIClient"/> (endpoint + credential); only the model id differs.
 /// </summary>
 public static class GeminiServiceCollectionExtensions
 {
+    /// <summary>The configuration section that used to hold these keys. Named once, here, because
+    /// the guard below is the only thing left in the repo that may spell it.</summary>
+    private const string LegacySection = "Gemini";
+
     public static IServiceCollection AddGeminiChatClient(
         this IServiceCollection services, IConfiguration config)
     {
+        // A stale top-level section fails loudly rather than binding to nothing (ADR §2 decision 5).
+        // There is no deprecation window: nothing outside this repo consumes this configuration, and
+        // a silently-ignored key is the exact failure mode the rename was worth doing to prevent —
+        // the host would start, every option would fall back to its property default, and the first
+        // symptom would be a model nobody chose answering on a key nobody set.
+        if (config.GetSection(LegacySection).Exists())
+        {
+            throw new InvalidOperationException(
+                $"Configuration still carries a top-level '{LegacySection}' section. These keys moved "
+                + $"to '{GeminiOptions.Section}' (e.g. '{GeminiOptions.Section}:Model', "
+                + $"'{GeminiOptions.Section}:ApiKey'), with the chat provider named by "
+                + "'Ai:Chat:Provider'. The GEMINI_API_KEY environment variable is unchanged. "
+                + "See manuals/adr-chat-provider-seam.md.");
+        }
+
         var cfg = config.GetSection(GeminiOptions.Section).Get<GeminiOptions>()
                   ?? new GeminiOptions();
 

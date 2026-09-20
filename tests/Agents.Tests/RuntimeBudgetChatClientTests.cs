@@ -310,8 +310,8 @@ public class RuntimeBudgetWiringTests
     {
         var values = new Dictionary<string, string?>
         {
-            ["Gemini:Model"] = "gemini-3.5-flash-lite",
-            ["Gemini:ApiKey"] = "test-key",
+            ["Ai:Gemini:Model"] = "gemini-3.5-flash-lite",
+            ["Ai:Gemini:ApiKey"] = "test-key",
         };
         foreach (var (key, value) in settings)
         {
@@ -338,7 +338,7 @@ public class RuntimeBudgetWiringTests
     [Fact]
     public void The_wrapper_still_reports_the_underlying_models_metadata()
     {
-        var sp = BuildProvider(("Gemini:Agents:cv-tailoring", "gemini-pro-latest"));
+        var sp = BuildProvider(("Ai:Gemini:Agents:cv-tailoring", "gemini-pro-latest"));
 
         var metadata = sp.ResolveAgentChatClient("cv-tailoring")
             .GetService(typeof(ChatClientMetadata)) as ChatClientMetadata;

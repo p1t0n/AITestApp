@@ -94,8 +94,8 @@ Then `curl -H "Authorization: Bearer $JWT" http://localhost:5200/agents/shortlis
   actually call the tool". A solo `dotnet run` still writes to its own terminal.
 - Keycloak gets a new container every start, so realm edits land on the next start — never live.
   (Symptom of running against the old one: agent token requests return 401.)
-- The local `api/Agents/appsettings.json` may carry a dev PAT (or see `git stash list`); prefer the
-  AppHost's `Parameters:gemini-api-key` user-secret. Never commit it.
+- The local `api/Agents/appsettings.json` may carry a dev PAT under `Ai:Gemini:ApiKey` (or see
+  `git stash list`); prefer the AppHost's `Parameters:gemini-api-key` user-secret. Never commit it.
 - Pinned ports are **proxy** ports: Aspire listens on 5069/5100/5200/5173/5432/8080 and forwards to
   a random port the resource actually bound. `docker ps` shows the random one; it is not the
   contract, and nothing should be read off it.

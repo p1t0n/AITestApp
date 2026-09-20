@@ -8,7 +8,7 @@ namespace ExpertToJob.Agents.Configuration;
 /// </summary>
 public sealed class GeminiOptions
 {
-    public const string Section = "Gemini";
+    public const string Section = "Ai:Gemini";
 
     /// <summary>OpenAI-compatible inference endpoint.</summary>
     public string Endpoint { get; set; } = "https://generativelanguage.googleapis.com/v1beta/openai";
@@ -24,7 +24,43 @@ public sealed class GeminiOptions
 
     /// <summary>Optional per-agent model overrides, keyed by agent name (e.g. <c>cv-tailoring</c>).
     /// An agent listed here gets its own chat client on the named model; everyone else uses
-    /// <see cref="Model"/>. Bound from <c>Gemini:Agents:&lt;agent&gt;</c>.</summary>
+    /// <see cref="Model"/>. Bound from <c>Ai:Gemini:Agents:&lt;agent&gt;</c>.</summary>
+    public Dictionary<string, string> Agents { get; set; } = new();
+}
+
+/// <summary>
+/// The second chat backend the seam can build: an Azure OpenAI deployment reached through the
+/// plain OpenAI SDK against the resource's <c>/openai/v1/</c> endpoint
+/// (<c>manuals/adr-chat-provider-seam.md</c> §2 decision 1). Declared here so the key shape is
+/// settled before the seam is written; nothing consumes it yet.
+///
+/// <para><b>No base class shared with <see cref="GeminiOptions"/>, on purpose.</b> A base would
+/// assert the two providers must stay shaped alike, which is the coupling the seam exists to
+/// avoid — the Gemini block carries embedding and quota-breaker keys that mean nothing here, and
+/// this one will grow an Entra credential that means nothing there.</para>
+/// </summary>
+public sealed class AzureFoundryOptions
+{
+    public const string Section = "Ai:AzureFoundry";
+
+    /// <summary>The resource's OpenAI-compatible v1 endpoint, e.g.
+    /// <c>https://&lt;resource&gt;.openai.azure.com/openai/v1/</c>.</summary>
+    public string Endpoint { get; set; } = "";
+
+    /// <summary><b>A deployment name, not a model id</b> — the spelling is shared with
+    /// <see cref="GeminiOptions.Model"/>, the meaning is not. A deployment name is an
+    /// operator-chosen string that is meaningless outside its own resource (ADR §2 decision 3).
+    /// Documenting that is deliberately cheaper than forking the override dictionary into two
+    /// shapes.</summary>
+    public string Model { get; set; } = "";
+
+    /// <summary>API key. Prefer the AZURE_FOUNDRY_API_KEY env var over config in real use.
+    /// An Entra credential replaces this later (ADR §4); it is not a rejected option.</summary>
+    public string ApiKey { get; set; } = "";
+
+    /// <summary>Optional per-agent deployment overrides, keyed by agent name. Bound from
+    /// <c>Ai:AzureFoundry:Agents:&lt;agent&gt;</c> — per-agent overrides live inside the active
+    /// provider's own block, never in a shared one (ADR §2 decision 10).</summary>
     public Dictionary<string, string> Agents { get; set; } = new();
 }
 

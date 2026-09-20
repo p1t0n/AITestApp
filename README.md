@@ -140,6 +140,13 @@ key from https://aistudio.google.com/apikey:
 dotnet user-secrets set Parameters:gemini-api-key <your-key> --project api/AppHost
 ```
 
+The chat backend is named by configuration: `Ai:Chat:Provider` picks the provider, and its own
+block holds the rest — `Ai:Gemini:{Endpoint, Model, ApiKey, EmbeddingModel, Dimensions,
+QuotaBreakerSeconds, Agents:<agent>}`. Embeddings share that block because they share the endpoint
+and the key. `GEMINI_API_KEY` is unchanged and still wins over `Ai:Gemini:ApiKey`. A stale
+top-level `Gemini` section now fails the Agents host at startup instead of binding to nothing —
+see `manuals/adr-chat-provider-seam.md`.
+
 Nothing else is required on a fresh clone. Every other dev secret (the session JWT signing key,
 the dev Keycloak client secrets) ships committed and pairs with the committed dev realm;
 Production refuses to boot on any placeholder and takes real values from the environment
