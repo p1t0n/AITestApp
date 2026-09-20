@@ -313,8 +313,11 @@ EDPB Guidelines 01/2022 on the right of access adds three things we need:
   self-service tools should never limit the scope of personal data received", and requests arriving
   outside the tool must still be handled.
 
-For us, (c), (d) and (g) are the ones the current system cannot answer: recipients means naming
-Gemini as the embedding/scoring recipient; retention means committing to periods we have not set;
+For us, (c), (d) and (g) are the ones the current system cannot answer: recipients means naming the
+embedding recipient and the scoring recipient, which since the chat-provider seam need not be the
+same party — embeddings are Gemini's, while scoring goes to whichever provider `Ai:Chat:Provider`
+names ([`adr-chat-provider-seam.md`](adr-chat-provider-seam.md)); retention means committing to
+periods we have not set;
 source means recording whether a row came from the Expert, a Service Manager, or an ingested
 document.
 

@@ -118,8 +118,12 @@ The export payload is byte-identical either way. Only the label moves, because u
 interest there is no Art. 20 duty and claiming otherwise would misdescribe what the person is owed.
 
 **Recipients are stated as categories, not as an access log**, and one of them is new information
-rather than a restatement: **Google (Gemini) is named as the model provider.** Before this effort the
-service disclosed that to nobody. Logging every view by everyone would answer a disclosure duty by
+rather than a restatement: **the model provider is named** — as the provider the deployment is
+configured with rather than as a literal (EXP-21). Where `Ai:Chat:Provider` is Gemini that is
+**Google (Gemini), as our AI model provider**; where it is Azure it splits in two, because embeddings
+stay on Google whatever chat does: **Google (Gemini), as our embeddings provider** and **Microsoft
+(Azure OpenAI), as our AI model provider**. Before this effort the service disclosed that to
+nobody. Logging every view by everyone would answer a disclosure duty by
 manufacturing a large new store of personal data about access, which would then need its own
 disclosure, retention and erasure.
 

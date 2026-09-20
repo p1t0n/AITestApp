@@ -47,11 +47,18 @@ not — except the basis history, which legitimately grows by exactly the transi
 
 ## 4. Recipients are categories, and one of them is new information
 
-Art. 15(1)(c) permits categories, and this service states three: Service Managers, clients it puts
-people forward to, and **Google (Gemini) as the model provider**.
+Art. 15(1)(c) permits categories, and this service states three of them — or four, depending on what
+`Ai:Chat:Provider` names: Service Managers, clients it puts people forward to, and the model
+provider. Where the configured chat provider is Gemini that last entry is one category, **Google
+(Gemini), as our AI model provider**, word for word what it has always been. Where it is Azure it is
+two, because there genuinely are two recipients — embeddings stay on Google whatever chat does:
+**Google (Gemini), as our embeddings provider** and **Microsoft (Azure OpenAI), as our AI model
+provider**. `Art15Disclosure.RecipientsFor` derives that from configuration (EXP-21), so the name an
+expert reads is the provider their deployment actually uses rather than a literal that survives a
+provider change silently.
 
-The third is not a restatement. Until this slice the service named its model provider to nobody
-while sending every CV to it.
+The provider entry is not a restatement. Until this slice the service named its model provider to
+nobody while sending every CV to it.
 
 > **A gap this slice does not close.** The transparency notice's own "Who sees it" section still
 > omits the model provider, and Art. 13(1)(e) asks for recipients *at collection*. Closing it means

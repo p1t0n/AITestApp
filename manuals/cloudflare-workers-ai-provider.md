@@ -2,6 +2,19 @@
 
 Verified against live Cloudflare docs on 2026-08-30.
 
+> **Read this file as two halves, because they have different statuses
+> ([`adr-chat-provider-seam.md`](adr-chat-provider-seam.md) §8).**
+>
+> * **Its configuration plan is superseded.** §4 and §6 step 2 sketch widening configuration from
+>   `agent → model` into per-agent provider profiles (`agent → { endpoint, apiKey, model }`), with
+>   Cloudflare wired as a fallback profile. The ADR decided a different shape: a
+>   **global** `Ai:Chat:Provider` naming one provider per deployment, with per-agent *model*
+>   overrides inside the active provider's block. The profile shape is not adopted.
+> * **Cloudflare itself is not rejected.** Its gate landed as a skipped `Category=live` probe,
+>   `tests/Agents.Tests/CloudflareWorkersAiGateTests.cs`, and **has never been run**, because no
+>   Cloudflare key exists. Nothing about this provider has been measured either way. That makes the
+>   rest of this document an **un-gated option and an unfinished measurement — not history.**
+
 **Headline: the plumbing is a half-day — Workers AI speaks the same OpenAI-compatible dialect our
 `IChatClient` wiring already targets, and its free tier (10,000 neurons/day) is ~20x our own
 `Usage:DefaultDailyTokens` cap. But the three LoRA models we were asked about
