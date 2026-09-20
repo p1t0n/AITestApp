@@ -41,6 +41,12 @@ public static class DependencyInjection
         services.AddScoped<Search.IExpertDigestService, Search.ExpertDigestService>();
         services.AddScoped<Search.IExpertFilterService, Search.ExpertFilterService>();
 
+        // Art. 15(1)(c) names the chat provider to a data subject (EXP-21). TryAdd so the host that
+        // actually serves the access view wins with the configured value; the default here names
+        // nothing, which the disclosure answers by naming every recipient it might be. A host that
+        // forgets therefore over-tells somebody rather than quietly printing the wrong name at them.
+        services.TryAddSingleton(new Compliance.ChatProviderDisclosure(null));
+
         // Every host that composes the Application layer needs a clock now that lawful-basis
         // records are timestamped, and only two of the three registered one. TryAdd so a host that
         // supplies its own (a test's fake clock) still wins.

@@ -15,6 +15,17 @@ function realPersonEmail(): string {
 }
 
 /**
+ * The model provider the stack under test is configured with — `e2e/run.mjs` sets the same value on
+ * the API and hands it here, so this asserts what the host was told rather than a name that was
+ * true when the spec was written (EXP-21). Chat is the only half that moves: embeddings stay on
+ * Google whatever the provider is, so under Azure the page names two recipients, not one.
+ */
+const MODEL_PROVIDER =
+  (process.env.E2E_CHAT_PROVIDER ?? "Gemini") === "AzureFoundry"
+    ? /Microsoft \(Azure OpenAI\), as our AI model provider/
+    : /Google \(Gemini\), as our AI model provider/;
+
+/**
  * The privacy page at the real surface (P1T-191). Three of its rights cannot be shown by a unit
  * suite at all: a download is a browser event, pausing round-trips through the API and back into
  * the page's own prose, and deleting ends the session on both hosts — which is only observable by
@@ -34,8 +45,9 @@ test.describe("privacy and data", () => {
 
     await expect(page.getByRole("heading", { name: "Privacy and data" })).toBeVisible();
     await expect(page.getByText(/Your record is active and can be offered for work/)).toBeVisible();
-    // The disclosure that is new information rather than a restatement (P1T-187).
-    await expect(page.getByText(/Google \(Gemini\)/)).toBeVisible();
+    // The disclosure that is new information rather than a restatement (P1T-187), and the one
+    // sentence on this page that can be a false statement if the provider moves under it.
+    await expect(page.getByText(MODEL_PROVIDER)).toBeVisible();
     await expect(page.getByTestId("row-How long we keep it")).toContainText(/due to be deleted on/);
   });
 

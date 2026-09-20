@@ -52,6 +52,13 @@ builder.Services.AddControllers()
     o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
 
+// Art. 15(1)(c) names the model provider to the expert reading their own privacy page, so the
+// disclosure follows the seam rather than a literal (EXP-21). Registered before AddApplication,
+// whose own registration is a TryAdd: the same key the Agents host binds, read here because the
+// Application layer may not reference api/Agents and does not read configuration itself.
+builder.Services.AddSingleton(ExpertToJob.Application.Compliance.ChatProviderDisclosure.From(
+    builder.Configuration[ExpertToJob.Application.Compliance.ChatProviderDisclosure.ConfigurationKey]));
+
 builder.Services.AddApplication();
 
 // Registered before AddInfrastructure so the DbContext picks it up: an Expert doing something with

@@ -120,6 +120,7 @@ public class AccessAndExportService(
     IExpertService experts,
     ICvService cv,
     IProcessingRecordService records,
+    ChatProviderDisclosure chatProvider,
     TimeProvider clock) : IAccessAndExportService
 {
     public async Task<AccessViewDto> AccessAsync(Guid expertId, CancellationToken ct = default)
@@ -151,7 +152,7 @@ public class AccessAndExportService(
             retention.IsInFinalWarningAt(clock.GetUtcNow()),
             Art15Disclosure.Purposes,
             Art15Disclosure.DataCategories,
-            Art15Disclosure.Recipients,
+            Art15Disclosure.RecipientsFor(chatProvider.Provider),
             $"{Art15Disclosure.Retention} {RetentionPolicy.DescriptionFor(retention.Clock)}",
             Art15Disclosure.Art22Logic,
             Art15Disclosure.Rights,

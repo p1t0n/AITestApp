@@ -46,27 +46,57 @@ public static class Art15Disclosure
     ];
 
     /// <summary>
-    /// Art. 15(1)(c) — categories of recipient. <b>Stated as categories, not as a log of who looked
-    /// at what.</b> Logging every view by everyone would answer a disclosure duty by manufacturing a
-    /// large new store of personal data about access, which would then need its own disclosure,
-    /// retention and erasure.
+    /// Art. 15(1)(c) — categories of recipient, for the chat provider this deployment is actually
+    /// running (EXP-21). <b>Stated as categories, not as a log of who looked at what.</b> Logging
+    /// every view by everyone would answer a disclosure duty by manufacturing a large new store of
+    /// personal data about access, which would then need its own disclosure, retention and erasure.
     ///
-    /// <para>The second entry is the one that is new information rather than a restatement: the
-    /// model provider is named. Until now this service disclosed it to nobody.</para>
+    /// <para>The model provider entry is the one that is new information rather than a
+    /// restatement — until this existed the service disclosed it to nobody — and it is the one
+    /// entry that can be a <em>false</em> statement, which is why it is a parameter rather than a
+    /// literal. A hard-coded name survives a provider change silently, and the person reading it
+    /// has no way to tell.</para>
+    ///
+    /// <para><b>Azure splits the entry in two rather than renaming it.</b> Embeddings keep going to
+    /// Google whatever chat does (<c>manuals/adr-chat-provider-seam.md</c>), so an Azure deployment
+    /// genuinely has two recipients, and naming only one would understate the transfer to the
+    /// other. <paramref name="provider"/> being null means configuration named nothing we
+    /// recognise, and the honest answer there is both.</para>
     /// </summary>
-    public static IReadOnlyList<RecipientCategory> Recipients { get; } =
-    [
+    public static IReadOnlyList<RecipientCategory> RecipientsFor(DisclosedChatProvider? provider) =>
+        provider == DisclosedChatProvider.Gemini
+            ? [Administrators, GoogleForEverything, Clients]
+            : [Administrators, GoogleForEmbeddings, MicrosoftForChat, Clients];
+
+    private static readonly RecipientCategory Administrators =
         new("Administrators of this organisation",
             "They maintain the bench and decide who is put forward for a job. They see your record "
-            + "in full."),
+            + "in full.");
+
+    private static readonly RecipientCategory Clients =
+        new("Clients this company puts you forward to",
+            "They see the parts of your record that go into a staffing proposal or a rendered CV — "
+            + "not the whole record, and not the scores.");
+
+    /// <summary>One provider doing both jobs — the wording this disclosure has always carried, kept
+    /// word for word so the Gemini deployment says today exactly what it said yesterday.</summary>
+    private static readonly RecipientCategory GoogleForEverything =
         new("Google (Gemini), as our AI model provider",
             "Your career narrative is sent to Google's Gemini models to be turned into search "
             + "embeddings and to be scored against job descriptions. This is a named third party "
-            + "outside this company, and it is how the scoring described above actually happens."),
-        new("Clients this company puts you forward to",
-            "They see the parts of your record that go into a staffing proposal or a rendered CV — "
-            + "not the whole record, and not the scores."),
-    ];
+            + "outside this company, and it is how the scoring described above actually happens.");
+
+    private static readonly RecipientCategory GoogleForEmbeddings =
+        new("Google (Gemini), as our embeddings provider",
+            "Your career narrative is sent to Google's Gemini models to be turned into search "
+            + "embeddings, so that a search for a capability can find your record. This is a named "
+            + "third party outside this company.");
+
+    private static readonly RecipientCategory MicrosoftForChat =
+        new("Microsoft (Azure OpenAI), as our AI model provider",
+            "Your career narrative, your skills and your availability are sent to Microsoft's Azure "
+            + "OpenAI service to be scored against job descriptions. This is a named third party "
+            + "outside this company, and it is how the scoring described above actually happens.");
 
     /// <summary>
     /// Art. 15(1)(d) — retention. Criteria rather than a date, because the clock itself is

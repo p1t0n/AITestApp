@@ -31,6 +31,14 @@ const IMAGE = "pgvector/pgvector:pg17";
  * lets a developer regenerate one without waiting for CI to tell them what it looks like.
  */
 const VISUAL = process.env.E2E_VISUAL === "1";
+
+/**
+ * Which chat provider the stack under test is configured with. The Art. 15 recipient category names
+ * it to the data subject (EXP-21), so the privacy spec has to assert the provider this stack is
+ * actually running rather than a literal that would keep passing after the provider moved. Set here
+ * and handed to both the API and Playwright, so the two cannot disagree about what was configured.
+ */
+const CHAT_PROVIDER = process.env.E2E_CHAT_PROVIDER ?? "Gemini";
 const BROWSER_CONTAINER = "experttojob-e2e-browser";
 const BROWSER_IMAGE = "mcr.microsoft.com/playwright:v1.62.1-noble";
 /** How the container reaches the host it is running on. */
@@ -170,6 +178,7 @@ async function startApi() {
       ASPNETCORE_ENVIRONMENT: "Development",
       ASPNETCORE_URLS: `http://localhost:${PORTS.api}`,
       ConnectionStrings__Default: DB_CONNECTION,
+      Ai__Chat__Provider: CHAT_PROVIDER,
       // The passkey relying party checks the browser's origin against this list, and the suite
       // serves the SPA on its own port. The visual pass borrows the same origin — see
       // `FORWARD_TO_HOST` for why its containerised browser also says `localhost`.
@@ -215,6 +224,7 @@ async function main() {
         env: {
           ...process.env,
           E2E_BASE_URL: `http://localhost:${PORTS.spa}`,
+          E2E_CHAT_PROVIDER: CHAT_PROVIDER,
           // Read by the `visual` project in `playwright.config.ts`. Only set for a visual run, so
           // the ordinary suite keeps launching a local browser and needs no Docker image.
           ...(VISUAL ? { E2E_BROWSER_WS: `ws://localhost:${PORTS.browser}/` } : {}),
