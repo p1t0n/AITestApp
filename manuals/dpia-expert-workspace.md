@@ -65,10 +65,14 @@ population — so the 6(1)(f) population is excluded from the scan entirely. See
 1. **Collection.** Self-registration with a passkey and a control word, or a Service Manager entering
    a row. Either way a `ProcessingRecord` is written before the record is usable.
 2. **Indexing.** The career narrative is sent to **Google's Gemini** embedding model and stored as a
-   `vector(1536)` against the person's id. This leaves the company.
+   `vector(1536)` against the person's id. This leaves the company. Embeddings go to Google whatever
+   the chat provider is — the seam in
+   [`adr-chat-provider-seam.md`](adr-chat-provider-seam.md) does not touch them.
 3. **Scanning.** A job description is distilled into requirements; each scannable Expert's narrative
-   is retrieved against them; the retrieved passages, skills and availability go to a **Gemini**
-   model, which returns a score, a band and a written rationale. This leaves the company.
+   is retrieved against them; the retrieved passages, skills and availability go to **the configured
+   model provider** — `Ai:Chat:Provider` names either **Google (Gemini)** or **Microsoft (Azure
+   OpenAI)**, one per deployment, with no failover and no per-agent routing — which returns a score,
+   a band and a written rationale. This leaves the company.
 4. **Proposal.** A Service Manager assembles a staffing proposal; the handoff package carries the
    evidence base. A human holds write authority throughout.
 5. **Disclosure to the client.** Parts of the record go into a proposal or a rendered CV. Not the
@@ -80,8 +84,22 @@ population — so the 6(1)(f) population is excluded from the scan entirely. See
 
 ### Recipients
 
-Service Managers of this organisation (the record in full); **Google (Gemini) as model provider**
-(the career narrative and job-description context); clients (proposal and CV contents only).
+Service Managers of this organisation (the record in full); the **model provider or providers**,
+named to the person in the words the access view uses; clients (proposal and CV contents only).
+
+The provider entry is one or two categories depending on what `Ai:Chat:Provider` names, because an
+Azure deployment genuinely has two recipients — embeddings stay on Google whatever chat does:
+
+| `Ai:Chat:Provider` | Recipient categories disclosed | What it receives |
+| --- | --- | --- |
+| `Gemini` | **Google (Gemini), as our AI model provider** | The career narrative, embedded; and the retrieved passages, skills and availability with job-description context, scored |
+| `AzureFoundry` | **Google (Gemini), as our embeddings provider** | The career narrative, embedded |
+| | **Microsoft (Azure OpenAI), as our AI model provider** | The retrieved passages, skills and availability with job-description context, scored |
+
+The split is derived from configuration by `Art15Disclosure.RecipientsFor` rather than written twice
+(EXP-21), so the name an expert reads is the provider their deployment actually uses. Those bolded
+strings are the disclosure's own wording; an edit here that does not also move the code makes this
+document and the access view disagree, which is the divergence an auditor finds.
 
 ### Retention
 
@@ -90,10 +108,18 @@ Calendar arithmetic. See [`retention.md`](retention.md).
 
 ### Transfers outside the EEA
 
-**Not assessed here, and it needs to be.** The design names Gemini as the recipient and discloses it
-to the person, which is the transparency duty. The Chapter V transfer question — which Google entity,
-under what mechanism, with what supplementary measures — is a contracting question this team has not
-answered. It is carried as residual risk R7.
+**Not assessed here, and it needs to be** — once per provider. The design names each recipient and
+discloses it to the person, which is the transparency duty. The Chapter V transfer question is a
+contracting question this team has not answered for either provider, and it is now two open
+questions rather than one:
+
+| Provider | Receives | What is known about region and entity | Still unanswered |
+| --- | --- | --- | --- |
+| **Google (Gemini)** — embeddings on every deployment; also scoring where `Ai:Chat:Provider` is `Gemini` | The career narrative; and, on a Gemini deployment, the scoring context too | **Nothing.** No region, entity or transfer mechanism is recorded anywhere in this repo | Which Google entity, under what mechanism, with what supplementary measures |
+| **Microsoft (Azure OpenAI)** — scoring where `Ai:Chat:Provider` is `AzureFoundry` | The retrieved passages, skills and availability, with job-description context | The deployment is `GlobalStandard` in Sweden Central. **The region is not a residency measure**: `GlobalStandard` does not confine inference to the EU, and EU-confined `DataZoneStandard` capacity is not purchasable on this subscription — see [`adr-chat-provider-seam.md`](adr-chat-provider-seam.md) §7 | Which Microsoft entity, under what mechanism, with what supplementary measures |
+
+Choosing an EU region therefore bought no residency and **improves nothing in this section**. Both
+rows are carried as residual risk R7.
 
 ## 2. Necessity and proportionality — Art. 35(7)(b)
 
@@ -194,7 +220,7 @@ inputs to a DPO's assessment, not a substitute for it.
 | R4 | **Being ranked out by software with no human ever reading the record** | High | High *(inherent to the design)* | Automation conceded rather than denied; 22(2)(a) relied on with the necessity argument written down; all three 22(3) safeguards built on the decision row; **the score, band and rationale are shown to the person in full**, which is what makes contesting possible; LI population excluded entirely | Medium. Depends on contests actually being reviewed by somebody with authority to change the outcome — an operational fact, not a code property |
 | R5 | A model-written rationale is wrong, unfair, or humiliating | Medium | Medium | The subject reads it verbatim, which constrains what may be written; contest reopens it; no inference of protected characteristics; the model gets passages, skills and availability only | Medium |
 | R6 | Personal data survives a deletion request | High | **Low** | One erasure path; a declaration with a mandatory reason per store; a test walking the real EF model transitively through FKs; cascades in the database rather than in code; the embedding is destroyed with the text it derives from | Low |
-| R7 | The career narrative leaves the company to a third-party model provider | Medium | Certain | Named to the person by name (Gemini); passages rather than the whole record at assessment time; no inference permitted | **Open.** The Chapter V transfer mechanism is not assessed — see §1 |
+| R7 | The career narrative leaves the company to a third-party model provider — one on a Gemini deployment, two on an Azure one | Medium | Certain | Each recipient named to the person by name and split by what it does (Google for embeddings, Microsoft (Azure OpenAI) for scoring), derived from configuration so the name cannot go stale; passages rather than the whole record at assessment time; no inference permitted | **Assessed for one provider, open for the other.** *Google:* unassessed, exactly as before. *Microsoft:* the deployment is `GlobalStandard` in Sweden Central, so **inference is not EU-confined** — the region bought no residency and **R7 is not improved by it** (ADR §7) — and the entity and mechanism are no more assessed than Google's. Assessed is not resolved. See §1 |
 | R8 | Somebody's record is read by a party who should not see it | High | Low | Passkeys only; default-deny endpoint classification with a test; ownership scope with reflective coverage; 404 not 403; `TokenVersion` |
 | R9 | Erasure is triggered by somebody who is not the person | High | Low | Control-word re-auth on erasure and objection; the same gate on both, because they are the same act | Low |
 | R10 | A person deletes when they meant to pause | Medium | Medium | Two separate controls, deliberately far apart on a long page; the page length **is** the mechanism, and a test asserts the ordering so "tidying" cannot undo it | Low–Medium. There is no email with which to undo a mistake |

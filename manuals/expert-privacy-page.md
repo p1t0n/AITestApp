@@ -45,7 +45,7 @@ inline.
 | The search index | that embeddings of their text exist | P1T-187 |
 | Assessments | their scores, bands, rationales, match answers — **and a contest button per row** | P1T-189 |
 | What we use it for | purposes | Art. 15(1)(a) |
-| Who sees it | recipient categories, **including Google (Gemini) by name** | Art. 15(1)(c) |
+| Who sees it | recipient categories, **including the configured model provider by name** — `Google (Gemini), as our AI model provider`, or under Azure the two-way split `Google (Gemini), as our embeddings provider` + `Microsoft (Azure OpenAI), as our AI model provider` | Art. 15(1)(c) |
 | How the scoring works | the Art. 22 logic text, rendered as markdown | Art. 15(1)(h) |
 | Why we may hold it | the basis, and the source where they did not give it to us | Art. 15(1)(g) |
 | How long we keep it | the criterion **and their own expiry date** | P1T-188 |
