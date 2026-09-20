@@ -61,10 +61,7 @@ public static class ChatProviderServiceCollectionExtensions
         var models = ReadProvider(config) switch
         {
             ChatProvider.Gemini => AddGeminiClient(services, config),
-            ChatProvider.AzureFoundry => throw new NotSupportedException(
-                $"'{ProviderKey}' is 'AzureFoundry', whose construction branch is not built yet — it "
-                + "arrives in EXP-17 (manuals/adr-chat-provider-seam.md §10, build ticket 3). Set it "
-                + "to 'Gemini' until then."),
+            ChatProvider.AzureFoundry => AddAzureFoundryClient(services, config),
             var unreachable => throw new InvalidOperationException(
                 $"'{ProviderKey}' bound to {unreachable}, which no construction branch builds. A new "
                 + $"{nameof(ChatProvider)} member needs a branch here."),
@@ -163,6 +160,48 @@ public static class ChatProviderServiceCollectionExtensions
             return new OpenAIClient(new ApiKeyCredential(apiKey), options);
         });
 
+        return new ChatModels(cfg.Model, cfg.Agents);
+    }
+
+    /// <summary>
+    /// The Azure construction branch (EXP-17): the plain OpenAI SDK pointed at the resource's
+    /// <c>openai/v1/</c> endpoint, with the <b>deployment</b> name passed where a model id goes
+    /// (ADR §2 decision 1). Not <c>Azure.AI.OpenAI</c>, whose newest release is a prerelease that
+    /// recommends this package in its own notes, and whose <c>AzureOpenAIClient</c> derives from
+    /// <see cref="OpenAIClient"/> and hands back the identical chat client anyway.
+    ///
+    /// <para><b>No transport handler and no per-call policy here, and that is the point.</b>
+    /// Neither Gemini shim has an analog on this endpoint, and each absence was measured rather
+    /// than assumed (ADR §3, <c>tests/Agents.Tests/AzureFoundryDialectProbeTests.cs</c>): a
+    /// replayed tool-call history — the exact request Gemini 400s without
+    /// <see cref="GeminiThoughtSignaturePolicy"/> — was accepted unmodified, and every
+    /// <c>finish_reason</c> came back on a value the SDK already parses, so there is nothing for a
+    /// <see cref="GeminiCompatHandler"/> analog to normalize. <see cref="ApiKeyCredential"/> sends
+    /// <c>Authorization: Bearer</c> and the v1 endpoint accepts it, so not a header shim either.
+    /// <c>ChatProviderRegistrationTests.AzureProvider_ConstructsNoGeminiCompatHandler</c> asserts
+    /// the absence, because an absence is what regresses quietly.</para>
+    /// </summary>
+    private static ChatModels AddAzureFoundryClient(IServiceCollection services, IConfiguration config)
+    {
+        var cfg = config.GetSection(AzureFoundryOptions.Section).Get<AzureFoundryOptions>()
+                  ?? new AzureFoundryOptions();
+
+        services.AddSingleton(_ =>
+        {
+            // Env var first, config second — the same explicit read the Gemini branch does for
+            // GEMINI_API_KEY, and for the same reason: a credential is a name read on purpose, not
+            // a configuration path bound by the options system (ADR §2 decision 4).
+            var apiKey = Environment.GetEnvironmentVariable("AZURE_FOUNDRY_API_KEY") is { Length: > 0 } envToken
+                ? envToken
+                : cfg.ApiKey;
+            return new OpenAIClient(
+                new ApiKeyCredential(apiKey),
+                new OpenAIClientOptions { Endpoint = new Uri(cfg.Endpoint) });
+        });
+
+        // cfg.Model and cfg.Agents carry DEPLOYMENT names on this provider. The shared loop below
+        // passes them to GetChatClient exactly where Gemini's model ids go, which is the whole
+        // reason the override dictionary was not forked into two shapes (ADR §2 decision 3).
         return new ChatModels(cfg.Model, cfg.Agents);
     }
 

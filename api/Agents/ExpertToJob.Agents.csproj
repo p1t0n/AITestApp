@@ -21,6 +21,7 @@
     <PackageReference Include="Microsoft.Extensions.AI" />
     <PackageReference Include="Microsoft.Extensions.AI.OpenAI" />
     <PackageReference Include="ModelContextProtocol" />
+    <PackageReference Include="OpenAI" />
   </ItemGroup>
 
   <ItemGroup>

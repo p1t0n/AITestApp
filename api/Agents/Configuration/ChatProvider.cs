@@ -22,7 +22,8 @@ public enum ChatProvider
     Gemini,
 
     /// <summary>An Azure OpenAI deployment reached through the plain OpenAI SDK against the
-    /// resource's <c>/openai/v1/</c> endpoint. Bound from <see cref="AzureFoundryOptions"/>; its
-    /// construction branch arrives in EXP-17.</summary>
+    /// resource's <c>/openai/v1/</c> endpoint. Bound from <see cref="AzureFoundryOptions"/>, whose
+    /// <c>Model</c> carries a <b>deployment name</b> rather than a model id, and built by a branch
+    /// that deliberately attaches neither Gemini shim (EXP-17, ADR §3).</summary>
     AzureFoundry,
 }
