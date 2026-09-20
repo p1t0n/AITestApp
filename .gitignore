@@ -81,3 +81,6 @@ ralph/logs/
 
 # Agent scratch worktrees — each is its own clone, never part of a commit here.
 .claude/worktrees/
+
+# RTK's local cache and tee logs — per-machine tooling state.
+.rtk/
