@@ -27,13 +27,6 @@ if (builder.Environment.IsProduction())
             "environment (Auth__Jwt__SigningKey) before running in Production.");
     }
 
-    if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GEMINI_API_KEY"))
-        && string.IsNullOrWhiteSpace(builder.Configuration[$"{GeminiOptions.Section}:ApiKey"]))
-    {
-        throw new InvalidOperationException(
-            "No Gemini API key. Set GEMINI_API_KEY before running in Production.");
-    }
-
     foreach (var agent in builder.Configuration.GetSection("McpAuth").GetChildren())
     {
         if (string.IsNullOrWhiteSpace(agent["ClientSecret"]))
@@ -44,6 +37,13 @@ if (builder.Environment.IsProduction())
         }
     }
 }
+
+// The chat credential, required for the provider Ai:Chat:Provider actually names (EXP-18): an
+// Azure-configured host is stopped for a missing AZURE_FOUNDRY_API_KEY and never for a Gemini chat
+// key it will not use. Outside the block above because the guard owns the Production-only half of
+// its own rule — that is the half a test can then hold still.
+ChatProviderStartupGuard.RequireActiveProviderCredential(
+    builder.Configuration, builder.Environment);
 
 // The shared spine (P1T-214): OTLP export — only when OTEL_EXPORTER_OTLP_ENDPOINT is set — plus
 // AspNetCore/HttpClient/Runtime instrumentation, HTTP resilience and the health checks. The
