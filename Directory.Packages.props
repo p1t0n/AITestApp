@@ -109,6 +109,13 @@
     <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.9.0" />
     <PackageVersion Include="ModelContextProtocol" Version="1.4.0" />
     <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="1.4.0" />
+    <!--
+      The chat seam constructs an OpenAIClient by hand (EXP-17), so the package it comes from is
+      referenced directly rather than ridden in on Microsoft.Extensions.AI.OpenAI's coat-tails.
+      2.12.0 is not a preference: M.E.AI.OpenAI 10.9.0 pins [2.12.0, 2.13.0), and stepping outside
+      that range breaks the restore rather than merely changing a version.
+    -->
+    <PackageVersion Include="OpenAI" Version="2.12.0" />
     <PackageVersion Include="System.ClientModel" Version="1.10.0" />
   </ItemGroup>
 

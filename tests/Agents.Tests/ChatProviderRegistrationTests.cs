@@ -11,16 +11,18 @@ using OpenAI;
 namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
-/// The seam (EXP-16, <c>manuals/adr-chat-provider-seam.md</c> §1–§2): <c>AddChatProvider</c> is the
-/// one place a chat provider is chosen, and everything provider-specific happens in a construction
-/// branch that is unreachable when another provider is configured.
+/// The seam (EXP-16/EXP-17, <c>manuals/adr-chat-provider-seam.md</c> §1–§2):
+/// <c>AddChatProvider</c> is the one place a chat provider is chosen, and everything
+/// provider-specific happens in a construction branch that is unreachable when another provider is
+/// configured. Both branches exist now, so each claim below is asserted on the branch it is about.
 ///
 /// <para>Two properties are worth a test rather than a reading. First, that an unknown provider
 /// name stops the host instead of quietly picking one — a typo'd discriminator is the failure mode
 /// a string would hide and an enum makes loud. Second, that the shared decorator stack still wraps
 /// <em>every</em> client the seam registers: the whole point of branching only around client
 /// construction is that a later branch cannot bypass metering or the Runtime Budget, and "cannot"
-/// is a claim that needs evidence before the Azure branch lands on top of it (EXP-17).</para>
+/// is a claim that needed evidence before the Azure branch landed on top of it, and needs it no
+/// less now that it has.</para>
 ///
 /// <para>Everything here is structural: the pipeline is read off the constructed client, never
 /// exercised against a model. No test in this file reaches the network.</para>
@@ -34,21 +36,31 @@ public class ChatProviderRegistrationTests
             .AddInMemoryCollection(settings.ToDictionary(s => s.Key, s => s.Value))
             .Build();
 
-    /// <summary>A provider registered the way the host registers it, on the incumbent branch.</summary>
-    private static IServiceProvider BuildGemini(params (string Key, string? Value)[] extra)
-    {
-        var settings = new (string, string?)[]
-        {
-            (ProviderKey, "Gemini"),
-            ("Ai:Gemini:Endpoint", "https://generativelanguage.googleapis.com/v1beta/openai"),
-            ("Ai:Gemini:Model", "gemini-3.5-flash-lite"),
-            ("Ai:Gemini:ApiKey", "test-key"),
-        };
+    /// <summary>The keys the shipped settings files carry for each provider, so a test names only
+    /// what it is actually about. Both blocks are handed to every registration below: configuration
+    /// a deployment does not use is still configuration a deployment has, and a branch that read
+    /// the wrong block would go unnoticed if only the active one were present.</summary>
+    private static readonly (string, string?)[] BothProviderBlocks =
+    [
+        ("Ai:Gemini:Endpoint", "https://generativelanguage.googleapis.com/v1beta/openai"),
+        ("Ai:Gemini:Model", "gemini-3.5-flash-lite"),
+        ("Ai:Gemini:ApiKey", "test-key"),
+        ("Ai:AzureFoundry:Endpoint", "https://experttojob-openai-swc.openai.azure.com/openai/v1/"),
+        ("Ai:AzureFoundry:Model", "gpt-4-1-mini"),
+        ("Ai:AzureFoundry:ApiKey", "test-key"),
+    ];
 
+    /// <summary>A provider registered the way the host registers it, on the named branch.</summary>
+    private static IServiceProvider Build(string provider, params (string Key, string? Value)[] extra)
+    {
         var services = new ServiceCollection();
-        services.AddChatProvider(Config([.. settings, .. extra]));
+        services.AddChatProvider(
+            Config([(ProviderKey, provider), .. BothProviderBlocks, .. extra]));
         return services.BuildServiceProvider();
     }
+
+    private static IServiceProvider BuildGemini(params (string Key, string? Value)[] extra) =>
+        Build("Gemini", extra);
 
     [Theory]
     [InlineData("Vertex")]
@@ -74,17 +86,66 @@ public class ChatProviderRegistrationTests
                 "a seam that took an IHostEnvironment could make a typo acceptable somewhere");
     }
 
-    /// <summary>The other enum member is known but unbuilt, and says so. A different exception type
-    /// from the unknown-name throw on purpose: "you named something real that this build cannot do
-    /// yet" is a different mistake from "you named nothing at all", and only one of them is fixed by
-    /// correcting a typo.</summary>
+    /// <summary>
+    /// The Azure branch's safety property, and the reason it is asserted rather than read off the
+    /// diff: <b>the Gemini shims are absent</b> (EXP-17, ADR §2 decision 2 and §3). An absence is
+    /// what regresses silently — a shim copied onto this branch by someone tidying the two branches
+    /// into one would break nothing visible here and would send a thought-signature policy and a
+    /// <c>finish_reason</c> rewriter at an endpoint that measurably needs neither.
+    ///
+    /// <para>Both shims are checked, not only the handler the name mentions: they are one decision
+    /// ("no Gemini quirk reaches this client"), and each lives in a different half of the SDK
+    /// pipeline, so each can arrive without the other.</para>
+    /// </summary>
     [Fact]
-    public void AzureFoundryProvider_ThrowsUntilItsBranchLands()
+    public void AzureProvider_ConstructsNoGeminiCompatHandler()
     {
-        var act = () => new ServiceCollection().AddChatProvider(Config((ProviderKey, "AzureFoundry")));
+        var client = Build("AzureFoundry").GetRequiredService<OpenAIClient>();
 
-        act.Should().Throw<NotSupportedException>()
-            .WithMessage("*EXP-17*", "the message has to name the ticket that builds the branch");
+        HandlerTypesOf(client).Should().NotContain(typeof(GeminiCompatHandler),
+            "the probe saw only finish_reason values the SDK already parses (ADR §3)");
+        PolicyTypesOf(client).Should().NotContain(typeof(GeminiThoughtSignaturePolicy),
+            "the probe replayed a tool-call history the endpoint accepted unmodified (ADR §3)");
+
+        // The transport is the SDK's own, untouched: this branch passes no Transport at all, which
+        // is the difference from Gemini that the two assertions above are downstream of.
+        TransportOf(client).Should().BeSameAs(HttpClientPipelineTransport.Shared,
+            "a branch that built its own transport would be a shim by another name");
+    }
+
+    /// <summary>
+    /// Per-agent overrides are read from the <b>active provider's own block</b> and from no other
+    /// (ADR §2 decision 10). Both blocks are configured here, each naming a different agent, so the
+    /// test fails on either mistake: an active branch that missed its own overrides, and one that
+    /// picked up the idle provider's.
+    ///
+    /// <para>The model each keyed client actually runs on is asserted too, because "a keyed client
+    /// exists" is satisfied by a client on the wrong model. Under Azure that value is a
+    /// <em>deployment</em> name — same key spelling as Gemini, different meaning (ADR §2
+    /// decision 3).</para>
+    /// </summary>
+    [Theory]
+    [InlineData("Gemini", "cv-tailoring", "gemini-pro-latest", "match")]
+    [InlineData("AzureFoundry", "match", "gpt-4-1-nano", "cv-tailoring")]
+    public void PerAgentOverride_ResolvesKeyedClient_ForBothProviders(
+        string provider, string overridden, string model, string otherProvidersAgent)
+    {
+        var sp = Build(
+            provider,
+            ("Ai:Gemini:Agents:cv-tailoring", "gemini-pro-latest"),
+            ("Ai:AzureFoundry:Agents:match", "gpt-4-1-nano"));
+
+        var keyed = sp.GetRequiredKeyedService<IChatClient>(overridden);
+        keyed.GetService<ChatClientMetadata>()!.DefaultModelId.Should().Be(
+            model, $"'{overridden}' overrides its model inside the {provider} block");
+
+        sp.GetKeyedService<IChatClient>(otherProvidersAgent).Should().BeNull(
+            $"'{otherProvidersAgent}' is overridden in the idle provider's block, which {provider} "
+            + "must not read");
+
+        // The agent that inherits still gets a client, on the active provider's default model.
+        sp.ResolveAgentChatClient(otherProvidersAgent).GetService<ChatClientMetadata>()!.DefaultModelId
+            .Should().Be(provider == "Gemini" ? "gemini-3.5-flash-lite" : "gpt-4-1-mini");
     }
 
     [Fact]
@@ -148,12 +209,18 @@ public class ChatProviderRegistrationTests
         return policies.ToArray().Select(p => p.GetType());
     }
 
+    /// <summary>The transport the pipeline ends in: the Gemini branch builds its own so it can slot
+    /// the compat handler in, every other branch gets the SDK's shared one.</summary>
+    private static PipelineTransport TransportOf(OpenAIClient client) =>
+        (PipelineTransport)typeof(ClientPipeline).GetField("_transport", Any)!
+            .GetValue(PipelineOf(client))!;
+
     /// <summary>The transport's <see cref="HttpMessageHandler"/> chain, outermost first.</summary>
     private static IEnumerable<Type> HandlerTypesOf(OpenAIClient client)
     {
-        var transport = typeof(ClientPipeline).GetField("_transport", Any)!.GetValue(PipelineOf(client));
+        var transport = TransportOf(client);
         transport.Should().BeOfType<HttpClientPipelineTransport>(
-            "the Gemini branch builds its own transport so it can slot the compat handler in");
+            "reading the handler chain at all depends on the transport being the HTTP one");
 
         var httpClient = (HttpClient)typeof(HttpClientPipelineTransport)
             .GetField("_httpClient", Any)!.GetValue(transport)!;
