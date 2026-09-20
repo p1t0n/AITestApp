@@ -12,9 +12,17 @@ dotnet test                                    # unit + Testcontainers integrati
 dotnet test --filter "Category!=e2e&Category!=live"   # what CI and the Ralph loop run
 dotnet test tests/Application.Tests             # one project
 dotnet test --filter "FullyQualifiedName~CvAssemblerTests"   # one class/method
-dotnet test --filter "Category=live"           # real model/embeddings; needs GEMINI_API_KEY
+dotnet test --filter "Category=live"           # real model/embeddings; needs a provider key
 dotnet test --filter "Category=eval"           # tool-selection gate, ~3 min, 39 model calls
 ```
+
+`Category=live` is no longer one provider: each live test skips on its own missing key rather than
+failing, so the set that actually runs depends on what is exported. `GEMINI_API_KEY` for the
+incumbent path and the eval gate; `AZURE_FOUNDRY_API_KEY` for the Azure dialect probe
+(`az cognitiveservices account keys list -n experttojob-openai-swc -g rg-experttojob-foundry
+--query key1 -o tsv`); `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN` for the Workers AI gate.
+A live probe that measures a provider is committed **without** that provider's shims, so a shim
+that turns out to be needed shows up as a red test rather than as a surprise in the build.
 
 Frontend (`web/`):
 
@@ -28,6 +36,8 @@ npm run dev                     # Vite on :5173, proxies /api and /agents
 npm run test:e2e                # Playwright; owns its own DB container + API + SPA
 npm run test:e2e -- e2e/shell.e2e.ts            # one spec
 npm run shots                   # capture screenshots (E2E_SHOTS=1)
+npm run test:visual             # shell visual regression, `visual` Playwright project
+npm run visual:update           # re-baseline it — only with the diff looked at
 ```
 
 Before committing SPA changes run all four: `npm test`, `npm run typecheck`, `npm run lint`, and
@@ -73,6 +83,13 @@ A solo `dotnet run` in one project still works — each keeps its own launch pro
 applies migrations any more**, so against a fresh database run `dotnet run --project api/Migrator`
 first. `dotnet run --project tools/SeedDemoRoster` adds the 500 synthetic experts outside the
 AppHost (`--wipe` removes exactly those rows).
+
+**Azure access is scoped by `.mcp.json`**, not by whoever ran `az login`. The tracked file pins a
+project-scoped `azure` MCP server to `AZURE_TOKEN_CREDENTIALS=env`, so it resolves the service
+principal whose role assignment covers `rg-experttojob-foundry` and nothing else. Every value in it
+is an env-var reference; the credential itself lives outside the repo. No `AZURE_*` exported means
+the server starts and fails to authenticate — which is the intended failure, not a reason to fall
+back to a machine-wide login.
 
 ## Architecture
 
@@ -135,9 +152,15 @@ eyeballed. Print behaviour is settled in a real browser at print media, because 
 that a rule was *emitted*, not that it *won*. A test that mirrors a token is not a freeze — assert
 literals where a value must not drift.
 
-**Issue tracking is Linear**, not GitHub: team `P1t0ns nest`, project `AI Test Manager`. Issue
-state is the progress file. Branch names come from Linear's own `gitBranchName` (they carry the
-issue key, which is what auto-links the PR). Branch from `main` — **no stacked PRs**.
+**Issue tracking is Linear**, not GitHub: workspace `experttojob`, team `ExpertToJob`, issue keys
+`EXP-*`. Issue state is the progress file. Branch names come from Linear's own `gitBranchName` (they
+carry the issue key, which is what auto-links the PR). Branch from `main` — **no stacked PRs**.
+
+Everything before 2026-09-20 was tracked in a previous workspace under `P1T-*` keys, and the repo is
+full of them: commit messages, code comments and manuals all cite `P1T-nnn`. Those references are
+**history, not addresses** — the issues behind them are not reachable from the current workspace, so
+read a `P1T-*` mention as a pointer to the commit or manual that explains it, and never assume a
+lookup will resolve. New work cites `EXP-*`.
 
 **The Ralph loop** (`ralph/PROMPT.md`, `ralph/ralph-once.sh`) is an unattended agent that takes one
 Linear issue per iteration: label `ready-for-agent`, state `Todo`, `blockedBy` respected as
