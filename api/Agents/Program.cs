@@ -95,10 +95,11 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<RosterQaThreadStore>();
 builder.Services.AddHttpClient();
 
-// Chat model: provider-agnostic IChatClient over Gemini (OpenAI-compatible, free tier with an API
-// PAT). One shared default client, plus a keyed client for any agent that overrides its model via
-// Ai:Gemini:Agents:<agent>. Swap the backend here in one place for Azure OpenAI / Anthropic / etc.
-builder.Services.AddGeminiChatClient(builder.Configuration);
+// Chat model: the seam (manuals/adr-chat-provider-seam.md). Ai:Chat:Provider names the backend,
+// and one construction branch inside builds it; everything downstream holds a provider-agnostic
+// IChatClient. One shared default client, plus a keyed client for any agent that overrides its
+// model inside the active provider's own block.
+builder.Services.AddChatProvider(builder.Configuration);
 
 // MCP access: each agent gets its own keyed client-credentials identity + tool source, bound to
 // its McpAuth:<agent> config section. Register a new agent's identity here before its agent below.

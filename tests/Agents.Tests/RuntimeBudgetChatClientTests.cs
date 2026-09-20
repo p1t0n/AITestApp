@@ -320,7 +320,7 @@ public class RuntimeBudgetWiringTests
 
         var config = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
         var services = new ServiceCollection();
-        services.AddGeminiChatClient(config);
+        services.AddChatProvider(config);
         services.AddOptions<AgentBudgetOptions>().Bind(config.GetSection(AgentBudgetOptions.Section));
         return services.BuildServiceProvider();
     }

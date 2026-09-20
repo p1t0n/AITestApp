@@ -72,7 +72,7 @@ public class ConfigKeyMigrationTests
                  {
                      "api/Agents/appsettings.json",
                      "api/Agents/Configuration/AgentsOptions.cs",
-                     "api/Agents/Configuration/GeminiServiceCollectionExtensions.cs",
+                     "api/Agents/Configuration/ChatProviderServiceCollectionExtensions.cs",
                      "api/Infrastructure/Embeddings/EmbeddingOptions.cs",
                      "api/Mcp/appsettings.json",
                      "tools/RetrievalEval/Program.cs",
@@ -100,7 +100,7 @@ public class ConfigKeyMigrationTests
             })
             .Build();
 
-        var act = () => new ServiceCollection().AddGeminiChatClient(config);
+        var act = () => new ServiceCollection().AddChatProvider(config);
 
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*Ai:" + LegacyPrefix + "*",
@@ -119,7 +119,7 @@ public class ConfigKeyMigrationTests
             })
             .Build();
 
-        var act = () => new ServiceCollection().AddGeminiChatClient(config);
+        var act = () => new ServiceCollection().AddChatProvider(config);
 
         act.Should().NotThrow();
     }

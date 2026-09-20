@@ -116,7 +116,7 @@ internal static class LiveGemini
         var config = new ConfigurationBuilder().Build();
         var provider = new ServiceCollection()
             .AddLogging()
-            .AddGeminiChatClient(config)
+            .AddChatProvider(config)
             .BuildServiceProvider();
         // Eval-only patience: a burst of tool-loop turns trips the free tier's per-minute cap
         // mid-run; production fast-fails 429s by design, the eval waits the window out instead.
