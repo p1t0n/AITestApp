@@ -57,8 +57,15 @@ public static class ChatProviderServiceCollectionExtensions
                 + "See manuals/adr-chat-provider-seam.md.");
         }
 
+        var provider = ReadProvider(config);
+
+        // The one fact downstream code is allowed to know about the choice: its name, for the usage
+        // row (EXP-19, ADR §2 decision 11). Registered as the enum rather than the string so a
+        // reader still fails at the config edge; the string exists only in the database column.
+        services.AddSingleton(typeof(ChatProvider), provider);
+
         // ---- the construction branch: the only code below that knows a provider's name ----
-        var models = ReadProvider(config) switch
+        var models = provider switch
         {
             ChatProvider.Gemini => AddGeminiClient(services, config),
             ChatProvider.AzureFoundry => AddAzureFoundryClient(services, config),

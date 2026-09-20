@@ -148,6 +148,15 @@ public class ChatProviderRegistrationTests
             .Should().Be(provider == "Gemini" ? "gemini-3.5-flash-lite" : "gpt-4-1-mini");
     }
 
+    /// <summary>The usage row records which backend served the run (EXP-19), so the seam has to
+    /// hand the resolved choice to the container — the alternative, re-reading the discriminator
+    /// where the row is written, would be a second place a provider name is interpreted.</summary>
+    [Fact]
+    public void TheActiveProvider_IsResolvableForTheUsageRow()
+    {
+        BuildGemini().GetRequiredService<ChatProvider>().Should().Be(ChatProvider.Gemini);
+    }
+
     [Fact]
     public void GeminiProvider_AttachesCompatHandlerAndSignaturePolicy()
     {
