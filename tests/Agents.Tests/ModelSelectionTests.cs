@@ -28,7 +28,7 @@ public class ModelSelectionTests
 
         var config = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
         var services = new ServiceCollection();
-        services.AddGeminiChatClient(config);
+        services.AddChatProvider(config);
         return services.BuildServiceProvider();
     }
 
