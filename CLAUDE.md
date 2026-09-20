@@ -77,7 +77,10 @@ literal (`vite.config.ts`, the `appsettings.json` files, the realm export) stays
 `manuals/adr-aspire-apphost.md` says why, and lists the tripwires that silently do the wrong thing.
 
 The one optional secret is the Gemini key, and only to stop the agents degrading:
-`dotnet user-secrets set Parameters:gemini-api-key <key> --project api/AppHost`.
+`dotnet user-secrets set Parameters:gemini-api-key <key> --project api/AppHost`. The chat backend
+itself is configuration: `Ai:Chat:Provider` names the provider and `Ai:Gemini:*` holds its
+settings. A leftover top-level `Gemini` section throws at startup rather than binding to nothing —
+`ConfigKeyMigrationTests` holds both halves of that rule.
 
 A solo `dotnet run` in one project still works — each keeps its own launch profile — but **no host
 applies migrations any more**, so against a fresh database run `dotnet run --project api/Migrator`

@@ -8,7 +8,7 @@ namespace ExpertToJob.Agents.Tests;
 
 /// <summary>
 /// Tests per-agent model selection: a shared default chat client, plus a keyed override per agent
-/// configured under Gemini:Agents. Asserted through the chat client's reported model id —
+/// configured under Ai:Gemini:Agents. Asserted through the chat client's reported model id —
 /// no live model call (constructing the client and reading its metadata touches no network).
 /// </summary>
 public class ModelSelectionTests
@@ -17,13 +17,13 @@ public class ModelSelectionTests
     {
         var settings = new Dictionary<string, string?>
         {
-            ["Gemini:Endpoint"] = "https://generativelanguage.googleapis.com/v1beta/openai",
-            ["Gemini:Model"] = defaultModel,
-            ["Gemini:ApiKey"] = "test-key",
+            ["Ai:Gemini:Endpoint"] = "https://generativelanguage.googleapis.com/v1beta/openai",
+            ["Ai:Gemini:Model"] = defaultModel,
+            ["Ai:Gemini:ApiKey"] = "test-key",
         };
         foreach (var (agent, model) in overrides)
         {
-            settings[$"Gemini:Agents:{agent}"] = model;
+            settings[$"Ai:Gemini:Agents:{agent}"] = model;
         }
 
         var config = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();

@@ -27,7 +27,7 @@ public class UsageMeterTests
         await using var db = NewDb();
         var meter = new UsageMeter(
             db,
-            Config(("Gemini:Model", "gemini-flash-lite-latest")),
+            Config(("Ai:Gemini:Model", "gemini-flash-lite-latest")),
             TimeProvider.System,
             NullLogger<UsageMeter>.Instance);
         var userId = Guid.NewGuid();
@@ -49,7 +49,7 @@ public class UsageMeterTests
         await using var db = NewDb();
         var meter = new UsageMeter(
             db,
-            Config(("Gemini:Model", "configured-model")),
+            Config(("Ai:Gemini:Model", "configured-model")),
             TimeProvider.System,
             NullLogger<UsageMeter>.Instance);
         using var activity = new System.Diagnostics.Activity("test-request");
@@ -78,7 +78,7 @@ public class UsageMeterTests
     {
         await using var db = NewDb();
         var meter = new UsageMeter(
-            db, Config(("Gemini:Model", "m")), TimeProvider.System, NullLogger<UsageMeter>.Instance);
+            db, Config(("Ai:Gemini:Model", "m")), TimeProvider.System, NullLogger<UsageMeter>.Instance);
 
         await meter.RecordAsync(Guid.NewGuid(), "roster-qa", new AgentReply("a", 1, 1, 2));
 
@@ -96,8 +96,8 @@ public class UsageMeterTests
         await using var db = NewDb();
         var meter = new UsageMeter(
             db,
-            Config(("Gemini:Model", "gemini-flash-lite-latest"),
-                   ("Gemini:Agents:match", "gemini-pro-latest")),
+            Config(("Ai:Gemini:Model", "gemini-flash-lite-latest"),
+                   ("Ai:Gemini:Agents:match", "gemini-pro-latest")),
             TimeProvider.System,
             NullLogger<UsageMeter>.Instance);
 
