@@ -21,3 +21,14 @@ export async function selectAgentSurface(user: Clicker, label: string) {
 export function currentAgentSurface(): string {
   return screen.getByRole("button", { name: SURFACE_PICKER_NAME }).textContent ?? "";
 }
+
+/**
+ * The dock pane a surface is showing in, by its label (EXP-30). Every visited surface stays
+ * mounted, so a page-wide query can hit a value two panes are both holding — a JD that was drilled
+ * in from the Shortlist is genuinely in both forms. Inactive panes are `hidden`, so only the active
+ * one has a `region` in the accessibility tree: asking for the pane by name is both the scope and
+ * the assertion that the dock is pointed at it.
+ */
+export function agentSurfacePane(label: string): HTMLElement {
+  return screen.getByRole("region", { name: label });
+}

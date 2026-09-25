@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import AgentWidget from "./AgentWidget";
-import { selectAgentSurface, currentAgentSurface } from "../test/agentSurface";
+import { agentSurfacePane, selectAgentSurface, currentAgentSurface } from "../test/agentSurface";
 import type { AgentDock } from "./useAgentDock";
 import type {
   StaffingReport,
@@ -505,8 +505,10 @@ describe("Staffing tab — report", () => {
     await user.click(within(candidateCard(GRACE)).getByRole("button", { name: /open in match/i }));
 
     expect(currentAgentSurface()).toBe("Match");
-    expect(screen.getByDisplayValue("Grace Hopper — Compiler Engineer")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Senior React engineer")).toBeInTheDocument();
+    // Scoped since EXP-30: Staffing stays mounted behind the drill-in, holding the same JD.
+    const match = agentSurfacePane("Match");
+    expect(within(match).getByDisplayValue("Grace Hopper — Compiler Engineer")).toBeInTheDocument();
+    expect(within(match).getByDisplayValue("Senior React engineer")).toBeInTheDocument();
   });
 
   it("'Tailor CV' switches to the Tailor CV tab with the expert and JD pre-filled", async () => {
@@ -516,8 +518,9 @@ describe("Staffing tab — report", () => {
     await user.click(within(candidateCard(ADA)).getByRole("button", { name: "Tailor CV" }));
 
     expect(currentAgentSurface()).toBe("Tailor CV");
-    expect(screen.getByDisplayValue("Ada Lovelace — Senior Engineer")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Senior React engineer")).toBeInTheDocument();
+    const tailor = agentSurfacePane("Tailor CV");
+    expect(within(tailor).getByDisplayValue("Ada Lovelace — Senior Engineer")).toBeInTheDocument();
+    expect(within(tailor).getByDisplayValue("Senior React engineer")).toBeInTheDocument();
   });
 });
 
@@ -574,13 +577,24 @@ describe("Staffing tab — errors and edge cases", () => {
     expect(screen.queryByText("The network connection was lost.")).not.toBeInTheDocument();
   });
 
-  it("aborts the in-flight run when the user switches away from the tab", async () => {
+  // Until EXP-30 this said "aborts … when the user switches away from the tab", because switching
+  // unmounted the panel. A staffing run is the most expensive thing this dock starts and the least
+  // replaceable — killing it because somebody peeked at the token ledger was the same bug as
+  // wiping a half-typed JD, wearing an abort. The panel stays mounted now, so the run keeps going
+  // and the report is there on the way back. What still aborts it is the widget going away, which
+  // is what the ref's unmount cleanup was for in the first place.
+  it("keeps the in-flight run alive across a tab switch, and aborts it when the widget goes", async () => {
     const user = await openStaffingTab();
     const call = await startHangingRun(user);
     expect(call.signal?.aborted).toBe(false);
 
     await user.click(screen.getByRole("button", { name: "Token usage" }));
+    expect(call.signal?.aborted).toBe(false);
 
+    await user.click(screen.getByRole("button", { name: /Back to Staffing/ }));
+    expect(screen.getByTestId("staffing-stepper")).toBeInTheDocument();
+
+    cleanup();
     expect(call.signal?.aborted).toBe(true);
   });
 });

@@ -3,7 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import AgentWidget from "./AgentWidget";
-import { selectAgentSurface, currentAgentSurface } from "../test/agentSurface";
+import { agentSurfacePane, selectAgentSurface, currentAgentSurface } from "../test/agentSurface";
 import type { AgentDock } from "./useAgentDock";
 import type { RosterScanAccepted, RosterScanJob } from "../api";
 
@@ -164,6 +164,7 @@ describe("Roster Scan tab", () => {
     await user.click(within(await screen.findByTestId(`scan-row-${ADA}`)).getByRole("button", { name: /open in match/i }));
 
     expect(currentAgentSurface()).toBe("Match");
-    expect(screen.getByDisplayValue("Kafka engineer JD")).toBeInTheDocument();
+    // Scoped since EXP-30: the scan that drilled out of here keeps its own copy of the JD.
+    expect(within(agentSurfacePane("Match")).getByDisplayValue("Kafka engineer JD")).toBeInTheDocument();
   });
 });

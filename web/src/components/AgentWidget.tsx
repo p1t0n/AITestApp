@@ -83,6 +83,18 @@ const SURFACE_LABELS: Record<Surface, string> = Object.fromEntries(
   SURFACE_GROUPS.flatMap((g) => g.surfaces.map((s) => [s.surface, s.label])),
 ) as Record<Surface, string>;
 
+/** One pane of the panel body: an agent surface, or the token ledger, which is one too. */
+type Pane = Surface | "usage";
+
+/** Render order of the panes, so a pane's place in the DOM does not depend on when it was opened. */
+const PANE_ORDER: Pane[] = [
+  ...SURFACE_GROUPS.flatMap((g) => g.surfaces.map((s) => s.surface)),
+  "usage",
+];
+
+/** Each pane's accessible name. The ledger's is what the header already calls it. */
+const PANE_LABELS: Record<Pane, string> = { ...SURFACE_LABELS, usage: "Token usage" };
+
 /** Prefix of the picker's accessible name (`"Agent surface: Match"`) — also how the specs reach
  * it. The visible text stays the bare surface label, so the accessible name still contains it. */
 export const SURFACE_PICKER_LABEL = "Agent surface";
@@ -119,10 +131,43 @@ export default function AgentWidget({ dock }: { dock: AgentDock }) {
     mode: "cv-tailoring" | "match";
     request: AgentJobRequest;
   } | null>(null);
+
+  // How many drill-ins have landed on each job surface. The form reads `initial` once, at mount, so
+  // *replacing* a form that is already filled in means remounting it — and this counter, rather than
+  // the prefill itself, is what its key hangs off. Keying on the prefill would empty the form again
+  // the moment the prefill is cleared, which is every manual navigation after the drill-in.
+  const [drillIns, setDrillIns] = useState<Partial<Record<Surface, number>>>({});
+
   function openPrefilled(target: "cv-tailoring" | "match", expertId: string, jobDescription: string) {
     setPrefill({ mode: target, request: { expertId, jobDescription } });
+    setDrillIns((d) => ({ ...d, [target]: (d[target] ?? 0) + 1 }));
     setUsageOpen(false);
     setSurface(target);
+  }
+
+  // What the panel body is pointed at. The ledger is not in `Surface` — it is a peek at state, not
+  // an agent — but it is a pane like any other down here.
+  const active: Pane = usageOpen ? "usage" : surface;
+
+  // Every pane that has been opened, and how many times. A key's *presence* is "mounted": a surface
+  // nobody has visited never renders and never fetches, so keeping state costs nothing until it is
+  // asked for. The *count* is that pane's error-boundary reset key, so re-opening a pane that threw
+  // retries it rather than showing yesterday's fallback for ever.
+  const [opened, setOpened] = useState<Partial<Record<Pane, number>>>(() => ({ [active]: 1 }));
+  const [showing, setShowing] = useState<Pane>(active);
+
+  // Both branches adjust state during render rather than in an effect, which is the documented way
+  // to derive state from a change React already knows about: a pane has to exist in the same commit
+  // that reveals it, or every first visit paints one empty frame. Each is guarded by the condition
+  // it repairs, so neither can run twice.
+  if (!dock.open && Object.keys(opened).length > 0) {
+    // Closing the dock unmounts every pane, so the panes it had open die with it. Remembering them
+    // would not bring their state back on the way in — it would only remount, and refetch, a row of
+    // surfaces nobody asked to see.
+    setOpened({});
+  } else if (dock.open && (showing !== active || opened[active] === undefined)) {
+    setShowing(active);
+    setOpened((o) => ({ ...o, [active]: (o[active] ?? 0) + 1 }));
   }
 
   // The ⌘K palette jumps straight to a surface (P1T-165). It arrives as a name rather than as a
@@ -168,6 +213,41 @@ export default function AgentWidget({ dock }: { dock: AgentDock }) {
     else return;
     e.preventDefault();
   };
+
+  /** What one pane holds. Called only for panes that have been opened at least once. */
+  function paneBody(pane: Pane) {
+    switch (pane) {
+      case "usage":
+        return <UsagePanel />;
+      case "roster":
+        return <RosterChat />;
+      case "ingestion":
+        return <IngestionPanel />;
+      case "shortlist":
+        return <ShortlistPanel onRunMatch={(expertId, jd) => openPrefilled("match", expertId, jd)} />;
+      case "staffing":
+        return (
+          <StaffingPanel
+            onOpenInMatch={(expertId, jd) => openPrefilled("match", expertId, jd)}
+            onTailorCv={(expertId, jd) => openPrefilled("cv-tailoring", expertId, jd)}
+          />
+        );
+      case "roster-scan":
+        return <RosterScanPanel onOpenInMatch={(expertId, jd) => openPrefilled("match", expertId, jd)} />;
+      case "bench":
+        return <BenchPanel />;
+      default:
+        // The three job surfaces are one form in three modes. It remounts per drill-in, and only
+        // the surface the drill-in named.
+        return (
+          <AgentJobForm
+            key={`${pane}-${drillIns[pane] ?? 0}`}
+            mode={pane}
+            initial={prefill?.mode === pane ? prefill.request : undefined}
+          />
+        );
+    }
+  }
 
   const dockedWide = dock.docked && !dock.isNarrow;
   const dockedNarrow = dock.docked && dock.isNarrow;
@@ -425,47 +505,42 @@ export default function AgentWidget({ dock }: { dock: AgentDock }) {
             )}
           </Box>
 
-          {/* One boundary around the panel body, keyed by what is showing (P1T-153): a panel that
-              throws is contained to the body — the widget header and the navigation above stay
-              live, so picking another surface, or leaving the ledger, is both escape and retry. */}
-          <ErrorBoundary
-            resetKey={usageOpen ? "usage" : surface}
-            fallback={(error, reset) => <DockErrorFallback error={error} reset={reset} />}
-          >
-            {/* Remount per surface so each keeps its own independent state. The job forms also
-                remount per prefill so a new drill-in always lands its values. */}
-            {usageOpen ? (
-              <UsagePanel key="usage" />
-            ) : surface === "roster" ? (
-              <RosterChat key="roster" />
-            ) : surface === "ingestion" ? (
-              <IngestionPanel key="ingestion" />
-            ) : surface === "shortlist" ? (
-              <ShortlistPanel
-                key="shortlist"
-                onRunMatch={(expertId, jd) => openPrefilled("match", expertId, jd)}
-              />
-            ) : surface === "staffing" ? (
-              <StaffingPanel
-                key="staffing"
-                onOpenInMatch={(expertId, jd) => openPrefilled("match", expertId, jd)}
-                onTailorCv={(expertId, jd) => openPrefilled("cv-tailoring", expertId, jd)}
-              />
-            ) : surface === "roster-scan" ? (
-              <RosterScanPanel
-                key="roster-scan"
-                onOpenInMatch={(expertId, jd) => openPrefilled("match", expertId, jd)}
-              />
-            ) : surface === "bench" ? (
-              <BenchPanel key="bench" />
-            ) : (
-              <AgentJobForm
-                key={prefill?.mode === surface ? `${surface}-${prefill.request.expertId}` : surface}
-                mode={surface}
-                initial={prefill?.mode === surface ? prefill.request : undefined}
-              />
-            )}
-          </ErrorBoundary>
+          {/* One pane per surface that has been opened, mounted on first visit and kept from then
+              on (EXP-30). Peeking at the ledger and stepping to another agent are both navigation,
+              and neither is a reason to throw away a conversation or a half-typed JD — which is
+              what the single conditional chain that used to live here did, every time.
+
+              An inactive pane is `hidden`, which takes it out of layout *and* out of the
+              accessibility tree, so exactly one surface's controls are reachable at a time — the
+              part that a `display: none` alone would not buy.
+
+              One boundary per pane rather than one for the body (P1T-153): a panel that throws is
+              contained to its own pane, so the other panes keep their state, and the chrome above
+              — outside every pane — stays live as the way out. Re-opening a pane bumps its `opened`
+              count, which is its reset key, so coming back to a broken surface retries it. */}
+          {PANE_ORDER.filter((pane) => opened[pane] !== undefined).map((pane) => (
+            <Box
+              key={pane}
+              component="section"
+              aria-label={PANE_LABELS[pane]}
+              hidden={pane !== active}
+              // `display` is set here rather than left to `hidden`'s user-agent rule, because the
+              // active pane needs `display: flex` and a declared `display` beats the UA sheet.
+              sx={{
+                display: pane === active ? "flex" : "none",
+                flexDirection: "column",
+                flex: 1,
+                minHeight: 0,
+              }}
+            >
+              <ErrorBoundary
+                resetKey={opened[pane]}
+                fallback={(error, reset) => <DockErrorFallback error={error} reset={reset} />}
+              >
+                {paneBody(pane)}
+              </ErrorBoundary>
+            </Box>
+          ))}
         </Paper>
       )}
     </>
