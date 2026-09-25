@@ -79,7 +79,10 @@ describe("agent dock error containment (P1T-153)", () => {
     // The ledger replaces the picker with its own "Back to <surface>" bar (P1T-152), and that bar
     // is outside the boundary, so it is still there to click.
     await user.click(screen.getByRole("button", { name: /Back to Roster Q&A/ }));
-    expect(screen.queryByText("This panel stopped working")).not.toBeInTheDocument();
+    // By role rather than by text since EXP-30: the ledger's pane stays mounted with its fallback
+    // in it, but `hidden`, so it is out of the accessibility tree and out of layout — which is what
+    // "gone" means for anybody reading the panel, by eye or by screen reader.
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: SURFACE_PICKER_NAME })).toHaveTextContent("Roster Q&A");
 
     // And from there the picker still navigates: the crash is not sticky.

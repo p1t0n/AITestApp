@@ -125,7 +125,12 @@ describe("agent dock navigation (P1T-152)", () => {
     expect(currentAgentSurface()).toBe("Roster Q&A");
   });
 
-  it("discards a surface's state when you navigate away and back (remount-as-reset)", async () => {
+  // These two read as the inverse of what they asserted until EXP-30, and deliberately so: the dock
+  // used to render one panel at a time, so navigating away discarded whatever was in it. That was
+  // never a decision — it was the conditional chain showing through — and the state a surface holds
+  // is a person's typing. `AgentWidget.persistence.test.tsx` is the full record; these two stay
+  // here because navigating is what does it, and this file is the one that drives navigation.
+  it("keeps a surface's state when you navigate away and back", async () => {
     const user = renderWidget();
     await selectAgentSurface(user, "Roster scan");
 
@@ -138,7 +143,7 @@ describe("agent dock navigation (P1T-152)", () => {
 
     expect(
       screen.getByPlaceholderText(/Paste a job description to scan the whole roster against…/),
-    ).toHaveValue("");
+    ).toHaveValue("Senior platform engineer");
   });
 
   it("survives the ledger round-trip the same way", async () => {
@@ -155,7 +160,7 @@ describe("agent dock navigation (P1T-152)", () => {
     expect(currentAgentSurface()).toBe("Roster scan");
     expect(
       screen.getByPlaceholderText(/Paste a job description to scan the whole roster against…/),
-    ).toHaveValue("");
+    ).toHaveValue("Senior platform engineer");
   });
 
   it.each([

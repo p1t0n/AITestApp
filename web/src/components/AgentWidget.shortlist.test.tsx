@@ -3,7 +3,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import AgentWidget from "./AgentWidget";
-import { selectAgentSurface, currentAgentSurface } from "../test/agentSurface";
+import { agentSurfacePane, selectAgentSurface, currentAgentSurface } from "../test/agentSurface";
 import type { AgentDock } from "./useAgentDock";
 import type { ShortlistResponse } from "../api";
 
@@ -222,8 +222,12 @@ describe("Shortlist tab", () => {
     await user.click(await screen.findByRole("button", { name: /run full match/i }));
 
     expect(currentAgentSurface()).toBe("Match");
-    expect(screen.getByDisplayValue("Ada Lovelace — Senior Engineer")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Senior React engineer")).toBeInTheDocument();
+    // Scoped to the Match pane since EXP-30: the Shortlist this drilled out of is still mounted
+    // behind it, holding the very same JD, which is the point rather than a collision to route
+    // around.
+    const match = agentSurfacePane("Match");
+    expect(within(match).getByDisplayValue("Ada Lovelace — Senior Engineer")).toBeInTheDocument();
+    expect(within(match).getByDisplayValue("Senior React engineer")).toBeInTheDocument();
   });
 
   it("renders the structured 429 cap message the same way other tabs do", async () => {

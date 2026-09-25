@@ -317,21 +317,38 @@ the dock reopens the way it was left. Width is clamped to `[360, viewport/2]` in
 the resize handler is plain `mousemove`/`mouseup` on `window` with `userSelect` suppressed for the
 drag.
 
-### Remount-as-reset
+### Mounted on first visit, then kept
 
-The rendering branch is a ternary chain keyed by mode, and **every panel gets a `key`**. That is
-load-bearing, not incidental: switching tabs unmounts the previous panel, so each tab keeps
-independent state and a half-finished shortlist never bleeds into a staffing run. The same trick
-appears twice more:
+The panel body is **one pane per surface the operator has opened**, plus the ledger, which is one
+more. A pane is mounted the first time it is visited and kept from then on; the inactive ones carry
+the `hidden` attribute, which takes them out of layout *and* out of the accessibility tree, so
+exactly one surface's controls are reachable at a time. Unvisited surfaces are not in the DOM at
+all, so keeping state costs nothing until it is asked for.
 
-- `AgentJobForm` is keyed by `${mode}-${expertId}` when prefilled, so a new drill-in always
-  re-seeds its fields.
+Until EXP-30 this was a single ternary chain — one panel mounted, keyed by mode — and that made
+every switch a reset: peeking at the token ledger, or stepping to another agent and back, threw
+away a conversation, a half-typed JD, a finished match. The state a surface holds is a person's
+typing, and there was never a decision to discard it; the chain was just showing through.
+`AgentWidget.persistence.test.tsx` is the record of what survives now.
+
+Each pane has its own `ErrorBoundary` (P1T-153), reset-keyed on how many times that pane has been
+opened, so one panel throwing is contained to its own pane — the others keep their state, the
+chrome above stays live as the way out, and coming back to the broken surface retries it.
+
+Mounting is still the initialisation where seeding from a prop is the point:
+
+- `AgentJobForm` is keyed by `${mode}-${drill-in count}`, so a drill-in that lands on a form which
+  is already filled in replaces it — and replaces only the one surface the drill-in named. The
+  count rather than the prefill itself, because the prefill is cleared on the next manual
+  navigation and keying on it would empty the form again at that moment.
 - On the roster screens, each child form dialog is **rendered only while its row is being edited**
   (`{languageEdit && <LanguageFormDialog .../>}`), because the dialogs seed from `initial` on first
   render only. A dialog kept mounted across two rows would show the first row's values for the
   second.
 
-Mounting *is* the initialisation, everywhere in this app.
+Closing the dock unmounts every pane, and the record of which were open is dropped with them:
+reopening would otherwise remount — and refetch for — a row of surfaces that come back empty
+anyway. Surviving a *reload* is out of scope here and belongs to durable conversation history.
 
 ### Cross-tab drill-in
 
@@ -454,9 +471,12 @@ alone deliberately — rewriting ~35 import statements would have made a pure mo
 refactor and cost the reviewer the ability to read the diff as "nothing moved but the file
 boundaries".
 
-**Remount-as-reset rather than explicit reset effects.** Keying a panel by mode makes "this tab
-forgets when you leave it" a structural fact instead of a `useEffect` that has to be kept correct
-as state grows.
+**Keeping dock panes mounted rather than resetting them on the way out.** A surface holds what
+somebody typed, so navigation must not be a reset (EXP-30). State stays where it already lives —
+in each panel's own `useState` — and the container's only job is to decide what is mounted and
+what is `hidden`; no store was introduced to hold it. Where seeding from a prop *is* the point, the
+`key` still does the work: mounting is the initialisation for a prefilled form and for the roster's
+child dialogs.
 
 **A hand-written SSE client rather than a library.** The staffing stream is a POST, which rules
 out `EventSource`; the frame grammar the server actually emits is small enough to parse in 120
