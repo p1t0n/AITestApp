@@ -2,7 +2,7 @@
 // (skill proposals, degradation notes, duplicate warning) and promotes or discards. Promotion is
 // the publication gate — the roster never shows the draft until it happens.
 import { useState } from "react";
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink } from "react-router";
 import {
   Autocomplete,
   Box,

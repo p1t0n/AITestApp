@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode, RefObject } from "react";
 import { Box, Container, IconButton, Stack, Tooltip, Typography } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink } from "react-router";
 import { RAIL_TOP_INSET_VAR } from "./useAppRail";
 
 /**
@@ -59,8 +59,8 @@ export function PageContainer({ width, children }: { width: PageWidth; children:
  * know what the top inset currently is — or that the rail's mobile bar exists at all.
  */
 function usePinned(
-  sentinel: RefObject<HTMLElement>,
-  header: RefObject<HTMLElement>,
+  sentinel: RefObject<HTMLElement | null>,
+  header: RefObject<HTMLElement | null>,
 ): boolean {
   const [pinned, setPinned] = useState(false);
 

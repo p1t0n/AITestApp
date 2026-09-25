@@ -4,7 +4,7 @@
 // error), and a partial-results table that fills in as chunks settle. The job keeps running when
 // the widget closes.
 import { useMemo, useState } from "react";
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink } from "react-router";
 import {
   Autocomplete,
   Box,

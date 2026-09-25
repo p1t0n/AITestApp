@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Alert, Button, Chip, CircularProgress, Grid, Stack, Typography } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
-import { Navigate } from "react-router-dom";
+import { Navigate } from "react-router";
 import { apiErrorMessage, useExpert, useMyVisibility, useUpdateExpert } from "../api";
 import PageHeader, { PageContainer } from "../components/PageHeader";
 import ExpertRecordSections, { Section } from "../components/ExpertRecordSections";

@@ -9,7 +9,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { Link as RouterLink, useNavigate } from "react-router-dom";
+import { Link as RouterLink, useNavigate } from "react-router";
 import { apiErrorMessage, useRecover } from "../api";
 import { isPasskeySupported } from "../auth/webauthn";
 import { ErrorNotice } from "../components/ErrorNotice";

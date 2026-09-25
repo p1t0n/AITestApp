@@ -15,7 +15,7 @@ import {
 import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
 import SearchIcon from "@mui/icons-material/Search";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { useExperts } from "../api";
 import { apiErrorMessage } from "../api/http";
 import { navFor } from "./AppRail";

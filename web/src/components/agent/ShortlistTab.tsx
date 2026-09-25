@@ -1,7 +1,7 @@
 // Structured results (requirements + ranked candidate cards with evidence), not the markdown pane:
 // the endpoint returns a pinned JSON contract composed from the retrieval tool's output.
 import { useMemo, useState } from "react";
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink } from "react-router";
 import {
   Autocomplete,
   Box,

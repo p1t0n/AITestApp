@@ -1,4 +1,4 @@
-import { Navigate } from "react-router-dom";
+import { Navigate } from "react-router";
 import { Alert, CircularProgress, Paper, Stack, Typography } from "@mui/material";
 import { useMyVisibility } from "../api";
 import PageHeader, { PageContainer } from "../components/PageHeader";

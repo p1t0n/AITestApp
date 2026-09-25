@@ -30,7 +30,7 @@ import MenuIcon from "@mui/icons-material/Menu";
 import SearchIcon from "@mui/icons-material/Search";
 import SettingsBrightnessOutlinedIcon from "@mui/icons-material/SettingsBrightnessOutlined";
 import { visuallyHidden } from "@mui/utils";
-import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
+import { Link as RouterLink, useLocation, useNavigate } from "react-router";
 import { signOut } from "../api";
 import { useSessionEmail, useSessionRole } from "../auth/useAuth";
 import type { SessionRole } from "../auth/roles";
