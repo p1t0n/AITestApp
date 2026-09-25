@@ -24,6 +24,11 @@ import { DOCK_MIN_WIDTH, maxDockWidth, useDockPush, type AgentDock } from "./use
 import { ErrorBoundary, DockErrorFallback } from "./ErrorBoundary";
 import type { AgentJobRequest } from "../api";
 import { RosterChat } from "./agent/RosterQaTab";
+// PROTOTYPE — throwaway (EXP-28): ?proto=history swaps Roster Q&A for the history variants.
+import {
+  ConversationHistoryPrototype,
+  useConversationHistoryPrototype,
+} from "./agent/prototype/ConversationHistory.prototype";
 import { AgentJobForm } from "./agent/AgentJobTab";
 import { ShortlistPanel } from "./agent/ShortlistTab";
 import { StaffingPanel } from "./agent/StaffingTab";
@@ -100,6 +105,7 @@ export const RESIZE_HANDLE_LABEL = "Resize the agents dock";
 export const RESIZE_STEP = 24;
 
 export default function AgentWidget({ dock }: { dock: AgentDock }) {
+  const historyPrototype = useConversationHistoryPrototype();
   const [surface, setSurface] = useState<Surface>("roster");
   const [pickerAnchor, setPickerAnchor] = useState<HTMLElement | null>(null);
 
@@ -437,7 +443,7 @@ export default function AgentWidget({ dock }: { dock: AgentDock }) {
             {usageOpen ? (
               <UsagePanel key="usage" />
             ) : surface === "roster" ? (
-              <RosterChat key="roster" />
+              historyPrototype ? <ConversationHistoryPrototype key="roster-proto" /> : <RosterChat key="roster" />
             ) : surface === "ingestion" ? (
               <IngestionPanel key="ingestion" />
             ) : surface === "shortlist" ? (
