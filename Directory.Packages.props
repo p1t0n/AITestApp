@@ -43,7 +43,8 @@
       `Sdk="Aspire.AppHost.Sdk/13.5.4"` on the first line of api/AppHost/ExpertToJob.AppHost.csproj.
       Changing one without the other throws at AppHost *startup*, not at restore —
       MissingMethodException on ProjectResource.get_DefaultHttpsEndpoint, or TypeLoadException on
-      ExecutableLaunchConfiguration (microsoft/aspire#13636). Edit both, always.
+      ExecutableLaunchConfiguration (microsoft/aspire#13636). Edit both, always;
+      AspireVersionLockstepTests fails the suite when they disagree.
       No prerelease Aspire package enters this solution (manuals/adr-aspire-apphost.md).
     -->
     <PackageVersion Include="Aspire.Hosting.JavaScript" Version="13.5.4" />
