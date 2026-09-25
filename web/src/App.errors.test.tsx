@@ -22,11 +22,32 @@ vi.mock("./pages/CatalogPage", () => ({
 }));
 vi.mock("./pages/ExpertsPage", () => ({ default: () => <div>the roster page</div> }));
 
+// React 19 also *reports* a render error it hit during a concurrent render — React Router 8 renders
+// navigation in a transition — through the global `reportError`, i.e. a window `error` event, even
+// though the boundary below catches it and the page recovers. That report is the planted error
+// doing what it was planted to do, so it is claimed here rather than left to Vitest, which counts
+// any unclaimed window error as a failed run. Only the planted error is claimed: anything else
+// reported during a test still fails it, in afterEach.
 let consoleError: ReturnType<typeof vi.spyOn>;
+let reported: unknown[];
+const claim = (e: ErrorEvent) => {
+  reported.push(e.error);
+  e.preventDefault();
+};
+const isPlanted = (error: unknown): boolean =>
+  error instanceof Error &&
+  (error.message === "catalog page exploded" || isPlanted((error as { cause?: unknown }).cause));
+
 beforeEach(() => {
   consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+  reported = [];
+  window.addEventListener("error", claim);
 });
-afterEach(() => consoleError.mockRestore());
+afterEach(() => {
+  window.removeEventListener("error", claim);
+  consoleError.mockRestore();
+  expect(reported.filter((e) => !isPlanted(e))).toEqual([]);
+});
 
 describe("routed-area error boundary (P1T-153)", () => {
   it("renders a fallback with a way back instead of a white page", async () => {
