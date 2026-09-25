@@ -29,6 +29,9 @@ vi.mock("../api", async (importOriginal) => {
   const idle = () => ({ mutateAsync: vi.fn(), mutate: vi.fn(), isPending: false, isSuccess: false, isError: false, error: null });
   return {
     ...actual,
+    // The dock asks which model answers on the current surface (EXP-31); it renders outside a
+    // QueryClientProvider here, like every other hook in this factory.
+    useAgentModels: () => ({ data: undefined, isError: false }),
     useUsage: () => ({ data: undefined, isLoading: false, isError: false, error: null }),
     useExperts: () => ({ data: [], isLoading: false }),
     useSkills: () => ({ data: [], isLoading: false }),

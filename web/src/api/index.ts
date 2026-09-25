@@ -34,6 +34,7 @@ export * from "./transparency";
 export * from "./contests";
 
 export * from "./agents/usage";
+export * from "./agents/models";
 export * from "./agents/shared";
 export * from "./agents/rosterQa";
 export * from "./agents/tailoring";
