@@ -9,7 +9,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { Link as RouterLink, useNavigate } from "react-router-dom";
+import { Link as RouterLink, useNavigate } from "react-router";
 import { apiErrorMessage, useSignin } from "../api";
 import { isPasskeySupported } from "../auth/webauthn";
 import { ErrorNotice } from "../components/ErrorNotice";
@@ -39,7 +39,7 @@ export default function SigninPage() {
             <Typography variant="h5" gutterBottom>
               Sign in
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
               Approve with your passkey — your browser will show your saved accounts. Email is only
               needed if your device doesn't offer one.
             </Typography>
@@ -72,14 +72,14 @@ export default function SigninPage() {
             {signin.isPending ? "Waiting for passkey…" : "Sign in with a passkey"}
           </Button>
 
-          <Stack spacing={0.5} alignItems="center">
-            <Typography variant="body2" color="text.secondary">
+          <Stack spacing={0.5} sx={{ alignItems: "center" }}>
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
               No account?{" "}
               <Link component={RouterLink} to="/signup">
                 Sign up
               </Link>
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
               Lost your device?{" "}
               <Link component={RouterLink} to="/recover">
                 Recover with your control word

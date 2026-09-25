@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import AgentWidget from "./AgentWidget";
 import { selectAgentSurface, currentAgentSurface, SURFACE_PICKER_NAME } from "../test/agentSurface";
 import type { AgentDock } from "./useAgentDock";

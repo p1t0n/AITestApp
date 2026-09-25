@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink } from "react-router";
 import {
   Box,
   Button,
@@ -61,7 +61,7 @@ function Row({
           {label}
         </Typography>
         <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-          <Typography variant="body2" color="text.secondary" component="div">
+          <Typography variant="body2" component="div" sx={{ color: "text.secondary" }}>
             {children}
           </Typography>
         </Box>
@@ -130,7 +130,9 @@ function NoRecordYet() {
         <Typography variant="body1">
           There is nothing held under your name yet, so there is nothing here to show you.
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+        <Typography
+          variant="body2"
+          sx={{ color: "text.secondary", mt: 1 }}>
           If an Administrator already had a record for you, a person has to confirm it is yours
           before you can see it. This page fills in once it is.
         </Typography>
@@ -172,7 +174,9 @@ function TheRecord({
           <StateSentence paused={paused} pausedSince={pausedSince} expiresOn={expiresOn} expiringSoon={access.expiringSoon} />
         </Typography>
         {objecting && (
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          <Typography
+            variant="body2"
+            sx={{ color: "text.secondary", mt: 1 }}>
             Because this record was created for you rather than by you, it is not put through
             automated matching at all. Claiming it would change that.
           </Typography>
@@ -223,17 +227,19 @@ function TheRecord({
           <Stack spacing={2}>
             {scored.map((assessment) => (
               <Box key={assessment.sourceId}>
-                <Typography variant="body2" color="text.primary">
+                <Typography variant="body2" sx={{ color: "text.primary" }}>
                   {assessment.source} — {assessment.score}/100
                   {assessment.band ? `, ${assessment.band}` : ""}
                 </Typography>
                 {assessment.rationale && (
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: "text.secondary" }}>
                     {assessment.rationale}
                   </Typography>
                 )}
                 {assessment.matchAnswer && (
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{ color: "text.secondary", mt: 0.5 }}>
                     {assessment.matchAnswer}
                   </Typography>
                 )}
@@ -265,10 +271,10 @@ function TheRecord({
         <Stack spacing={1}>
           {access.recipients.map((recipient) => (
             <Box key={recipient.recipient}>
-              <Typography variant="body2" color="text.primary">
+              <Typography variant="body2" sx={{ color: "text.primary" }}>
                 {recipient.recipient}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
                 {recipient.why}
               </Typography>
             </Box>
@@ -285,7 +291,9 @@ function TheRecord({
           ? "You asked to be considered for work, and we cannot do that without holding your CV — steps taken at your own request before a contract."
           : "We hold it in our own legitimate interest as a staffing bench. You can object at any time, and objecting is further down this page."}
         {access.source && (
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          <Typography
+            variant="body2"
+            sx={{ color: "text.secondary", mt: 1 }}>
             {access.source}
           </Typography>
         )}
@@ -294,7 +302,9 @@ function TheRecord({
       <Row label="How long we keep it">
         {access.retention}
         {expiresOn && (
-          <Typography variant="body2" color="text.primary" sx={{ mt: 1 }}>
+          <Typography
+            variant="body2"
+            sx={{ color: "text.primary", mt: 1 }}>
             As it stands, this record is due to be deleted on {expiresOn}.
           </Typography>
         )}
@@ -316,7 +326,9 @@ function TheRecord({
         {access.export === "Right"
           ? "Machine-readable, everything you gave us. This is your right to data portability."
           : "Machine-readable, everything you gave us. We offer it as a courtesy — for a record somebody else created, portability is not a right you have."}
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+        <Typography
+          variant="body2"
+          sx={{ color: "text.secondary", mt: 1 }}>
           It carries what you provided. The scores and rationales above are not in it — those are
           our conclusions about you rather than your own data, and you read them here instead.
         </Typography>
@@ -450,13 +462,12 @@ function Objecting() {
           </Button>
         ) : undefined
       }
-    >
-      You can object to us holding this record at all. We will not weigh your objection against our
-      own interest — objecting removes your data.
-      {open && (
+    >You can object to us holding this record at all. We will not weigh your objection against our
+            own interest — objecting removes your data.
+            {open && (
         <Stack spacing={1} sx={{ mt: 2 }}>
           <ErrorNotice message={erase.isError ? apiErrorMessage(erase.error) : null} />
-          <Typography variant="body2" color="text.primary">
+          <Typography variant="body2" sx={{ color: "text.primary" }}>
             This deletes everything, permanently, and cannot be undone.
           </Typography>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
@@ -509,13 +520,17 @@ function DeleteEverything({ holdsRecord }: { holdsRecord: boolean }) {
       <Typography variant="h6" component="h2" sx={{ mb: 1 }}>
         Deleting everything
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography
+        variant="body2"
+        sx={{ color: "text.secondary", mb: 2 }}>
         {holdsRecord
           ? "This removes your CV, your search index, your assessments and your sign-in. It cannot be undone, and we have no way to contact you afterwards. Proposals an Administrator already decided on keep their decision, with your name and everything written about you removed."
           : "This removes your sign-in. There is no record under your name to remove with it. It cannot be undone, and we have no way to contact you afterwards."}
       </Typography>
       {holdsRecord && (
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        <Typography
+          variant="body2"
+          sx={{ color: "text.secondary", mb: 2 }}>
           If you only want to stop being offered for work, <b>pause</b> further up this page
           instead — that is reversible and nothing is lost.
         </Typography>
@@ -523,7 +538,9 @@ function DeleteEverything({ holdsRecord }: { holdsRecord: boolean }) {
 
       <ErrorNotice message={erase.isError ? apiErrorMessage(erase.error) : null} sx={{ mb: 2 }} />
 
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ sm: "flex-start" }}>
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{
+        alignItems: { sm: "flex-start" }
+      }}>
         <TextField
           size="small"
           type="password"

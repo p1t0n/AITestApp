@@ -71,14 +71,14 @@ export default function ClaimQueue({
                   {claim.expertId ? (
                     <Stack spacing={0.5}>
                       <span>{claim.expertName || claim.expertEmail}</span>
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography variant="caption" sx={{ color: "text.secondary" }}>
                         {claim.expertEmail}
                       </Typography>
                     </Stack>
                   ) : (
-                    <Stack spacing={0.5} direction="row" alignItems="center">
+                    <Stack spacing={0.5} direction="row" sx={{ alignItems: "center" }}>
                       <Chip label="No record picked" color="warning" size="small" />
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography variant="caption" sx={{ color: "text.secondary" }}>
                         {claim.matchCount === 1
                           ? "The one record with this address already belongs to another account, so nothing was claimed."
                           : `${claim.matchCount} records carry this address, so nothing was claimed.`}{" "}

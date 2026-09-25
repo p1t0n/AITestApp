@@ -270,10 +270,12 @@ export default function CatalogPage() {
         ) : (
           <Typography
             variant="body2"
-            color="text.secondary"
             onClick={() => startEditSkill(id, name, categoryId)}
-            sx={{ cursor: "pointer", "&:hover": { textDecoration: "underline" } }}
-          >
+            sx={{
+              color: "text.secondary",
+              cursor: "pointer",
+              "&:hover": { textDecoration: "underline" }
+            }}>
             {name}
           </Typography>
         )}
@@ -327,7 +329,7 @@ export default function CatalogPage() {
               </TextField>
             </Stack>
           ) : (
-            <Stack direction="row" alignItems="center" spacing={0.5}>
+            <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
               {hasContent ? (
                 <IconButton onClick={() => toggleCollapse(node.id)} aria-label="toggle">
                   {isCollapsed ? <ChevronRightIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
@@ -336,10 +338,12 @@ export default function CatalogPage() {
                 <Box sx={{ width: 28 }} />
               )}
               <Typography
-                fontWeight={600}
                 onClick={() => startEditCategory(node, parent)}
-                sx={{ cursor: "pointer", "&:hover": { textDecoration: "underline" } }}
-              >
+                sx={{
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  "&:hover": { textDecoration: "underline" }
+                }}>
                 {node.name}
               </Typography>
             </Stack>
@@ -381,7 +385,9 @@ export default function CatalogPage() {
           {tree?.map((n) => renderCategory(n, 0, null))}
           {adding?.kind === "category" && adding.parentId === null && addRow(0, "New category")}
           {!tree?.length && adding === null && (
-            <Typography color="text.secondary">No categories yet. Add one to get started.</Typography>
+            <Typography sx={{
+              color: "text.secondary"
+            }}>No categories yet. Add one to get started.</Typography>
           )}
         </List>
       </Paper>

@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import {
   Avatar,
   Box,
@@ -20,8 +20,8 @@ import type { Qualification } from "../types";
 
 function CvSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <Box mb={3}>
-      <Typography variant="overline" color="primary" fontWeight={700}>
+    <Box sx={{ mb: 3 }}>
+      <Typography variant="overline" color="primary" sx={{ fontWeight: 700 }}>
         {title}
       </Typography>
       <Divider sx={{ mb: 1.5 }} />
@@ -121,14 +121,17 @@ export default function CvPage() {
             "@media print": { boxShadow: "none", margin: 0 },
           }}
         >
-          <Stack direction="row" spacing={3} alignItems="center" mb={3}>
+          <Stack
+            direction="row"
+            spacing={3}
+            sx={{ alignItems: "center", mb: 3 }}>
             {cv.photoUrl && <Avatar src={cv.photoUrl} sx={{ width: 80, height: 80 }} />}
-            <Box flexGrow={1}>
+            <Box sx={{ flexGrow: 1 }}>
               <Typography variant="h4">{cv.fullName}</Typography>
-              <Typography variant="h6" color="text.secondary">
+              <Typography variant="h6" sx={{ color: "text.secondary" }}>
                 {cv.title}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
                 {[cv.email, cv.phone, cv.location].filter(Boolean).join("  ·  ")}
               </Typography>
             </Box>
@@ -147,11 +150,13 @@ export default function CvPage() {
           {cv.skillGroups.length > 0 && (
             <CvSection title="Skills">
               {cv.skillGroups.map((g) => (
-                <Box key={g.category} mb={1}>
-                  <Typography variant="body2" fontWeight={600}>
+                <Box key={g.category} sx={{ mb: 1 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
                     {g.category}
                   </Typography>
-                  <Stack direction="row" gap={0.5} flexWrap="wrap">
+                  <Stack
+                    direction="row"
+                    sx={{ gap: 0.5, flexWrap: "wrap" }}>
                     {g.skills.map((s) => (
                       <Chip key={s.id} label={`${s.skillName} (${s.level})`} />
                     ))}
@@ -164,12 +169,12 @@ export default function CvPage() {
           {cv.experiences.length > 0 && (
             <CvSection title="Experience">
               {cv.experiences.map((x, i) => (
-                <Box key={i} mb={2}>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography variant="body1" fontWeight={600}>
+                <Box key={i} sx={{ mb: 2 }}>
+                  <Stack direction="row" sx={{ justifyContent: "space-between" }}>
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
                       {x.title} · {x.company}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" sx={{ color: "text.secondary" }}>
                       {x.period}
                     </Typography>
                   </Stack>
@@ -182,7 +187,7 @@ export default function CvPage() {
                     ))}
                   </ul>
                   {x.skills.length > 0 && (
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" sx={{ color: "text.secondary" }}>
                       {x.skills.join(" · ")}
                     </Typography>
                   )}
@@ -213,7 +218,9 @@ export default function CvPage() {
 
           {cv.languages.length > 0 && (
             <CvSection title="Languages">
-              <Stack direction="row" gap={0.5} flexWrap="wrap">
+              <Stack
+                direction="row"
+                sx={{ gap: 0.5, flexWrap: "wrap" }}>
                 {cv.languages.map((l) => (
                   <Chip key={l.id} variant="outlined" label={`${l.language} (${l.level})`} />
                 ))}

@@ -77,7 +77,7 @@ export default function ContestQueue({
                 <TableCell>
                   <Stack spacing={0.5}>
                     <span>{item.expertName}</span>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" sx={{ color: "text.secondary" }}>
                       {item.jobDescription}
                     </Typography>
                   </Stack>
@@ -91,14 +91,14 @@ export default function ContestQueue({
                         sx={{ alignSelf: "flex-start" }}
                       />
                     )}
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" sx={{ color: "text.secondary" }}>
                       {item.rationale ?? "No rationale was recorded."}
                     </Typography>
                   </Stack>
                 </TableCell>
                 <TableCell>
                   {item.view ?? (
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" sx={{ color: "text.secondary" }}>
                       They asked for a person to look, without saying more. That is their right on
                       its own.
                     </Typography>

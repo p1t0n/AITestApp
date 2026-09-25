@@ -137,7 +137,9 @@ export default function UsersPage() {
     <PageHeader title="Users" width="wide">
       {/* Stays in the body rather than becoming the header's subtitle: it is two lines of policy,
           and a sticky strip is not where a paragraph belongs. */}
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography
+        variant="body2"
+        sx={{ color: "text.secondary", mb: 2 }}>
         An Administrator manages every account, their own included — except for its role, which
         somebody else has to change. Changing a role signs that account out immediately. Token caps
         blank as "default" inherit the system-wide limit.
@@ -339,7 +341,7 @@ function EditUserDialog({
             <MenuItem value="Active">Active</MenuItem>
             <MenuItem value="Deactivated">Deactivated</MenuItem>
           </TextField>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{ color: "text.secondary" }}>
             Token caps — leave blank to inherit the system default.
           </Typography>
           <Stack direction="row" spacing={2}>
@@ -393,7 +395,7 @@ function RoleCell({
         ))}
       </Select>
       {refusal && (
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
           {refusal}
         </Typography>
       )}

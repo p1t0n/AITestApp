@@ -22,6 +22,7 @@ import {
   Chip,
   Dialog,
   DialogContent,
+  Drawer,
   Paper,
   Table,
   TableBody,
@@ -32,6 +33,7 @@ import {
   ThemeProvider,
 } from "@mui/material";
 import type { Theme } from "@mui/material/styles";
+import * as Mui from "@mui/material";
 import { darkTheme, lightTheme } from "./index";
 import { tokens } from "./tokens";
 import type { ThemeModeTokens } from "./tokens";
@@ -57,7 +59,45 @@ function styleOf(theme: Theme, node: React.ReactElement, selector: string): CSSS
   // `document` rather than `container`, because an overlay renders into a portal on `body`.
   const el = container.querySelector(selector) ?? document.body.querySelector(selector);
   expect(el, `nothing matched ${selector}`).not.toBeNull();
-  return window.getComputedStyle(el as Element);
+  return resolvingVars(window.getComputedStyle(el as Element));
+}
+
+/**
+ * MUI 9 paints a Button through custom properties (`color: var(--variant-outlinedColor)`), and
+ * jsdom's `getComputedStyle` hands `var()` back verbatim where a browser would substitute it. This
+ * does the substitution — against the same element's computed custom properties, which is where the
+ * browser would look — so an assertion keeps reading the colour that renders, not the indirection.
+ */
+function resolvingVars(style: CSSStyleDeclaration): CSSStyleDeclaration {
+  // jsdom lower-cases the whole of a `color` value, `var()` name included, while custom property
+  // names are case-sensitive — so `--variant-containedColor` comes back as `…containedcolor`. The
+  // exact name is tried first; the case-folded match is only the fallback for that one quirk.
+  const custom = (name: string): string =>
+    (
+      style.getPropertyValue(name) ||
+      style.getPropertyValue(
+        Array.from(style).find((p) => p.toLowerCase() === name.toLowerCase()) ?? name,
+      )
+    ).trim();
+  const resolve = (value: string, depth = 0): string =>
+    depth > 8
+      ? value
+      : value.replace(/var\((--[\w-]+)(?:,\s*([^)]*))?\)/g, (_all, name: string, fallback?: string) => {
+          const raw = custom(name) || (fallback ?? "").trim();
+          return resolve(raw, depth + 1);
+        });
+  return new Proxy(style, {
+    get(target, prop) {
+      const value = Reflect.get(target, prop, target);
+      if (typeof value === "function") return value.bind(target);
+      return typeof value === "string" && value.includes("var(") ? normaliseColour(resolve(value)) : value;
+    },
+  });
+}
+
+/** A custom property holds the colour as authored (`#f59e0b`); computed colours read as `rgb()`. */
+function normaliseColour(value: string): string {
+  return /^#[0-9a-f]{6}$/i.test(value) ? rgb(value) : value;
 }
 
 describe.each(modes)("%s mode — surfaces separate with relief, not a border", (_m, theme, t) => {
@@ -421,5 +461,55 @@ describe("the overrides do not reopen settled decisions", () => {
         `${name} tag label`,
       ).toBeGreaterThanOrEqual(4.5);
     }
+  });
+});
+
+describe.each(modes)("%s mode — the rail's drawer", (_m, theme, t) => {
+  // P1T-161: a drawer is part of the ground, so its one app-facing edge is the hairline and the
+  // other three are nothing. Keyed per anchor, which is exactly the shape of override a MUI major
+  // can retire without a type error — so it is held by what renders, not by what is configured.
+  it.each([
+    ["left", "borderRight", "borderLeft"],
+    ["right", "borderLeft", "borderRight"],
+  ] as const)("draws the hairline on the app-facing edge of a %s drawer", (anchor, facing, outer) => {
+    const s = styleOf(
+      theme,
+      <Drawer variant="permanent" anchor={anchor}>
+        rail
+      </Drawer>,
+      ".MuiDrawer-paper",
+    );
+    expect(s[`${facing}Width` as const]).toBe("1px");
+    expect(s[`${facing}Style` as const]).toBe("solid");
+    expect(s[`${facing}Color` as const]).toBe(rgb(t.divider));
+    expect(s[`${outer}Width` as const]).toMatch(/^(0px|)$/);
+  });
+});
+
+describe.each(modes)("%s mode — every override lands on a slot MUI still has", (_m, theme) => {
+  // A `styleOverrides` key that names a retired class is not an error anywhere: the type is
+  // widened the moment a helper builds the object as a `Record`, and at runtime MUI simply never
+  // asks for it. MUI 9 retired `outlinedPrimary`, `paperAnchorLeft` and the `standard<Severity>`
+  // Alert keys that way, and the Alert one was invisible to every rendered check that happened to
+  // agree with MUI's own defaults. This is the net under all of them: each key must be a class MUI
+  // exports for that component, so the next major that drops one fails here, by name.
+  const classesOf = (name: string) =>
+    (Mui as unknown as Record<string, Record<string, string> | undefined>)[
+      `${name[3].toLowerCase()}${name.slice(4)}Classes`
+    ];
+
+  // CssBaseline is the one component with no slots: its overrides are global CSS, not class keys.
+  const slotted = Object.keys(theme.components ?? {}).filter(
+    (n) => n.startsWith("Mui") && n !== "MuiCssBaseline",
+  );
+
+  it.each(slotted)("%s", (name) => {
+    const overrides = (theme.components as Record<string, { styleOverrides?: object }>)[name]
+      ?.styleOverrides;
+    if (!overrides) return;
+    const classes = classesOf(name);
+    expect(classes, `no ${name} classes export to check against`).toBeDefined();
+    const unknown = Object.keys(overrides).filter((k) => !(k in (classes as object)));
+    expect(unknown, `${name} overrides slots MUI no longer has`).toEqual([]);
   });
 });

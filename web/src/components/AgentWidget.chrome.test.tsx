@@ -13,7 +13,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import { CssBaseline, ThemeProvider } from "@mui/material";
 import AgentWidget, { RESIZE_HANDLE_LABEL, RESIZE_STEP } from "./AgentWidget";
 import { AgentMarkdown } from "./agent/AgentMarkdown";

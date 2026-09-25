@@ -17,11 +17,13 @@ function UsageBar({ w }: { w: WindowUsage }) {
   const color = w.exceeded ? "error" : pct > 80 ? "warning" : "primary";
   return (
     <Box>
-      <Stack direction="row" justifyContent="space-between" alignItems="baseline">
+      <Stack
+        direction="row"
+        sx={{ justifyContent: "space-between", alignItems: "baseline" }}>
         <Typography variant="body2" sx={{ textTransform: "capitalize", fontWeight: 600 }}>
           {w.window}
         </Typography>
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
           {w.used.toLocaleString()} / {w.cap.toLocaleString()} · resets {formatReset(w.resetAt)}
         </Typography>
       </Stack>
@@ -53,15 +55,15 @@ export function UsagePanel() {
               This month by agent
             </Typography>
             {data.byAgent.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
                 No usage yet.
               </Typography>
             ) : (
               <Stack spacing={0.5}>
                 {data.byAgent.map((a) => (
-                  <Stack key={a.agentName} direction="row" justifyContent="space-between">
+                  <Stack key={a.agentName} direction="row" sx={{ justifyContent: "space-between" }}>
                     <Typography variant="body2">{a.agentName}</Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" sx={{ color: "text.secondary" }}>
                       {a.totalTokens.toLocaleString()}
                     </Typography>
                   </Stack>

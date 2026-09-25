@@ -102,7 +102,9 @@ var toolSerializerOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web
 
 builder.Services
     .AddMcpServer()
-    .WithHttpTransport()
+    // Stateful sessions, stated rather than defaulted: SDK 2.0 flipped the default to stateless
+    // (csharp-sdk#1610). Going stateless is a decision of its own; McpTransportModeTests pins it.
+    .WithHttpTransport(o => o.Stateless = false)
     .AddAuthorizationFilters()
     // Per-tool grants on top of the capability scopes (P1T-149): a token carrying
     // mcp:tool:<name> scopes is advertised — and may call — only those tools.

@@ -137,19 +137,23 @@ export default function ExperienceFormDialog({ open, title, initial, onClose, on
             <TextField
               type="date"
               label="Start date"
-              InputLabelProps={{ shrink: true }}
               value={form.startDate}
               onChange={text("startDate")}
               fullWidth
+              slotProps={{
+                inputLabel: { shrink: true }
+              }}
             />
             <TextField
               type="date"
               label="End date"
-              InputLabelProps={{ shrink: true }}
               value={form.endDate ?? ""}
               onChange={text("endDate")}
               helperText="Leave blank if current"
               fullWidth
+              slotProps={{
+                inputLabel: { shrink: true }
+              }}
             />
           </Stack>
           <TextField
@@ -166,16 +170,16 @@ export default function ExperienceFormDialog({ open, title, initial, onClose, on
           <Typography variant="subtitle2">Achievements</Typography>
           {/* The bullets are the other free-text field an achievement can carry an Art. 9 detail
               into, so the same ask is made once above them rather than repeated per bullet. */}
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{ color: "text.secondary" }}>
             {SPECIAL_CATEGORY_GUIDANCE}
           </Typography>
           {form.achievements.length === 0 && (
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
               No bullets yet.
             </Typography>
           )}
           {form.achievements.map((a, i) => (
-            <Stack key={i} direction="row" spacing={1} alignItems="flex-start">
+            <Stack key={i} direction="row" spacing={1} sx={{ alignItems: "flex-start" }}>
               <TextField
                 label={`Bullet ${i + 1}`}
                 value={a.text}

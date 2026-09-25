@@ -16,7 +16,7 @@
 // "what colour is this text actually" is answerable here, and it is the only question that matters.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import { CssBaseline, ThemeProvider } from "@mui/material";
 import CvPage from "./CvPage";
 import { darkTheme } from "../theme";

@@ -4,7 +4,7 @@
 // error), and a partial-results table that fills in as chunks settle. The job keeps running when
 // the widget closes.
 import { useMemo, useState } from "react";
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink } from "react-router";
 import {
   Autocomplete,
   Box,
@@ -23,7 +23,7 @@ import SmartToyIcon from "@mui/icons-material/SmartToy";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import FilterListIcon from "@mui/icons-material/FilterList";
-import PauseCircleOutlineIcon from "@mui/icons-material/PauseCircleOutline";
+import PauseCircleOutlineIcon from "@mui/icons-material/PauseCircleOutlined";
 import {
   apiErrorMessage,
   useRosterScanJob,
@@ -46,16 +46,26 @@ function CandidateRow({
   const c = candidate;
   return (
     <Paper sx={{ p: 1 }} data-testid={`scan-row-${c.expertId}`}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{ justifyContent: "space-between", alignItems: "center" }}>
         <Box sx={{ minWidth: 0 }}>
-          <Link component={RouterLink} to={`/experts/${c.expertId}`} variant="body2" fontWeight={600}>
+          <Link component={RouterLink} to={`/experts/${c.expertId}`} variant="body2" sx={{
+            fontWeight: 600
+          }}>
             {c.name}
           </Link>
-          <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+          <Typography
+            variant="caption"
+            sx={{ color: "text.secondary", display: "block" }}>
             {c.title}
           </Typography>
         </Box>
-        <Stack direction="row" spacing={0.5} alignItems="center" flexShrink={0}>
+        <Stack
+          direction="row"
+          spacing={0.5}
+          sx={{ alignItems: "center", flexShrink: 0 }}>
           {c.status === "scored" && c.scorable === false ? (
             <Chip variant="outlined" label="Not scorable" sx={{ color: "text.secondary" }} />
           ) : c.status === "scored" ? (
@@ -71,7 +81,7 @@ function CandidateRow({
         </Stack>
       </Stack>
       {c.rationale && (
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
           {c.rationale}
         </Typography>
       )}
@@ -137,10 +147,14 @@ export function RosterScanPanel({
     <Box sx={{ flex: 1, overflowY: "auto", p: 1.5 }}>
       <Stack spacing={1.5}>
         <Box>
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{ color: "text.secondary" }}>
             Job description
           </Typography>
-          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mb: 0.5 }}>
+          <Stack
+            direction="row"
+            spacing={0.5}
+            useFlexGap
+            sx={{ flexWrap: "wrap", mb: 0.5 }}>
             {PRESET_JDS.map((p) => (
               <Chip
                 key={p.label}
@@ -174,9 +188,11 @@ export function RosterScanPanel({
               <TextField
                 type="date"
                 label="Available on"
-                InputLabelProps={{ shrink: true }}
                 value={availableOn}
                 onChange={(e) => setAvailableOn(e.target.value)}
+                slotProps={{
+                  inputLabel: { shrink: true }
+                }}
               />
               <Autocomplete
                 multiple
@@ -212,7 +228,9 @@ export function RosterScanPanel({
         <ErrorNotice message={error} />
 
         {estimate && (
-          <Typography variant="caption" color="text.secondary" data-testid="scan-estimate">
+          <Typography variant="caption" data-testid="scan-estimate" sx={{
+            color: "text.secondary"
+          }}>
             {estimate.candidates} candidate(s) · {estimate.calls} model call(s) against a
             {" "}{estimate.rpdBudget}/day budget. The scan keeps running if you close this panel.
           </Typography>
@@ -221,15 +239,17 @@ export function RosterScanPanel({
         {data && (
           <>
             <Box>
-              <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
-                <Typography variant="caption" color="text.secondary">
+              <Stack
+                direction="row"
+                sx={{ justifyContent: "space-between", mb: 0.5 }}>
+                <Typography variant="caption" sx={{ color: "text.secondary" }}>
                   {data.state === "completed"
                     ? "Scan complete"
                     : data.state === "failed"
                       ? "Scan failed"
                       : `Scoring ${data.progress.settled}/${data.progress.total}`}
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="caption" sx={{ color: "text.secondary" }}>
                   {data.progress.scored} scored · {data.progress.failed} failed
                 </Typography>
               </Stack>
@@ -252,7 +272,7 @@ export function RosterScanPanel({
                 sx={{ p: 1.5, bgcolor: "warning.light", color: "warning.contrastText" }}
                 data-testid="scan-paused"
               >
-                <Stack direction="row" spacing={1} alignItems="center">
+                <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
                   <PauseCircleOutlineIcon fontSize="small" />
                   <Typography variant="body2">
                     Paused on the {data.pauseReason === "quota" ? "model quota" : "usage cap"} window

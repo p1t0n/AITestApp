@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import { ThemeProvider } from "@mui/material";
 import PageHeader, { PAGE_MAX_WIDTH, PageContainer } from "./PageHeader";
 import { RAIL_TOP_INSET_VAR } from "./useAppRail";

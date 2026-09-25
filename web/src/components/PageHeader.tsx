@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode, RefObject } from "react";
 import { Box, Container, IconButton, Stack, Tooltip, Typography } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink } from "react-router";
 import { RAIL_TOP_INSET_VAR } from "./useAppRail";
 
 /**
@@ -59,8 +59,8 @@ export function PageContainer({ width, children }: { width: PageWidth; children:
  * know what the top inset currently is — or that the rail's mobile bar exists at all.
  */
 function usePinned(
-  sentinel: RefObject<HTMLElement>,
-  header: RefObject<HTMLElement>,
+  sentinel: RefObject<HTMLElement | null>,
+  header: RefObject<HTMLElement | null>,
 ): boolean {
   const [pinned, setPinned] = useState(false);
 
@@ -132,30 +132,35 @@ export default function PageHeader({
       <Stack
         ref={header}
         direction="row"
-        alignItems="center"
         spacing={1.5}
         data-pinned={pinned ? "true" : undefined}
         sx={{
+          alignItems: "center",
           position: "sticky",
+
           // The rail's narrow-mode top bar covers the first rows of the viewport and publishes how
           // many, exactly as both edges publish how much of the sides they cover. Unset — a rail
           // standing beside the app, or the auth pages with no rail at all — falls back to the top
           // of the viewport on its own, which is the same `var(…, 0px)` contract as the pushes.
           top: `var(${RAIL_TOP_INSET_VAR}, 0px)`,
+
           // Under the mobile bar, above the page. The bar is the one thing allowed to cover this.
           zIndex: (t) => t.zIndex.appBar - 1,
+
           // Opaque, or the roster scrolls through it.
           bgcolor: "background.default",
+
           py: 2,
           mb: 3,
+
           // Always 1px of border, transparent until pinned: a border that appears on scroll must
           // not also move the page down by a pixel when it does.
           borderBottom: 1,
+
           borderColor: pinned ? "divider" : "transparent",
           transition: "border-color 150ms ease",
-          "@media print": { display: "none" },
-        }}
-      >
+          "@media print": { display: "none" }
+        }}>
         {/* Back is an icon on the title's own line, not a labelled button stacked above it. Two
             rows would put the page's actions level with the gap between them — visible in slice
             4's first CV-page capture — and stacking would also nest the title inside a second
@@ -185,7 +190,7 @@ export default function PageHeader({
             {title}
           </Typography>
           {subtitle && (
-            <Typography variant="body2" color="text.secondary" noWrap>
+            <Typography variant="body2" noWrap sx={{ color: "text.secondary" }}>
               {subtitle}
             </Typography>
           )}

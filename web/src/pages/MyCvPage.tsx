@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Alert, Button, Chip, CircularProgress, Grid, Stack, Typography } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
-import { Navigate } from "react-router-dom";
+import { Navigate } from "react-router";
 import { apiErrorMessage, useExpert, useMyVisibility, useUpdateExpert } from "../api";
 import PageHeader, { PageContainer } from "../components/PageHeader";
 import ExpertRecordSections, { Section } from "../components/ExpertRecordSections";
@@ -94,17 +94,17 @@ function Editor({
 
       <Section title="Your details">
         <Grid container spacing={1}>
-          <Grid item xs={6}><b>Email:</b> {e.email}</Grid>
-          <Grid item xs={6}><b>Phone:</b> {e.phone ?? "—"}</Grid>
-          <Grid item xs={6}><b>Location:</b> {e.location ?? "—"}</Grid>
-          <Grid item xs={6}>
-            <Stack direction="row" spacing={1} alignItems="center">
+          <Grid size={6}><b>Email:</b> {e.email}</Grid>
+          <Grid size={6}><b>Phone:</b> {e.phone ?? "—"}</Grid>
+          <Grid size={6}><b>Location:</b> {e.location ?? "—"}</Grid>
+          <Grid size={6}>
+            <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
               <b>Availability today:</b>
               <Chip size="small" label={`${e.currentCapacityPercent}%`} />
             </Stack>
           </Grid>
-          <Grid item xs={12} sx={{ mt: 1 }}>
-            {e.summary ?? <Typography color="text.secondary">No summary yet.</Typography>}
+          <Grid sx={{ mt: 1 }} size={12}>
+            {e.summary ?? <Typography sx={{ color: "text.secondary" }}>No summary yet.</Typography>}
           </Grid>
         </Grid>
       </Section>

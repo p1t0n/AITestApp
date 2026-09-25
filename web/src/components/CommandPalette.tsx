@@ -15,7 +15,7 @@ import {
 import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
 import SearchIcon from "@mui/icons-material/Search";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { useExperts } from "../api";
 import { apiErrorMessage } from "../api/http";
 import { navFor } from "./AppRail";
@@ -274,9 +274,10 @@ function PaletteBody({ dock }: { dock: AgentDock }) {
                 <ListItemText
                   primary={item.label}
                   secondary={item.hint || undefined}
-                  primaryTypographyProps={{ variant: "body2", noWrap: true }}
-                  secondaryTypographyProps={{ variant: "caption", noWrap: true }}
-                />
+                  slotProps={{
+                    primary: { variant: "body2", noWrap: true },
+                    secondary: { variant: "caption", noWrap: true }
+                  }} />
               </ListItemButton>
             )),
           ])}
@@ -287,12 +288,12 @@ function PaletteBody({ dock }: { dock: AgentDock }) {
             {isLoading && query.trim() ? (
               <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
                 <CircularProgress size={16} />
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" sx={{ color: "text.secondary" }}>
                   Loading the roster…
                 </Typography>
               </Box>
             ) : (
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
                 No matches for “{query.trim()}”
               </Typography>
             )}
@@ -326,7 +327,9 @@ export default function CommandPalette({ dock }: { dock: AgentDock }) {
       // from the shortcut that opened it, and the list grows downwards from a fixed edge instead of
       // resizing around the middle as results arrive.
       sx={{ "& .MuiDialog-container": { alignItems: "flex-start" } }}
-      PaperProps={{ sx: { mt: "10vh", overflow: "hidden" } }}
+      slotProps={{
+        paper: { sx: { mt: "10vh", overflow: "hidden" } }
+      }}
     >
       {/* Only mounted while open, which is what keeps the roster query off the cold path. */}
       <PaletteBody dock={dock} />

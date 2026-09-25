@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink } from "react-router";
 import {
   Box,
   Button,
@@ -13,7 +13,7 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlined";
 import HighlightOffIcon from "@mui/icons-material/HighlightOff";
 import type { StaffingReport, StaffingReportCandidate } from "../../api";
 import { AgentMarkdown } from "./AgentMarkdown";
@@ -33,21 +33,28 @@ export function StaffingCandidateCard({
   const hasMatchDetails = c.match.status === "completed" && !!c.match.answer;
   return (
     <Paper sx={{ p: 1.5 }} data-testid={`staffing-candidate-${c.expertId}`}>
-      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{ justifyContent: "space-between", alignItems: "flex-start" }}>
         <Box sx={{ minWidth: 0 }}>
           <Link
             component={RouterLink}
             to={`/experts/${c.expertId}`}
             variant="body2"
-            fontWeight={600}
+            sx={{ fontWeight: 600 }}
           >
             {c.name}
           </Link>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{ color: "text.secondary" }}>
             {c.title}
           </Typography>
         </Box>
-        <Stack direction="row" spacing={0.5} flexShrink={0} flexWrap="wrap" useFlexGap justifyContent="flex-end">
+        <Stack
+          direction="row"
+          spacing={0.5}
+          useFlexGap
+          sx={{ flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
           <Tooltip title="Similarity score">
             <Chip variant="outlined" label={c.shortlist.score.toFixed(2)} />
           </Tooltip>
@@ -81,7 +88,10 @@ export function StaffingCandidateCard({
         {c.rationale}
       </Typography>
 
-      <Stack direction="row" flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }} columnGap={0.5}>
+      <Stack
+        direction="row"
+        useFlexGap
+        sx={{ flexWrap: "wrap", columnGap: 0.5, mt: 0.5 }}>
         <Button
           onClick={() => setShowEvidence((v) => !v)}
           endIcon={showEvidence ? <ExpandLessIcon /> : <ExpandMoreIcon />}
@@ -108,7 +118,7 @@ export function StaffingCandidateCard({
       <Collapse in={showEvidence} unmountOnExit>
         <Stack spacing={0.75} sx={{ mt: 1 }} data-testid={`staffing-evidence-${c.expertId}`}>
           {c.shortlist.requirements.map((r, i) => (
-            <Stack key={i} direction="row" spacing={1} alignItems="flex-start">
+            <Stack key={i} direction="row" spacing={1} sx={{ alignItems: "flex-start" }}>
               {r.matched ? (
                 <CheckCircleOutlineIcon fontSize="small" color="success" />
               ) : (
@@ -117,7 +127,7 @@ export function StaffingCandidateCard({
               <Box>
                 <Typography variant="body2">{r.text}</Typography>
                 {r.snippet && (
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="caption" sx={{ color: "text.secondary" }}>
                     {r.snippet}
                   </Typography>
                 )}
@@ -148,7 +158,7 @@ export function StaffingRecommendation({ report }: { report: StaffingReport }) {
       sx={{ p: 1.5, borderColor: rec ? "primary.main" : "divider" }}
       data-testid="staffing-recommendation"
     >
-      <Typography variant="caption" color="text.secondary">
+      <Typography variant="caption" sx={{ color: "text.secondary" }}>
         Recommendation
       </Typography>
       {rec ? (
@@ -158,7 +168,7 @@ export function StaffingRecommendation({ report }: { report: StaffingReport }) {
               component={RouterLink}
               to={`/experts/${rec.expertId}`}
               variant="subtitle2"
-              fontWeight={700}
+              sx={{ fontWeight: 700 }}
             >
               {name}
             </Link>
@@ -168,7 +178,7 @@ export function StaffingRecommendation({ report }: { report: StaffingReport }) {
           </Typography>
         </>
       ) : (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{ color: "text.secondary" }}>
           No recommendation for this run — see the ranked candidates below.
         </Typography>
       )}

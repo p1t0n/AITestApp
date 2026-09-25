@@ -41,7 +41,7 @@ function ProvenanceLine({ pkg }: { pkg: HandoffPackage }) {
     ? `by ${pkg.provenance.callerUserId.slice(0, 8)}…`
     : "unattributed";
   return (
-    <Typography variant="caption" color="text.secondary" data-testid="proposal-provenance">
+    <Typography variant="caption" sx={{ color: "text.secondary" }} data-testid="proposal-provenance">
       Run {started} {caller} · {model} · {tokens.toLocaleString()} tokens
       {daily ? ` · daily cap ${daily.used.toLocaleString()}/${daily.cap.toLocaleString()} at start` : ""}
     </Typography>
@@ -75,7 +75,7 @@ function PackageView({
           sx={{ p: 1.5, bgcolor: "warning.light", color: "warning.contrastText" }}
           data-testid="proposal-degradations"
         >
-          <Typography variant="body2" fontWeight={600}>
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
             What this run lost
           </Typography>
           {pkg.degradations.map((d, i) => (
@@ -93,7 +93,7 @@ function PackageView({
       )}
 
       <Box>
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
           How the JD was read
         </Typography>
         <RequirementChips requirements={report.requirements} extraction={report.extraction} />
@@ -136,11 +136,11 @@ function SnapshotOnlyView({
       )}
       {detail.candidates.map((c) => (
         <Paper key={c.expertId} sx={{ p: 1.5 }}>
-          <Typography variant="subtitle2" fontWeight={700}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
             #{c.rank} {c.name} — {c.title}
           </Typography>
           {c.matchScore != null && (
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" sx={{ color: "text.secondary" }}>
               Match {c.matchScore}/100{c.matchBand ? ` (${c.matchBand})` : ""}
             </Typography>
           )}
@@ -192,11 +192,14 @@ export function ProposalInbox({
     return (
       <Paper sx={{ p: 1.5 }} data-testid="proposal-drill-in">
         <Stack spacing={1.5}>
-          <Stack direction="row" alignItems="center" spacing={1}>
+          <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
             <Button startIcon={<ArrowBackIcon />} onClick={closeDetail}>
               Inbox
             </Button>
-            <Typography variant="caption" color="text.secondary" noWrap sx={{ flex: 1 }}>
+            <Typography
+              variant="caption"
+              noWrap
+              sx={{ color: "text.secondary", flex: 1 }}>
               {detail.jobDescription}
             </Typography>
           </Stack>
@@ -232,15 +235,15 @@ export function ProposalInbox({
             <Stack
               key={p.id}
               direction="row"
-              alignItems="center"
               spacing={1}
               data-testid={`proposal-row-${p.id}`}
+              sx={{ alignItems: "center" }}
             >
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Typography variant="body2" noWrap>
                   {p.jobDescription}
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="caption" sx={{ color: "text.secondary" }}>
                   {new Date(p.createdAt).toLocaleString()} · {p.candidates.length} candidate(s)
                   {p.reportDegraded ? " · partial" : ""}
                 </Typography>

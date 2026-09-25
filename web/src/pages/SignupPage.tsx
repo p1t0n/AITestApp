@@ -11,7 +11,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { Link as RouterLink, useNavigate } from "react-router-dom";
+import { Link as RouterLink, useNavigate } from "react-router";
 import { apiErrorMessage, useSignup, useTransparencyNotice } from "../api";
 import { isPasskeySupported } from "../auth/webauthn";
 import { ErrorNotice } from "../components/ErrorNotice";
@@ -61,7 +61,7 @@ export default function SignupPage() {
             <Typography variant="h5" gutterBottom>
               Create your account
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
               Passwordless — you'll register a passkey on this device. No password to remember.
             </Typography>
           </Box>
@@ -106,7 +106,9 @@ export default function SignupPage() {
               <Checkbox
                 checked={acknowledged}
                 onChange={(e) => setAcknowledged(e.target.checked)}
-                inputProps={{ "aria-label": "I have read the notice above" }}
+                slotProps={{
+                  input: { "aria-label": "I have read the notice above" }
+                }}
               />
             }
             label={
@@ -125,7 +127,7 @@ export default function SignupPage() {
             {signup.isPending ? "Registering passkey…" : "Sign up with a passkey"}
           </Button>
 
-          <Typography variant="body2" color="text.secondary" align="center">
+          <Typography variant="body2" align="center" sx={{ color: "text.secondary" }}>
             Already have an account?{" "}
             <Link component={RouterLink} to="/signin">
               Sign in

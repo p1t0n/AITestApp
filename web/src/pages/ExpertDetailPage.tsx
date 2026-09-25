@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link as RouterLink, useParams } from "react-router-dom";
+import { Link as RouterLink, useParams } from "react-router";
 import {
   Alert,
   Button,
@@ -79,11 +79,11 @@ export default function ExpertDetailPage() {
 
       <Section title="Profile">
         <Grid container spacing={1}>
-          <Grid item xs={6}><b>Email:</b> {e.email}</Grid>
-          <Grid item xs={6}><b>Phone:</b> {e.phone ?? "—"}</Grid>
-          <Grid item xs={6}><b>Location:</b> {e.location ?? "—"}</Grid>
-          <Grid item xs={6}><b>Current capacity:</b> {e.currentCapacityPercent}%</Grid>
-          <Grid item xs={12} sx={{ mt: 1 }}>{e.summary ?? "No summary."}</Grid>
+          <Grid size={6}><b>Email:</b> {e.email}</Grid>
+          <Grid size={6}><b>Phone:</b> {e.phone ?? "—"}</Grid>
+          <Grid size={6}><b>Location:</b> {e.location ?? "—"}</Grid>
+          <Grid size={6}><b>Current capacity:</b> {e.currentCapacityPercent}%</Grid>
+          <Grid sx={{ mt: 1 }} size={12}>{e.summary ?? "No summary."}</Grid>
         </Grid>
       </Section>
 

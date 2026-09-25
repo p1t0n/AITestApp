@@ -28,7 +28,8 @@ rows — with light mode as an equal citizen, not an afterthought.
 
 ## 1. The library stays
 
-MUI 5.18 keeps every pixel. A custom look is 90% tokens and component overrides and about 10%
+MUI 5.18 keeps every pixel (MUI 9 since the 2026-09 dependency refresh; the decision carried over
+unchanged, and so did every override, which now sits on `variants` where MUI 9 retired a class key). A custom look is 90% tokens and component overrides and about 10%
 library identity, so the alternatives were priced and rejected:
 
 - **Tailwind + shadcn/Radix**: full control, and a rewrite of all 24 components, 25 `data-testid`

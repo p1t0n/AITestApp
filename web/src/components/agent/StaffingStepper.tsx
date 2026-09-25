@@ -1,5 +1,5 @@
 import { Box, CircularProgress, Paper, Stack, Typography } from "@mui/material";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlined";
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import type { StaffingProgress, StaffingStageView } from "./staffingProgress";
@@ -19,7 +19,7 @@ function StaffingStepRow({
 }) {
   return (
     <Box data-testid={`staffing-step-${id}`}>
-      <Stack direction="row" spacing={1} alignItems="center">
+      <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
         {state === "done" ? (
           <CheckCircleOutlineIcon fontSize="small" color="success" />
         ) : state === "active" ? (
@@ -32,13 +32,15 @@ function StaffingStepRow({
         <Typography
           variant="body2"
           color={state === "pending" ? "text.secondary" : "text.primary"}
-          fontWeight={state === "active" ? 600 : 400}
+          sx={{ fontWeight: state === "active" ? 600 : 400 }}
         >
           {label}
         </Typography>
       </Stack>
       {error && (
-        <Typography variant="caption" color="warning.main" sx={{ pl: 3.5, display: "block" }}>
+        <Typography
+          variant="caption"
+          sx={{ color: "warning.main", pl: 3.5, display: "block" }}>
           {error}
         </Typography>
       )}
@@ -64,11 +66,11 @@ export function StaffingStepper({ progress, done }: { progress: StaffingProgress
                   key={i}
                   direction="row"
                   spacing={0.5}
-                  alignItems="center"
                   data-testid="staffing-match-tick"
+                  sx={{ alignItems: "center" }}
                 >
                   {t.failed && <WarningAmberIcon fontSize="small" color="warning" />}
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="caption" sx={{ color: "text.secondary" }}>
                     {t.name}
                   </Typography>
                 </Stack>

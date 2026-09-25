@@ -14,7 +14,7 @@ import {
 } from "@mui/material";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlined";
 import {
   apiErrorMessage,
   useApplyRewrite,
@@ -66,21 +66,27 @@ function RewriteCard({ expertId, rewrite }: { expertId: string; rewrite: Tailori
   const r = rewrite;
   return (
     <Paper sx={{ p: 1.5 }} data-testid={`rewrite-card-${r.achievementId}`}>
-      <Typography variant="caption" color="text.secondary">
+      <Typography variant="caption" sx={{ color: "text.secondary" }}>
         Before
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: "anywhere", mb: 1 }}>
+      <Typography
+        variant="body2"
+        sx={{ color: "text.secondary", overflowWrap: "anywhere", mb: 1 }}>
         {r.original}
       </Typography>
-      <Stack direction="row" alignItems="center" justifyContent="space-between">
-        <Typography variant="caption" color="text.secondary">
+      <Stack
+        direction="row"
+        sx={{ alignItems: "center", justifyContent: "space-between" }}>
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
           After
         </Typography>
-        <Stack direction="row" alignItems="center" spacing={0.5}>
+        <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
           {apply.isSuccess ? (
-            <Stack direction="row" alignItems="center" spacing={0.5}>
+            <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
               <CheckCircleOutlineIcon fontSize="small" color="success" />
-              <Typography variant="caption" color="success.main" fontWeight={600}>
+              <Typography
+                variant="caption"
+                sx={{ color: "success.main", fontWeight: 600 }}>
                 Applied
               </Typography>
             </Stack>
@@ -105,7 +111,9 @@ function RewriteCard({ expertId, rewrite }: { expertId: string; rewrite: Tailori
           </Tooltip>
         </Stack>
       </Stack>
-      <Typography variant="body2" fontWeight={600} sx={{ overflowWrap: "anywhere" }}>
+      <Typography
+        variant="body2"
+        sx={{ fontWeight: 600, overflowWrap: "anywhere" }}>
         {r.rewritten}
       </Typography>
       <ErrorNotice message={apply.isError ? apiErrorMessage(apply.error) : null} sx={{ mt: 1 }} />
@@ -130,7 +138,9 @@ function RewrittenBullets({
       <Stack spacing={1.5}>
         {groups.map((g, i) => (
           <Stack key={g.experienceId} spacing={1} data-testid={`rewrite-group-${g.experienceId}`}>
-            <Typography variant="caption" color="text.secondary" fontWeight={600}>
+            <Typography
+              variant="caption"
+              sx={{ color: "text.secondary", fontWeight: 600 }}>
               Experience {i + 1}
             </Typography>
             {g.items.map((r) => (
@@ -232,10 +242,14 @@ export function AgentJobForm({
         />
 
         <Box>
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{ color: "text.secondary" }}>
             Job description
           </Typography>
-          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mb: 0.5 }}>
+          <Stack
+            direction="row"
+            spacing={0.5}
+            useFlexGap
+            sx={{ flexWrap: "wrap", mb: 0.5 }}>
             {PRESET_JDS.map((p) => (
               <Chip
                 key={p.label}
@@ -281,8 +295,10 @@ export function AgentJobForm({
 
         {result && (
           <Paper sx={{ p: 1.5 }}>
-            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.5 }}>
-              <Typography variant="caption" color="text.secondary">
+            <Stack
+              direction="row"
+              sx={{ alignItems: "center", justifyContent: "space-between", mb: 0.5 }}>
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
                 {(result.latencyMs / 1000).toFixed(1)}s
               </Typography>
               <Tooltip title="Copy answer">
@@ -312,13 +328,17 @@ export function AgentJobForm({
 function JdMatchResults({ response }: { response: JdMatchResponse }) {
   return (
     <Box>
-      <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
+      <Stack
+        direction="row"
+        spacing={0.5}
+        useFlexGap
+        sx={{ flexWrap: "wrap", mb: 1 }}>
         {response.requirements.map((r) => (
           <Chip key={r} label={r} />
         ))}
       </Stack>
       {response.results.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{ color: "text.secondary" }}>
           No candidates matched this job description.
         </Typography>
       ) : (
@@ -336,12 +356,14 @@ function JdMatchCard({ result }: { result: JdMatchResult }) {
   const [open, setOpen] = useState(false);
   return (
     <Paper sx={{ p: 1.5 }} data-testid={`jd-match-${result.expertId}`}>
-      <Stack direction="row" alignItems="center" justifyContent="space-between">
+      <Stack
+        direction="row"
+        sx={{ alignItems: "center", justifyContent: "space-between" }}>
         <Box>
-          <Typography variant="body2" fontWeight={600}>
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
             {result.name}
           </Typography>
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{ color: "text.secondary" }}>
             {result.title}
           </Typography>
         </Box>
@@ -355,7 +377,9 @@ function JdMatchCard({ result }: { result: JdMatchResult }) {
         )}
       </Stack>
       {result.error && (
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+        <Typography
+          variant="body2"
+          sx={{ color: "text.secondary", mt: 0.5 }}>
           {result.error}
         </Typography>
       )}
@@ -382,20 +406,25 @@ function InterviewQuestions({ questions }: { questions: InterviewQuestion[] }) {
       <Stack spacing={1}>
         {questions.map((q, i) => (
           <Paper key={i} sx={{ p: 1.5 }} data-testid={`interview-question-${i}`}>
-            <Typography variant="body2" fontWeight={600} sx={{ overflowWrap: "anywhere" }}>
+            <Typography
+              variant="body2"
+              sx={{ fontWeight: 600, overflowWrap: "anywhere" }}>
               {i + 1}. {q.question}
             </Typography>
             {q.probes && (
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
                 Probes: {q.probes}
               </Typography>
             )}
             {q.evidence && (
               <Typography
                 variant="body2"
-                color="text.secondary"
-                sx={{ mt: 0.5, fontStyle: "italic", overflowWrap: "anywhere" }}
-              >
+                sx={{
+                  color: "text.secondary",
+                  mt: 0.5,
+                  fontStyle: "italic",
+                  overflowWrap: "anywhere"
+                }}>
                 “{q.evidence}”
               </Typography>
             )}

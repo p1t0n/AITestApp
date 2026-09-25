@@ -295,10 +295,15 @@ export default function AgentWidget({ dock }: { dock: AgentDock }) {
           >
             <Stack
               direction="row"
-              alignItems="center"
               spacing={1}
-              sx={{ flexWrap: "nowrap", pl: 1.5, pr: 0.5, py: 0.5, minHeight: 40 }}
-            >
+              sx={{
+                alignItems: "center",
+                flexWrap: "nowrap",
+                pl: 1.5,
+                pr: 0.5,
+                py: 0.5,
+                minHeight: 40
+              }}>
               <SmartToyIcon fontSize="small" sx={{ color: "text.secondary", flexShrink: 0 }} />
               {/* `noWrap` + `minWidth: 0` is what holds the "does not wrap or clip at 360px"
                   claim: the title is the only elastic thing in the row, so it gives up its width
@@ -306,7 +311,9 @@ export default function AgentWidget({ dock }: { dock: AgentDock }) {
               <Typography variant="subtitle2" noWrap sx={{ flex: 1, minWidth: 0 }}>
                 Agents
               </Typography>
-              <Stack direction="row" alignItems="center" sx={{ flexShrink: 0 }}>
+              <Stack
+                direction="row"
+                sx={{ alignItems: "center", flexShrink: 0 }}>
                 <Tooltip title="Token usage">
                   <IconButton
                     aria-label="Token usage"
@@ -355,7 +362,7 @@ export default function AgentWidget({ dock }: { dock: AgentDock }) {
                 <Button startIcon={<ArrowBackIcon />} onClick={() => setUsageOpen(false)}>
                   Back to {SURFACE_LABELS[surface]}
                 </Button>
-                <Typography variant="body2" color="text.secondary" noWrap>
+                <Typography variant="body2" noWrap sx={{ color: "text.secondary" }}>
                   Token usage
                 </Typography>
               </Box>
@@ -393,7 +400,7 @@ export default function AgentWidget({ dock }: { dock: AgentDock }) {
                   anchorEl={pickerAnchor}
                   open={!!pickerAnchor}
                   onClose={() => setPickerAnchor(null)}
-                  PaperProps={{ sx: { minWidth: pickerAnchor?.offsetWidth } }}
+                  slotProps={{ paper: { sx: { minWidth: pickerAnchor?.offsetWidth } } }}
                 >
                   {SURFACE_GROUPS.flatMap((group) => [
                     <ListSubheader key={group.category} role="presentation" sx={{ lineHeight: 2.25 }}>

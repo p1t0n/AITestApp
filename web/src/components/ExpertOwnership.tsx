@@ -43,7 +43,9 @@ export default function ExpertOwnership({ expertId }: { expertId: string }) {
 
   return (
     <Paper sx={{ p: 3, mb: 3 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
+      <Stack
+        direction="row"
+        sx={{ justifyContent: "space-between", alignItems: "center" }}>
         <Typography variant="h6" gutterBottom>
           Ownership
         </Typography>
@@ -74,14 +76,14 @@ export default function ExpertOwnership({ expertId }: { expertId: string }) {
       />
 
       {ownership.isLoading ? (
-        <Typography color="text.secondary">Loading…</Typography>
+        <Typography sx={{ color: "text.secondary" }}>Loading…</Typography>
       ) : claimed ? (
         <Typography>
           Claimed by <b>{ownerEmail}</b>. They can read and edit this record, and it is scanned for
           Jobs.
         </Typography>
       ) : (
-        <Typography color="text.secondary">
+        <Typography sx={{ color: "text.secondary" }}>
           Nobody has claimed this record. It is held on legitimate interest, which carries no route
           to automated decisions — so it is <b>not scanned for Jobs</b>. Hand this person a claim
           code to change that.

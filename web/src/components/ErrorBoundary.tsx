@@ -1,7 +1,7 @@
 import { Component } from "react";
 import type { ErrorInfo, ReactNode } from "react";
 import { Box, Button, Paper, Stack, Typography } from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 interface Props {
   children: ReactNode;
@@ -58,9 +58,9 @@ export function PageErrorFallback({ error, reset }: { error: Error; reset: () =>
   const navigate = useNavigate();
   return (
     <Paper sx={{ p: 3 }} role="alert">
-      <Stack spacing={2} alignItems="flex-start">
+      <Stack spacing={2} sx={{ alignItems: "flex-start" }}>
         <Typography variant="h6">This page stopped working</Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{ color: "text.secondary" }}>
           {error.message}
         </Typography>
         <Button
@@ -84,9 +84,9 @@ export function PageErrorFallback({ error, reset }: { error: Error; reset: () =>
 export function DockErrorFallback({ error, reset }: { error: Error; reset: () => void }) {
   return (
     <Box sx={{ p: 2 }} role="alert">
-      <Stack spacing={1.5} alignItems="flex-start">
+      <Stack spacing={1.5} sx={{ alignItems: "flex-start" }}>
         <Typography variant="subtitle2">This panel stopped working</Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{ color: "text.secondary" }}>
           {error.message}
         </Typography>
         <Button variant="outlined" onClick={reset}>
@@ -109,7 +109,7 @@ export function WidgetErrorFallback({ reset }: { error: Error; reset: () => void
       role="alert"
       sx={{ position: "fixed", bottom: 24, right: 24, zIndex: 1300, p: 2, maxWidth: 320 }}
     >
-      <Stack spacing={1} alignItems="flex-start">
+      <Stack spacing={1} sx={{ alignItems: "flex-start" }}>
         <Typography variant="body2">The agents assistant stopped working.</Typography>
         <Button onClick={reset}>
           Reload it

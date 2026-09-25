@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import { DockErrorFallback, ErrorBoundary, PageErrorFallback } from "./ErrorBoundary";
 
 /** Throws on render while `boom` is true — the shape of a real render-time crash. */

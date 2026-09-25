@@ -63,7 +63,9 @@ export function Section({
 }) {
   return (
     <Paper sx={{ p: 3, mb: 3 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
+      <Stack
+        direction="row"
+        sx={{ justifyContent: "space-between", alignItems: "center" }}>
         <Typography variant="h6" gutterBottom>
           {title}
         </Typography>
@@ -165,243 +167,265 @@ export default function ExpertRecordSections({
 
   return (
     <>
-    <Section
-      title="Availability schedule"
-      action={
-        <Button startIcon={<AddIcon />} onClick={() => setAvailabilityEdit({ initial: undefined })}>
-          Add availability
-        </Button>
-      }
-    >
-      <Stack spacing={1}>
-        {e.availabilityEntries.length === 0 && <Typography color="text.secondary">No entries.</Typography>}
-        {e.availabilityEntries.map((a) => (
-          <Stack key={a.id} direction="row" alignItems="center" spacing={2}>
-            <Chip label={`${a.capacityPercent}%`} />
-            <Typography>from {a.effectiveFrom}</Typography>
-            <IconButton
-              aria-label={`Edit availability from ${a.effectiveFrom}`}
-              onClick={() => setAvailabilityEdit({ id: a.id, initial: toSaveAvailability(a) })}
-            >
-              <EditIcon fontSize="small" />
-            </IconButton>
-            <IconButton
-              color="error"
-              aria-label={`Delete availability from ${a.effectiveFrom}`}
-              onClick={() => delAvail.mutate(a.id)}
-            >
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-          </Stack>
-        ))}
-      </Stack>
-    </Section>
-
-    <Section
-      title="Skills"
-      action={
-        <Button startIcon={<AddIcon />} onClick={() => setSkillEdit({ initial: undefined })}>
-          Add skill
-        </Button>
-      }
-    >
-      <Stack direction="row" flexWrap="wrap" gap={1}>
-        {e.skills.map((s) => (
-          <Chip
-            key={s.id}
-            label={`${s.skillName} · ${s.level} · ${s.yearsExperience}y`}
-            onClick={() =>
-              setSkillEdit({ id: s.id, initial: toSaveExpertSkill(s), skillName: s.skillName })
-            }
-            onDelete={() => delSkill.mutate(s.id)}
-          />
-        ))}
-        {e.skills.length === 0 && <Typography color="text.secondary">No skills.</Typography>}
-      </Stack>
-    </Section>
-
-    <Section
-      title="Experience"
-      action={
-        <Button
-          startIcon={<AddIcon />}
-          onClick={() => setExperienceEdit({ initial: undefined })}
-        >
-          Add experience
-        </Button>
-      }
-    >
-      {e.experiences.length === 0 && <Typography color="text.secondary">No experience recorded.</Typography>}
-      {e.experiences.map((x) => (
-        <Box key={x.id} mb={2}>
-          <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-            <Box>
-              <Typography fontWeight={600}>
-                {x.title} · {x.company}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {x.startDate} – {x.endDate ?? "Present"} {x.location ? `· ${x.location}` : ""}
-              </Typography>
-            </Box>
-            <Stack direction="row">
+      <Section
+        title="Availability schedule"
+        action={
+          <Button startIcon={<AddIcon />} onClick={() => setAvailabilityEdit({ initial: undefined })}>
+            Add availability
+          </Button>
+        }
+      >
+        <Stack spacing={1}>
+          {e.availabilityEntries.length === 0 && <Typography sx={{
+            color: "text.secondary"
+          }}>No entries.</Typography>}
+          {e.availabilityEntries.map((a) => (
+            <Stack key={a.id} direction="row" spacing={2} sx={{ alignItems: "center" }}>
+              <Chip label={`${a.capacityPercent}%`} />
+              <Typography>from {a.effectiveFrom}</Typography>
               <IconButton
-                aria-label={`Edit ${x.title} at ${x.company}`}
-                onClick={() => setExperienceEdit({ id: x.id, initial: toSaveExperience(x) })}
+                aria-label={`Edit availability from ${a.effectiveFrom}`}
+                onClick={() => setAvailabilityEdit({ id: a.id, initial: toSaveAvailability(a) })}
               >
                 <EditIcon fontSize="small" />
               </IconButton>
               <IconButton
                 color="error"
-                aria-label={`Delete ${x.title} at ${x.company}`}
-                onClick={() => delExperience.mutate(x.id)}
+                aria-label={`Delete availability from ${a.effectiveFrom}`}
+                onClick={() => delAvail.mutate(a.id)}
               >
                 <DeleteIcon fontSize="small" />
               </IconButton>
             </Stack>
-          </Stack>
-          {x.summary && <Typography variant="body2">{x.summary}</Typography>}
-          <ul style={{ marginTop: 4 }}>
-            {x.achievements.map((a) => (
-              <li key={a.id}>{a.text}</li>
-            ))}
-          </ul>
-          <Stack direction="row" gap={0.5} flexWrap="wrap">
-            {x.skills.map((s) => (
-              <Chip key={s.id} variant="outlined" label={s.skillName} />
-            ))}
-          </Stack>
-        </Box>
-      ))}
-    </Section>
-
-    <Section
-      title="Qualifications"
-      action={
-        <Button
-          startIcon={<AddIcon />}
-          onClick={() => setQualificationEdit({ initial: undefined })}
-        >
-          Add qualification
-        </Button>
-      }
-    >
-      {e.qualifications.length === 0 && <Typography color="text.secondary">None.</Typography>}
-      {e.qualifications.map((q) => (
-        <Stack key={q.id} direction="row" alignItems="center" spacing={1} mb={1}>
-          <Chip label={q.type} />
-          <Typography>
-            <b>{q.name}</b>
-            {q.institution ? ` — ${q.institution}` : ""}
-            {q.issuer ? ` — ${q.issuer}` : ""}
-          </Typography>
-          <IconButton
-            aria-label={`Edit ${q.name}`}
-            onClick={() => setQualificationEdit({ id: q.id, initial: toSaveQualification(q) })}
-          >
-            <EditIcon fontSize="small" />
-          </IconButton>
-          <IconButton
-            color="error"
-            aria-label={`Delete ${q.name}`}
-            onClick={() => delQualification.mutate(q.id)}
-          >
-            <DeleteIcon fontSize="small" />
-          </IconButton>
+          ))}
         </Stack>
-      ))}
-    </Section>
+      </Section>
 
-    <Section
-      title="Languages"
-      action={
-        <Button startIcon={<AddIcon />} onClick={() => setLanguageEdit({ initial: undefined })}>
-          Add language
-        </Button>
-      }
-    >
-      <Stack direction="row" gap={1} flexWrap="wrap">
-        {e.spokenLanguages.map((l) => (
-          <Chip
-            key={l.id}
-            label={`${l.language} · ${l.level}`}
-            onClick={() => setLanguageEdit({ id: l.id, initial: toSaveLanguage(l) })}
-            onDelete={() => delLanguage.mutate(l.id)}
-          />
+      <Section
+        title="Skills"
+        action={
+          <Button startIcon={<AddIcon />} onClick={() => setSkillEdit({ initial: undefined })}>
+            Add skill
+          </Button>
+        }
+      >
+        <Stack
+          direction="row"
+          sx={{ flexWrap: "wrap", gap: 1 }}>
+          {e.skills.map((s) => (
+            <Chip
+              key={s.id}
+              label={`${s.skillName} · ${s.level} · ${s.yearsExperience}y`}
+              onClick={() =>
+                setSkillEdit({ id: s.id, initial: toSaveExpertSkill(s), skillName: s.skillName })
+              }
+              onDelete={() => delSkill.mutate(s.id)}
+            />
+          ))}
+          {e.skills.length === 0 && <Typography sx={{
+            color: "text.secondary"
+          }}>No skills.</Typography>}
+        </Stack>
+      </Section>
+
+      <Section
+        title="Experience"
+        action={
+          <Button
+            startIcon={<AddIcon />}
+            onClick={() => setExperienceEdit({ initial: undefined })}
+          >
+            Add experience
+          </Button>
+        }
+      >
+        {e.experiences.length === 0 && <Typography sx={{
+          color: "text.secondary"
+        }}>No experience recorded.</Typography>}
+        {e.experiences.map((x) => (
+          <Box key={x.id} sx={{ mb: 2 }}>
+            <Stack
+              direction="row"
+              sx={{ justifyContent: "space-between", alignItems: "flex-start" }}>
+              <Box>
+                <Typography sx={{ fontWeight: 600 }}>
+                  {x.title} · {x.company}
+                </Typography>
+                <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                  {x.startDate} – {x.endDate ?? "Present"} {x.location ? `· ${x.location}` : ""}
+                </Typography>
+              </Box>
+              <Stack direction="row">
+                <IconButton
+                  aria-label={`Edit ${x.title} at ${x.company}`}
+                  onClick={() => setExperienceEdit({ id: x.id, initial: toSaveExperience(x) })}
+                >
+                  <EditIcon fontSize="small" />
+                </IconButton>
+                <IconButton
+                  color="error"
+                  aria-label={`Delete ${x.title} at ${x.company}`}
+                  onClick={() => delExperience.mutate(x.id)}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </Stack>
+            </Stack>
+            {x.summary && <Typography variant="body2">{x.summary}</Typography>}
+            <ul style={{ marginTop: 4 }}>
+              {x.achievements.map((a) => (
+                <li key={a.id}>{a.text}</li>
+              ))}
+            </ul>
+            <Stack
+              direction="row"
+              sx={{ gap: 0.5, flexWrap: "wrap" }}>
+              {x.skills.map((s) => (
+                <Chip key={s.id} variant="outlined" label={s.skillName} />
+              ))}
+            </Stack>
+          </Box>
         ))}
-        {e.spokenLanguages.length === 0 && <Typography color="text.secondary">None.</Typography>}
-      </Stack>
-    </Section>
+      </Section>
 
-    {languageEdit && (
-      <LanguageFormDialog
-        open
-        title={languageEdit.id ? "Edit language" : "Add language"}
-        initial={languageEdit.initial}
-        onClose={() => setLanguageEdit(null)}
-        onSave={(dto) =>
-          languageEdit.id
-            ? updateLanguage.mutateAsync({ id: languageEdit.id, ...dto })
-            : addLanguage.mutateAsync(dto)
+      <Section
+        title="Qualifications"
+        action={
+          <Button
+            startIcon={<AddIcon />}
+            onClick={() => setQualificationEdit({ initial: undefined })}
+          >
+            Add qualification
+          </Button>
         }
-      />
-    )}
+      >
+        {e.qualifications.length === 0 && <Typography sx={{
+          color: "text.secondary"
+        }}>None.</Typography>}
+        {e.qualifications.map((q) => (
+          <Stack
+            key={q.id}
+            direction="row"
+            spacing={1}
+            sx={{ alignItems: "center", mb: 1 }}>
+            <Chip label={q.type} />
+            <Typography>
+              <b>{q.name}</b>
+              {q.institution ? ` — ${q.institution}` : ""}
+              {q.issuer ? ` — ${q.issuer}` : ""}
+            </Typography>
+            <IconButton
+              aria-label={`Edit ${q.name}`}
+              onClick={() => setQualificationEdit({ id: q.id, initial: toSaveQualification(q) })}
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+            <IconButton
+              color="error"
+              aria-label={`Delete ${q.name}`}
+              onClick={() => delQualification.mutate(q.id)}
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Stack>
+        ))}
+      </Section>
 
-    {qualificationEdit && (
-      <QualificationFormDialog
-        open
-        title={qualificationEdit.id ? "Edit qualification" : "Add qualification"}
-        initial={qualificationEdit.initial}
-        onClose={() => setQualificationEdit(null)}
-        onSave={(dto) =>
-          qualificationEdit.id
-            ? updateQualification.mutateAsync({ id: qualificationEdit.id, ...dto })
-            : addQualification.mutateAsync(dto)
+      <Section
+        title="Languages"
+        action={
+          <Button startIcon={<AddIcon />} onClick={() => setLanguageEdit({ initial: undefined })}>
+            Add language
+          </Button>
         }
-      />
-    )}
+      >
+        <Stack
+          direction="row"
+          sx={{ gap: 1, flexWrap: "wrap" }}>
+          {e.spokenLanguages.map((l) => (
+            <Chip
+              key={l.id}
+              label={`${l.language} · ${l.level}`}
+              onClick={() => setLanguageEdit({ id: l.id, initial: toSaveLanguage(l) })}
+              onDelete={() => delLanguage.mutate(l.id)}
+            />
+          ))}
+          {e.spokenLanguages.length === 0 && <Typography sx={{
+            color: "text.secondary"
+          }}>None.</Typography>}
+        </Stack>
+      </Section>
 
-    {availabilityEdit && (
-      <AvailabilityFormDialog
-        open
-        title={availabilityEdit.id ? "Edit availability" : "Add availability"}
-        initial={availabilityEdit.initial}
-        onClose={() => setAvailabilityEdit(null)}
-        onSave={(dto) =>
-          availabilityEdit.id
-            ? updateAvail.mutateAsync({ id: availabilityEdit.id, ...dto })
-            : addAvail.mutateAsync(dto)
-        }
-      />
-    )}
+      {languageEdit && (
+        <LanguageFormDialog
+          open
+          title={languageEdit.id ? "Edit language" : "Add language"}
+          initial={languageEdit.initial}
+          onClose={() => setLanguageEdit(null)}
+          onSave={(dto) =>
+            languageEdit.id
+              ? updateLanguage.mutateAsync({ id: languageEdit.id, ...dto })
+              : addLanguage.mutateAsync(dto)
+          }
+        />
+      )}
 
-    {skillEdit && (
-      <ExpertSkillFormDialog
-        open
-        title={skillEdit.id ? "Edit skill" : "Add skill"}
-        initial={skillEdit.initial}
-        lockedSkillName={skillEdit.skillName}
-        onClose={() => setSkillEdit(null)}
-        onSave={(dto) =>
-          skillEdit.id
-            ? updateSkill.mutateAsync({ id: skillEdit.id, ...dto })
-            : addSkill.mutateAsync(dto)
-        }
-      />
-    )}
+      {qualificationEdit && (
+        <QualificationFormDialog
+          open
+          title={qualificationEdit.id ? "Edit qualification" : "Add qualification"}
+          initial={qualificationEdit.initial}
+          onClose={() => setQualificationEdit(null)}
+          onSave={(dto) =>
+            qualificationEdit.id
+              ? updateQualification.mutateAsync({ id: qualificationEdit.id, ...dto })
+              : addQualification.mutateAsync(dto)
+          }
+        />
+      )}
 
-    {experienceEdit && (
-      <ExperienceFormDialog
-        open
-        title={experienceEdit.id ? "Edit experience" : "Add experience"}
-        initial={experienceEdit.initial}
-        onClose={() => setExperienceEdit(null)}
-        onSave={(dto) =>
-          experienceEdit.id
-            ? updateExperience.mutateAsync({ id: experienceEdit.id, ...dto })
-            : addExperience.mutateAsync(dto)
-        }
-      />
-    )}
+      {availabilityEdit && (
+        <AvailabilityFormDialog
+          open
+          title={availabilityEdit.id ? "Edit availability" : "Add availability"}
+          initial={availabilityEdit.initial}
+          onClose={() => setAvailabilityEdit(null)}
+          onSave={(dto) =>
+            availabilityEdit.id
+              ? updateAvail.mutateAsync({ id: availabilityEdit.id, ...dto })
+              : addAvail.mutateAsync(dto)
+          }
+        />
+      )}
+
+      {skillEdit && (
+        <ExpertSkillFormDialog
+          open
+          title={skillEdit.id ? "Edit skill" : "Add skill"}
+          initial={skillEdit.initial}
+          lockedSkillName={skillEdit.skillName}
+          onClose={() => setSkillEdit(null)}
+          onSave={(dto) =>
+            skillEdit.id
+              ? updateSkill.mutateAsync({ id: skillEdit.id, ...dto })
+              : addSkill.mutateAsync(dto)
+          }
+        />
+      )}
+
+      {experienceEdit && (
+        <ExperienceFormDialog
+          open
+          title={experienceEdit.id ? "Edit experience" : "Add experience"}
+          initial={experienceEdit.initial}
+          onClose={() => setExperienceEdit(null)}
+          onSave={(dto) =>
+            experienceEdit.id
+              ? updateExperience.mutateAsync({ id: experienceEdit.id, ...dto })
+              : addExperience.mutateAsync(dto)
+          }
+        />
+      )}
     </>
   );
 }
