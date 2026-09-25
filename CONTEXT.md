@@ -535,6 +535,20 @@ their count. Surfaces are grouped by what they act on (the roster, one person, a
 which is the structure the flat tab strip was hiding.
 _Avoid_: tab, mode
 
+**Conversation**:
+One person's run of Roster Q&A questions and answers, kept so they can read it back and carry on
+from where they left off — on another day or another device. Theirs alone: nobody else reads it,
+Administrators included. Kept six months from its last question, or until they delete it. The only
+Agent Surface that has conversations; the others produce results.
+_Avoid_: thread (that was the in-memory session it replaced), chat history, session, transcript
+(a transcript is how a conversation is shown)
+
+**Turn**:
+One question and the answer given to it, as it was shown, with the model that wrote the answer.
+Turns are only ever added. A turn about somebody who has since been deleted is emptied and marked
+**Removed**; one about somebody who has paused is shown as **Hidden** until they come back.
+_Avoid_: message (a turn is the pair), exchange
+
 **Token Ledger**:
 The Usage view — the user's spend against their caps, plus the per-agent breakdown. Deliberately
 not an Agent Surface: it spends nothing and does nothing, so it lives in the dock header as a peek

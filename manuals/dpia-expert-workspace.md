@@ -39,6 +39,7 @@ resolving it in our own favour is what the ICO found employers doing.
 | Availability | a schedule of capacity percentages over time | the person, or a Service Manager |
 | Account | sign-in address, registered passkeys, a **hash** of the control word | the person |
 | **Derived by software** | 1536-dimension embeddings of the career narrative; scores out of 100, bands, model-written rationales, career digests | the system |
+| **Roster Q&A conversations** | a Service Manager's typed questions and the model's answers, which quote names, skills, availability and CV passages of the Experts the tools returned; the model id; and the ids of every Expert a turn touched | a Service Manager, and the system |
 | Accountability | the `ProcessingRecord` chain (origin, basis, reason, timestamps); the acknowledged notice version | the system |
 
 Free-text fields — the summary and the achievement bullets — are unfiltered prose. This is where
@@ -81,6 +82,13 @@ population — so the 6(1)(f) population is excluded from the scan entirely. See
    page.
 7. **Expiry.** A sweep — off unless a deployment enables it — runs the same erasure code as a
    person deleting themselves.
+8. **Roster Q&A conversations.** A Service Manager's question, the retrieved roster data and the
+   last ten turns of the conversation go to **the configured model provider**, as every Roster Q&A
+   question already does. What is new is that the question and the answer are **kept**: in
+   Postgres, readable only by the person who asked, continued from any device, deleted by them at
+   will and six months after the last question regardless. The Experts each turn touched are
+   recorded by id so that erasing or pausing one of them reaches the turn. See
+   [`adr-roster-qa-conversation-history.md`](adr-roster-qa-conversation-history.md).
 
 ### Recipients
 
@@ -105,6 +113,10 @@ document and the access view disagree, which is the divergence an auditor finds.
 
 2 years from last activity for the claimed population; 6 months from collection for the unclaimed.
 Calendar arithmetic. See [`retention.md`](retention.md).
+
+Roster Q&A conversations: hard-deleted 6 months after their last question, by a sweep that is
+**on by default** (it deletes transcripts, never people). This is not an Expert's Retention Clock
+and does not move it.
 
 ### Transfers outside the EEA
 
@@ -166,16 +178,16 @@ reference rather than a link.
 | Right | Where | Note |
 | --- | --- | --- |
 | Art. 13/14 information | versioned transparency notice, acknowledged and recorded | **Art. 14 is not delivered for staff-created rows — see R1** |
-| Art. 15 access | `GET /api/me/access`, rendered on `/me/privacy` | Includes derived data: scores, bands, rationales, digests |
+| Art. 15 access | `GET /api/me/access`, rendered on `/me/privacy` | Includes derived data: scores, bands, rationales, digests. For Roster Q&A conversations, **existence only** — how many answers referenced the person, between which dates, by which model — never the text, which is largely about third parties (Art. 15(4)). **A legal judgement for the DPO**, not settled by this document |
 | Art. 15(1)(h) logic | the same page, in prose | Concedes the automation rather than claiming human review |
 | Art. 16 rectification | the CV editor | Email is immutable to the person who benefits from changing it (claim integrity) |
-| Art. 17 erasure | `Delete everything`, control-word re-auth | Irreversible, no grace window, ends sessions on both hosts |
+| Art. 17 erasure | `Delete everything`, control-word re-auth | Irreversible, no grace window, ends sessions on both hosts. Roster Q&A turns that touched the person, or name them in full, are emptied and marked Removed in the same act |
 | Art. 18 restriction | the scrub residue is treated as restricted, not anonymous | Explicitly **not** presented as anonymisation |
 | Art. 20 portability | JSON download | Labelled a right under 6(1)(b), a courtesy under 6(1)(f); same payload |
 | Art. 21 objection | LI rows only | **Not adjudicated** — honoured as deletion |
 | Art. 22(3) safeguards | contest → queue → a Service Manager reviews | Plus `ContestNote`, the person's own words, shown first |
 | Complaint to an SA | stated on the page | |
-| — | pause (`HiddenAt`) | Not a GDPR right; built because "stop offering me" should not require deletion |
+| — | pause (`HiddenAt`) | Not a GDPR right; built because "stop offering me" should not require deletion. Also hides Roster Q&A turns about the person, and keeps them out of any replay to the model, until they unpause |
 
 ## 4. Security and access control
 
@@ -216,16 +228,17 @@ inputs to a DPO's assessment, not a substitute for it.
 | --- | --- | --- | --- | --- | --- |
 | R1 | **A person is held without ever being told** (Art. 14). A Service Manager enters a real person who cannot be reached | High | **High** | 6-month clock from collection; excluded from the scan; invisible to the Art. 22 route; the row is visibly degraded until claimed | **High — unresolved.** The clock drains the population; it does not discharge the duty |
 | R2 | An Expert never sees an updated notice (Art. 13 on change) | Medium | Medium | Notice is versioned and the acknowledged version recorded, so the gap is *visible* rather than silent | Medium — unresolved for the same reason as R1 |
-| R3 | Special-category detail in free text is stored and indexed | High | Medium | Field guidance naming the categories; the same text in the notice; standing prohibition on inference and on filtering by such signals | Medium. A mitigation, not a solution |
+| R3 | Special-category detail in free text is stored and indexed — now including a **Service Manager's typed Roster Q&A question** about a person, kept for up to six months | High | Medium | Field guidance naming the categories; the same text in the notice; standing prohibition on inference and on filtering by such signals; for conversations, owner-only reading, owner delete and a six-month sweep that is on by default | Medium. A mitigation, not a solution; no content filter is applied to questions |
 | R4 | **Being ranked out by software with no human ever reading the record** | High | High *(inherent to the design)* | Automation conceded rather than denied; 22(2)(a) relied on with the necessity argument written down; all three 22(3) safeguards built on the decision row; **the score, band and rationale are shown to the person in full**, which is what makes contesting possible; LI population excluded entirely | Medium. Depends on contests actually being reviewed by somebody with authority to change the outcome — an operational fact, not a code property |
-| R5 | A model-written rationale is wrong, unfair, or humiliating | Medium | Medium | The subject reads it verbatim, which constrains what may be written; contest reopens it; no inference of protected characteristics; the model gets passages, skills and availability only | Medium |
-| R6 | Personal data survives a deletion request | High | **Low** | One erasure path; a declaration with a mandatory reason per store; a test walking the real EF model transitively through FKs; cascades in the database rather than in code; the embedding is destroyed with the text it derives from | Low |
+| R5 | A model-written rationale — or a kept Roster Q&A answer — is wrong, unfair, or humiliating | Medium | Medium | The subject reads a rationale verbatim, which constrains what may be written; contest reopens it; no inference of protected characteristics; the model gets passages, skills and availability only. A conversation answer is **not** shown to its subject (existence only, R13), so that constraint does not reach it; every answer is forced to rest on a fresh tool call and ungrounded answers are marked | Medium |
+| R6 | Personal data survives a deletion request | High | **Low** | One erasure path; a declaration with a mandatory reason per store; a test walking the real EF model transitively through FKs; cascades in the database rather than in code; the embedding is destroyed with the text it derives from; Roster Q&A turns scrubbed by touched id **and** by full name, which the name-sweep test covers | Low. A typed nickname or misspelling in a conversation survives — the same gap proposal free text already has |
 | R7 | The career narrative leaves the company to a third-party model provider — one on a Gemini deployment, two on an Azure one | Medium | Certain | Each recipient named to the person by name and split by what it does (Google for embeddings, Microsoft (Azure OpenAI) for scoring), derived from configuration so the name cannot go stale; passages rather than the whole record at assessment time; no inference permitted | **Assessed for one provider, open for the other.** *Google:* unassessed, exactly as before. *Microsoft:* the deployment is `GlobalStandard` in Sweden Central, so **inference is not EU-confined** — the region bought no residency and **R7 is not improved by it** (ADR §7) — and the entity and mechanism are no more assessed than Google's. Assessed is not resolved. See §1 |
 | R8 | Somebody's record is read by a party who should not see it | High | Low | Passkeys only; default-deny endpoint classification with a test; ownership scope with reflective coverage; 404 not 403; `TokenVersion` |
 | R9 | Erasure is triggered by somebody who is not the person | High | Low | Control-word re-auth on erasure and objection; the same gate on both, because they are the same act | Low |
 | R10 | A person deletes when they meant to pause | Medium | Medium | Two separate controls, deliberately far apart on a long page; the page length **is** the mechanism, and a test asserts the ordering so "tidying" cannot undo it | Low–Medium. There is no email with which to undo a mistake |
 | R11 | A record expires and is deleted while still wanted | Medium | Low | Reading your own record is activity and pushes the date back; a 30-day final-warning banner on the page people actually use; **the sweep is off unless a deployment enables it** | Low |
 | R12 | The scrub residue is treated as anonymous, and reused freely | Medium | Low | Documented as pseudonymisation under Art. 18 in the declaration, the manual and the code comments; no FK, so the id cannot be joined back as a link | Low, while the documentation holds |
+| R13 | **A person is discussed in a kept conversation they cannot read** | Medium | High *(inherent to the design)* | Owner-only reading; the person's access view says how often, when and by which model, without the text (Art. 15(4)); erasure empties the turns and pause hides them; six-month sweep on by default | Medium. Whether existence-only discharges Art. 15 for this store is **for the DPO** |
 
 ## 7. Residual risk
 
