@@ -23,8 +23,8 @@ public static class AuthServiceCollectionExtensions
 
         services.AddFido2(options =>
         {
-            options.ServerDomain = auth.Passkey.ServerDomain;
-            options.ServerName = auth.Passkey.ServerName;
+            options.RPID = auth.Passkey.ServerDomain;
+            options.RPName = auth.Passkey.ServerName;
             options.Origins = new HashSet<string>(auth.Passkey.Origins);
             options.TimestampDriftTolerance = 300_000;
         });

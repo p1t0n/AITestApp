@@ -12,7 +12,7 @@ seeder. `docker-compose.yml` is deleted. A shared `ServiceDefaults` project give
 telemetry and health-check spine. `dotnet run --project api/AppHost` is the only documented way to
 bring the stack up.
 
-Aspire 13.5.3, on the .NET 10 SDK. No workload, no `aspire` CLI required, no prerelease packages.
+Aspire 13.5.4, on the .NET 10 SDK (13.5.3 when this was decided). No workload, no `aspire` CLI required, no prerelease packages.
 
 ## What was weighed
 

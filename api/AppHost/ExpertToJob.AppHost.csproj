@@ -2,7 +2,7 @@
   The orchestrator (P1T-216). See manuals/adr-aspire-apphost.md for why this exists and what it is
   deliberately not: there is no deployment manifest here, and no prerelease package anywhere.
 -->
-<Project Sdk="Aspire.AppHost.Sdk/13.5.3">
+<Project Sdk="Aspire.AppHost.Sdk/13.5.4">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
