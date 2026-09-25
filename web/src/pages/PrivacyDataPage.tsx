@@ -220,6 +220,22 @@ function TheRecord({
 
       <Row label="The search index">{access.derived.searchIndexNote}</Row>
 
+      {/* Existence, never text (EXP-32): an answer can be mostly about other people, so quoting it
+          back to one of them would disclose theirs. The count, the dates and the model are what is
+          owed and all this line ever shows. */}
+      {access.derived.rosterQa && (
+        <Row label="Roster Q&A">
+          Roster Q&A answers referenced you {access.derived.rosterQa.count}{" "}
+          {access.derived.rosterQa.count === 1 ? "time" : "times"} between{" "}
+          {new Date(access.derived.rosterQa.first).toLocaleDateString()} and{" "}
+          {new Date(access.derived.rosterQa.last).toLocaleDateString()}
+          {access.derived.rosterQa.models.length > 0
+            ? ` (model: ${access.derived.rosterQa.models.join(", ")})`
+            : ""}
+          .
+        </Row>
+      )}
+
       <Row label="Assessments">
         {scored.length === 0 ? (
           "Nothing yet — software has not scored you against a job."

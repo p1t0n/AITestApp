@@ -134,6 +134,226 @@ public class ErasureTests(WebApiFactory factory)
             "the run's own inputs are not personal data and must survive");
     }
 
+    // ---- Roster Q&A transcripts (EXP-32) ---------------------------------------------------------
+
+    /// <summary>
+    /// The scrub reaches a turn two ways and has to leave the third alone. The touched id is what
+    /// catches a turn that never typed the person's name; the name is what catches a turn no tool
+    /// result ever pointed at them from. A turn about somebody else is neither, and survives whole
+    /// — which is the assertion that would catch a scrub written as "empty this conversation".
+    /// </summary>
+    [Fact]
+    public async Task Erasure_empties_the_turns_that_touched_or_named_them_and_no_others()
+    {
+        var world = await GivenAFullyPopulatedPersonAsync();
+
+        await world.Client.PostAsJsonAsync("/api/me/account/erase", new { controlWord = ControlWord });
+
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var touched = await db.RosterQaTurns.AsNoTracking().SingleAsync(t => t.Id == world.Qa.TouchedTurnId);
+        touched.QuestionText.Should().BeEmpty("their id came back in a tool result during this turn");
+        touched.AnswerText.Should().BeEmpty();
+        touched.State.Should().Be(RosterQaTurnState.Removed);
+
+        var named = await db.RosterQaTurns.AsNoTracking().SingleAsync(t => t.Id == world.Qa.NamedTurnId);
+        named.QuestionText.Should().BeEmpty("the asker typed their full name, and no id reached it");
+        named.AnswerText.Should().BeEmpty();
+        named.State.Should().Be(RosterQaTurnState.Removed);
+
+        var lowerCase = await db.RosterQaTurns.AsNoTracking()
+            .SingleAsync(t => t.Id == world.Qa.LowerCaseTurnId);
+        lowerCase.AnswerText.Should().BeEmpty("the name match is case-insensitive");
+        lowerCase.State.Should().Be(RosterQaTurnState.Removed);
+
+        var unrelated = await db.RosterQaTurns.AsNoTracking()
+            .SingleAsync(t => t.Id == world.Qa.UnrelatedTurnId);
+        unrelated.QuestionText.Should().Be("And who else could cover it?",
+            "this turn touched another Expert and named nobody — erasing one person does not empty "
+            + "a third party's conversation");
+        unrelated.AnswerText.Should().Be("One other engineer could.");
+        unrelated.State.Should().Be(RosterQaTurnState.Ok);
+
+        (await db.RosterQaTurnExperts.CountAsync(t => t.ExpertId == world.ExpertId))
+            .Should().Be(0, "the ids are a reference to somebody we no longer hold");
+        (await db.RosterQaTurnExperts.CountAsync(t => t.ExpertId == world.Qa.OtherExpertId))
+            .Should().Be(1, "and the other Expert's are untouched");
+    }
+
+    /// <summary>
+    /// The conversation is still the asker's. Its shape — when they asked, how many turns, on which
+    /// model — is their own data and not the erased person's, so nothing but the text goes.
+    /// </summary>
+    [Fact]
+    public async Task The_scrubbed_conversation_keeps_its_other_turns_and_its_timestamps()
+    {
+        var world = await GivenAFullyPopulatedPersonAsync();
+
+        await world.Client.PostAsJsonAsync("/api/me/account/erase", new { controlWord = ControlWord });
+
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var conversation = await db.RosterQaConversations.AsNoTracking()
+            .SingleAsync(c => c.Id == world.Qa.ConversationId);
+        conversation.UserId.Should().Be(world.Qa.AskerUserId);
+        conversation.CreatedAt.Should().Be(world.Qa.CreatedAt);
+        conversation.LastActiveAt.Should().Be(world.Qa.LastActiveAt);
+
+        (await db.RosterQaTurns.CountAsync(t => t.ConversationId == world.Qa.ConversationId))
+            .Should().Be(4, "the rows stay — the scrub hollows them out, it does not delete them");
+
+        var scrubbed = await db.RosterQaTurns.AsNoTracking()
+            .SingleAsync(t => t.Id == world.Qa.TouchedTurnId);
+        scrubbed.CreatedAt.Should().Be(world.Qa.CreatedAt);
+        scrubbed.ModelId.Should().Be("gemini-2.5-flash", "which model answered is not their data");
+    }
+
+    /// <summary>
+    /// The title is the asker's first question verbatim, so it can name the erased person outright.
+    /// Both routes to retitling are asserted, because they are genuinely different rules: the name
+    /// appearing in the title, and the turn the title was taken from being emptied.
+    /// </summary>
+    [Fact]
+    public async Task A_title_that_names_them_becomes_the_dated_placeholder()
+    {
+        var world = await GivenAFullyPopulatedPersonAsync();
+        var conversationId = Guid.NewGuid();
+        var createdAt = new DateTimeOffset(2026, 2, 17, 11, 0, 0, TimeSpan.Zero);
+
+        using (var seed = factory.Services.CreateScope())
+        {
+            var db = seed.ServiceProvider.GetRequiredService<AppDbContext>();
+            // Nothing in this conversation touches or names them except the title itself, so the
+            // title rule is the only thing that can fire here.
+            var conversation = new RosterQaConversation
+            {
+                Id = conversationId,
+                UserId = factory.CreateAccount(UserRole.User).Id,
+                CreatedAt = createdAt,
+                LastActiveAt = createdAt.AddMinutes(2),
+                Title = $"Is {world.Fingerprint} Erasable free in May?",
+            };
+            conversation.Turns.Add(new RosterQaTurn
+            {
+                Id = Guid.NewGuid(),
+                ConversationId = conversationId,
+                QuestionText = "Who is free in May?",
+                AnswerText = "Somebody else is.",
+                ModelId = "gemini-2.5-flash",
+                Grounded = true,
+                CreatedAt = createdAt,
+            });
+            db.RosterQaConversations.Add(conversation);
+            await db.SaveChangesAsync();
+        }
+
+        await world.Client.PostAsJsonAsync("/api/me/account/erase", new { controlWord = ControlWord });
+
+        using var scope = factory.Services.CreateScope();
+        var db2 = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var conversation2 = await db2.RosterQaConversations.AsNoTracking()
+            .SingleAsync(c => c.Id == conversationId);
+
+        conversation2.Title.Should().Be("Conversation from 2026-02-17",
+            "the title said their name, and the date it keeps is the conversation's own");
+        (await db2.RosterQaTurns.AsNoTracking().SingleAsync(t => t.ConversationId == conversationId))
+            .QuestionText.Should().Be("Who is free in May?",
+                "the turn under it mentioned nobody — retitling is not a reason to empty it");
+    }
+
+    [Fact]
+    public async Task A_conversation_whose_first_turn_was_scrubbed_is_retitled_too()
+    {
+        var world = await GivenAFullyPopulatedPersonAsync();
+        var conversationId = Guid.NewGuid();
+        var createdAt = new DateTimeOffset(2026, 1, 9, 8, 0, 0, TimeSpan.Zero);
+
+        using (var seed = factory.Services.CreateScope())
+        {
+            var db = seed.ServiceProvider.GetRequiredService<AppDbContext>();
+            // A title that names nobody, over a first turn that touched them. Nothing in the title
+            // itself is a reason to rewrite it — what makes it meaningless is that the question it
+            // was taken from is about to be emptied.
+            var conversation = new RosterQaConversation
+            {
+                Id = conversationId,
+                UserId = factory.CreateAccount(UserRole.User).Id,
+                CreatedAt = createdAt,
+                LastActiveAt = createdAt.AddMinutes(5),
+                Title = "Who is free in May?",
+            };
+            conversation.Turns.Add(new RosterQaTurn
+            {
+                Id = Guid.NewGuid(),
+                ConversationId = conversationId,
+                QuestionText = "Who is free in May?",
+                AnswerText = "One person is.",
+                ModelId = "gemini-2.5-flash",
+                Grounded = true,
+                CreatedAt = createdAt,
+                TouchedExperts = { new RosterQaTurnExpert { ExpertId = world.ExpertId } },
+            });
+            db.RosterQaConversations.Add(conversation);
+            await db.SaveChangesAsync();
+        }
+
+        await world.Client.PostAsJsonAsync("/api/me/account/erase", new { controlWord = ControlWord });
+
+        using var scope = factory.Services.CreateScope();
+        var after = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        (await after.RosterQaConversations.AsNoTracking().SingleAsync(c => c.Id == conversationId))
+            .Title.Should().Be("Conversation from 2026-01-09");
+    }
+
+    /// <summary>
+    /// The owner's own conversations need no code at all: the <c>UserId</c> foreign key takes them,
+    /// their turns and their touched rows. Asserted because a future migration could drop that
+    /// cascade and every other test here would still pass.
+    /// </summary>
+    [Fact]
+    public async Task Erasing_the_account_cascades_its_own_conversations()
+    {
+        var world = await GivenAFullyPopulatedPersonAsync();
+        var conversationId = Guid.NewGuid();
+        var turnId = Guid.NewGuid();
+
+        using (var seed = factory.Services.CreateScope())
+        {
+            var db = seed.ServiceProvider.GetRequiredService<AppDbContext>();
+            var conversation = new RosterQaConversation
+            {
+                Id = conversationId,
+                UserId = world.UserId,
+                CreatedAt = DateTimeOffset.UtcNow,
+                LastActiveAt = DateTimeOffset.UtcNow,
+                Title = "My own question",
+            };
+            conversation.Turns.Add(new RosterQaTurn
+            {
+                Id = turnId,
+                ConversationId = conversationId,
+                QuestionText = "Who builds payments?",
+                AnswerText = "Three people do.",
+                ModelId = "gemini-2.5-flash",
+                Grounded = true,
+                CreatedAt = DateTimeOffset.UtcNow,
+                TouchedExperts = { new RosterQaTurnExpert { ExpertId = world.Qa.OtherExpertId } },
+            });
+            db.RosterQaConversations.Add(conversation);
+            await db.SaveChangesAsync();
+        }
+
+        await world.Client.PostAsJsonAsync("/api/me/account/erase", new { controlWord = ControlWord });
+
+        using var scope = factory.Services.CreateScope();
+        var after = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        (await after.RosterQaConversations.CountAsync(c => c.Id == conversationId)).Should().Be(0);
+        (await after.RosterQaTurns.CountAsync(t => t.Id == turnId)).Should().Be(0);
+        (await after.RosterQaTurnExperts.CountAsync(t => t.TurnId == turnId)).Should().Be(0);
+    }
+
     // ---- The gate --------------------------------------------------------------------------------
 
     [Fact]
@@ -226,7 +446,25 @@ public class ErasureTests(WebApiFactory factory)
         Guid ExperienceId,
         Guid ProposalId,
         string Email,
-        string Fingerprint);
+        string Fingerprint,
+        RosterQa Qa);
+
+    /// <summary>
+    /// One Roster Q&A conversation, asked by <b>somebody else</b> about this person (EXP-32). Owned
+    /// by another account on purpose: the conversation the erased person asked themselves goes by
+    /// cascade and proves nothing about the scrub, and the interesting case is the transcript that
+    /// survives because it is a third party's own data.
+    /// </summary>
+    private sealed record RosterQa(
+        Guid AskerUserId,
+        Guid ConversationId,
+        Guid TouchedTurnId,
+        Guid NamedTurnId,
+        Guid LowerCaseTurnId,
+        Guid UnrelatedTurnId,
+        Guid OtherExpertId,
+        DateTimeOffset CreatedAt,
+        DateTimeOffset LastActiveAt);
 
     /// <summary>
     /// One person with something in every declared store: a full CV, a lawful-basis history, a
@@ -323,7 +561,98 @@ public class ErasureTests(WebApiFactory factory)
             await db.SaveChangesAsync();
         }
 
-        return new World(client, account.Id, expert.Id, experienceId, proposalId, email, fingerprint);
+        var qa = await GivenSomebodyElseAskedAboutThemAsync(expert.Id, fingerprint);
+
+        return new World(
+            client, account.Id, expert.Id, experienceId, proposalId, email, fingerprint, qa);
+    }
+
+    /// <summary>
+    /// A stored conversation belonging to a different account, holding the three turns the scrub has
+    /// to tell apart: one that only <em>touched</em> this person (their id came back in a tool
+    /// result, their name is nowhere in the text), one that only <em>names</em> them (nothing
+    /// touched them, the asker typed the name), and one about somebody else entirely. Its title is
+    /// the first question verbatim, so it names them too.
+    /// </summary>
+    private async Task<RosterQa> GivenSomebodyElseAskedAboutThemAsync(Guid expertId, string fingerprint)
+    {
+        // First plus last, which is what the scrub matches on. The first name alone is not a match:
+        // it is a real word in somebody else's sentence often enough that it would be a licence to
+        // empty conversations the erased person never appeared in.
+        var fullName = $"{fingerprint} Erasable";
+
+        var asker = factory.CreateAccount(UserRole.User);
+        var otherExpert = await factory.CreateAuthenticatedClient()
+            .CreateExpertAsync(ApiClientExtensions.NewExpert());
+
+        var createdAt = new DateTimeOffset(2026, 3, 4, 9, 0, 0, TimeSpan.Zero);
+        var conversation = new RosterQaConversation
+        {
+            Id = Guid.NewGuid(),
+            UserId = asker.Id,
+            CreatedAt = createdAt,
+            LastActiveAt = createdAt.AddMinutes(20),
+            Title = $"Is {fullName} free in May?",
+        };
+
+        var touched = new RosterQaTurn
+        {
+            Id = Guid.NewGuid(),
+            ConversationId = conversation.Id,
+            QuestionText = "Who is free in May?",
+            AnswerText = "Two people are, both React engineers.",
+            ModelId = "gemini-2.5-flash",
+            Grounded = true,
+            CreatedAt = createdAt,
+            TouchedExperts = { new RosterQaTurnExpert { ExpertId = expertId } },
+        };
+
+        var named = new RosterQaTurn
+        {
+            Id = Guid.NewGuid(),
+            ConversationId = conversation.Id,
+            QuestionText = $"What has {fullName} shipped?",
+            AnswerText = $"{fullName} led two payment migrations.",
+            ModelId = "gemini-2.5-flash",
+            Grounded = true,
+            CreatedAt = createdAt.AddMinutes(10),
+        };
+
+        // The same name in a different case, and nothing else to catch it by — so a scrub that
+        // matched case-sensitively would leave this answer standing and this test would say so.
+        var lowerCase = new RosterQaTurn
+        {
+            Id = Guid.NewGuid(),
+            ConversationId = conversation.Id,
+            QuestionText = "Anyone else with that background?",
+            AnswerText = $"{fullName.ToLowerInvariant()} has it too.",
+            ModelId = "gemini-2.5-flash",
+            Grounded = true,
+            CreatedAt = createdAt.AddMinutes(15),
+        };
+
+        var unrelated = new RosterQaTurn
+        {
+            Id = Guid.NewGuid(),
+            ConversationId = conversation.Id,
+            QuestionText = "And who else could cover it?",
+            AnswerText = "One other engineer could.",
+            ModelId = "gemini-2.5-pro",
+            Grounded = false,
+            CreatedAt = createdAt.AddMinutes(20),
+            TouchedExperts = { new RosterQaTurnExpert { ExpertId = otherExpert.Id } },
+        };
+
+        conversation.Turns.AddRange([touched, named, lowerCase, unrelated]);
+
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.RosterQaConversations.Add(conversation);
+        await db.SaveChangesAsync();
+
+        return new RosterQa(
+            asker.Id, conversation.Id, touched.Id, named.Id, lowerCase.Id, unrelated.Id,
+            otherExpert.Id, conversation.CreatedAt, conversation.LastActiveAt);
     }
 
     /// <summary>A handoff document in the shape the Agents host writes, with the person in all six

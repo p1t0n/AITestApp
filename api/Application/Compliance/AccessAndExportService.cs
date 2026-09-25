@@ -33,13 +33,34 @@ public sealed record DerivedAssessmentDto(
     string? MatchAnswer);
 
 /// <summary>
+/// How often somebody's Roster Q&A answers referenced this Expert — <b>existence, and never a word
+/// of text</b> (EXP-32; <c>manuals/adr-roster-qa-conversation-history.md</c> §5).
+///
+/// <para>The turn text is deliberately not here and must not be added. An answer can be mostly
+/// about other people — a search listing twenty of them — so handing it to one of them would
+/// disclose third parties' data under Art. 15(4). What is owed, and what this gives, is that it
+/// happened, how often, when, and by which model.</para>
+/// </summary>
+/// <param name="Count">Turns that touched this Expert.</param>
+/// <param name="First">The earliest such turn.</param>
+/// <param name="Last">The most recent one.</param>
+/// <param name="Models">The distinct models that wrote them, in order.</param>
+public sealed record RosterQaMentionsDto(
+    int Count,
+    DateTimeOffset First,
+    DateTimeOffset Last,
+    IReadOnlyList<string> Models);
+
+/// <summary>
 /// Everything software worked out <em>about</em> the person, rather than everything they told us.
 /// Owed under Art. 15 (EDPB GL 01/2022 §§97–99) and excluded from the Art. 20 export, which is why
 /// it is a separate shape rather than more fields on the record.
 /// </summary>
 public sealed record DerivedDataDto(
     IReadOnlyList<DerivedAssessmentDto> Assessments,
-    string SearchIndexNote);
+    string SearchIndexNote,
+    /// <summary>Null when no stored Roster Q&A turn ever touched this Expert.</summary>
+    RosterQaMentionsDto? RosterQa);
 
 /// <summary>The Art. 15 access view: what we hold, why, who sees it, and what software decided.</summary>
 public sealed record AccessViewDto(
@@ -262,7 +283,45 @@ public class AccessAndExportService(
             "Your summary and each of your roles are also held as numeric representations "
             + "(embeddings) produced by Google's Gemini models, so that a search for a capability "
             + "can find your record. They are derived from the text above and hold nothing you have "
-            + "not already read here.");
+            + "not already read here.",
+            await RosterQaMentionsAsync(expertId, ct));
+    }
+
+    /// <summary>
+    /// The Roster Q&A existence line. Counted from <c>RosterQaTurnExpert</c>, which the capture
+    /// wrapper writes for every Expert id any tool result returned — so this covers the turns that
+    /// merely <em>saw</em> this person as well as the ones that named them.
+    ///
+    /// <para>It projects the count, the two dates and the models, and nothing else. Reading the
+    /// text columns here would be the Art. 15(4) disclosure the ADR rules out, so this query never
+    /// selects them at all: the omission is structural, not a filter somebody has to remember.</para>
+    /// </summary>
+    private async Task<RosterQaMentionsDto?> RosterQaMentionsAsync(Guid expertId, CancellationToken ct)
+    {
+        var turns = await db.RosterQaTurnExperts
+            .AsNoTracking()
+            .Where(t => t.ExpertId == expertId)
+            .Join(db.RosterQaTurns, t => t.TurnId, turn => turn.Id, (_, turn) => new
+            {
+                turn.CreatedAt,
+                turn.ModelId,
+            })
+            .ToListAsync(ct);
+
+        if (turns.Count == 0)
+        {
+            return null;
+        }
+
+        return new RosterQaMentionsDto(
+            turns.Count,
+            turns.Min(t => t.CreatedAt),
+            turns.Max(t => t.CreatedAt),
+            turns.Select(t => t.ModelId)
+                .Where(m => !string.IsNullOrWhiteSpace(m))
+                .Distinct()
+                .Order(StringComparer.Ordinal)
+                .ToList());
     }
 
     /// <summary>

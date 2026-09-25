@@ -28,6 +28,18 @@ export interface DerivedAssessment {
   matchAnswer: string | null;
 }
 
+/**
+ * How often Roster Q&A answers referenced this person — existence, and never a word of the text
+ * (EXP-32). An answer can be mostly about other people, so handing it over would disclose third
+ * parties' data under Art. 15(4); what is owed is that it happened, how often and on what.
+ */
+export interface RosterQaMentions {
+  count: number;
+  first: string;
+  last: string;
+  models: string[];
+}
+
 export interface AccessView {
   expertId: string;
   origin: "SelfRegistered" | "StaffCreated";
@@ -52,7 +64,12 @@ export interface AccessView {
   rights: string[];
   complaintRight: string;
   record: unknown;
-  derived: { assessments: DerivedAssessment[]; searchIndexNote: string };
+  derived: {
+    assessments: DerivedAssessment[];
+    searchIndexNote: string;
+    /** Null when no stored Roster Q&A turn ever touched this person. */
+    rosterQa: RosterQaMentions | null;
+  };
   history: unknown[];
 }
 

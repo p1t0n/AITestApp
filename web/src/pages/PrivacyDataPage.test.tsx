@@ -55,6 +55,7 @@ function accessView(over: Partial<AccessView> = {}): AccessView {
         },
       ],
       searchIndexNote: "Your summary is also held as numeric representations.",
+      rosterQa: null,
     },
     history: [],
     ...over,
@@ -287,12 +288,40 @@ describe("the rights, each in its own row", () => {
 
   it("offers no review where software has scored nobody", () => {
     access = accessView({
-      derived: { assessments: [], searchIndexNote: "Nothing indexed." },
+      derived: { assessments: [], searchIndexNote: "Nothing indexed.", rosterQa: null },
     });
     renderPage();
 
     expect(screen.queryByRole("button", { name: "Ask a person to review this" })).not.toBeInTheDocument();
     expect(screen.getByText(/software has not scored you/)).toBeInTheDocument();
+  });
+
+  /** Existence, never text (EXP-32): the count, the dates and the model, and nothing quoted. */
+  it("says how often Roster Q&A answers referenced you, and quotes none of them", () => {
+    access = accessView({
+      derived: {
+        assessments: [],
+        searchIndexNote: "Nothing indexed.",
+        rosterQa: {
+          count: 4,
+          first: "2026-05-06T10:00:00Z",
+          last: "2026-05-09T10:00:00Z",
+          models: ["gemini-2.5-flash", "gemini-2.5-pro"],
+        },
+      },
+    });
+    renderPage();
+
+    expect(
+      screen.getByText(/Roster Q&A answers referenced you 4 times between .* and .*/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/gemini-2.5-flash, gemini-2.5-pro/)).toBeInTheDocument();
+  });
+
+  it("shows no Roster Q&A line where no answer ever referenced you", () => {
+    renderPage();
+
+    expect(screen.queryByText(/Roster Q&A answers referenced you/)).not.toBeInTheDocument();
   });
 });
 

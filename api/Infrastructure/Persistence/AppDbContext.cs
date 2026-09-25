@@ -30,6 +30,9 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<PendingClaim> PendingClaims => Set<PendingClaim>();
     public DbSet<ClaimCode> ClaimCodes => Set<ClaimCode>();
     public DbSet<DataExportRecord> DataExportRecords => Set<DataExportRecord>();
+    public DbSet<RosterQaConversation> RosterQaConversations => Set<RosterQaConversation>();
+    public DbSet<RosterQaTurn> RosterQaTurns => Set<RosterQaTurn>();
+    public DbSet<RosterQaTurnExpert> RosterQaTurnExperts => Set<RosterQaTurnExpert>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -343,6 +346,44 @@ public class AppDbContext : DbContext, IAppDbContext
             // nothing here worth keeping once the person it describes is gone.
             e.HasOne<Expert>().WithMany()
                 .HasForeignKey(x => x.ExpertId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<RosterQaConversation>(e =>
+        {
+            // About 60 characters at a word boundary, with headroom (EXP-32 / ADR §3). The scrub
+            // writes "Conversation from <date>" in here too, which is comfortably shorter.
+            e.Property(x => x.Title).HasMaxLength(80).IsRequired();
+            // The history drawer lists one owner's conversations, most recently active first, and
+            // the retention sweep scans the same column for stale ones.
+            e.HasIndex(x => new { x.UserId, x.LastActiveAt });
+            // Cascades with the account, exactly as AgentUsage does — and it is that cascade, not
+            // any code path, that takes the turns and their touched rows with it.
+            e.HasOne<User>().WithMany()
+                .HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.Turns).WithOne()
+                .HasForeignKey(x => x.ConversationId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<RosterQaTurn>(e =>
+        {
+            e.Property(x => x.QuestionText).IsRequired();
+            e.Property(x => x.AnswerText).IsRequired();
+            e.Property(x => x.ModelId).HasMaxLength(200).IsRequired();
+            e.Property(x => x.State).HasMaxLength(20).IsRequired();
+            // A replay reads one conversation oldest-first, and takes the last ten of it.
+            e.HasIndex(x => new { x.ConversationId, x.CreatedAt });
+            e.HasMany(x => x.TouchedExperts).WithOne()
+                .HasForeignKey(x => x.TurnId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<RosterQaTurnExpert>(e =>
+        {
+            // Deliberately no foreign key to Expert (ADR §3), for the same reason
+            // StaffingProposalCandidate has none: erasure has to read this row to find the turns it
+            // must scrub, so the reference cannot be destroyed by the cascade that triggers it.
+            e.HasKey(x => new { x.TurnId, x.ExpertId });
+            // The Access View counts an Expert's mentions, and erasure finds their turns, by this.
+            e.HasIndex(x => x.ExpertId);
         });
 
         b.Entity<ExpertSearchChunk>(e =>
