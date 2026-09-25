@@ -9,6 +9,9 @@ type Role = "user" | "assistant" | "error";
 interface Message {
   role: Role;
   text: string;
+  /** The model the provider said wrote this turn (EXP-31). Only ever set on an assistant turn:
+   * a question has no author but the person asking, and an error has none at all. */
+  modelId?: string | null;
 }
 
 /**
@@ -56,6 +59,20 @@ function Bubble({ message }: { message: Message }) {
         ) : (
           <AgentMarkdown text={message.text} />
         )}
+        {/* Who wrote it (EXP-31) — inside the bubble, because it is a property of this turn and
+            not of the conversation. The model can change mid-thread: an override lands, an alias
+            resolves elsewhere, a provider moves a point release under a name. Absent when the
+            provider named none, which is the honest answer rather than repeating the configured
+            model as if it had been confirmed. */}
+        {message.modelId && (
+          <Typography
+            variant="caption"
+            component="div"
+            sx={{ color: "text.secondary", mt: 0.5, overflowWrap: "anywhere" }}
+          >
+            {message.modelId}
+          </Typography>
+        )}
       </Paper>
     </Box>
   );
@@ -90,13 +107,13 @@ export function RosterChat() {
     scrollToEnd();
     try {
       const sent = threadId;
-      const { answer, threadId: returned } = await ask.mutateAsync({ question, threadId: sent });
+      const { answer, threadId: returned, modelId } = await ask.mutateAsync({ question, threadId: sent });
       setThreadId(returned);
       setMessages((m) => [
         ...(sent && returned !== sent
           ? [...m, { role: "error" as const, text: "That conversation expired — starting a new one." }]
           : m),
-        { role: "assistant", text: answer },
+        { role: "assistant", text: answer, modelId },
       ]);
     } catch (err) {
       setMessages((m) => [...m, { role: "error", text: apiErrorMessage(err) }]);

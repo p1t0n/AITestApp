@@ -53,6 +53,9 @@ vi.mock("../api", async (importOriginal) => {
   });
   return {
     ...actual,
+    // The dock asks which model answers on the current surface (EXP-31); it renders outside a
+    // QueryClientProvider here, like every other hook in this factory.
+    useAgentModels: () => ({ data: undefined, isError: false }),
     useRosterQa: () => askState,
     useShortlist: () => shortlistState,
     useUsage: () => {

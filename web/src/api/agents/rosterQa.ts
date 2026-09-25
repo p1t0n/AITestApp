@@ -7,6 +7,10 @@ export interface RosterQaResponse {
   /** The conversation to continue. A returned id differing from the one sent means the server
    * started a fresh thread (expired/unknown) — the prior context is gone. */
   threadId: string;
+  /** The model the provider reported for this answer (EXP-31) — what actually wrote it, which can
+   * differ from the model `useAgentModels` names as configured when an alias resolves. Null when
+   * the provider named none; the transcript then shows no caption rather than a guess. */
+  modelId?: string | null;
 }
 
 export interface RosterQaInput {

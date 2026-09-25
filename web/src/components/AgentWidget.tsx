@@ -22,7 +22,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import { DOCK_MIN_WIDTH, maxDockWidth, useDockPush, type AgentDock } from "./useAgentDock";
 import { ErrorBoundary, DockErrorFallback } from "./ErrorBoundary";
-import type { AgentJobRequest } from "../api";
+import { useAgentModels, type AgentJobRequest } from "../api";
 import { RosterChat } from "./agent/RosterQaTab";
 import { AgentJobForm } from "./agent/AgentJobTab";
 import { ShortlistPanel } from "./agent/ShortlistTab";
@@ -111,6 +111,9 @@ export const RESIZE_HANDLE_LABEL = "Resize the agents dock";
  */
 export const RESIZE_STEP = 24;
 
+/** What separates two models in the header caption when a surface runs more than one. */
+const MODEL_SEPARATOR = " · ";
+
 export default function AgentWidget({ dock }: { dock: AgentDock }) {
   const [surface, setSurface] = useState<Surface>("roster");
   const [pickerAnchor, setPickerAnchor] = useState<HTMLElement | null>(null);
@@ -122,6 +125,13 @@ export default function AgentWidget({ dock }: { dock: AgentDock }) {
   // The token ledger is status, not a surface: it sits in the panel header next to the dock and
   // close controls, and peeking at it never costs a place in the agent picker.
   const [usageOpen, setUsageOpen] = useState(false);
+
+  // Which model answers on this surface (EXP-31). One fetch per session — the answer changes only
+  // when somebody edits the Agents host's configuration and restarts it, which no open tab can
+  // observe. Deliberately unguarded: `data` is undefined while it loads and stays undefined if it
+  // fails, and both read as "say nothing" three lines down. A caption is an aside; a dock that
+  // spun, or threw, because it could not name a model would have made it a dependency.
+  const agentModels = useAgentModels();
 
   // Cross-surface drill-ins ("Run full Match" on a shortlist card, "Open in Match" / "Tailor CV" on
   // a staffing card) jump to the target surface with the expert + JD pre-filled. Cleared on any
@@ -248,6 +258,12 @@ export default function AgentWidget({ dock }: { dock: AgentDock }) {
         );
     }
   }
+
+  // The caption's text, or nothing to say. A surface the server did not report, and a surface it
+  // reported with an empty list, both land here as `undefined` — an empty caption is worse than no
+  // caption, because it reads as a model whose name failed to render.
+  const surfaceModels = agentModels.data?.surfaces[surface];
+  const modelCaption = surfaceModels?.length ? surfaceModels.join(MODEL_SEPARATOR) : undefined;
 
   const dockedWide = dock.docked && !dock.isNarrow;
   const dockedNarrow = dock.docked && dock.isNarrow;
@@ -385,12 +401,32 @@ export default function AgentWidget({ dock }: { dock: AgentDock }) {
                 minHeight: 40
               }}>
               <SmartToyIcon fontSize="small" sx={{ color: "text.secondary", flexShrink: 0 }} />
-              {/* `noWrap` + `minWidth: 0` is what holds the "does not wrap or clip at 360px"
-                  claim: the title is the only elastic thing in the row, so it gives up its width
-                  to the controls instead of pushing them onto a second line. */}
-              <Typography variant="subtitle2" noWrap sx={{ flex: 1, minWidth: 0 }}>
+              {/* `noWrap` is what holds the "does not wrap or clip at 360px" claim: nothing in
+                  this row wraps, so the controls can never be pushed onto a second line. The two
+                  words of the title are the fixed part; the elastic pair is the model caption and
+                  the spacer after it, in that order — when the row runs out of room the spacer
+                  collapses first and the caption ellipsises, which is the right thing to lose. */}
+              <Typography variant="subtitle2" noWrap sx={{ flexShrink: 0 }}>
                 Agents
               </Typography>
+              {/* Which model answers here (EXP-31), and — in the tooltip, where a name nobody asked
+                  for belongs — whose. Hidden while the ledger is open, because the ledger is not a
+                  surface and a model id beside it would be describing something else's state.
+                  `text.secondary` rather than a token: the design record's rule is that a component
+                  names a palette role (`manuals/spa-design-system.md`), and `sx` here carries
+                  nothing but layout. */}
+              {!usageOpen && modelCaption && (
+                <Tooltip title={`Chat provider: ${agentModels.data?.provider}`}>
+                  <Typography
+                    variant="caption"
+                    noWrap
+                    sx={{ color: "text.secondary", flexShrink: 1, minWidth: 0 }}
+                  >
+                    {modelCaption}
+                  </Typography>
+                </Tooltip>
+              )}
+              <Box sx={{ flex: 1, minWidth: 0 }} />
               <Stack
                 direction="row"
                 sx={{ alignItems: "center", flexShrink: 0 }}>

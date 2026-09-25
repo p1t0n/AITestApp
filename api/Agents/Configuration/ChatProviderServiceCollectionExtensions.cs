@@ -76,6 +76,13 @@ public static class ChatProviderServiceCollectionExtensions
 
         // ---- provider-neutral from here down ----
 
+        // The same decision, readable without the container (EXP-31): what the dock's
+        // GET /agents/models reports comes from this value, not from a second read of the
+        // configuration, so the caption cannot come to name a model no call runs on. It carries the
+        // provider, the default model and the overrides — never the credential or the endpoint,
+        // which stay inside the construction branch's closure.
+        services.AddSingleton(new ChatModelCatalog(provider, models.Default, models.Agents));
+
         // Every client is wrapped with OpenTelemetryChatClient (gen_ai spans + token/duration
         // metrics, P1T-94) plus the MeteringChatClient (real model id + latency into the ambient
         // per-run scope, P1T-95). Both no-op when nothing listens; sensitive capture stays off.

@@ -263,6 +263,14 @@ app.MapGet("/agents/usage", async (ClaimsPrincipal user, IUsageService usage, Ca
     return Results.Ok(await usage.GetSnapshotAsync(userId, ct));
 }).RequireAuthorization();
 
+// GET /agents/models -> { provider, surfaces: { <dock surface id>: [<model>, …] } }
+// Which model answers where, before anyone asks (EXP-31). Read-only and per-deployment rather than
+// per-user, so the SPA fetches it once a session. The catalog is the seam's own decision (see
+// ChatModelCatalog) — it carries no credential and no endpoint, so there is nothing here to redact.
+app.MapGet("/agents/models", (ChatModelCatalog catalog) => Results.Ok(
+    new AgentModelsResponse(catalog.Provider.ToString(), AgentSurfaces.ModelsBySurface(catalog))))
+    .RequireAuthorization();
+
 // POST /agents/roster-qa  { "question": "...", "threadId"?: "..." }  ->  { "answer": "...", "threadId": "..." }
 // Threaded sessions (P1T-93): an omitted/unknown/expired threadId transparently starts a fresh
 // thread — the client detects context loss by the returned id changing. History is bounded by
@@ -298,7 +306,7 @@ app.MapPost("/agents/roster-qa", async (
         }
 
         threads.Append(userId, thread.ThreadId, request.Question, reply.Text);
-        return Results.Ok(new RosterQaResponse(reply.Text, thread.ThreadId));
+        return Results.Ok(new RosterQaResponse(reply.Text, thread.ThreadId, reply.ModelId));
     }
     catch (HttpRequestException ex)
     {
@@ -878,7 +886,19 @@ app.Run();
 
 internal sealed record RosterQaRequest(string Question, string? ThreadId = null);
 internal sealed record ResumeIngestionRequest(string ResumeText);
-internal sealed record RosterQaResponse(string Answer, string ThreadId);
+/// <param name="ModelId">The model the provider reported for the answer, straight from
+/// <see cref="ExpertToJob.Agents.Agents.AgentReply.ModelId"/> (EXP-31). Nullable because that is
+/// what the metering seam hands back when a response carries no model id — the reply still stands,
+/// it just cannot say who wrote it, and the dock shows no caption rather than a guess. This is the
+/// model that <em>answered</em>, which may differ from the one GET /agents/models names as
+/// configured: an alias resolves, and a provider may answer on a point release of its own.</param>
+internal sealed record RosterQaResponse(string Answer, string ThreadId, string? ModelId = null);
+
+/// <summary>What GET /agents/models reports: the active provider's name and, per dock surface, the
+/// distinct sorted models the agents behind it resolve to (EXP-31).</summary>
+internal sealed record AgentModelsResponse(
+    string Provider,
+    IReadOnlyDictionary<string, IReadOnlyList<string>> Surfaces);
 internal sealed record CvTailoringRequest(Guid ExpertId, string JobDescription);
 internal sealed record InterviewKitRequest(Guid ExpertId, string JobDescription);
 internal sealed record MatchRequest(Guid? ExpertId, string JobDescription, int? TopK = null);

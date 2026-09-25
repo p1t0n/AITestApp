@@ -41,6 +41,9 @@ vi.mock("../api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../api")>();
   return {
     ...actual,
+    // The dock asks which model answers on the current surface (EXP-31); it renders outside a
+    // QueryClientProvider here, like every other hook in this factory.
+    useAgentModels: () => ({ data: undefined, isError: false }),
     useStaffingProposals: () => ({ data: inbox.data, isLoading: false, refetch: inbox.refetch }),
     getStaffingProposal: (id: string) => {
       details.calls.push(id);
