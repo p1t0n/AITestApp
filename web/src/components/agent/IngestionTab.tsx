@@ -17,7 +17,7 @@ import {
   Typography,
 } from "@mui/material";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlined";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import {
   apiErrorMessage,
@@ -78,9 +78,13 @@ function ProposalRow({ name, expertId }: { name: string; expertId: string }) {
 
   if (state.kind !== "pending" && state.kind !== "error") {
     return (
-      <Stack direction="row" spacing={1} alignItems="center" data-testid={`proposal-${name}`}>
+      <Stack direction="row" spacing={1} data-testid={`proposal-${name}`} sx={{
+        alignItems: "center"
+      }}>
         {state.kind === "rejected" ? (
-          <Typography variant="body2" color="text.secondary" sx={{ textDecoration: "line-through" }}>
+          <Typography
+            variant="body2"
+            sx={{ color: "text.secondary", textDecoration: "line-through" }}>
             {name}
           </Typography>
         ) : (
@@ -98,10 +102,14 @@ function ProposalRow({ name, expertId }: { name: string; expertId: string }) {
 
   return (
     <Paper sx={{ p: 1 }} data-testid={`proposal-${name}`}>
-      <Typography variant="body2" fontWeight={600}>
+      <Typography variant="body2" sx={{ fontWeight: 600 }}>
         {name}
       </Typography>
-      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        useFlexGap
+        sx={{ alignItems: "center", flexWrap: "wrap", mt: 0.5 }}>
         <Autocomplete
           sx={{ minWidth: 180 }}
           options={skillOptions}
@@ -187,7 +195,7 @@ function DraftReview({ result, onDiscarded }: { result: IngestionResponse; onDis
   return (
     <Stack spacing={1.5} data-testid="ingestion-review">
       <Paper sx={{ p: 1.5 }}>
-        <Stack direction="row" alignItems="center" spacing={1}>
+        <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
           <Typography variant="subtitle2">
             {e.firstName} {e.lastName}
           </Typography>
@@ -197,12 +205,12 @@ function DraftReview({ result, onDiscarded }: { result: IngestionResponse; onDis
             data-testid="draft-status-chip"
           />
         </Stack>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{ color: "text.secondary" }}>
           {e.title}
           {e.location ? ` — ${e.location}` : ""}
           {e.email ? ` · ${e.email}` : " · no email in the resume"}
         </Typography>
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
           Staged {counts.languages} language(s), {counts.skills} skill(s), {counts.qualifications}{" "}
           qualification(s), {counts.experiences} experience(s).
         </Typography>
@@ -214,7 +222,7 @@ function DraftReview({ result, onDiscarded }: { result: IngestionResponse; onDis
           sx={{ p: 1.5, bgcolor: "warning.light", color: "warning.contrastText" }}
           data-testid="ingestion-dupe-warning"
         >
-          <Stack direction="row" spacing={1} alignItems="center">
+          <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
             <WarningAmberIcon fontSize="small" />
             <Typography variant="body2">{result.duplicateWarning}</Typography>
           </Stack>
@@ -227,7 +235,7 @@ function DraftReview({ result, onDiscarded }: { result: IngestionResponse; onDis
           sx={{ p: 1.5, bgcolor: "warning.light", color: "warning.contrastText" }}
           data-testid="ingestion-notes"
         >
-          <Typography variant="body2" fontWeight={600}>
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
             Partially staged
           </Typography>
           {result.notes.map((n, i) => (
@@ -240,10 +248,14 @@ function DraftReview({ result, onDiscarded }: { result: IngestionResponse; onDis
 
       {e.skills.length > 0 && (
         <Box>
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{ color: "text.secondary" }}>
             Matched skills
           </Typography>
-          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
+          <Stack
+            direction="row"
+            spacing={0.5}
+            useFlexGap
+            sx={{ flexWrap: "wrap", mt: 0.5 }}>
             {e.skills.map((s) => (
               <Chip key={s.id} label={s.skillName} />
             ))}
@@ -253,7 +265,7 @@ function DraftReview({ result, onDiscarded }: { result: IngestionResponse; onDis
 
       {result.proposals.length > 0 && (
         <Box>
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{ color: "text.secondary" }}>
             Proposed skills (not in the catalog — your call)
           </Typography>
           <Stack spacing={1} sx={{ mt: 0.5 }}>
@@ -276,7 +288,7 @@ function DraftReview({ result, onDiscarded }: { result: IngestionResponse; onDis
           </Typography>
         </Paper>
       ) : (
-        <Stack direction="row" spacing={1} alignItems="center">
+        <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
           {needsEmail && (
             <TextField
               label="Email (required to promote)"
@@ -323,7 +335,7 @@ export function IngestionPanel() {
     <Box sx={{ flex: 1, overflowY: "auto", p: 1.5 }}>
       <Stack spacing={1.5}>
         <Box>
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{ color: "text.secondary" }}>
             Resume text
           </Typography>
           <TextField

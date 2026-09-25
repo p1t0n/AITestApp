@@ -4,7 +4,7 @@
 // note. Without an extraction (degraded runs, older payloads) they fall back to the plain
 // requirement strings unchanged.
 import { Box, Chip, Stack, Tooltip, Typography } from "@mui/material";
-import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutlined";
 import type { JdExtractedRequirement, JdExtraction } from "../../api";
 
 function chipLabel(r: JdExtractedRequirement): string {
@@ -29,7 +29,11 @@ export default function RequirementChips({
 }) {
   return (
     <Box>
-      <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
+      <Stack
+        direction="row"
+        spacing={0.5}
+        useFlexGap
+        sx={{ flexWrap: "wrap", mt: 0.5 }}>
         {extraction
           ? extraction.requirements.map((r) => (
               <Tooltip key={r.text} title={chipTooltip(r)}>
@@ -44,7 +48,9 @@ export default function RequirementChips({
           : requirements.map((r) => <Chip key={r} label={r} />)}
       </Stack>
       {extraction && extraction.ambiguities.length > 0 && (
-        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+        <Typography
+          variant="caption"
+          sx={{ color: "text.secondary", display: "block", mt: 0.5 }}>
           JD is unclear about: {extraction.ambiguities.join("; ")}
         </Typography>
       )}

@@ -114,10 +114,14 @@ export function RosterChat() {
             // useful part — centred with the surface's own icon above them, so the panel reads as
             // waiting rather than as failed to load.
             <Stack
-              alignItems="center"
               spacing={1}
-              sx={{ px: 2, py: 5, color: "text.secondary", textAlign: "center" }}
-            >
+              sx={{
+                alignItems: "center",
+                px: 2,
+                py: 5,
+                color: "text.secondary",
+                textAlign: "center"
+              }}>
               <SmartToyOutlinedIcon sx={{ fontSize: 32, color: "text.disabled" }} />
               <Typography variant="body2">
                 e.g. "Who knows React and is available this summer?" Follow-ups keep the context.
@@ -140,7 +144,7 @@ export function RosterChat() {
       )}
 
       <Box sx={{ p: 1, borderTop: 1, borderColor: "divider" }}>
-        <Stack direction="row" spacing={1} alignItems="flex-end">
+        <Stack direction="row" spacing={1} sx={{ alignItems: "flex-end" }}>
           <TextField
             fullWidth
             multiline

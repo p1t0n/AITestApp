@@ -337,7 +337,7 @@ describe("Staffing tab — progress stepper", () => {
     expect(within(shortlistRow()).getByRole("progressbar")).toBeInTheDocument();
 
     act(() => handlers.onStep({ stage: "shortlist", status: "completed" }));
-    expect(within(shortlistRow()).getByTestId("CheckCircleOutlineIcon")).toBeInTheDocument();
+    expect(within(shortlistRow()).getByTestId("CheckCircleOutlinedIcon")).toBeInTheDocument();
 
     act(() =>
       handlers.onStep({
@@ -375,16 +375,16 @@ describe("Staffing tab — progress stepper", () => {
     expect(within(matchRow()).getByText("Matching (2/2)")).toBeInTheDocument();
     const graceTick = within(matchRow()).getByText("Grace Hopper").closest("[data-testid=staffing-match-tick]")!;
     expect(within(graceTick as HTMLElement).getByTestId("WarningAmberIcon")).toBeInTheDocument();
-    expect(within(matchRow()).getByTestId("CheckCircleOutlineIcon")).toBeInTheDocument(); // 2/2 → done
+    expect(within(matchRow()).getByTestId("CheckCircleOutlinedIcon")).toBeInTheDocument(); // 2/2 → done
 
     act(() => handlers.onStep({ stage: "narrative", status: "started" }));
     expect(within(narrativeRow()).getByRole("progressbar")).toBeInTheDocument();
 
     act(() => handlers.onStep({ stage: "narrative", status: "completed" }));
-    expect(within(narrativeRow()).getByTestId("CheckCircleOutlineIcon")).toBeInTheDocument();
+    expect(within(narrativeRow()).getByTestId("CheckCircleOutlinedIcon")).toBeInTheDocument();
 
     act(() => handlers.onReport(REPORT));
-    expect(within(screen.getByTestId("staffing-step-done")).getByTestId("CheckCircleOutlineIcon")).toBeInTheDocument();
+    expect(within(screen.getByTestId("staffing-step-done")).getByTestId("CheckCircleOutlinedIcon")).toBeInTheDocument();
   });
 
   it("shows an inline warning when the narrative step fails but the run continues", async () => {

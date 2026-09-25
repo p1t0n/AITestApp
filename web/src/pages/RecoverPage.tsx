@@ -43,7 +43,7 @@ export default function RecoverPage() {
             <Typography variant="h5" gutterBottom>
               Recover your account
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
               Lost your device? Enter your email and control word to register a new passkey on this
               device.
             </Typography>
@@ -86,7 +86,7 @@ export default function RecoverPage() {
             {recover.isPending ? "Registering passkey…" : "Recover & register a passkey"}
           </Button>
 
-          <Typography variant="body2" color="text.secondary" align="center">
+          <Typography variant="body2" align="center" sx={{ color: "text.secondary" }}>
             Remembered your device?{" "}
             <Link component={RouterLink} to="/signin">
               Sign in

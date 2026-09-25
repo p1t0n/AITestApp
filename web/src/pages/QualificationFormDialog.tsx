@@ -77,10 +77,12 @@ export default function QualificationFormDialog({ open, title, initial, onClose,
     <TextField
       type="date"
       label={label}
-      InputLabelProps={{ shrink: true }}
       value={(form[key] as string | null) ?? ""}
       onChange={text(key)}
       fullWidth
+      slotProps={{
+        inputLabel: { shrink: true }
+      }}
     />
   );
 

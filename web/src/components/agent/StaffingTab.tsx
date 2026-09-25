@@ -72,7 +72,7 @@ export function ProposalDecisionCard({
   if (state.phase === "decided") {
     return (
       <Paper variant="well" sx={{ p: 1.5 }} data-testid="proposal-decided">
-        <Typography variant="body2" fontWeight={600}>
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
           Proposal {state.status}
         </Typography>
       </Paper>
@@ -81,7 +81,9 @@ export function ProposalDecisionCard({
 
   return (
     <Paper variant="well" sx={{ p: 1.5 }} data-testid="proposal-decision">
-      <Typography variant="body2" fontWeight={600} sx={{ mb: 1 }}>
+      <Typography
+        variant="body2"
+        sx={{ fontWeight: 600, mb: 1 }}>
         This proposal awaits your decision
       </Typography>
       <ErrorNotice message={state.phase === "failed" ? state.message : null} sx={{ mb: 1 }} />
@@ -206,10 +208,14 @@ export function StaffingPanel({
         <ProposalInbox onOpenInMatch={onOpenInMatch} onTailorCv={onTailorCv} />
 
         <Box>
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{ color: "text.secondary" }}>
             Job description
           </Typography>
-          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mb: 0.5 }}>
+          <Stack
+            direction="row"
+            spacing={0.5}
+            useFlexGap
+            sx={{ flexWrap: "wrap", mb: 0.5 }}>
             {PRESET_JDS.map((p) => (
               <Chip
                 key={p.label}
@@ -243,9 +249,11 @@ export function StaffingPanel({
               <TextField
                 type="date"
                 label="Available on"
-                InputLabelProps={{ shrink: true }}
                 value={availableOn}
                 onChange={(e) => setAvailableOn(e.target.value)}
+                slotProps={{
+                  inputLabel: { shrink: true }
+                }}
               />
               <Autocomplete
                 multiple
@@ -267,9 +275,11 @@ export function StaffingPanel({
               <TextField
                 type="number"
                 label="Min years"
-                inputProps={{ min: 0 }}
                 value={minYears}
                 onChange={(e) => setMinYears(e.target.value)}
+                slotProps={{
+                  htmlInput: { min: 0 }
+                }}
               />
             </Stack>
           </Collapse>
@@ -312,7 +322,7 @@ export function StaffingPanel({
                 sx={{ p: 1.5, bgcolor: "warning.light", color: "warning.contrastText" }}
                 data-testid="staffing-degraded"
               >
-                <Typography variant="body2" fontWeight={600}>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
                   Partial results
                 </Typography>
                 {report.notes.map((n, i) => (
@@ -328,14 +338,14 @@ export function StaffingPanel({
             {report.proposalId && <ProposalDecisionCard proposalId={report.proposalId} />}
 
             <Box>
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
                 How the JD was read
               </Typography>
               <RequirementChips requirements={report.requirements} extraction={report.extraction} />
             </Box>
 
             {report.candidates.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
                 No candidates matched this job description. Try loosening the filters.
               </Typography>
             ) : (

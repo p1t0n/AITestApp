@@ -72,18 +72,20 @@ function ink(role: ColorRole, mode: ThemeMode): string {
  * so it clears 4.5:1 on every surface without depending on how bright the role happens to be.
  */
 function alertTints(t: ThemeModeTokens) {
-  const overrides: Record<string, object> = {};
-  for (const severity of SEVERITIES) {
+  // As `variants` on (variant, severity): MUI 9 retired the `standard<Severity>` class keys these
+  // were written as, and retired them silently — see the slot check in components.test.tsx.
+  return SEVERITIES.map((severity) => {
     const role = t[severity];
-    const slot = `standard${severity[0].toUpperCase()}${severity.slice(1)}`;
-    overrides[slot] = {
-      backgroundColor: alpha(role.main, ALERT_TINT),
-      border: `1px solid ${alpha(role.main, ALERT_EDGE)}`,
-      color: t.text.primary,
-      "& .MuiAlert-icon": { color: role.main },
+    return {
+      props: { variant: "standard" as const, severity },
+      style: {
+        backgroundColor: alpha(role.main, ALERT_TINT),
+        border: `1px solid ${alpha(role.main, ALERT_EDGE)}`,
+        color: t.text.primary,
+        "& .MuiAlert-icon": { color: role.main },
+      },
     };
-  }
-  return overrides;
+  });
 }
 
 /**
@@ -190,23 +192,33 @@ export function componentOverrides(t: ThemeModeTokens, mode: ThemeMode): Compone
           "&:active": { boxShadow: t.relief.insetSmall, transform: "translateY(2px)" },
           "&.Mui-disabled": { boxShadow: "none" },
         },
-        // Accent on the primary action only. `outlined` and `text` primary buttons are the app's
-        // *secondary* actions — Cancel, Deactivate, a row action — and MUI paints them accent by
-        // default, which is how an accent stops meaning anything. They read as neutral chrome now;
-        // `contained` keeps the accent, and so does the focus ring on all of them. Keyed per colour
-        // (`…Primary`) rather than on the shared slot so `color="error"` still looks destructive.
-        outlinedPrimary: {
-          color: t.text.primary,
-          borderColor: t.surface.outline,
-          "&:hover": { borderColor: t.text.secondary, backgroundColor: t.action.hover },
-        },
-        textPrimary: {
-          color: t.text.primary,
-          // A text button is a label, not a panel: it has nothing to be lifted off.
-          boxShadow: "none",
-          "&:hover": { backgroundColor: t.action.hover },
-        },
       },
+      // Accent on the primary action only. `outlined` and `text` primary buttons are the app's
+      // *secondary* actions — Cancel, Deactivate, a row action — and MUI paints them accent by
+      // default, which is how an accent stops meaning anything. They read as neutral chrome now;
+      // `contained` keeps the accent, and so does the focus ring on all of them. Keyed per colour
+      // rather than per variant so `color="error"` still looks destructive. These were the
+      // `outlinedPrimary` / `textPrimary` class keys until MUI 9 retired them; `variants` match on
+      // the same (variant, color) pair, defaults included.
+      variants: [
+        {
+          props: { variant: "outlined", color: "primary" },
+          style: {
+            color: t.text.primary,
+            borderColor: t.surface.outline,
+            "&:hover": { borderColor: t.text.secondary, backgroundColor: t.action.hover },
+          },
+        },
+        {
+          props: { variant: "text", color: "primary" },
+          style: {
+            color: t.text.primary,
+            // A text button is a label, not a panel: it has nothing to be lifted off.
+            boxShadow: "none",
+            "&:hover": { backgroundColor: t.action.hover },
+          },
+        },
+      ],
     },
 
     MuiIconButton: {
@@ -361,8 +373,8 @@ export function componentOverrides(t: ThemeModeTokens, mode: ThemeMode): Compone
         // An Alert is a Paper, so it would inherit the extrusion. It is a tinted note *inside* a
         // panel, not a panel of its own: the tint is what separates it.
         root: { borderRadius: tokens.radius.medium, alignItems: "center", boxShadow: "none" },
-        ...alertTints(t),
       },
+      variants: alertTints(t),
     },
 
     // ---- what the rail is built from (P1T-161) --------------------------------------------
@@ -371,9 +383,16 @@ export function componentOverrides(t: ThemeModeTokens, mode: ThemeMode): Compone
       styleOverrides: {
         // A drawer has one edge that faces the app; the other three are the viewport. It is part of
         // the ground rather than a card on it, so it takes the hairline and no relief.
-        paper: { border: 0, backgroundImage: "none", boxShadow: "none" },
-        paperAnchorLeft: { borderRight: `1px solid ${t.divider}` },
-        paperAnchorRight: { borderLeft: `1px solid ${t.divider}` },
+        // Per anchor, off the paper's own ownerState: MUI 9 retired the `paperAnchorLeft/Right`
+        // keys, and root `variants` are no substitute — a permanent drawer renders the `docked`
+        // slot, which theme variants never reach.
+        paper: ({ ownerState }) => ({
+          border: 0,
+          backgroundImage: "none",
+          boxShadow: "none",
+          ...(ownerState.anchor === "left" && { borderRight: `1px solid ${t.divider}` }),
+          ...(ownerState.anchor === "right" && { borderLeft: `1px solid ${t.divider}` }),
+        }),
       },
     },
 

@@ -21,7 +21,7 @@ export default function RedeemClaimCode() {
         <Typography variant="h6" component="h2">
           Have a claim code?
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{ color: "text.secondary" }}>
           If an Administrator gave you a code for your record — in person or by phone — enter it
           here. It works once, and it links that record to this account straight away.
         </Typography>
@@ -34,13 +34,15 @@ export default function RedeemClaimCode() {
           </Alert>
         )}
 
-        <Stack direction="row" spacing={2} alignItems="flex-start">
+        <Stack direction="row" spacing={2} sx={{ alignItems: "flex-start" }}>
           <TextField
             label="Claim code"
             value={code}
             onChange={(event) => setCode(event.target.value)}
             fullWidth
-            inputProps={{ style: { fontFamily: "monospace" } }}
+            slotProps={{
+              htmlInput: { style: { fontFamily: "monospace" } }
+            }}
           />
           <Button
             variant="contained"

@@ -40,7 +40,7 @@ export default function ClaimStatusPage() {
         <Stack spacing={1.5}>
           <Typography variant="body1">What that means, and what happens next.</Typography>
 
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{ color: "text.secondary" }}>
             If an Administrator already had a record for you when you signed up, they have to
             confirm it is yours before you can see it. That is deliberate: an email address is not
             proof of anything here, and handing somebody a CV on the strength of a matching address
@@ -48,12 +48,12 @@ export default function ClaimStatusPage() {
             person has checked.
           </Typography>
 
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{ color: "text.secondary" }}>
             If there was no record for you, one will have been created and this page will be
             replaced by your CV. Try reloading.
           </Typography>
 
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{ color: "text.secondary" }}>
             This service never sends email, so nobody can write to tell you when it changes — sign
             in again and look.
           </Typography>

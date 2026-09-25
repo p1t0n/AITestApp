@@ -20,7 +20,7 @@ import SmartToyIcon from "@mui/icons-material/SmartToy";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import FilterListIcon from "@mui/icons-material/FilterList";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlined";
 import HighlightOffIcon from "@mui/icons-material/HighlightOff";
 import RequirementChips from "./RequirementChips";
 import {
@@ -45,21 +45,24 @@ function ShortlistCandidateCard({
   const c = candidate;
   return (
     <Paper sx={{ p: 1.5 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{ justifyContent: "space-between", alignItems: "flex-start" }}>
         <Box sx={{ minWidth: 0 }}>
           <Link
             component={RouterLink}
             to={`/experts/${c.expertId}`}
             variant="body2"
-            fontWeight={600}
+            sx={{ fontWeight: 600 }}
           >
             {c.name}
           </Link>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{ color: "text.secondary" }}>
             {c.title}
           </Typography>
         </Box>
-        <Stack direction="row" spacing={0.5} flexShrink={0}>
+        <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
           <Tooltip title="Similarity score">
             <Chip variant="outlined" label={c.score.toFixed(2)} />
           </Tooltip>
@@ -76,7 +79,9 @@ function ShortlistCandidateCard({
         {c.rationale}
       </Typography>
 
-      <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.5 }}>
+      <Stack
+        direction="row"
+        sx={{ justifyContent: "space-between", mt: 0.5 }}>
         <Button
           onClick={() => setShowEvidence((v) => !v)}
           endIcon={showEvidence ? <ExpandLessIcon /> : <ExpandMoreIcon />}
@@ -91,7 +96,9 @@ function ShortlistCandidateCard({
       <Collapse in={showEvidence} unmountOnExit>
         <Stack spacing={0.75} sx={{ mt: 1 }} data-testid={`evidence-${c.expertId}`}>
           {c.requirements.map((r, i) => (
-            <Stack key={i} direction="row" spacing={1} alignItems="flex-start" data-testid={`evidence-row-${i}`}>
+            <Stack key={i} direction="row" spacing={1} data-testid={`evidence-row-${i}`} sx={{
+              alignItems: "flex-start"
+            }}>
               {r.matched ? (
                 <CheckCircleOutlineIcon fontSize="small" color="success" data-testid="matched-icon" />
               ) : (
@@ -100,7 +107,9 @@ function ShortlistCandidateCard({
               <Box>
                 <Typography variant="body2">{r.text}</Typography>
                 {r.snippet && (
-                  <Typography variant="caption" color="text.secondary" data-testid="snippet">
+                  <Typography variant="caption" data-testid="snippet" sx={{
+                    color: "text.secondary"
+                  }}>
                     {r.snippet}
                   </Typography>
                 )}
@@ -164,10 +173,14 @@ export function ShortlistPanel({
     <Box sx={{ flex: 1, overflowY: "auto", p: 1.5 }}>
       <Stack spacing={1.5}>
         <Box>
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{ color: "text.secondary" }}>
             Job description
           </Typography>
-          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mb: 0.5 }}>
+          <Stack
+            direction="row"
+            spacing={0.5}
+            useFlexGap
+            sx={{ flexWrap: "wrap", mb: 0.5 }}>
             {PRESET_JDS.map((p) => (
               <Chip
                 key={p.label}
@@ -201,9 +214,11 @@ export function ShortlistPanel({
               <TextField
                 type="date"
                 label="Available on"
-                InputLabelProps={{ shrink: true }}
                 value={availableOn}
                 onChange={(e) => setAvailableOn(e.target.value)}
+                slotProps={{
+                  inputLabel: { shrink: true }
+                }}
               />
               <Autocomplete
                 multiple
@@ -226,17 +241,21 @@ export function ShortlistPanel({
                 <TextField
                   type="number"
                   label="Min years"
-                  inputProps={{ min: 0 }}
                   value={minYears}
                   onChange={(e) => setMinYears(e.target.value)}
+                  slotProps={{
+                    htmlInput: { min: 0 }
+                  }}
                 />
                 <TextField
                   type="number"
                   label="Top K"
                   placeholder="Server default"
-                  inputProps={{ min: 1 }}
                   value={topK}
                   onChange={(e) => setTopK(e.target.value)}
+                  slotProps={{
+                    htmlInput: { min: 1 }
+                  }}
                 />
               </Stack>
             </Stack>
@@ -259,7 +278,7 @@ export function ShortlistPanel({
         {result && (
           <>
             <Box>
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
                 How the JD was read
               </Typography>
               <RequirementChips
@@ -269,7 +288,7 @@ export function ShortlistPanel({
             </Box>
 
             {result.data.candidates.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
                 No candidates matched this job description. Try loosening the filters.
               </Typography>
             ) : (

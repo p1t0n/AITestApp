@@ -12,7 +12,7 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
     <Paper sx={{ p: 1.5, flex: 1, minWidth: 110 }}>
       <Typography variant="h6">{value}</Typography>
-      <Typography variant="caption" color="text.secondary">
+      <Typography variant="caption" sx={{ color: "text.secondary" }}>
         {label}
       </Typography>
     </Paper>
@@ -39,7 +39,7 @@ export function BenchPanel() {
   return (
     <Box sx={{ flex: 1, overflowY: "auto", p: 1.5 }}>
       <Stack spacing={1.5}>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{ color: "text.secondary" }}>
           Bench pressure, staffing demand, and capability gaps — composed from the roster and the
           staffing proposals ledger.
         </Typography>
@@ -71,7 +71,9 @@ export function BenchPanel() {
 
         {stats && (
           <>
-            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" data-testid="bench-stats">
+            <Stack direction="row" spacing={1} useFlexGap data-testid="bench-stats" sx={{
+              flexWrap: "wrap"
+            }}>
               <StatCard label="Active" value={stats.activeExperts} />
               <StatCard label="Fully available" value={stats.fullyAvailable} />
               <StatCard label="Partial" value={stats.partiallyAvailable} />
@@ -89,7 +91,11 @@ export function BenchPanel() {
                   {stats.proposals.approved} approved, {stats.proposals.rejected} rejected
                 </Typography>
                 {stats.proposals.frequentCandidates.length > 0 && (
-                  <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
+                  <Stack
+                    direction="row"
+                    spacing={0.5}
+                    useFlexGap
+                    sx={{ flexWrap: "wrap", mt: 0.5 }}>
                     {stats.proposals.frequentCandidates.map((c) => (
                       <Chip key={c.name} label={`${c.name} ×${c.count}`} />
                     ))}

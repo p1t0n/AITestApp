@@ -4,8 +4,9 @@
 > the roster screens, the agent dock, and the passkey auth journey. Domain vocabulary lives in
 > `CONTEXT.md`; this record is about structure.
 
-React 18 + TypeScript on Vite, MUI 5 for every pixel, TanStack Query v5 for every server read,
-React Router v6 for navigation. ~7,100 lines across 38 source files. No state-management library,
+React 19 + TypeScript on Vite, MUI 9 for every pixel, TanStack Query v5 for every server read,
+React Router v8 (the `react-router` package) for navigation. Versions as of the 2026-09
+dependency refresh; this record was written against React 18, MUI 5 and React Router v6. ~7,100 lines across 38 source files. No state-management library,
 no component library beyond MUI, no CSS framework — there are 13 lines of hand-written CSS in the
 whole app and they exist only for printing.
 

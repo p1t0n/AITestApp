@@ -149,7 +149,9 @@ function RailRow({ label, collapsed, icon, hint, ...rest }: RailRowProps) {
         {!collapsed && (
           <ListItemText
             primary={label}
-            primaryTypographyProps={{ variant: "body2", noWrap: true, fontWeight: 500 }}
+            slotProps={{
+              primary: { variant: "body2", noWrap: true, sx: { fontWeight: 500 } },
+            }}
           />
         )}
         {/* The hint is decoration for the row it sits on — the row already carries the name and the
@@ -405,7 +407,9 @@ export default function AppRailNav({ rail }: { rail: AppRail }) {
           open={rail.drawerOpen}
           onClose={rail.closeDrawer}
           sx={hideInPrint}
-          PaperProps={{ sx: { width: RAIL_WIDTH } }}
+          slotProps={{
+            paper: { sx: { width: RAIL_WIDTH } }
+          }}
         >
           <RailContents rail={rail} onNavigate={rail.closeDrawer} />
         </Drawer>
@@ -417,14 +421,16 @@ export default function AppRailNav({ rail }: { rail: AppRail }) {
     <Drawer
       variant="permanent"
       sx={{ width, flexShrink: 0, ...hideInPrint }}
-      PaperProps={{
-        sx: {
-          width,
-          borderRight: 1,
-          borderColor: "divider",
-          overflowX: "hidden",
-          transition: "width 150ms ease",
-        },
+      slotProps={{
+        paper: {
+          sx: {
+            width,
+            borderRight: 1,
+            borderColor: "divider",
+            overflowX: "hidden",
+            transition: "width 150ms ease",
+          },
+        }
       }}
     >
       <RailContents rail={rail} />

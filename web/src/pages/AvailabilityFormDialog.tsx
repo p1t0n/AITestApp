@@ -59,10 +59,12 @@ export default function AvailabilityFormDialog({ open, title, initial, onClose, 
           <TextField
             type="date"
             label="Effective from"
-            InputLabelProps={{ shrink: true }}
             value={form.effectiveFrom}
             onChange={(e) => setForm((f) => ({ ...f, effectiveFrom: e.target.value }))}
             fullWidth
+            slotProps={{
+              inputLabel: { shrink: true }
+            }}
           />
           <TextField
             type="number"
