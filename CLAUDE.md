@@ -103,13 +103,16 @@ FluentValidation validators and CV assembly. Both `api/Web` (REST controllers) a
 adapters) are thin shells over it, which is why REST and MCP validate identically. A rule added in
 a controller instead of the Application layer silently does not apply to MCP.
 
-**Agents never reference the Application layer or the database.** `api/Agents` reaches the roster
-only through the MCP server over Streamable HTTP, holding a Keycloak client-credentials token whose
-scope decides which tools it is even shown — capability is enforced by the token, not by the
-prompt. Deterministic facts (an expert's data, counts, stats) come from captured MCP results and
-are composed in code; the model writes prose. Orchestration composes the single-agent runs and
-degrades a failed stage rather than failing the call. `IChatClient` keeps the provider swappable
-(Gemini free tier by default).
+**The model reaches the roster only through MCP.** Every roster fact an agent reasons over comes
+from the MCP server over Streamable HTTP, holding a Keycloak client-credentials token whose scope
+decides which tools it is even shown — capability is enforced by the token, not by the prompt. The
+Agents *host* is not database-free: it references Application and Infrastructure and keeps its own
+records through `IAppDbContext` (usage, staffing proposals, scoring jobs, and Roster Q&A
+conversations per `manuals/adr-roster-qa-conversation-history.md`), applying `RosterVisibility`
+where those records touch Experts. Deterministic facts (an expert's data, counts, stats) come from
+captured MCP results and are composed in code; the model writes prose. Orchestration composes the
+single-agent runs and degrades a failed stage rather than failing the call. `IChatClient` keeps the
+provider swappable (Gemini free tier by default).
 
 **Two backends, one token.** The SPA talks to `/api/*` (5069) and `/agents/*` (5200) through two
 axios instances (`web/src/api/http.ts`) that attach the same bearer. The Web host issues the
@@ -119,7 +122,7 @@ session JWT and both hosts validate it with a shared signing key. Vite proxies b
 **The SPA has no React Context.** Session and theme mode are hand-rolled `useSyncExternalStore`
 subscriptions (`web/src/auth/session.ts`, `web/src/theme/mode.ts`). Server state is TanStack Query.
 
-**Styling goes through the theme, not the component.** MUI 5 with a token layer in
+**Styling goes through the theme, not the component.** MUI 9 with a token layer in
 `web/src/theme/` (`tokens.ts` → `index.ts` builds both themes → `components.ts` overrides →
 `baseline.ts` floors). Components name MUI palette roles (`background.paper`, `divider`,
 `text.secondary`), never a token. The **Override Policy**: a look needed twice belongs in
