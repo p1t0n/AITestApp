@@ -31,6 +31,9 @@ public interface IAppDbContext
     DbSet<PendingClaim> PendingClaims { get; }
     DbSet<ClaimCode> ClaimCodes { get; }
     DbSet<DataExportRecord> DataExportRecords { get; }
+    DbSet<RosterQaConversation> RosterQaConversations { get; }
+    DbSet<RosterQaTurn> RosterQaTurns { get; }
+    DbSet<RosterQaTurnExpert> RosterQaTurnExperts { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

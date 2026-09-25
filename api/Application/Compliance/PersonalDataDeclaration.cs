@@ -142,6 +142,15 @@ public static class PersonalDataDeclaration
             + "it holds no field of theirs beyond the id. After erasure there is no file to have "
             + "taken, so the row goes with it."),
 
+        new("RosterQaTurnExpert",
+            PersonalDataAction.Delete,
+            [],
+            "The ids of every Expert any tool result touched during a turn. Deleted by the erasure "
+            + "path itself, because it deliberately has no foreign key to Expert (ADR §3): the "
+            + "erasure has to read these rows to find the turns it must scrub, so a cascade would "
+            + "destroy the reference before the scrub could use it. It holds no text — it is how "
+            + "the scrub, and the Expert's own Access View line, find the turns."),
+
         // ---- Survives, scrubbed, because a human decided something -------------------------
         new("StaffingProposalCandidate",
             PersonalDataAction.Scrub,
@@ -157,6 +166,22 @@ public static class PersonalDataDeclaration
             "The handoff document is the decision's evidence base, so the envelope survives and six "
             + "named fields inside it are nulled. Its own structure is untouched, and the approver "
             + "view still renders."),
+
+        new("RosterQaTurn",
+            PersonalDataAction.Scrub,
+            ["QuestionText", "AnswerText"],
+            "A Roster Q&A question and the answer it got. The row survives because the conversation "
+            + "is still its owner's and its shape — when they asked, how many times, on which model "
+            + "— is their own data, not the erased Expert's. Both texts are emptied and State "
+            + "becomes Removed. Scrubbed by touched id *and* by full name, because an answer can "
+            + "name somebody no tool result ever returned."),
+
+        new("RosterQaConversation",
+            PersonalDataAction.Scrub,
+            ["Title"],
+            "The title is the owner's first question verbatim, so it can name an erased Expert. It "
+            + "becomes \"Conversation from <date>\" when it does, or when the first turn was "
+            + "scrubbed — the conversation stays the owner's, and its timestamps with it."),
     ];
 
     /// <summary>Everything erasure must leave nothing personal behind in.</summary>

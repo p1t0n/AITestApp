@@ -189,6 +189,49 @@ public class TransparencyTests(WebApiFactory factory)
             + "both sides read PersonalDataDeclaration, so this cannot drift: " + string.Join(", ", unreachable));
     }
 
+    // ---- Roster Q&A: existence, never text (EXP-32) -----------------------------------------------
+
+    /// <summary>
+    /// The line an Expert is owed about other people's conversations: that answers referenced them,
+    /// how often, between when and when, and on what model. Both halves matter and the second is
+    /// the load-bearing one — an answer can be mostly about other people, so quoting it back would
+    /// disclose theirs under Art. 15(4). The text is asserted absent from the <em>whole</em>
+    /// response rather than from the entry, because the leak this guards against is somebody
+    /// adding it to any other field.
+    /// </summary>
+    [Fact]
+    public async Task The_access_view_counts_roster_qa_mentions_and_quotes_none_of_them()
+    {
+        var world = await GivenAScoredPersonAsync();
+        var qa = await GivenTwoAnswersReferencedThemAsync(world.ExpertId);
+
+        var view = await (await world.Client.GetAsync("/api/me/access")).ReadOkAsync<AccessViewDto>();
+        var raw = await (await world.Client.GetAsync("/api/me/access")).Content.ReadAsStringAsync();
+
+        view.Derived.RosterQa.Should().NotBeNull();
+        var mentions = view.Derived.RosterQa!;
+        mentions.Count.Should().Be(2, "two turns touched them; the third touched somebody else");
+        mentions.First.Should().Be(qa.First);
+        mentions.Last.Should().Be(qa.Last);
+        mentions.Models.Should().Equal("gemini-2.5-flash", "gemini-2.5-pro");
+
+        raw.Should().NotContain(qa.QuestionText, "the question is somebody else's typed words");
+        raw.Should().NotContain(qa.AnswerText,
+            "and the answer is mostly about other people — Art. 15(4) is why this line is a count "
+            + "rather than a transcript");
+    }
+
+    /// <summary>Nothing to disclose reads as nothing, not as a zero.</summary>
+    [Fact]
+    public async Task The_roster_qa_line_is_absent_for_somebody_no_answer_ever_referenced()
+    {
+        var world = await GivenAScoredPersonAsync();
+
+        var view = await (await world.Client.GetAsync("/api/me/access")).ReadOkAsync<AccessViewDto>();
+
+        view.Derived.RosterQa.Should().BeNull();
+    }
+
     // ---- Art. 20: the copy, and what it is called -------------------------------------------------
 
     /// <summary>
@@ -280,6 +323,60 @@ public class TransparencyTests(WebApiFactory factory)
     }
 
     // ---- Fixture ------------------------------------------------------------------------------------
+
+    private sealed record RosterQaSeed(
+        DateTimeOffset First, DateTimeOffset Last, string QuestionText, string AnswerText);
+
+    /// <summary>
+    /// Somebody else's conversation, two of whose turns touched this person and one of whose turns
+    /// did not. The two carry different models, so "the distinct models of those turns" is asserted
+    /// against something that could get it wrong.
+    /// </summary>
+    private async Task<RosterQaSeed> GivenTwoAnswersReferencedThemAsync(Guid expertId)
+    {
+        var first = new DateTimeOffset(2026, 5, 6, 10, 0, 0, TimeSpan.Zero);
+        var last = first.AddDays(3);
+        var question = $"Ask-{Guid.NewGuid():N}: who can cover settlement work?";
+        var answer = $"Answer-{Guid.NewGuid():N}: three people can, here is each of them.";
+
+        var conversation = new RosterQaConversation
+        {
+            Id = Guid.NewGuid(),
+            UserId = factory.CreateAccount(UserRole.User).Id,
+            CreatedAt = first,
+            LastActiveAt = last,
+            Title = "Settlement cover",
+        };
+
+        conversation.Turns.Add(new RosterQaTurn
+        {
+            Id = Guid.NewGuid(), ConversationId = conversation.Id,
+            QuestionText = question, AnswerText = answer,
+            ModelId = "gemini-2.5-flash", Grounded = true, CreatedAt = first,
+            TouchedExperts = { new RosterQaTurnExpert { ExpertId = expertId } },
+        });
+        conversation.Turns.Add(new RosterQaTurn
+        {
+            Id = Guid.NewGuid(), ConversationId = conversation.Id,
+            QuestionText = "And in June?", AnswerText = "Two of them are free.",
+            ModelId = "gemini-2.5-pro", Grounded = true, CreatedAt = last,
+            TouchedExperts = { new RosterQaTurnExpert { ExpertId = expertId } },
+        });
+        conversation.Turns.Add(new RosterQaTurn
+        {
+            Id = Guid.NewGuid(), ConversationId = conversation.Id,
+            QuestionText = "Anyone in Berlin?", AnswerText = "One person.",
+            ModelId = "gemini-2.5-flash", Grounded = true, CreatedAt = last.AddDays(1),
+            TouchedExperts = { new RosterQaTurnExpert { ExpertId = Guid.NewGuid() } },
+        });
+
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.RosterQaConversations.Add(conversation);
+        await db.SaveChangesAsync();
+
+        return new RosterQaSeed(first, last, question, answer);
+    }
 
     private sealed record World(
         HttpClient Client, Guid ExpertId, string Fingerprint,
@@ -396,6 +493,12 @@ public class TransparencyTests(WebApiFactory factory)
         "ScoringJobCandidate" => world.Digest,
         "StaffingProposalCandidate" => world.Rationale,
         "StaffingProposal" => world.MatchAnswer,
+        // Deliberately existence-only (EXP-32): a Roster Q&A turn is somebody else's conversation
+        // and its answer can be mostly about other people, so the access view discloses that it
+        // happened and never what it said (ADR §5, Art. 15(4)). Null here is that decision, not an
+        // omission — the count, the dates and the models are asserted by their own test above.
+        "RosterQaTurn" => null,
+        "RosterQaConversation" => null,
         // Stores holding no free text of the person's own: the account, its devices, the claim
         // trail, the chunk store (derived from text already listed above).
         _ => null,

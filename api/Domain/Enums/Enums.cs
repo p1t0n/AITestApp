@@ -133,3 +133,18 @@ public enum ClaimState
     /// </summary>
     Ambiguous = 4
 }
+
+/// <summary>
+/// What a stored Roster Q&amp;A turn is (EXP-32). Only <c>Removed</c> is ever written: the mask a
+/// paused Expert puts on a turn is computed at read time through <c>RosterVisibility</c> and is
+/// never stored, so unpausing restores the turn at no cost (ADR §5).
+/// </summary>
+public enum RosterQaTurnState
+{
+    /// <summary>The turn as it was written.</summary>
+    Ok = 1,
+
+    /// <summary>An Expert it touched was erased, so both texts were emptied in place. The row
+    /// stays because the conversation is still its owner's and its shape is theirs.</summary>
+    Removed = 2
+}

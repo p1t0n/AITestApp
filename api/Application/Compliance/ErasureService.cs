@@ -1,6 +1,8 @@
+using System.Globalization;
 using ExpertToJob.Application.Abstractions;
 using ExpertToJob.Application.Common;
 using ExpertToJob.Domain.Entities;
+using ExpertToJob.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExpertToJob.Application.Compliance;
@@ -153,6 +155,13 @@ public class ErasureService(IAppDbContext db, IControlWordHasher controlWords)
                 }
             }
 
+            // Roster Q&A transcripts (EXP-32, ADR §5). Two reaches, deliberately: by the ids the
+            // capture wrapper recorded, and by the person's full name in the text — because an
+            // answer can name somebody no tool result ever returned, and a question is free text
+            // the owner typed. The turn row survives hollowed out: when the owner asked, how many
+            // times and on which model is the owner's own data, not this Expert's.
+            await ScrubRosterQaAsync(expert, ct);
+
             // The row itself, and by cascade: the six child collections, the search chunks and their
             // embeddings, the lawful-basis history, any open claim and any unspent claim code.
             db.Experts.Remove(expert);
@@ -169,5 +178,86 @@ public class ErasureService(IAppDbContext db, IControlWordHasher controlWords)
         await db.SaveChangesAsync(ct);
 
         return new ErasureResult(expert?.Id, scoringRows, proposalRows, packages);
+    }
+
+    /// <summary>
+    /// Empties every Roster Q&A turn this person appears in, and retitles the conversations that
+    /// named them (EXP-32; <c>manuals/adr-roster-qa-conversation-history.md</c> §5). Runs inside
+    /// <see cref="EraseAsync"/>'s single <c>SaveChanges</c>, before the Expert row goes — the
+    /// touched-id rows have no foreign key precisely so they are still here to be read.
+    ///
+    /// <para>A turn is reached two ways. By <c>RosterQaTurnExpert</c>, which the capture wrapper
+    /// writes for every Expert id any tool result returned — a superset, so a turn that mentioned
+    /// somebody only in passing is scrubbed rather than missed. And by full name in either text,
+    /// which is what covers the question the owner typed and the answer's own prose. Nicknames and
+    /// misspellings remain a residual risk, recorded in the DPIA (R6/R13).</para>
+    /// </summary>
+    private async Task ScrubRosterQaAsync(Expert expert, CancellationToken ct)
+    {
+        var fullName = $"{expert.FirstName} {expert.LastName}".Trim();
+        // Case-insensitively, through lower() on both sides rather than ILIKE: this runs in the
+        // Application layer, which does not reference the Npgsql provider, and a name match that
+        // only worked on one provider is a scrub that silently misses on the other.
+        var needle = $"%{fullName.ToLowerInvariant()}%";
+
+        var touched = await db.RosterQaTurnExperts
+            .Where(t => t.ExpertId == expert.Id).ToListAsync(ct);
+        var touchedTurnIds = touched.Select(t => t.TurnId).ToHashSet();
+
+        // An Expert with no name would match every row, so a blank one is never searched for.
+        var named = fullName.Length == 0
+            ? []
+            : await db.RosterQaTurns
+                .Where(t => EF.Functions.Like(t.QuestionText.ToLower(), needle)
+                            || EF.Functions.Like(t.AnswerText.ToLower(), needle))
+                .ToListAsync(ct);
+
+        var byId = await db.RosterQaTurns
+            .Where(t => touchedTurnIds.Contains(t.Id)).ToListAsync(ct);
+
+        var turns = byId.Concat(named).DistinctBy(t => t.Id).ToList();
+
+        foreach (var turn in turns)
+        {
+            turn.QuestionText = string.Empty;
+            turn.AnswerText = string.Empty;
+            turn.State = RosterQaTurnState.Removed;
+        }
+
+        // The ids themselves go: they are a reference to somebody we no longer hold, and the scrub
+        // that needed them has just run.
+        db.RosterQaTurnExperts.RemoveRange(touched);
+
+        // A conversation is retitled when its title names the person, or when the turn it was
+        // titled from — the first one — was just emptied. Titles are the owner's first question
+        // verbatim, so both cases are real.
+        var scrubbedIds = turns.Select(t => t.Id).ToHashSet();
+        var conversationIds = turns.Select(t => t.ConversationId).Distinct().ToList();
+
+        var conversations = await db.RosterQaConversations
+            .Where(c => conversationIds.Contains(c.Id)
+                        || (fullName.Length > 0 && EF.Functions.Like(c.Title.ToLower(), needle)))
+            .ToListAsync(ct);
+
+        foreach (var conversation in conversations)
+        {
+            var namesThem = fullName.Length > 0
+                && conversation.Title.Contains(fullName, StringComparison.OrdinalIgnoreCase);
+
+            var firstTurnId = await db.RosterQaTurns
+                .Where(t => t.ConversationId == conversation.Id)
+                .OrderBy(t => t.CreatedAt).ThenBy(t => t.Id)
+                .Select(t => (Guid?)t.Id)
+                .FirstOrDefaultAsync(ct);
+
+            if (namesThem || (firstTurnId is { } first && scrubbedIds.Contains(first)))
+            {
+                // Invariant, and off the UTC instant: a custom yyyy-MM-dd format still renders
+                // through the ambient culture's *calendar*, so on a Hijri or Buddhist default this
+                // would quietly write a different year into somebody's conversation list.
+                conversation.Title = "Conversation from "
+                    + conversation.CreatedAt.UtcDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            }
+        }
     }
 }
