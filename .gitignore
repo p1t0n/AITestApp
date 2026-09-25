@@ -66,6 +66,9 @@ web/.vite/
 web/test-results/
 web/playwright-report/
 
+# Vitest JSON reporter output (written by test-runner wrappers such as RTK), per-run and per-machine
+web/.vitest/
+
 # OS
 .DS_Store
 

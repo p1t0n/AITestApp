@@ -40,9 +40,12 @@ public class ConfigKeyMigrationTests
 
     /// <summary>Directories the sweep never descends into. <c>manuals/</c> is deliberate and named
     /// by the ticket: the ADR and the wayfinder map quote the old keys as history, and rewriting
-    /// history to satisfy a lint would destroy the record of what the migration was.</summary>
+    /// history to satisfy a lint would destroy the record of what the migration was.
+    /// <c>.claude/</c> holds gitignored agent worktrees, which are full checkouts of other branches,
+    /// some of them older than the migration. They are not this tree, and sweeping them made the test
+    /// red on any machine that had one and green on CI, which has none (EXP-37).</summary>
     private static readonly string[] SkippedDirectories =
-        ["manuals", "docs", "node_modules", "bin", "obj", ".git", ".vs", "dist", "test-results", "playwright-report"];
+        ["manuals", "docs", "node_modules", "bin", "obj", ".git", ".vs", ".claude", "dist", "test-results", "playwright-report"];
 
     [Fact]
     public void NoLegacyGeminiConfigKeyRemains()
