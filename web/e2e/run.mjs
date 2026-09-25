@@ -40,7 +40,7 @@ const VISUAL = process.env.E2E_VISUAL === "1";
  */
 const CHAT_PROVIDER = process.env.E2E_CHAT_PROVIDER ?? "Gemini";
 const BROWSER_CONTAINER = "experttojob-e2e-browser";
-const BROWSER_IMAGE = "mcr.microsoft.com/playwright:v1.62.1-noble";
+const BROWSER_IMAGE = "mcr.microsoft.com/playwright:v1.63.0-noble";
 /** How the container reaches the host it is running on. */
 const HOST_FROM_CONTAINER = "host.docker.internal";
 
