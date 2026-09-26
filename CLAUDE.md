@@ -76,10 +76,13 @@ and where an explicit-start resource is started. Every port above is pinned, so 
 literal (`vite.config.ts`, the `appsettings.json` files, the realm export) stays true —
 `manuals/adr-aspire-apphost.md` says why, and lists the tripwires that silently do the wrong thing.
 
-The one optional secret is the Gemini key, and only to stop the agents degrading:
-`dotnet user-secrets set Parameters:gemini-api-key <key> --project api/AppHost`. The chat backend
-itself is configuration: `Ai:Chat:Provider` names the provider and `Ai:Gemini:*` holds its
-settings. A leftover top-level `Gemini` section throws at startup rather than binding to nothing —
+The agents' chat backend defaults to Azure OpenAI (EXP-41). Its key is the one optional secret, and
+only to stop the agents degrading:
+`dotnet user-secrets set Parameters:azure-foundry-api-key <key> --project api/AppHost`. Gemini still
+serves embeddings (semantic search in the MCP host reads `GEMINI_API_KEY`), so
+`Parameters:gemini-api-key` / `GEMINI_API_KEY` stays useful. The chat backend itself is
+configuration: `Ai:Chat:Provider` names the provider (`AzureFoundry` shipped, `Gemini` to switch
+back) and `Ai:AzureFoundry:*` / `Ai:Gemini:*` hold each provider's settings. A leftover top-level `Gemini` section throws at startup rather than binding to nothing —
 `ConfigKeyMigrationTests` holds both halves of that rule.
 
 A solo `dotnet run` in one project still works — each keeps its own launch profile — but **no host
@@ -112,7 +115,7 @@ conversations per `manuals/adr-roster-qa-conversation-history.md`), applying `Ro
 where those records touch Experts. Deterministic facts (an expert's data, counts, stats) come from
 captured MCP results and are composed in code; the model writes prose. Orchestration composes the
 single-agent runs and degrades a failed stage rather than failing the call. `IChatClient` keeps the
-provider swappable (Gemini free tier by default).
+provider swappable (Azure OpenAI `gpt-4-1-mini` deployment by default, Gemini free tier one config key away).
 
 **Two backends, one token.** The SPA talks to `/api/*` (5069) and `/agents/*` (5200) through two
 axios instances (`web/src/api/http.ts`) that attach the same bearer. The Web host issues the

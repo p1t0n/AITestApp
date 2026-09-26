@@ -65,8 +65,21 @@ var signingKey = builder.AddParameter(
         ?? "dev-only-insecure-signing-key-change-me-at-least-32-bytes",
     secret: true);
 
-// The only value a developer actually supplies, and it stays optional: empty means the Agents host
-// still starts and the widget degrades, exactly as it does today. Set it with
+// The chat backend is Azure OpenAI by default (EXP-41, Ai:Chat:Provider in api/Agents/appsettings.json),
+// so this is the key that makes the agents answer. Optional, like Gemini's: empty means the Agents
+// host still starts and the widget degrades. Set it with
+//   dotnet user-secrets set Parameters:azure-foundry-api-key <key> --project api/AppHost
+// The environment fallback exists for the same reason as Gemini's below.
+var azureFoundryKey = builder.AddParameter(
+    "azure-foundry-api-key",
+    builder.Configuration["Parameters:azure-foundry-api-key"]
+        ?? Environment.GetEnvironmentVariable("AZURE_FOUNDRY_API_KEY")
+        ?? "",
+    secret: true);
+
+// Gemini no longer answers chat by default. Its key is still forwarded so that setting
+// Ai:Chat:Provider back to Gemini needs no AppHost change. (Embeddings run in the MCP host, which
+// reads GEMINI_API_KEY from the inherited environment, not from this parameter.) Set it with
 //   dotnet user-secrets set Parameters:gemini-api-key <key> --project api/AppHost
 //
 // The environment fallback is not decoration. Injecting a parameter *overrides* the inherited
@@ -98,6 +111,7 @@ var agentsHost = builder.AddProject<Projects.ExpertToJob_Agents>("experttojob-ag
     .WithReference(db, connectionName: "Default")
     .WithEnvironment("Auth__Jwt__SigningKey", signingKey)
     .WithEnvironment("GEMINI_API_KEY", geminiKey)
+    .WithEnvironment("AZURE_FOUNDRY_API_KEY", azureFoundryKey)
     .WaitForCompletion(migrator)
     .WaitFor(keycloak);
 
