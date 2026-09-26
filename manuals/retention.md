@@ -137,3 +137,32 @@ words: nothing passive saves it, and claiming it is what would.
 
 Somebody who never signs in never sees any of it. That gap is real, unsolvable here, and the same
 one the transparency notice has.
+
+## 8. A second clock, for conversations rather than people
+
+Roster Q&A conversations are hard-deleted **six months after their last turn**
+(`ConversationRetentionWorker` in the Agents host, EXP-35;
+`manuals/adr-roster-qa-conversation-history.md` §6). The cutoff is `LastActiveAt.AddMonths(-6)` read
+through `TimeProvider`, and the delete names only the conversation — the turns and their
+touched-Expert rows go with it through the database's own cascade.
+
+`ConversationRetention:Enabled` defaults to **true**, which is the opposite of §6's default and not
+an inconsistency. The Expert sweep is off because its normal operation *erases people*, and a
+developer who seeds a roster overnight should not return to an empty database. This one deletes
+**transcripts**: the promise the DPIA rests on is that a question somebody typed is gone six months
+after the conversation went quiet, and a promise that only holds where an operator remembered a flag
+is not a promise. The safe direction for each job is the opposite of the other's, because they
+destroy different things. A test host turns it off; nothing else should.
+
+It is deliberately **not** part of anybody's Retention Clock. Agent activity never moves that clock
+(§2), and a transcript expiring is not an exception to it: the sweep touches no `Expert` row, no
+`ProcessingRecord` and no `RetentionPolicy`, which
+`ConversationRetentionTests.It_deletes_transcripts_and_leaves_the_expert_its_record_and_its_clock_alone`
+asserts by comparing both rows either side of a pass. The six months matches the unclaimed-record
+period for the same reason it was chosen there — transcripts quote CVs, and indefinite retention
+would not survive the DPIA.
+
+The calendar arithmetic is the same rule as §3 and bit in the same place: 31 August swept on
+28 February survives, because six calendar months back is 28 August, while 180 days back is
+1 September. That edge is pinned with literal dates in the test rather than recomputed the way the
+code computes it.

@@ -93,6 +93,18 @@ builder.Services.AddScoped<IUsageService, UsageService>();
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<RosterQaThreadStore>();
+
+// Roster Q&A conversation retention (EXP-35, ADR §6): a daily sweep that hard-deletes a
+// conversation six calendar months after its last turn, cascading to the turns and their
+// touched-Expert rows. On by default — unlike the Web host's Expert sweep, which is off because it
+// erases people. This one deletes transcripts, and the six-month promise is the DPIA's.
+var conversationRetention =
+    builder.Configuration.GetSection(ExpertToJob.Agents.Compliance.ConversationRetentionOptions.Section)
+        .Get<ExpertToJob.Agents.Compliance.ConversationRetentionOptions>()
+    ?? new ExpertToJob.Agents.Compliance.ConversationRetentionOptions();
+builder.Services.AddSingleton(conversationRetention);
+builder.Services.AddScoped<ExpertToJob.Agents.Compliance.ConversationRetentionSweep>();
+builder.Services.AddHostedService<ExpertToJob.Agents.Compliance.ConversationRetentionWorker>();
 builder.Services.AddHttpClient();
 
 // Chat model: the seam (manuals/adr-chat-provider-seam.md). Ai:Chat:Provider names the backend,
