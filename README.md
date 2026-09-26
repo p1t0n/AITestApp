@@ -68,7 +68,7 @@ See [SPEC.md](SPEC.md).
 
 - **Backend:** ASP.NET Core Web API (.NET 10), layered Domain / Application / Infrastructure / Web
 - **MCP server:** ModelContextProtocol (Streamable HTTP), thin adapters over the Application layer, OAuth 2.1 (Keycloak) with per-tool scopes
-- **AI agents:** Microsoft Agent Framework over provider-agnostic `IChatClient`, behind a chat-provider seam that configuration selects — the Gemini free tier (default) or an Azure OpenAI deployment; embeddings always Gemini (`gemini-embedding-001`, 1536 dims), whichever provider chat uses
+- **AI agents:** Microsoft Agent Framework over provider-agnostic `IChatClient`, behind a chat-provider seam that configuration selects — an Azure OpenAI deployment (default, `gpt-4-1-mini`) or the Gemini free tier; embeddings always Gemini (`gemini-embedding-001`, 1536 dims), whichever provider chat uses
 - **Local orchestration:** .NET Aspire AppHost (`api/AppHost`) — one command starts every container and process (see `manuals/adr-aspire-apphost.md`)
 - **Observability:** OpenTelemetry tracing + metrics from both services (MAF workflow/executor spans, gen_ai chat spans, MCP RPCs, SQL) into the Aspire dashboard the AppHost serves (it prints the URL on startup)
 - **Vector search:** PostgreSQL + pgvector (cosine), EF Core mapping via Pgvector.EntityFrameworkCore
@@ -133,15 +133,22 @@ resources come up, read their logs, and see the traces and metrics every service
 | `spa` | the React app; proxies `/api/*` → 5069 and `/agents/*` → 5200 | 5173 |
 | `demo-roster` | 500 synthetic experts — **explicit start**, from the dashboard | — |
 
-Optional, and only if you want the AI agents to answer rather than degrade — a free **Gemini**
-key from https://aistudio.google.com/apikey:
+Optional, and only if you want the AI agents to answer rather than degrade — the **Azure OpenAI**
+key for the `experttojob-openai-swc` resource (the chat default since EXP-41):
+
+```bash
+dotnet user-secrets set Parameters:azure-foundry-api-key <your-key> --project api/AppHost
+```
+
+An exported `AZURE_FOUNDRY_API_KEY` works too. Semantic roster search still embeds through
+**Gemini**, so a free key from https://aistudio.google.com/apikey keeps it on vector ranking:
 
 ```bash
 dotnet user-secrets set Parameters:gemini-api-key <your-key> --project api/AppHost
 ```
 
-The chat backend is named by configuration: `Ai:Chat:Provider` is `Gemini` or `AzureFoundry`, and
-that provider's own block holds the rest —
+The chat backend is named by configuration: `Ai:Chat:Provider` is `AzureFoundry` (shipped) or
+`Gemini`, and that provider's own block holds the rest —
 
 ```
 Ai:Gemini:{Endpoint, Model, ApiKey, EmbeddingModel, Dimensions, QuotaBreakerSeconds, Agents:<agent>}
@@ -149,15 +156,15 @@ Ai:AzureFoundry:{Endpoint, Model, ApiKey, Agents:<agent>}
 ```
 
 Embeddings bind `Ai:Gemini` whatever chat does, because they share that endpoint and key — which is
-also why `Ai:Gemini` keeps the embedding keys. `GEMINI_API_KEY` is unchanged and still wins over
-`Ai:Gemini:ApiKey`; `AZURE_FOUNDRY_API_KEY` is its opposite number.
+also why `Ai:Gemini` keeps the embedding keys. `GEMINI_API_KEY` still wins over `Ai:Gemini:ApiKey`;
+`AZURE_FOUNDRY_API_KEY` is its opposite number.
 
-To run the agents on Azure instead, point them at a deployment — **`Ai:AzureFoundry:Model` holds
-the deployment name, not a model id**, and the endpoint ends in `openai/v1/`:
+**`Ai:AzureFoundry:Model` holds the deployment name, not a model id** (`gpt-4-1-mini`, with
+gpt-4.1-mini behind it), and the endpoint ends in `openai/v1/`. Azure bills per token. To go back
+to the free Gemini tier, override the provider from the environment the AppHost's children inherit:
 
 ```bash
-export AZURE_FOUNDRY_API_KEY=<key>
-dotnet run --project api/AppHost   # with Ai:Chat:Provider=AzureFoundry
+Ai__Chat__Provider=Gemini dotnet run --project api/AppHost
 ```
 
 Two startup rules, deliberately different: an **unknown** `Ai:Chat:Provider` value throws in every
@@ -215,7 +222,7 @@ AI agents built on the **Microsoft Agent Framework** that *consume* the MCP serv
 a `mcp:read` token from the `agent-roster-qa` Keycloak service-account client, so the MCP server
 shows them read tools only — and, since that client also carries per-tool `mcp:tool:*` grants,
 only the four read tools Roster Q&A actually uses). This is the one part of the stack that wants
-the optional Gemini key: without it the host still starts and the widget degrades.
+the optional Azure OpenAI key: without it the host still starts and the widget degrades.
 
 Four agents plus a staffing pipeline that composes them (all also available as tabs in the in-app
 widget):

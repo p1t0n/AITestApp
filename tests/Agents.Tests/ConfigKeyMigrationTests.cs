@@ -155,6 +155,27 @@ public class ConfigKeyMigrationTests
             + "a mismatch binds to nothing and falls back to the property default in silence");
     }
 
+    /// <summary>
+    /// The shipped default chat backend is Azure OpenAI (EXP-41): Gemini's free tier is 500 model
+    /// calls a day for the whole project, and EXP-40 measured one roster-qa question costing a user
+    /// their whole day. Literals, not property defaults — <see cref="AzureFoundryOptions"/>
+    /// defaults to empty strings, so an unbound block would look exactly like an unset one.
+    /// <see cref="AzureFoundryOptions.Model"/> is a DEPLOYMENT name (gpt-4.1-mini sits behind it).
+    /// </summary>
+    [Fact]
+    public void The_shipped_agents_settings_select_the_azure_deployment()
+    {
+        var config = new ConfigurationBuilder()
+            .AddJsonFile(Path.Combine(RepoRoot(), "api/Agents/appsettings.json"))
+            .Build();
+
+        config["Ai:Chat:Provider"].Should().Be("AzureFoundry");
+        var azure = config.GetSection(AzureFoundryOptions.Section).Get<AzureFoundryOptions>()!;
+        azure.Endpoint.Should().Be("https://experttojob-openai-swc.openai.azure.com/openai/v1/");
+        azure.Model.Should().Be("gpt-4-1-mini");
+        azure.ApiKey.Should().BeEmpty("the key comes from AZURE_FOUNDRY_API_KEY, never a tracked file");
+    }
+
     /// <summary>The two options classes share the section on purpose — chat and embeddings really
     /// do share that endpoint and key (ADR §2 decision 3). Asserted rather than assumed, because
     /// the next rename only has to move one of them to break the pairing quietly.</summary>
