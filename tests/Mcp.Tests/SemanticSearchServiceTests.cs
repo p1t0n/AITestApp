@@ -19,8 +19,7 @@ namespace ExpertToJob.Mcp.Tests;
 /// </summary>
 public sealed class SemanticSearchServiceTests : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
-        .WithImage("pgvector/pgvector:pg17")
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("pgvector/pgvector:pg17")
         .Build();
 
     private Guid _reactSkillId;

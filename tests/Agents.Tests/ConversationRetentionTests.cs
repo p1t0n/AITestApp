@@ -25,8 +25,7 @@ namespace ExpertToJob.Agents.Tests;
 /// </summary>
 public sealed class ConversationRetentionTests : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
-        .WithImage("pgvector/pgvector:pg17")
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("pgvector/pgvector:pg17")
         .Build();
 
     public async Task InitializeAsync()

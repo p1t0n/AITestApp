@@ -20,8 +20,7 @@ namespace ExpertToJob.Mcp.Tests;
 /// </summary>
 public sealed class ExemplarSearchServiceTests : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
-        .WithImage("pgvector/pgvector:pg17")
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("pgvector/pgvector:pg17")
         .Build();
 
     // Olive's bullets are the query keys; everyone else's are the exemplar pool.

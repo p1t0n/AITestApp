@@ -18,8 +18,7 @@ namespace ExpertToJob.Mcp.Tests;
 /// </summary>
 public sealed class SearchIndexReconcilerTests : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
-        .WithImage("pgvector/pgvector:pg17")
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("pgvector/pgvector:pg17")
         .Build();
 
     public async Task InitializeAsync() => await _postgres.StartAsync();
