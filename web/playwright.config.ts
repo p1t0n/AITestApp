@@ -10,7 +10,13 @@ const baseURL = process.env.E2E_BASE_URL ?? `http://localhost:${SPA_PORT}`;
 // The visual pass renders in the pinned Playwright container (`e2e/run.mjs` starts it, and says
 // why). Both variables come from there: without them the `visual` project is skipped, so the
 // ordinary suite needs no Docker image and no baseline ever gets written by a host browser.
-const browserWs = process.env.E2E_BROWSER_WS;
+//
+// The functional suite can use the same container on request (`E2E_CONTAINER_BROWSER=1`, EXP-38):
+// an egress-restricted sandbox can pull the image but cannot download a browser, so without this
+// it could not run the suite at all. When `run.mjs` hands over a websocket, `chromium` connects to
+// it; otherwise it launches a local browser exactly as before.
+const browserWs = process.env.E2E_BROWSER_WS || undefined;
+const connectOptions = browserWs ? { wsEndpoint: browserWs } : undefined;
 const VISUAL_MATCH = /.*\.visual\.e2e\.ts/;
 
 export default defineConfig({
@@ -55,7 +61,7 @@ export default defineConfig({
       name: "chromium",
       // Chromium only, and not by preference: the virtual authenticator that lets these tests
       // complete a passkey ceremony headlessly is a Chrome DevTools Protocol feature.
-      use: { ...devices["Desktop Chrome"] },
+      use: { ...devices["Desktop Chrome"], connectOptions },
       testIgnore: VISUAL_MATCH,
     },
     {
@@ -68,7 +74,7 @@ export default defineConfig({
         // A baseline is only comparable at a fixed frame.
         viewport: { width: 1440, height: 900 },
         deviceScaleFactor: 1,
-        connectOptions: browserWs ? { wsEndpoint: browserWs } : undefined,
+        connectOptions,
       },
     },
   ],

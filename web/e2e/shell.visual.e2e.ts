@@ -39,8 +39,11 @@ async function readyToShoot(page: Page) {
 
 for (const mode of ["light", "dark"] as const) {
   test.describe(`${mode} mode`, () => {
+    // Gated on the visual run itself, not on a container websocket being present: the functional
+    // suite can also run against the container (EXP-38), but only the visual run pins it to
+    // linux/amd64, and a baseline compared on any other build is a coin toss.
     test.skip(
-      !process.env.E2E_BROWSER_WS,
+      process.env.E2E_VISUAL !== "1" || !process.env.E2E_BROWSER_WS,
       "Renders in the pinned Playwright container — run `npm run test:visual`.",
     );
     test.use({ colorScheme: mode });
