@@ -233,7 +233,7 @@ public static class ChatProviderServiceCollectionExtensions
 
     /// <summary>Resolves the chat client for an agent: its keyed model override if one is
     /// registered, otherwise the shared default client — wrapped in that agent's Runtime Budget
-    /// (P1T-147).
+    /// (P1T-147) and, inside it, its Tool Result Budget (EXP-40).
     /// <para>This is the one place every agent asks for a model, which is why the budget hangs
     /// here: an agent cannot opt out of its ceiling, and a new agent inherits the default without
     /// anyone remembering to wire it. The wrapper is per-agent (the budget differs); the run state
@@ -244,8 +244,14 @@ public static class ChatProviderServiceCollectionExtensions
         var client = sp.GetKeyedService<IChatClient>(agentKey) ?? sp.GetRequiredService<IChatClient>();
         var budgets = sp.GetService<IOptions<Usage.AgentBudgetOptions>>()?.Value
                       ?? new Usage.AgentBudgetOptions();
+        var budget = budgets.For(agentKey);
+        var loggers = sp.GetService<ILoggerFactory>();
+
+        // The Tool Result Budget (EXP-40) sits inside the Runtime Budget, so the closing call the
+        // Runtime Budget sends is bounded too — it carries the same tool results as any other.
         return new Usage.RuntimeBudgetChatClient(
-            client, agentKey, budgets.For(agentKey),
-            sp.GetService<ILoggerFactory>()?.CreateLogger<Usage.RuntimeBudgetChatClient>());
+            new Usage.ToolResultBudgetChatClient(
+                client, agentKey, budget, loggers?.CreateLogger<Usage.ToolResultBudgetChatClient>()),
+            agentKey, budget, loggers?.CreateLogger<Usage.RuntimeBudgetChatClient>());
     }
 }

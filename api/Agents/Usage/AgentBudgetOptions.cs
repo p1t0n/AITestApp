@@ -26,7 +26,10 @@ public sealed class AgentBudgetOptions
     /// <c>IngestionRunCost</c> and <c>manuals/agent-cost-budgets.md</c> §7 (P1T-150).</para></summary>
     public Dictionary<string, AgentBudget> Agents { get; set; } = new()
     {
-        ["roster-qa"] = new AgentBudget { MaxInputTokens = 15_000, MaxIterations = 6 },
+        // MaxToolResultTokens (EXP-40): one expert_list over a 503-expert roster is ~31,000
+        // estimated tokens and cost a user their whole day in one question. 5,000 admits it at
+        // the 45-expert demo size (2,805) and refuses it long before it swallows the 15,000 run.
+        ["roster-qa"] = new AgentBudget { MaxInputTokens = 15_000, MaxIterations = 6, MaxToolResultTokens = 5_000 },
 
         // P1T-150 measured a faithful ingestion of the EASIEST eval fixture at 17 model calls,
         // before a single self-correction — 8 was below the agent's own Structural Path Length,
@@ -69,4 +72,9 @@ public sealed class AgentBudget
     /// <summary>Model calls a run may make before tools are withdrawn. The backstop for what a
     /// token ceiling cannot catch: a long loop of individually tiny calls.</summary>
     public int MaxIterations { get; set; } = 6;
+
+    /// <summary>The Tool Result Budget (EXP-40): the largest single tool result, in estimated
+    /// tokens (four characters each), the model is shown. Larger results are withheld and the model
+    /// is told to narrow the call — see <see cref="ToolResultBudgetChatClient"/>.</summary>
+    public long MaxToolResultTokens { get; set; } = 8_000;
 }

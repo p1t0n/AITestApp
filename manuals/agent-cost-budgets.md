@@ -603,3 +603,43 @@ not decoration: this is the one agent holding `mcp:write`, batching changes how 
 holds in one turn, and a cheaper run that stages a worse draft is a regression however it prices.
 It writes a real draft when it runs, which is the run being measured rather than a side effect to
 design away.
+
+## 9. Tool Result Budget: one result, one day (EXP-40)
+
+On the 503-expert demo roster (`tools/SeedDemoRoster`), *"who is available from backend devs"*
+cost one user their whole day:
+
+| agent | input | output | total | iterations | tools |
+|---|---|---|---|---|---|
+| roster-qa | 53,543 | 1,126 | 54,669 | 4 | skill_list, roster_semantic_search, expert_list |
+
+`Usage:DefaultDailyTokens` is 50,000. Three things lined up:
+
+1. **`expert_list` scales with the roster.** It has no paging by design, and the Cost Floor
+   measured it at 2,805 estimated tokens on 45 experts. At 503 that is ~31,000 estimated tokens,
+   and on this GUID-dense payload real tokens run above the estimate.
+2. **The instructions misdirected availability.** "Availability on a date → list/get tools" sent
+   an availability question to the whole-roster tool, when `roster_semantic_search`'s
+   `availableOn` filter was built for it.
+3. **The Runtime Budget can't see a single result.** It checks spend *before* each call. After
+   three calls roster-qa had spent under 15,000, so call 4 went out carrying the whole roster.
+   §3.2's ceilings bound how many calls a run makes. They never bounded how large one call can be.
+
+**Decision.** `AgentBudget.MaxToolResultTokens` is measured in `TokenEstimate` units (chars/4) so
+it reads in the same unit as the Cost Floors. It is enforced by `ToolResultBudgetChatClient`,
+which `ResolveAgentChatClient` places *inside* the Runtime Budget so the Closing Turn is bounded
+as well. Before each model call it swaps any oversized `FunctionResultContent` for a short
+notice: the tool, the size, the limit, and an instruction to narrow the call. It also records a
+Degradation. Only the messages sent downstream change; the loop's own list does not, so the swap
+repeats on every later iteration. Default is 8,000, which clears every committed read-tool
+ceiling (the largest, `category_tree`, is 3,379). roster-qa's is 5,000: it still admits
+`expert_list` at demo size and refuses it long before one result swallows the 15,000 run.
+
+**Rejected: capping at the tool source.** bench-report and roster-scan call MCP tools from code
+and need the full result (bench-report's report *is* the whole `expert_list`). The ceiling bounds
+what the model is shown, not what the tool returns.
+
+**Rejected: dropping `expert_list` from roster-qa's allowlist.** It would give up "how many
+experts" and "list everyone's email" on every roster size to fix the one size where the result is
+too large. The ceiling refuses exactly that case. The instructions now route availability to
+`availableOn`, all within the unchanged 412-token Baseline Prompt Size ceiling.

@@ -366,6 +366,21 @@ public class AgentBudgetOptionsTests
     }
 
     [Fact]
+    public void Ships_the_tool_result_ceilings()
+    {
+        var options = new AgentBudgetOptions();
+
+        // EXP-40. 8,000 estimated tokens clears every read tool's committed Cost Floor ceiling
+        // (category_tree, the largest, is 3,379) with room for a bigger roster.
+        options.For("some-future-agent").MaxToolResultTokens.Should().Be(8_000);
+        // roster-qa's run budget is 15,000: one result at 8,000 estimated tokens (~19,000 real on
+        // GUID-dense JSON) would be the whole run. expert_list at 45 experts is 2,805; at 503 it
+        // is ~31,000, and that is the call this ceiling exists to refuse.
+        options.For("roster-qa").MaxToolResultTokens.Should().Be(5_000);
+        options.For("resume-ingestion").MaxToolResultTokens.Should().Be(8_000);
+    }
+
+    [Fact]
     public void An_unlisted_agent_falls_back_to_the_default()
     {
         var options = new AgentBudgetOptions();

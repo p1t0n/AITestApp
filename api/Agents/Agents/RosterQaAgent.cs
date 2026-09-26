@@ -30,8 +30,8 @@ public sealed class RosterQaAgent : IChatAgent
           skillIds. Never rebuild a filter by hand from expert_list plus per-person cv_get, and never
           re-run a search reworded — one filtered result set is the answer, and an empty one means
           nobody matches, which is also an answer.
-        - For exact facts — a skill level, availability on a date, languages, contact details — use the
-          list/get tools. cv_get is for one person you already identified, never for scanning.
+        - For exact facts on known people — a skill level, languages, contact details — use
+          the list/get tools; "who is available" is availableOn. cv_get: one person, never scanning.
         - If roster_semantic_search errors or finds nothing, say so, then fall back to those tools.
         - A degradedReason means the matches are real but keyword-ranked — use them, and say ranking
           quality is reduced.
