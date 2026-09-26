@@ -21,6 +21,49 @@ namespace ExpertToJob.Agents.Agents;
 public sealed record ResolvedConversation(Guid Id, IReadOnlyList<ChatMessage> History, bool IsNew);
 
 /// <summary>
+/// How a stored turn reads back to its owner (ADR §5). Two of the three are masks over text that
+/// is still on disk, and the difference between them is the difference between permanent and
+/// reversible — which is why the dock is told which, rather than being handed a blank.
+/// </summary>
+public enum TurnVisibility
+{
+    /// <summary>Readable: the turn's own text, as it was shown.</summary>
+    Ok,
+
+    /// <summary>The erasure scrub emptied it when an Expert it named was erased. Permanent — the
+    /// text is gone from the row, not withheld.</summary>
+    Removed,
+
+    /// <summary>An Expert it touched is currently paused. Computed at read time and never stored,
+    /// so unpausing restores the turn at no cost.</summary>
+    Hidden,
+}
+
+/// <summary>One row of the owner's history index: enough to choose a conversation, and no turn
+/// text at all.</summary>
+public sealed record ConversationSummary(
+    Guid Id, string Title, DateTimeOffset CreatedAt, DateTimeOffset LastActiveAt);
+
+/// <summary>One turn as its owner reads it. <paramref name="Question"/> and
+/// <paramref name="Answer"/> are empty whenever <paramref name="State"/> is not
+/// <see cref="TurnVisibility.Ok"/> — the mask is applied here, not left to the caller.</summary>
+public sealed record ConversationTurnView(
+    string Question,
+    string Answer,
+    string ModelId,
+    bool Grounded,
+    DateTimeOffset CreatedAt,
+    TurnVisibility State);
+
+/// <summary>A conversation and its turns, oldest first.</summary>
+public sealed record ConversationDetail(
+    Guid Id,
+    string Title,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset LastActiveAt,
+    IReadOnlyList<ConversationTurnView> Turns);
+
+/// <summary>
 /// The durable Roster Q&amp;A conversation store (EXP-36,
 /// <c>manuals/adr-roster-qa-conversation-history.md</c> §3–§5), replacing the in-memory
 /// <c>RosterQaThreadStore</c> and its 30-minute sliding TTL and 20-thread cap. Those were lifetime
@@ -167,6 +210,125 @@ public sealed class RosterQaConversationStore(IAppDbContext db, TimeProvider clo
         db.RosterQaTurns.Add(turn);
 
         await db.SaveChangesAsync(ct);
+    }
+
+    // ---- history (EXP-33, ADR §5 "Owner delete" and §7) ---------------------------------------
+    //
+    // Every method below takes the caller's own UserId and no other, so there is no argument a
+    // caller could pass to reach somebody else's rows. A conversation that is not theirs is simply
+    // absent — the endpoints turn that into 404, which is also what a guessed id gets.
+
+    /// <summary>
+    /// The caller's conversations, most recently active first. Titles and timestamps only: a list
+    /// is for choosing, and turn text is what the drill-in is for.
+    /// </summary>
+    public async Task<IReadOnlyList<ConversationSummary>> ListAsync(
+        Guid userId, CancellationToken ct = default) =>
+        await db.RosterQaConversations
+            .Where(c => c.UserId == userId)
+            .OrderByDescending(c => c.LastActiveAt).ThenByDescending(c => c.Id)
+            .Select(c => new ConversationSummary(c.Id, c.Title, c.CreatedAt, c.LastActiveAt))
+            .ToListAsync(ct);
+
+    /// <summary>
+    /// One of the caller's conversations with its turns, oldest first, or null when the id names
+    /// nothing of theirs. The pause mask is computed here, by the same
+    /// <see cref="RosterVisibility.NotHidden"/> the replay window uses and nothing else, so a
+    /// review and a resume agree about which turns exist.
+    /// </summary>
+    public async Task<ConversationDetail?> GetAsync(
+        Guid userId, Guid id, CancellationToken ct = default)
+    {
+        var conversation = await db.RosterQaConversations
+            .Where(c => c.Id == id && c.UserId == userId)
+            .Select(c => new ConversationSummary(c.Id, c.Title, c.CreatedAt, c.LastActiveAt))
+            .FirstOrDefaultAsync(ct);
+
+        if (conversation is null)
+        {
+            return null;
+        }
+
+        var turns = await db.RosterQaTurns
+            .Where(t => t.ConversationId == id)
+            .OrderBy(t => t.CreatedAt).ThenBy(t => t.Id)
+            .Select(t => new
+            {
+                t.QuestionText,
+                t.AnswerText,
+                t.ModelId,
+                t.Grounded,
+                t.CreatedAt,
+                t.State,
+                // The same correlated EXISTS the replay window runs, composed from the visibility
+                // seam and nothing else, so a review and a resume can never disagree about which
+                // turns exist. A touched id with no Expert row behind it at all masks too:
+                // erasure has already marked such a turn Removed, and masking is the safe
+                // direction for the case it has not.
+                Visible = t.TouchedExperts.All(x =>
+                    db.Experts.Where(RosterVisibility.NotHidden).Any(e => e.Id == x.ExpertId)),
+            })
+            .ToListAsync(ct);
+
+        return new ConversationDetail(
+            conversation.Id,
+            conversation.Title,
+            conversation.CreatedAt,
+            conversation.LastActiveAt,
+            turns.Select(t =>
+            {
+                var state = t.State == RosterQaTurnState.Removed ? TurnVisibility.Removed
+                    : t.Visible ? TurnVisibility.Ok
+                    : TurnVisibility.Hidden;
+                var masked = state != TurnVisibility.Ok;
+                return new ConversationTurnView(
+                    masked ? string.Empty : t.QuestionText,
+                    masked ? string.Empty : t.AnswerText,
+                    // Not personal data and not masked: which model answered and whether it was
+                    // grounded stay readable, so a masked turn still says what kind of turn it was.
+                    t.ModelId,
+                    t.Grounded,
+                    t.CreatedAt,
+                    state);
+            }).ToList());
+    }
+
+    /// <summary>
+    /// Hard-deletes one of the caller's conversations, or reports that there was nothing of theirs
+    /// under that id. Immediate and without a control word: the data is the caller's own and the
+    /// act is low-stakes (ADR §5).
+    /// </summary>
+    public async Task<bool> DeleteAsync(Guid userId, Guid id, CancellationToken ct = default)
+    {
+        var conversation = await db.RosterQaConversations
+            .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId, ct);
+
+        if (conversation is null)
+        {
+            return false;
+        }
+
+        // Loaded and removed rather than ExecuteDelete, exactly as the retention sweep does: the
+        // turns and their touched rows go by the configured ON DELETE CASCADE, and ExecuteDelete
+        // would bypass the change tracker without taking them.
+        db.RosterQaConversations.Remove(conversation);
+        await db.SaveChangesAsync(ct);
+        return true;
+    }
+
+    /// <summary>Hard-deletes every conversation the caller owns. Deleting nothing is a success:
+    /// the caller asked for their history to be gone, and it is.</summary>
+    public async Task<int> DeleteAllAsync(Guid userId, CancellationToken ct = default)
+    {
+        var mine = await db.RosterQaConversations.Where(c => c.UserId == userId).ToListAsync(ct);
+        if (mine.Count == 0)
+        {
+            return 0;
+        }
+
+        db.RosterQaConversations.RemoveRange(mine);
+        await db.SaveChangesAsync(ct);
+        return mine.Count;
     }
 
     /// <summary>

@@ -42,6 +42,14 @@ public sealed class ConversationRetentionSweep(IAppDbContext db, TimeProvider cl
     /// tell an owner when a conversation disappears without restating the rule.</summary>
     public static DateTimeOffset CutoffFor(DateTimeOffset now) => now.AddMonths(-6);
 
+    /// <summary>
+    /// The other end of the same promise, for the history API (EXP-33): when a conversation last
+    /// active at <paramref name="lastActiveAt"/> disappears. Six calendar months, not 180 days —
+    /// the rule is stated once here so the number an owner is shown and the number the sweep acts
+    /// on cannot drift apart.
+    /// </summary>
+    public static DateTimeOffset ExpiresAt(DateTimeOffset lastActiveAt) => lastActiveAt.AddMonths(6);
+
     /// <summary>Deletes the stale conversations and returns how many went.</summary>
     public async Task<int> RunOnceAsync(CancellationToken ct = default)
     {

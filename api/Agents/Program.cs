@@ -336,6 +336,85 @@ app.MapPost("/agents/roster-qa", async (
     }
 }).RequireAuthorization();
 
+// ---- Roster Q&A conversation history (EXP-33, ADR §5 and §7) --------------------------------
+//
+// The owner's own review of their own transcripts. Every route is scoped to the caller's UserId
+// and **none of them takes a user id**, so there is no parameter a caller could set to reach
+// anyone else's history — not an Administrator, not the account that ran the agent on their
+// behalf. A conversation that is not the caller's is 404 and never 403: a 403 would confirm the id
+// names something real, and a guessed id has to read exactly like a wrong one.
+
+// GET /agents/roster-qa/conversations -> the caller's index, most recently active first.
+app.MapGet("/agents/roster-qa/conversations", async (
+    RosterQaConversationStore conversations,
+    ClaimsPrincipal user,
+    CancellationToken ct) =>
+{
+    if (user.GetUserId() is not { } userId)
+    {
+        return Results.Unauthorized();
+    }
+
+    var list = await conversations.ListAsync(userId, ct);
+    return Results.Ok(list.Select(ConversationSummaryResponse.From).ToList());
+}).RequireAuthorization();
+
+// GET /agents/roster-qa/conversations/{id} -> one conversation and its turns, oldest first.
+// A turn reads "ok", "removed" (the erasure scrub emptied it — permanent) or "hidden" (an Expert
+// it touched is paused right now — reversible, computed here and never stored). Both masked states
+// return empty question and answer text; which one it is, the dock is told.
+app.MapGet("/agents/roster-qa/conversations/{id:guid}", async (
+    Guid id,
+    RosterQaConversationStore conversations,
+    ClaimsPrincipal user,
+    CancellationToken ct) =>
+{
+    if (user.GetUserId() is not { } userId)
+    {
+        return Results.Unauthorized();
+    }
+
+    var conversation = await conversations.GetAsync(userId, id, ct);
+    return conversation is null
+        ? Results.NotFound()
+        : Results.Ok(ConversationDetailResponse.From(conversation));
+}).RequireAuthorization();
+
+// DELETE /agents/roster-qa/conversations/{id} -> 204, or 404 when it is not the caller's.
+// Immediate and hard, with no control word: the data is the caller's own and the act is low-stakes
+// (ADR §5). The turns and their touched-Expert rows go with it, by cascade.
+app.MapDelete("/agents/roster-qa/conversations/{id:guid}", async (
+    Guid id,
+    RosterQaConversationStore conversations,
+    ClaimsPrincipal user,
+    CancellationToken ct) =>
+{
+    if (user.GetUserId() is not { } userId)
+    {
+        return Results.Unauthorized();
+    }
+
+    return await conversations.DeleteAsync(userId, id, ct)
+        ? Results.NoContent()
+        : Results.NotFound();
+}).RequireAuthorization();
+
+// DELETE /agents/roster-qa/conversations -> 204. Everything the caller owns, and nothing else.
+// Deleting nothing is still a success: they asked for their history to be gone, and it is.
+app.MapDelete("/agents/roster-qa/conversations", async (
+    RosterQaConversationStore conversations,
+    ClaimsPrincipal user,
+    CancellationToken ct) =>
+{
+    if (user.GetUserId() is not { } userId)
+    {
+        return Results.Unauthorized();
+    }
+
+    await conversations.DeleteAllAsync(userId, ct);
+    return Results.NoContent();
+}).RequireAuthorization();
+
 // POST /agents/cv-tailoring  { "expertId": "guid", "jobDescription": "..." }
 // -> { "answer": "<markdown as before>", "rewrites": [{ experienceId, achievementId, original, rewritten }] }
 // The answer is unchanged for existing consumers; rewrite ids/originals are composed from the
@@ -911,6 +990,54 @@ internal sealed record ResumeIngestionRequest(string ResumeText);
 /// model that <em>answered</em>, which may differ from the one GET /agents/models names as
 /// configured: an alias resolves, and a provider may answer on a point release of its own.</param>
 internal sealed record RosterQaResponse(string Answer, string ThreadId, string? ModelId = null);
+
+/// <summary>One row of the owner's conversation index (EXP-33). No turn text: a list is for
+/// choosing which conversation to open.</summary>
+/// <param name="ExpiresAt">When the retention sweep may take it — six calendar months past
+/// <paramref name="LastActiveAt"/> (ADR §6). Served rather than computed in the SPA so the promise
+/// the dock repeats and the rule the worker runs are the same expression
+/// (<see cref="ExpertToJob.Agents.Compliance.ConversationRetentionSweep.ExpiresAt"/>).</param>
+internal sealed record ConversationSummaryResponse(
+    Guid Id,
+    string Title,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset LastActiveAt,
+    DateTimeOffset ExpiresAt)
+{
+    public static ConversationSummaryResponse From(ConversationSummary c) => new(
+        c.Id, c.Title, c.CreatedAt, c.LastActiveAt,
+        ExpertToJob.Agents.Compliance.ConversationRetentionSweep.ExpiresAt(c.LastActiveAt));
+}
+
+/// <param name="State">"ok", "removed" or "hidden". Lowercase on the wire because it is a state
+/// the SPA switches on, not prose; <c>Question</c> and <c>Answer</c> are empty for the two masked
+/// states, and the state is what lets the dock say <em>why</em> instead of showing a blank.</param>
+internal sealed record ConversationTurnResponse(
+    string Question,
+    string Answer,
+    string ModelId,
+    bool Grounded,
+    DateTimeOffset CreatedAt,
+    string State)
+{
+    public static ConversationTurnResponse From(ConversationTurnView t) => new(
+        t.Question, t.Answer, t.ModelId, t.Grounded, t.CreatedAt,
+        t.State.ToString().ToLowerInvariant());
+}
+
+/// <summary>One conversation and its turns, oldest first (EXP-33).</summary>
+internal sealed record ConversationDetailResponse(
+    Guid Id,
+    string Title,
+    DateTimeOffset LastActiveAt,
+    DateTimeOffset ExpiresAt,
+    IReadOnlyList<ConversationTurnResponse> Turns)
+{
+    public static ConversationDetailResponse From(ConversationDetail c) => new(
+        c.Id, c.Title, c.LastActiveAt,
+        ExpertToJob.Agents.Compliance.ConversationRetentionSweep.ExpiresAt(c.LastActiveAt),
+        c.Turns.Select(ConversationTurnResponse.From).ToList());
+}
 
 /// <summary>What GET /agents/models reports: the active provider's name and, per dock surface, the
 /// distinct sorted models the agents behind it resolve to (EXP-31).</summary>
