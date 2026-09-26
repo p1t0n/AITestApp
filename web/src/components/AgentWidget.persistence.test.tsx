@@ -51,8 +51,12 @@ vi.mock("../api", async (importOriginal) => {
     isError: false,
     error: null,
   });
+  const { rosterQaHistoryMocks } = await import("../test/rosterQaHistory");
   return {
     ...actual,
+    // The surface mounts the conversation-history hooks (EXP-34); this file is not about
+    // them, and every hook here renders outside a QueryClientProvider.
+    ...rosterQaHistoryMocks(),
     // The dock asks which model answers on the current surface (EXP-31); it renders outside a
     // QueryClientProvider here, like every other hook in this factory.
     useAgentModels: () => ({ data: undefined, isError: false }),

@@ -6,6 +6,7 @@ import {
   agentHttp,
   useDeleteAllRosterQaConversations,
   useDeleteRosterQaConversation,
+  useRosterQa,
   useRosterQaConversation,
   useRosterQaConversations,
   type ConversationDetail,
@@ -121,5 +122,28 @@ describe("deleting", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(del).toHaveBeenCalledExactlyOnceWith("/roster-qa/conversations");
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["roster-qa-conversations"] });
+  });
+});
+
+describe("asking a question", () => {
+  it("refetches the index, because the answer moved this conversation to the top of it", async () => {
+    vi.spyOn(agentHttp, "post").mockResolvedValue({
+      data: { answer: "Ada Lovelace does.", threadId: SUMMARY.id, modelId: "m" },
+    } as never);
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+
+    const { result } = renderHook(() => useRosterQa(), { wrapper });
+    result.current.mutate({ question: "Who knows React?" });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    // `exact`, and the word is the assertion: the detail query is keyed under the same prefix, so
+    // a non-exact invalidation refetches the transcript the dock has just appended this answer to
+    // and the answer renders twice. The delete paths above invalidate the prefix on purpose.
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: ["roster-qa-conversations"],
+      exact: true,
+    });
+    // …and the ledger it always invalidated, which a second key must not have displaced.
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["usage"] });
   });
 });
