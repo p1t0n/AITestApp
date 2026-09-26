@@ -4,7 +4,6 @@ using ExpertToJob.ToolSelectionEval;
 using FluentAssertions;
 using Microsoft.Extensions.AI;
 using OpenAI;
-using System.ClientModel;
 using Xunit;
 using Xunit.Abstractions;
 

@@ -34,8 +34,7 @@ public class RetrievalEvalLiveTests
             string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GEMINI_API_KEY")),
             "Live retrieval eval needs a Gemini API key in GEMINI_API_KEY.");
 
-        await using var postgres = new PostgreSqlBuilder()
-            .WithImage("pgvector/pgvector:pg17")
+        await using var postgres = new PostgreSqlBuilder("pgvector/pgvector:pg17")
             .Build();
         await postgres.StartAsync();
 

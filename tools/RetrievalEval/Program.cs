@@ -47,8 +47,7 @@ var goldenSet = EvalFixtures.LoadGoldenSet();
 var floor = Math.Max(0, options.Thresholds.Min() - (options.Refine ? RefineRadius : 0));
 
 Console.Error.WriteLine("Starting pgvector container...");
-await using var postgres = new PostgreSqlBuilder()
-    .WithImage("pgvector/pgvector:pg17")
+await using var postgres = new PostgreSqlBuilder("pgvector/pgvector:pg17")
     .Build();
 await postgres.StartAsync();
 
