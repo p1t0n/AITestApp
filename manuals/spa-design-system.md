@@ -497,6 +497,7 @@ now.
 | The CV sheet's visual design | Client-facing artifact — §7 |
 | Agent Surface IA | Settled by P1T-152; a re-skin is not the place to reopen it |
 | Accessible name `Search` on the rail's palette row | The e2e suite tabs to it and clicks it by name (`e2e/command-palette.e2e.ts`, `e2e/shell.e2e.ts`) |
+| Accessible names `Conversation history`, `New conversation`, `Close history`, `Delete conversation "<title>"`, `Delete all conversations` | The Roster Q&A history drawer's whole surface area (EXP-34, `manuals/adr-roster-qa-conversation-history.md` §7). Frozen on arrival for the reason slice 5's close control was: these are five controls with no visible text at all, so the name *is* the control — to a screen reader and to both suites (`AgentWidget.conversations.test.tsx`, `e2e/roster-qa-history.e2e.ts`). One of them is templated on a title the owner typed, which is the only accessible name in the app that is not a literal |
 
 ## 10. Slices
 
