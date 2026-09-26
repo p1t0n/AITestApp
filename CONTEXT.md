@@ -334,6 +334,14 @@ cannot see a long loop of individually tiny calls. A safety net sized well above
 crossing it is an incident, staying under it is unremarkable.
 _Avoid_: token cap, quota (that is the per-user limit, a different thing)
 
+**Tool Result Budget**:
+The ceiling on one tool result as the model is shown it. Past it, the result is withheld and the
+model is told to narrow the call. Sibling to the Runtime Budget: the Runtime Budget is checked
+before each call against what the run has spent, so it cannot stop the one call that carries a
+single oversized result. Bounds what the model sees, not what the tool returns — code that calls
+the same tool still gets all of it.
+_Avoid_: truncation (nothing is cut mid-payload), paging (the tool is unchanged)
+
 **Closing Turn**:
 What a run gets instead of a truncation once its Runtime Budget is spent: tools are withdrawn
 (`ToolMode = None`) and the model is asked for its answer from the evidence already in hand. The
