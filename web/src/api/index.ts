@@ -37,6 +37,7 @@ export * from "./agents/usage";
 export * from "./agents/models";
 export * from "./agents/shared";
 export * from "./agents/rosterQa";
+export * from "./agents/conversations";
 export * from "./agents/tailoring";
 export * from "./agents/match";
 export * from "./agents/bench";
