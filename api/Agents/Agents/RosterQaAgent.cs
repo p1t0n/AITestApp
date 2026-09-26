@@ -123,9 +123,16 @@ public sealed class RosterQaAgent : IChatAgent
         }
 
         var run = metering.Snapshot();
+
+        // Grounded is the note's own condition, not a reading of the text (EXP-36): false exactly
+        // when the block above appended UngroundedNote. A tool-less agent (tests only) has nothing
+        // to verify and nothing to degrade, so its answer is not called ungrounded.
+        var grounded = !_hasTools || capture.Captured;
+
         return new AgentReply(
             text, inputTokens, outputTokens, totalTokens,
-            run.ModelId, run.LatencyMs, run.Iterations, run.ToolSequence, run.Degradation);
+            run.ModelId, run.LatencyMs, run.Iterations, run.ToolSequence, run.Degradation,
+            Grounded: grounded, TouchedExpertIds: capture.TouchedExpertIds);
     }
 
     private async Task<AIAgent> GetAgentAsync(CancellationToken ct)

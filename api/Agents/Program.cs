@@ -92,7 +92,10 @@ builder.Services.AddScoped<IUsageMeter, UsageMeter>();
 builder.Services.AddScoped<IUsageService, UsageService>();
 
 builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddSingleton<RosterQaThreadStore>();
+
+// Roster Q&A conversations are rows now, not memory (EXP-36, ADR §2): scoped, because it writes
+// through the request's IAppDbContext like every other store in this host.
+builder.Services.AddScoped<RosterQaConversationStore>();
 
 // Roster Q&A conversation retention (EXP-35, ADR §6): a daily sweep that hard-deletes a
 // conversation six calendar months after its last turn, cascading to the turns and their
@@ -284,13 +287,16 @@ app.MapGet("/agents/models", (ChatModelCatalog catalog) => Results.Ok(
     .RequireAuthorization();
 
 // POST /agents/roster-qa  { "question": "...", "threadId"?: "..." }  ->  { "answer": "...", "threadId": "..." }
-// Threaded sessions (P1T-93): an omitted/unknown/expired threadId transparently starts a fresh
-// thread — the client detects context loss by the returned id changing. History is bounded by
-// the store (last 10 turns) and its tokens are metered like any other prompt tokens.
+// Durable conversations (EXP-36, ADR §4): the request and response shapes are unchanged, and
+// threadId is now the conversation id. An omitted id, an unknown one, or one belonging to someone
+// else transparently starts a fresh conversation — the client still detects context loss by the
+// returned id changing, which is what keeps the SPA's existing notice working. History is bounded
+// by the store (last 10 turns, paused Experts masked out) and its tokens are metered like any
+// other prompt tokens.
 app.MapPost("/agents/roster-qa", async (
     RosterQaRequest request,
     IEnumerable<IChatAgent> agents,
-    RosterQaThreadStore threads,
+    RosterQaConversationStore conversations,
     ClaimsPrincipal user,
     IUsageMeter meter,
     IUsageService usage,
@@ -310,15 +316,15 @@ app.MapPost("/agents/roster-qa", async (
     var agent = (RosterQaAgent)agents.First(a => a.Name == "roster-qa");
     try
     {
-        var thread = threads.Resolve(userId, request.ThreadId);
-        var reply = await agent.AskAsync(request.Question, thread.History, ct);
+        var conversation = await conversations.ResolveAsync(userId, request.ThreadId, ct);
+        var reply = await agent.AskAsync(request.Question, conversation.History, ct);
         if (userId is { } uid)
         {
             await meter.RecordAsync(uid, agent.Name, reply, ct: ct);
         }
 
-        threads.Append(userId, thread.ThreadId, request.Question, reply.Text);
-        return Results.Ok(new RosterQaResponse(reply.Text, thread.ThreadId, reply.ModelId));
+        await conversations.AppendAsync(userId, conversation, request.Question, reply, ct);
+        return Results.Ok(new RosterQaResponse(reply.Text, conversation.Id.ToString(), reply.ModelId));
     }
     catch (HttpRequestException ex)
     {
