@@ -33,6 +33,15 @@ const IMAGE = "pgvector/pgvector:pg17";
 const VISUAL = process.env.E2E_VISUAL === "1";
 
 /**
+ * The functional suite against the same pinned container browser (EXP-38). Opt-in, and for one
+ * reason: Ralph's sandbox has Docker and can pull the Playwright image, but its egress allowlist
+ * blocks the browser download `playwright install` does, so the ordinary run fails on every spec
+ * with `Executable doesn't exist`. Native architecture here — only the visual pass needs the
+ * amd64 pin, because only it compares pixels.
+ */
+const CONTAINER_BROWSER = VISUAL || process.env.E2E_CONTAINER_BROWSER === "1";
+
+/**
  * Which chat provider the stack under test is configured with. The Art. 15 recipient category names
  * it to the data subject (EXP-21), so the privacy spec has to assert the provider this stack is
  * actually running rather than a literal that would keep passing after the provider moved. Set here
@@ -84,8 +93,10 @@ async function startBrowserServer() {
     // One architecture for every baseline. CI runs on amd64 and a developer's Mac is arm64, and
     // the image is multi-arch — so without this the two would render with different Chromium
     // builds and a baseline committed from a laptop would be red the moment CI looked at it.
-    // Emulated here, which costs a few seconds and buys the only thing a baseline is worth.
-    "--platform", "linux/amd64",
+    // Emulated here, which costs a few seconds and buys the only thing a baseline is worth. A
+    // functional run compares no pixels, so it takes the host's own architecture and skips the
+    // emulation.
+    ...(VISUAL ? ["--platform", "linux/amd64"] : []),
     // Chromium's default 64MB /dev/shm makes a headless tab die under a full-page screenshot.
     "--ipc=host",
     // Linux runners have no `host.docker.internal`; Docker Desktop provides it already, and
@@ -214,7 +225,7 @@ async function main() {
     await startDatabase();
     await runMigrator();
     api = await startApi();
-    if (VISUAL) await startBrowserServer();
+    if (CONTAINER_BROWSER) await startBrowserServer();
 
     const playwright = spawn(
       "npx",
@@ -225,9 +236,9 @@ async function main() {
           ...process.env,
           E2E_BASE_URL: `http://localhost:${PORTS.spa}`,
           E2E_CHAT_PROVIDER: CHAT_PROVIDER,
-          // Read by the `visual` project in `playwright.config.ts`. Only set for a visual run, so
-          // the ordinary suite keeps launching a local browser and needs no Docker image.
-          ...(VISUAL ? { E2E_BROWSER_WS: `ws://localhost:${PORTS.browser}/` } : {}),
+          // Read by `playwright.config.ts`. Only set for a visual or container-browser run, so the
+          // ordinary suite keeps launching a local browser and needs no Docker image.
+          ...(CONTAINER_BROWSER ? { E2E_BROWSER_WS: `ws://localhost:${PORTS.browser}/` } : {}),
         },
       },
     );

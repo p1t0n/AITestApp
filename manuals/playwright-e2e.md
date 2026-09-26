@@ -20,6 +20,14 @@ web/
 
 `npm run test:e2e` is the whole entry point. It needs Docker and nothing else running.
 
+`npm run test:e2e:container` runs the same functional suite against the pinned
+`mcr.microsoft.com/playwright` image the visual net uses, rather than a browser Playwright downloads
+(EXP-38). It exists for environments that have Docker but cannot reach Playwright's browser CDN,
+Ralph's sandbox being the one that prompted it. It needs no `npx playwright install` at all. It
+runs on the host's own architecture, since it compares no pixels, and the visual specs stay skipped
+in it: only `npm run test:visual` pins the renderer to linux/amd64, and only that run may compare
+against a baseline.
+
 ## Decisions
 
 **The run owns its stack, on its own ports.** `e2e/run.mjs` starts a throwaway `pgvector` container

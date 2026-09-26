@@ -27,8 +27,8 @@ and never let one block you — read it as a pointer to the commit or manual tha
 4. **Build it TDD.** Red, green, refactor. The ticket's acceptance criteria are the spec; do not
    invent scope beyond them and do not silently drop a criterion you found inconvenient.
 5. **Prove it.** Run the full suite: `dotnet test --filter "Category!=e2e&Category!=live"`, plus
-   `npm test`, `npm run typecheck`, `npm run lint` **and `npm run test:e2e`** in `web/` if you
-   touched the SPA — the e2e suite owns its own stack and needs Docker, and it is the only thing
+   `npm test`, `npm run typecheck`, `npm run lint` **and `npm run test:e2e:container`** in `web/`
+   if you touched the SPA — the e2e suite owns its own stack and needs Docker, and it is the only thing
    that sees a real cascade, a real print media and a real browser. A theme change that passes
    jsdom and breaks Playwright is a normal Tuesday. Green before you commit. If it will not go
    green, say so in the ticket and stop — do not commit red.
@@ -93,9 +93,12 @@ and never let one block you — read it as a pointer to the commit or manual tha
      returns 403 for every SDK download host. If `dotnet: command not found` ever greets you, the
      sandbox was created without the saved template; say so in the ticket rather than working
      around it, and fall back to CI.
-   * `npm run test:e2e` — **no**. The stack starts, but Playwright's browser download is blocked
-     by the same allowlist, so every spec fails on `browserType.launch: Executable doesn't exist`.
-     Leave e2e to CI, which runs it on every PR.
+   * `npm run test:e2e:container` — **yes** (EXP-38). Plain `npm run test:e2e` still fails on
+     every spec with `browserType.launch: Executable doesn't exist`, because the allowlist blocks
+     Playwright's browser download. The `:container` variant runs the same suite against the
+     official `mcr.microsoft.com/playwright` image instead, which this sandbox's Docker *can* pull
+     (measured 2026-09-26). So e2e is yours to run before the PR, not CI's to discover.
+     `npm run test:visual` is not measured here; leave the visual net to CI.
    * A browser, a dashboard, anything you look at — no. If a ticket's acceptance needs eyes, say
      so and leave that criterion to a human rather than asserting it.
 
