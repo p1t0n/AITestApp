@@ -38,6 +38,10 @@ import {
 import type { Category, CategoryNode } from "../types";
 import { ErrorNotice } from "../components/ErrorNotice";
 import PageHeader from "../components/PageHeader";
+// PROTOTYPE — throwaway, branch prototype/table-conventions only.
+import { useSearchParams } from "react-router";
+import PrototypeSwitcher from "../components/PrototypeSwitcher";
+import { CatalogPagePrototype, catalogVariants } from "./CatalogPage.prototype";
 
 type EditState = { kind: "category" | "skill"; id: string } | null;
 // Adding a new node: a skill or subcategory under `parentId` (a category id),
@@ -79,6 +83,13 @@ function descendantsOf(id: string, categories: Category[]): Set<string> {
 }
 
 export default function CatalogPage() {
+  const [params] = useSearchParams();
+  const variant = params.get("variant") ?? "";
+  if (variant) return <CatalogPagePrototype variant={variant} />;
+  return <CatalogTree />;
+}
+
+function CatalogTree() {
   const { data: tree, isLoading } = useCategoryTree();
   const { data: categories } = useCategories();
   const createCategory = useCreateCategory();
@@ -391,6 +402,7 @@ export default function CatalogPage() {
           )}
         </List>
       </Paper>
+      {!import.meta.env.PROD && <PrototypeSwitcher variants={catalogVariants} />}
 
       <Menu anchorEl={menu?.anchor} open={!!menu} onClose={() => setMenu(null)}>
         <MenuItem
