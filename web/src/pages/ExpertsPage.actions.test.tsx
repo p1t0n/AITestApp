@@ -264,6 +264,12 @@ describe("Refine these results", () => {
     const user = userEvent.setup();
     renderPage();
 
+    // Before anything is typed the box itself says it; afterwards the count does. Between them
+    // there is no moment where the page lets a refine be mistaken for a roster search.
+    expect(screen.getByLabelText("Refine these results")).toHaveProperty(
+      "placeholder",
+      "This page only",
+    );
     expect(screen.getByText("Showing 1–25 of 312")).toBeVisible();
 
     await user.type(screen.getByLabelText("Refine these results"), "hopper");

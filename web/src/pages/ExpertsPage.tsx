@@ -422,7 +422,10 @@ export default function ExpertsPage() {
               }}
               // Said at the control, not only in the count below it: somebody who types a name here
               // and sees nothing has to be able to tell "not on the roster" from "not on this page".
-              helperText="This page only"
+              // A placeholder rather than helper text, which would make this box taller than the
+              // sort beside it and push the whole table down a line to say six words. It hands over
+              // to the count the moment there is a count to hand over to.
+              placeholder="This page only"
             />
             <FormControl size="small" sx={{ minWidth: 180 }}>
               <InputLabel id="roster-sort-label">Sort by</InputLabel>
