@@ -10,7 +10,7 @@ test.describe("roster round trip", () => {
   test("a new CV created in the UI is listed, opens, and renders as a CV", async ({ page }) => {
     const expertEmail = uniqueEmail("ada");
 
-    await page.getByRole("button", { name: "New CV" }).click();
+    await page.getByRole("button", { name: "New expert" }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("First name").fill("Ada");
     await dialog.getByLabel("Last name").fill("Lovelace");
@@ -39,7 +39,7 @@ test.describe("roster round trip", () => {
   test("the CV page downloads a PDF from the server", async ({ page }) => {
     const expertEmail = uniqueEmail("grace");
 
-    await page.getByRole("button", { name: "New CV" }).click();
+    await page.getByRole("button", { name: "New expert" }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("First name").fill("Grace");
     await dialog.getByLabel("Last name").fill("Hopper");
@@ -62,7 +62,7 @@ test.describe("roster round trip", () => {
   test("a validation failure from the API is shown in the dialog, not swallowed", async ({
     page,
   }) => {
-    await page.getByRole("button", { name: "New CV" }).click();
+    await page.getByRole("button", { name: "New expert" }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("First name").fill("");
     await dialog.getByLabel("Last name").fill("Nameless");

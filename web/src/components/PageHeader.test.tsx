@@ -69,20 +69,20 @@ afterEach(() => vi.restoreAllMocks());
 
 describe("PageHeader", () => {
   it("renders the title as the page's h1, not as styled text", () => {
-    renderHeader(<PageHeader title="CVs" width="wide" />);
+    renderHeader(<PageHeader title="Experts" width="wide" />);
 
     // The frozen accessible name, reached the way `e2e/auth.e2e.ts` reaches it.
-    expect(screen.getByRole("heading", { level: 1, name: "CVs" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Experts" })).toBeInTheDocument();
   });
 
   it("puts the actions in the strip and the body under it", () => {
     renderHeader(
-      <PageHeader title="CVs" width="wide" actions={<button>New CV</button>}>
+      <PageHeader title="Experts" width="wide" actions={<button>New expert</button>}>
         <div>the roster</div>
       </PageHeader>,
     );
 
-    expect(strip()).toContainElement(screen.getByRole("button", { name: "New CV" }));
+    expect(strip()).toContainElement(screen.getByRole("button", { name: "New expert" }));
     expect(strip()).not.toContainElement(screen.getByText("the roster"));
   });
 
@@ -114,7 +114,7 @@ describe("PageHeader", () => {
   });
 
   it("sticks under whatever the rail says it is covering, rather than guessing", () => {
-    renderHeader(<PageHeader title="CVs" width="wide" />);
+    renderHeader(<PageHeader title="Experts" width="wide" />);
 
     expect(getComputedStyle(strip()).position).toBe("sticky");
     // Read from the rail's published property with a zero fallback — the same contract as the two
@@ -123,7 +123,7 @@ describe("PageHeader", () => {
   });
 
   it("shows no border at rest and one once the strip is actually pinned", () => {
-    renderHeader(<PageHeader title="CVs" width="wide" />);
+    renderHeader(<PageHeader title="Experts" width="wide" />);
 
     // Transparent rather than absent: the border is always 1px, so gaining it moves nothing.
     expect(getComputedStyle(strip()).borderBottomColor).toBe("rgba(0, 0, 0, 0)");
@@ -147,13 +147,13 @@ describe("PageHeader", () => {
   });
 
   it("is opaque in both modes, or the page scrolls through the pinned strip", () => {
-    const { unmount } = renderHeader(<PageHeader title="CVs" width="wide" />);
+    const { unmount } = renderHeader(<PageHeader title="Experts" width="wide" />);
     expect(getComputedStyle(strip()).backgroundColor).toBe(
       rgb(lightTheme.palette.background.default),
     );
     unmount();
 
-    renderHeader(<PageHeader title="CVs" width="wide" />, darkTheme);
+    renderHeader(<PageHeader title="Experts" width="wide" />, darkTheme);
     expect(getComputedStyle(strip()).backgroundColor).toBe(
       rgb(darkTheme.palette.background.default),
     );
@@ -162,7 +162,7 @@ describe("PageHeader", () => {
 
 describe("per-page width", () => {
   it("caps a table page at the wide measure", () => {
-    renderHeader(<PageHeader title="CVs" width="wide" />);
+    renderHeader(<PageHeader title="Experts" width="wide" />);
 
     expect(getComputedStyle(container()).maxWidth).toBe(`${PAGE_MAX_WIDTH.wide}px`);
   });
@@ -175,7 +175,7 @@ describe("per-page width", () => {
 
   it("is one declaration for the header and the body, which is why the body comes through here", () => {
     renderHeader(
-      <PageHeader title="CVs" width="wide">
+      <PageHeader title="Experts" width="wide">
         <div>the roster</div>
       </PageHeader>,
     );

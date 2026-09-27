@@ -154,8 +154,10 @@ server, where the audience is declared per endpoint and the fallback is staff-on
 ```
 /signin  /signup  /recover          public
 
+/                                   → landingFor(role)
+
                                     ServiceManager
-/                                     ExpertsPage
+/experts                              ExpertsPage
 /experts/:id                          ExpertDetailPage
 /experts/:id/cv                       CvPage
 /catalog                              CatalogPage
@@ -171,6 +173,11 @@ server, where the audience is declared per endpoint and the fallback is staff-on
 A signed-in person who asks for a route their role cannot have goes to **their own landing page,
 never `/signin`** — sending them to the gate would claim they are signed out, and offer them a
 second account they do not have. `landingFor` is the one place that decides where that is.
+
+`/` is a way in rather than a page (EXP-44): it renders nothing and hands whoever arrives on it to
+`landingFor` — `/experts` for an Administrator, `/me/cv` for a User, the gate for no session. It is
+the one route outside `RequireAuth`, because both audiences pass through it, and it is why the
+roster now lives at `/experts` beside the pages about one expert instead of sitting on the root.
 
 Every page is a static import — no `React.lazy`, no `Suspense`, so the bundle is one chunk. At 38
 files that is a defensible trade; it is worth revisiting only if a heavy dependency lands.

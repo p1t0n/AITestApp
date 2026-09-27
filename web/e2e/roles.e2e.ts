@@ -24,7 +24,7 @@ test.describe("role split", () => {
     // Exactly two places, and none of the staff chrome: the roster is other people's CVs.
     await expect(page.getByRole("link", { name: "My CV" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Privacy & data" })).toBeVisible();
-    for (const staffPlace of ["CVs", "Skill Catalog", "Users"]) {
+    for (const staffPlace of ["Experts", "Skill Catalog", "Users"]) {
       await expect(page.getByRole("link", { name: staffPlace })).toHaveCount(0);
     }
   });
@@ -42,6 +42,12 @@ test.describe("role split", () => {
     await expect(page.getByRole("heading", { name: "My CV" })).toBeVisible();
     // The point of the redirect: not the gate.
     await expect(page.getByRole("heading", { name: "Sign in" })).toHaveCount(0);
+
+    // `/` is a staff route no longer, but it is not theirs either: since EXP-44 it is the landing,
+    // and it sends each audience to its own home rather than rendering anything itself.
+    await page.goto("/");
+
+    await expect(page).toHaveURL(/\/me\/cv$/);
   });
 
   test("the API refuses a User's session on a staff endpoint", async ({ context, page }) => {
@@ -75,7 +81,7 @@ test.describe("role split", () => {
 
     // An Administrator puts them on the bench first.
     await signUp(page);
-    await page.getByRole("button", { name: "New CV" }).click();
+    await page.getByRole("button", { name: "New expert" }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("First name").fill("Unclaimed");
     await dialog.getByLabel("Last name").fill("Person");
@@ -95,12 +101,13 @@ test.describe("role split", () => {
     await expect(page.getByRole("heading", { name: "My CV" })).toHaveCount(0);
   });
 
-  test("an Administrator still lands on the roster", async ({ context, page }) => {
+  test("an Administrator still lands on the roster, now at /experts", async ({ context, page }) => {
     await addVirtualAuthenticator(context, page);
 
     await signUp(page);
 
-    await expect(page.getByRole("heading", { name: "CVs" })).toBeVisible();
+    await expect(page).toHaveURL(/\/experts$/);
+    await expect(page.getByRole("heading", { name: "Experts" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Users" })).toBeVisible();
   });
 });

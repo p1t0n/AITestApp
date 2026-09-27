@@ -490,7 +490,7 @@ now.
 | Frozen | Why |
 |---|---|
 | Every `data-testid` hook the app emits — 39 at the end of the chain, and the count moves | The unit suite's grip on the DOM; renaming one is a silent test deletion. Held by `src/frozenHooks.test.ts`, which holds the *names* and is the inventory — a number in this table is a copy that goes stale (it did: `row-*` in P1T-191, then `users-role-select` and `users-role-confirm` in P1T-239, arrived in the test and not here). That a hook is still on the right element is held by the suite that queries it |
-| Accessible names `Sign out`, `CVs`, `Sign in` | The e2e suite asserts by role + name (`e2e/auth.e2e.ts`) |
+| Accessible names `Sign out`, `Experts`, `Sign in` | The e2e suite asserts by role + name (`e2e/auth.e2e.ts`). `Experts` was `CVs` until EXP-44 renamed the place — the roster lists people, and a CV is a document about one of them. Renamed, not loosened: every assertion moved to the new name in the same commit, and the same commit moved the place's route from `/` to `/experts` (`/` is now a landing that redirects by role through `landingFor`) |
 | The dock's push contract (`DOCK_PUSH_VAR`) | The rail copies it; changing it breaks both edges at once |
 | Accessible name `Open the agents assistant` | The dock's own entry point, asserted by the e2e suite and the screenshot pass |
 | Accessible names `Close the agents assistant`, `Resize the agents dock` | Added by slice 5 and frozen on arrival: the close control had no name at all before it, and the handle is only reachable by one |

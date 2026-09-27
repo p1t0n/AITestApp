@@ -15,6 +15,16 @@ for what the product sells rather than for an employment relationship — an Exp
 employed by whoever runs the instance, and the word has to survive contractors and bench.
 _Avoid_: employee, candidate (a candidate is an Expert in the context of one Job), resource
 
+**Roster**:
+Every Expert the instance holds, whatever their state — Draft, Active or [Paused]. What an
+Administrator manages, and what the staff place called Experts lists.
+_Avoid_: bench (that is the part being offered), pool, CVs (a CV is a document about one Expert)
+
+**Bench**:
+The part of the Roster currently being offered for work: published (Active) and not [Paused]. The
+only part any agent, search, Match or Roster Scan reaches.
+_Avoid_: roster (the whole set), available (that is capacity, a different axis)
+
 **Job**:
 The work an Expert is being considered for, as described by the job description an Administrator
 brings in. The unit a Match, a Shortlist and a Proposal are all _about_: none of them mean

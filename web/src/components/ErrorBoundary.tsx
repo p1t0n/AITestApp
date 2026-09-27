@@ -67,10 +67,10 @@ export function PageErrorFallback({ error, reset }: { error: Error; reset: () =>
           variant="contained"
           onClick={() => {
             reset();
-            navigate("/");
+            navigate("/experts");
           }}
         >
-          Back to CVs
+          Back to Experts
         </Button>
       </Stack>
     </Paper>

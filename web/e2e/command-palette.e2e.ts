@@ -38,7 +38,7 @@ test.describe("the command palette", () => {
   test("opens on the real keystroke with focus in its input, and closes on Escape", async ({
     page,
   }) => {
-    await expect(page.getByRole("link", { name: "CVs" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Experts" })).toBeVisible();
 
     await pressHotkey(page);
     await expect(palette(page)).toBeVisible();
@@ -67,7 +67,7 @@ test.describe("the command palette", () => {
     // The first row is highlighted from the moment it opens, so Enter alone is a whole gesture.
     // Two rows, two resolved colours: `Mui-selected` emitting a rule proves nothing about whether
     // it won, which is the standing lesson of this chain (`manuals/spa-design-system.md` §11).
-    const first = await backgroundOf(page, "CVs");
+    const first = await backgroundOf(page, "Experts");
     const second = await backgroundOf(page, "Skill Catalog");
     expect(first).not.toBe(second);
   });
@@ -77,7 +77,7 @@ test.describe("the command palette", () => {
     await pressHotkey(page);
     await expect(palette(page)).toBeVisible();
 
-    // Down twice from `CVs`: Skill Catalog, then Users.
+    // Down twice from `Experts`: Skill Catalog, then Users.
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("Enter");
@@ -89,7 +89,7 @@ test.describe("the command palette", () => {
   test("finds a person by name and jumps to them", async ({ page }) => {
     // This spec owns its own row, like every other spec against the shared e2e roster — a name no
     // other spec creates, or two rows would make every `getByRole("row", …)` in the suite ambiguous.
-    await page.getByRole("button", { name: "New CV" }).click();
+    await page.getByRole("button", { name: "New expert" }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("First name").fill("Evelyn");
     await dialog.getByLabel("Last name").fill("Granville");

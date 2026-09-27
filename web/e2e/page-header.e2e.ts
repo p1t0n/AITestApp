@@ -36,7 +36,7 @@ function pageBox(page: Page) {
  * Margaret Hamilton, Annie Easley, Evelyn Granville.
  */
 async function seed(page: Page, first: string, last: string) {
-  await page.getByRole("button", { name: "New CV" }).click();
+  await page.getByRole("button", { name: "New expert" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("First name").fill(first);
   await dialog.getByLabel("Last name").fill(last);
@@ -62,7 +62,7 @@ test.describe("the page header", () => {
     // is a page that scrolls whatever else is in the table.
     await page.setViewportSize({ width: 1440, height: 200 });
     const strip = stripBox(page);
-    await expect(heading(page, "CVs")).toBeVisible();
+    await expect(heading(page, "Experts")).toBeVisible();
     expect(
       await page.evaluate(() => document.documentElement.scrollHeight > window.innerHeight),
     ).toBe(true);
@@ -92,7 +92,7 @@ test.describe("the page header", () => {
       return Number.parseFloat(/rgba\([^)]*?,\s*([\d.]+)\)/.exec(bg)?.[1] ?? "1");
     });
     expect(alpha).toBe(1);
-    await expect(heading(page, "CVs")).toBeVisible();
+    await expect(heading(page, "Experts")).toBeVisible();
   });
 
   test("pins under the rail's mobile bar, which is the inset the rail publishes", async ({
@@ -128,7 +128,7 @@ test.describe("the page header", () => {
     page,
   }) => {
     await seed(page, "Margaret", "Hamilton");
-    await expect(heading(page, "CVs")).toBeVisible();
+    await expect(heading(page, "Experts")).toBeVisible();
     const roster = (await pageBox(page).boundingBox())!;
 
     // The roster is `wide`; `lg` used to cap it at 1200 for everybody. At 1440 with a 240px rail
@@ -149,8 +149,8 @@ test.describe("the page header", () => {
 
     // Docking the assistant takes room out of the middle column, and the page gives it up — which
     // is the thing a global container centred inside the leftovers could not do honestly.
-    await page.goto("/");
-    await expect(heading(page, "CVs")).toBeVisible();
+    await page.goto("/experts");
+    await expect(heading(page, "Experts")).toBeVisible();
     await page.getByRole("button", { name: "Open the agents assistant" }).click();
     const dockIt = page.getByRole("button", { name: "Dock to side" });
     if (await dockIt.count()) await dockIt.click();

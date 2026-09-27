@@ -63,7 +63,7 @@ async function seedExpert(page: Page, mode: keyof typeof PEOPLE): Promise<string
   const who = PEOPLE[mode];
   const fullName = `${who.first} ${who.last}`;
 
-  await page.getByRole("button", { name: "New CV" }).click();
+  await page.getByRole("button", { name: "New expert" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("First name").fill(who.first);
   await dialog.getByLabel("Last name").fill(who.last);
@@ -93,7 +93,7 @@ async function seedRoster(page: Page, mode: keyof typeof PEOPLE) {
   const half = mode === "light" ? BENCH.slice(0, 7) : BENCH.slice(7);
 
   for (const [first, last] of half) {
-    await page.getByRole("button", { name: "New CV" }).click();
+    await page.getByRole("button", { name: "New expert" }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("First name").fill(first);
     await dialog.getByLabel("Last name").fill(last);
@@ -138,8 +138,8 @@ for (const mode of ["light", "dark"] as const) {
 
       const detailUrl = await seedExpert(page, mode);
 
-      await page.goto("/");
-      await expect(page.getByRole("button", { name: "New CV" })).toBeVisible();
+      await page.goto("/experts");
+      await expect(page.getByRole("button", { name: "New expert" })).toBeVisible();
       await shoot(page, mode, "2-roster");
 
       const fullName = `${PEOPLE[mode].first} ${PEOPLE[mode].last}`;
@@ -167,7 +167,7 @@ for (const mode of ["light", "dark"] as const) {
 
       // The dock last, over the roster: it is the app's signature surface and needs a page under
       // it to read as a dock rather than as a panel.
-      await page.goto("/");
+      await page.goto("/experts");
       await page.getByRole("button", { name: "Open the agents assistant" }).click();
       // The picker, not the dock/float control: the dock opens floating here, so `Float` does not
       // exist yet and `boundingBox` would auto-wait for an element that never arrives.
@@ -176,8 +176,8 @@ for (const mode of ["light", "dark"] as const) {
 
       // The shell's two extra states, from P1T-161. Both are the rail rather than a page, so they
       // are shot over the roster: a rail with nothing beside it says nothing about the layout.
-      await page.goto("/");
-      await expect(page.getByRole("button", { name: "New CV" })).toBeVisible();
+      await page.goto("/experts");
+      await expect(page.getByRole("button", { name: "New expert" })).toBeVisible();
       await page.getByRole("button", { name: "Collapse the navigation rail" }).click();
       const expand = page.getByRole("button", { name: "Expand the navigation rail" });
       await expect(expand).toBeVisible();
@@ -196,8 +196,8 @@ for (const mode of ["light", "dark"] as const) {
       // Not `fullPage` — a full-page capture photographs the whole document and so unpins the
       // strip, leaving the one thing this image exists to show out of it.
       await page.setViewportSize({ width: 1440, height: 900 });
-      await page.goto("/");
-      await expect(page.getByRole("heading", { level: 1, name: "CVs" })).toBeVisible();
+      await page.goto("/experts");
+      await expect(page.getByRole("heading", { level: 1, name: "Experts" })).toBeVisible();
       await seedRoster(page, mode);
 
       // Sized off the document rather than guessed. The two modes run against one database and the
@@ -221,8 +221,8 @@ for (const mode of ["light", "dark"] as const) {
       // Numbered after the existing ten so a reader comparing slices keeps 1–10 meaning what they
       // meant in slices 1–4.
       await page.setViewportSize({ width: 1440, height: 900 });
-      await page.goto("/");
-      await expect(page.getByRole("button", { name: "New CV" })).toBeVisible();
+      await page.goto("/experts");
+      await expect(page.getByRole("button", { name: "New expert" })).toBeVisible();
       const bubble = page.getByRole("button", { name: "Open the agents assistant" });
       await settled(bubble);
       await shoot(page, mode, "11-dock-closed");
