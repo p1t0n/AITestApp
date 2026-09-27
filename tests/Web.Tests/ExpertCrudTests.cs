@@ -3,7 +3,9 @@ using System.Net.Http.Json;
 using ExpertToJob.Application.Availability;
 using ExpertToJob.Application.Experts;
 using ExpertToJob.Domain.Enums;
+using ExpertToJob.Infrastructure.Persistence;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ExpertToJob.Web.Tests;
 
@@ -221,5 +223,53 @@ public class ExpertCrudTests(WebApiFactory factory)
 
         roster!.Select(e => e.Id).Should().Contain(created,
             "the palette and the roster table both read this one response as the whole roster");
+    }
+
+    /// <summary>
+    /// The staff roster is the whole Roster — Draft, Active and Paused (EXP-49). A Draft staged by
+    /// the ingest agent is invisible to the bench by design, but the staff list is the only surface
+    /// from which a human can find it and work the publication gate, so a Draft that appears
+    /// nowhere is a Draft nobody can promote.
+    ///
+    /// <para>The API has no draft-create verb — drafts are agent-staged over MCP — so the status is
+    /// set in the database directly, the same way <c>VisibilityBoundaryTests</c> stages a pause.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Administrator_roster_returns_drafts_active_and_paused_when_drafts_are_asked_for()
+    {
+        var draft = await _client.CreateExpertAsync(ApiClientExtensions.NewExpert(
+            firstName: "Staged", lastName: $"Draft{Guid.NewGuid():N}"));
+        var active = await _client.CreateExpertAsync(ApiClientExtensions.NewExpert(
+            firstName: "Published", lastName: $"Active{Guid.NewGuid():N}"));
+        var paused = await _client.CreateExpertAsync(ApiClientExtensions.NewExpert(
+            firstName: "Self", lastName: $"Paused{Guid.NewGuid():N}"));
+
+        Stage(draft.Id, status: ExpertStatus.Draft);
+        Stage(paused.Id, hiddenAt: DateTimeOffset.UtcNow);
+
+        // The default is still Active-only: the bench list every agent picker reads is unchanged.
+        var bench = await _client.GetFromJsonAsync<List<ExpertSummaryDto>>(
+            "/api/experts", WebApiFactory.Json);
+        bench!.Should().NotContain(e => e.Id == draft.Id, "a Draft is not on the bench");
+        bench.Should().Contain(e => e.Id == active.Id).And.Contain(e => e.Id == paused.Id);
+
+        var roster = await _client.GetFromJsonAsync<List<ExpertSummaryDto>>(
+            "/api/experts?includeDrafts=true", WebApiFactory.Json);
+
+        roster!.Should().Contain(e => e.Id == active.Id).And.Contain(e => e.Id == paused.Id);
+        roster.Single(e => e.Id == draft.Id).Status.Should().Be(ExpertStatus.Draft,
+            "the row carries the status the SPA renders as a Draft chip");
+        roster.Single(e => e.Id == paused.Id).HiddenAt.Should().NotBeNull();
+    }
+
+    private void Stage(Guid expertId, ExpertStatus? status = null, DateTimeOffset? hiddenAt = null)
+    {
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var row = db.Experts.Single(e => e.Id == expertId);
+        if (status is not null) row.Status = status.Value;
+        if (hiddenAt is not null) row.HiddenAt = hiddenAt;
+        db.SaveChanges();
     }
 }

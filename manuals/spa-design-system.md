@@ -609,11 +609,20 @@ decision the re-skin did not: **what the palette searches.** The ticket framed t
 right — "a palette that only searches the loaded page is a lie".
 
 **The decision: filter the cached roster, and no new endpoint.** `GET /api/experts` is unpaged. It
-returns every active expert in one response, which is why the roster page can be a client-side
-table at all. So filtering that same `["experts"]` query *is* searching the whole roster: the
-palette finds exactly what the roster page shows — all of it, drafts excluded — with no second
-definition of what a match is and no second thing to keep in step. The feared lie is a property of
-paging, and there is no paging.
+returns every expert in one response, which is why the roster page can be a client-side table at
+all. So filtering that same cached query *is* searching the whole roster: the palette finds
+exactly what the roster page shows — all of it — with no second definition of what a match is and
+no second thing to keep in step. The feared lie is a property of paging, and there is no paging.
+
+**Two lists, one endpoint** (EXP-49). The query the palette shares with the roster page is
+`useRoster` — `["experts", "roster"]`, `GET /api/experts?includeDrafts=true` — the whole **Roster**:
+Draft, Active and Paused. `useExperts` stays the **bench** (`["experts"]`, Active only) and is what
+the agent widget's three expert pickers offer, because a Draft is agent-staged and unvetted and so
+is nobody to tailor a CV for. Both keys sit under the `["experts"]` prefix, so every existing
+`invalidateQueries({ queryKey: ["experts"] })` still refreshes both. The palette drops a *paused*
+person but keeps a Draft, and the asymmetry is the point: a pause means "do not offer me for work",
+while a Draft is precisely the person somebody has to open in order to publish them — and the
+roster page is the only surface from which that can be found at all.
 
 That is a claim about the *server*, made in the SPA, so it is asserted on the server:
 `Roster_list_returns_every_active_expert_in_one_response` (`tests/Web.Tests/ExpertCrudTests.cs`)
