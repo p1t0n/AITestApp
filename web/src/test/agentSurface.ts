@@ -13,7 +13,12 @@ export const SURFACE_PICKER_NAME = new RegExp(`^${SURFACE_PICKER_LABEL}: `);
  * place to change if the navigation shape moves again.
  */
 export async function selectAgentSurface(user: Clicker, label: string) {
-  await user.click(screen.getByRole("button", { name: SURFACE_PICKER_NAME }));
+  // `getByLabelText` rather than `getByRole("button", { name })` (EXP-43): a name-filtered role
+  // query computes an accessible name for every button in the document, which in a dock holding
+  // several mounted panes measured ~24ms per navigation against ~1ms for the attribute lookup.
+  // No coverage is lost — that the picker is a `button` with this accessible name, and that its
+  // items are `menuitem`s, is asserted directly in `AgentWidget.navigation.test.tsx`.
+  await user.click(screen.getByLabelText(SURFACE_PICKER_NAME));
   await user.click(await screen.findByRole("menuitem", { name: label }));
 }
 

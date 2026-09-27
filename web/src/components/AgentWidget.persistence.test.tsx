@@ -137,11 +137,26 @@ function renderWidget() {
 
 const ledgerButton = () => screen.getByRole("button", { name: "Token usage" });
 
+/**
+ * Put a JD into a pane's job-description field (EXP-43).
+ *
+ * `user.type` costs one React render of the whole tab per keystroke, and this file's panes are the
+ * expensive kind: each holds a MUI Autocomplete that re-renders with every character. Measured in
+ * this file at ~13ms per keystroke, which is what put the drill-in test at the 5s vitest timeout on
+ * CI. A paste is one input event and one render for the whole string, and it is what the field
+ * itself asks for — its placeholder reads "Paste a job description…". The landed value, and so
+ * every assertion about it, is identical.
+ */
+async function pasteJd(user: ReturnType<typeof userEvent.setup>, pane: HTMLElement, jd: string) {
+  await user.click(within(pane).getByPlaceholderText(/paste a job description/i));
+  await user.paste(jd);
+}
+
 /** Fill the expert + JD of a job form (Tailor CV / Match / Interview kit) in its own pane. */
 async function fillJobForm(user: ReturnType<typeof userEvent.setup>, pane: HTMLElement, jd: string) {
   await user.click(within(pane).getByLabelText(/^Expert/));
   await user.click(await screen.findByRole("option", { name: "Ada Lovelace — Senior Engineer" }));
-  await user.type(within(pane).getByPlaceholderText(/paste a job description/i), jd);
+  await pasteJd(user, pane, jd);
 }
 
 beforeEach(() => {
@@ -266,15 +281,23 @@ describe("keeping a surface costs nothing until it is opened (EXP-30)", () => {
 });
 
 describe("drill-ins still land their values (EXP-30)", () => {
+  // The explicit timeout is measured, not guessed (EXP-43). This test ran at 4.4–4.6s on CI against
+  // the 5000ms default and tipped over it on run 36294157069. Profiled per step, its cost is five
+  // surface navigations at ~130ms each — the dock's picker is a MUI `Menu`, so one navigation mounts
+  // and unmounts a Modal holding nine items, and each one re-renders every pane the dock has kept
+  // open. That cost is flat per navigation (no menu, modal or listener accumulates across the test,
+  // checked) and the navigations *are* the spec here: the whole point is that a drill-in replaces
+  // Match after Match was visited by hand, without disturbing a second job form. Two real cuts
+  // landed first — pasting the JDs instead of typing them (`pasteJd`) and an attribute lookup for
+  // the picker (`selectAgentSurface`) — taking it from 1243ms to ~750ms locally, about 40%. What is
+  // left is jsdom rendering MUI, so the timeout is here to catch a hang rather than to price a
+  // slow runner.
   it("replaces the Match form even when Match was visited earlier, and only Match's", async () => {
     const user = renderWidget();
 
     // Match, visited by hand first, with values of its own.
     await selectAgentSurface(user, "Match");
-    await user.type(
-      within(agentSurfacePane("Match")).getByPlaceholderText(/paste a job description/i),
-      "Something else entirely",
-    );
+    await pasteJd(user, agentSurfacePane("Match"), "Something else entirely");
 
     // And a second job form, which the drill-in must not touch.
     await selectAgentSurface(user, "Tailor CV");
@@ -282,10 +305,7 @@ describe("drill-ins still land their values (EXP-30)", () => {
 
     shortlistState.mutateAsync.mockResolvedValue(SHORTLIST);
     await selectAgentSurface(user, "Shortlist");
-    await user.type(
-      within(agentSurfacePane("Shortlist")).getByPlaceholderText(/paste a job description/i),
-      "Senior React engineer",
-    );
+    await pasteJd(user, agentSurfacePane("Shortlist"), "Senior React engineer");
     await user.click(screen.getByRole("button", { name: /build shortlist/i }));
     await user.click(await screen.findByRole("button", { name: /run full match/i }));
 
@@ -307,7 +327,7 @@ describe("drill-ins still land their values (EXP-30)", () => {
     expect(within(agentSurfacePane("Match")).getByPlaceholderText(/paste a job description/i)).toHaveValue(
       "Senior React engineer",
     );
-  });
+  }, 15_000);
 });
 
 describe("error containment is per pane (P1T-153, EXP-30)", () => {
