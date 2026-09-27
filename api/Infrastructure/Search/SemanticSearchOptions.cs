@@ -1,3 +1,5 @@
+using ExpertToJob.Infrastructure.Embeddings;
+
 namespace ExpertToJob.Infrastructure.Search;
 
 /// <summary>Tuning for the semantic roster search query (ranking guardrails).</summary>
@@ -6,11 +8,16 @@ public sealed class SemanticSearchOptions
     public const string Section = "SemanticSearch";
 
     /// <summary>Minimum cosine similarity (0–1) for a chunk to count as a match. Below this it is
-    /// dropped, so an off-topic query returns nothing rather than the least-bad rows. Tuned per
-    /// embedding model: gemini-embedding-001 scores cluster higher than the retired OpenAI model
-    /// did, so the floor sits mid-plateau at 0.55 (sweep 2026-08-01, see
-    /// manuals/retrieval-eval-baseline.md).</summary>
-    public double MinSimilarity { get; set; } = 0.55;
+    /// dropped, so an off-topic query returns nothing rather than the least-bad rows.
+    ///
+    /// <para><b>Not configured here.</b> The floor is calibrated per embedding model, so since
+    /// EXP-64 it comes out of the active provider's own block and <c>AddSearchIndexing</c> writes it
+    /// over whatever this default holds; a leftover <c>SemanticSearch:MinSimilarity</c> throws at
+    /// startup. The default below is the incumbent's value, because an absent
+    /// <c>Ai:Embeddings:Provider</c> means Gemini — read from the provider's own defaults rather
+    /// than spelled again, so the two cannot drift.</para></summary>
+    public double MinSimilarity { get; set; } =
+        EmbeddingOptions.Defaults(EmbeddingsProvider.Gemini).MinSimilarity;
 
     /// <summary>Default number of experts returned when the caller doesn't specify.</summary>
     public int DefaultTopK { get; set; } = 5;

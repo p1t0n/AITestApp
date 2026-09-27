@@ -27,11 +27,19 @@ public class ConfigKeyMigrationTests
     /// <summary>The legacy prefix, never written as one literal — see the class remarks.</summary>
     private const string LegacyPrefix = "Gemini" + ":";
 
-    /// <summary>The needle. The lookbehind is load-bearing rather than cosmetic: the new prefix
-    /// <c>Ai:</c> + the old one is what every migrated site now spells, so a plain substring search
-    /// would flag every correct call site and nothing else. What is left to catch is the prefix
-    /// standing on its own.</summary>
-    private static readonly Regex LegacyKey = new("(?<!Ai:)" + LegacyPrefix, RegexOptions.Compiled);
+    /// <summary>The needle. The lookbehinds are load-bearing rather than cosmetic.
+    ///
+    /// <para><c>Ai:</c> + the old prefix is what every migrated site now spells, so a plain
+    /// substring search would flag every correct call site and nothing else. What is left to catch
+    /// is the prefix standing on its own.</para>
+    ///
+    /// <para>A preceding <c>.</c> or word character is not a configuration path either: since
+    /// EXP-64 the embeddings seam has a <c>case EmbeddingsProvider.Gemini:</c> label, which is a
+    /// member access followed by a colon and spells no key at all. Narrowing to "not member access"
+    /// is not a loosening — a real leftover is always the quoted legacy prefix with a key name
+    /// after it, and the startup throw below covers the half no sweep can see.</para></summary>
+    private static readonly Regex LegacyKey =
+        new(@"(?<![.\w])(?<!Ai:)" + LegacyPrefix, RegexOptions.Compiled);
 
     /// <summary>File extensions the sweep reads. Anything that can spell a configuration key:
     /// source, settings, docs, workflows and shell.</summary>
@@ -46,6 +54,19 @@ public class ConfigKeyMigrationTests
     /// red on any machine that had one and green on CI, which has none (EXP-37).</summary>
     private static readonly string[] SkippedDirectories =
         ["manuals", "docs", "node_modules", "bin", "obj", ".git", ".vs", ".claude", "dist", "test-results", "playwright-report"];
+
+    /// <summary>The needle itself, pinned. The sweep above can only ever report what this regex
+    /// matches, so narrowing it (EXP-64) has to be shown to still catch the thing it is for — a
+    /// sweep that has quietly stopped matching passes in exactly the same silence as a clean tree.
+    /// </summary>
+    [Theory]
+    [InlineData("\"" + LegacyPrefix + "Model\": \"gemini-3.5-flash-lite\"", true)]
+    [InlineData("config[\"" + LegacyPrefix + "ApiKey\"]", true)]
+    [InlineData("[\"Ai:" + LegacyPrefix + "Model\"] = \"x\"", false)]
+    [InlineData("case EmbeddingsProvider.Gemini:", false)]
+    [InlineData("GeminiOptions.Section", false)]
+    public void The_needle_matches_a_leftover_key_and_nothing_else(string line, bool isOffender)
+        => LegacyKey.IsMatch(line).Should().Be(isOffender);
 
     [Fact]
     public void NoLegacyGeminiConfigKeyRemains()
@@ -177,12 +198,16 @@ public class ConfigKeyMigrationTests
     }
 
     /// <summary>The two options classes share the section on purpose — chat and embeddings really
-    /// do share that endpoint and key (ADR §2 decision 3). Asserted rather than assumed, because
-    /// the next rename only has to move one of them to break the pairing quietly.</summary>
+    /// do share that endpoint and key (chat ADR §2 decision 3; embeddings ADR §2 decision 2).
+    /// Asserted rather than assumed, because the next rename only has to move one of them to break
+    /// the pairing quietly. Since EXP-64 the embeddings side is per provider, so it is the Gemini
+    /// mapping that has to equal Gemini's chat block.</summary>
     [Fact]
     public void Chat_and_embeddings_read_the_same_section()
     {
-        Infrastructure.Embeddings.EmbeddingOptions.Section.Should().Be(GeminiOptions.Section);
+        Infrastructure.Embeddings.EmbeddingOptions
+            .SectionFor(Infrastructure.Embeddings.EmbeddingsProvider.Gemini)
+            .Should().Be(GeminiOptions.Section);
         GeminiOptions.Section.Should().Be("Ai:" + LegacyPrefix.TrimEnd(':'));
     }
 

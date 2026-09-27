@@ -1,4 +1,5 @@
 using ExpertToJob.Application.Search;
+using ExpertToJob.Infrastructure.Embeddings;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -19,6 +20,16 @@ public static class SearchIndexingServiceCollectionExtensions
 
         var searchOptions = config.GetSection(SemanticSearchOptions.Section).Get<SemanticSearchOptions>()
                             ?? new SemanticSearchOptions();
+
+        // The similarity floor is the one search setting that belongs to the embedding model rather
+        // than to the search (EXP-64): Gemini's 0.55 hides 70% of the correct matches on Azure
+        // vectors. So it is read from the active provider's block, here, where the single options
+        // object every search path shares is built — that is what makes "all three search paths
+        // take it from the active provider" true by construction rather than by three call sites
+        // remembering to. A leftover global key throws inside ResolveProvider.
+        searchOptions.MinSimilarity =
+            EmbeddingServiceCollectionExtensions.ResolveProvider(config).Options.MinSimilarity;
+
         services.AddSingleton(Options.Create(searchOptions));
 
         // Scoped: share the request/scope AppDbContext; the worker opens a scope per pass.

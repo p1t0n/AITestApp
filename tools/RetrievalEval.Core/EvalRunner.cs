@@ -44,15 +44,18 @@ public static class EvalRunner
 {
     private const int TopK = 5;
 
-    /// <summary>One full eval at the production default threshold (plumbing- and live-test entry).</summary>
+    /// <summary>One full eval at a stated threshold (plumbing- and live-test entry). The threshold
+    /// is a parameter rather than a code default since EXP-64: it belongs to the embedding model,
+    /// and the two providers' plateaus do not overlap, so a caller has to say which floor it is
+    /// measuring against.</summary>
     public static async Task<EvalRunResult> RunAsync(
         Func<AppDbContext> dbFactory,
         IEmbedder embedder,
         IReadOnlyList<EvalExpert> corpus,
         IReadOnlyList<GoldenQuery> goldenSet,
+        double threshold,
         CancellationToken ct = default)
     {
-        var threshold = new SemanticSearchOptions().MinSimilarity;
         var cached = await CaptureAsync(
             dbFactory, embedder, corpus, goldenSet, threshold, QueryRetryPolicy.Default, ct);
         return ToRunResult(cached, threshold);

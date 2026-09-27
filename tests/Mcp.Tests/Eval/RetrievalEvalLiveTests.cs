@@ -14,11 +14,15 @@ using ExpertToJob.RetrievalEval;
 namespace ExpertToJob.Mcp.Tests.Eval;
 
 /// <summary>
-/// The retrieval-quality regression gate: seeds the frozen corpus into real pgvector, embeds it via
-/// the REAL GitHub Models pipeline (real embeddings are the point — fakes measure plumbing, not
-/// meaning), runs the golden set, and asserts recall@5 has not regressed below the committed
-/// baseline. Excluded from the default run; needs Docker and a PAT:
-/// <c>dotnet test --filter "Category=live"</c> with <c>GEMINI_API_KEY</c> set.
+/// The retrieval-quality regression gate: seeds the frozen corpus into real pgvector, embeds it
+/// through the REAL configured provider (real embeddings are the point — fakes measure plumbing,
+/// not meaning), runs the golden set, and asserts recall@5 has not regressed below the committed
+/// baseline. Excluded from the default run; needs Docker and the active provider's key:
+/// <c>dotnet test --filter "Category=live"</c>.
+///
+/// <para>Since EXP-64 the provider, its model and its similarity floor all come from the same seam
+/// the MCP host reads, so this gate measures whatever a deployment is actually configured to run.
+/// The committed baseline is Gemini's; EXP-67 adds the per-provider floors.</para>
 /// </summary>
 [Trait("Category", "live")]
 public class RetrievalEvalLiveTests
@@ -30,9 +34,14 @@ public class RetrievalEvalLiveTests
     [SkippableFact]
     public async Task Recall_at_5_does_not_regress_below_the_committed_baseline()
     {
+        var config = new ConfigurationBuilder().AddEnvironmentVariables().Build();
+        var (provider, embeddingOptions) = EmbeddingServiceCollectionExtensions.ResolveProvider(config);
+
         Skip.If(
-            string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GEMINI_API_KEY")),
-            "Live retrieval eval needs a Gemini API key in GEMINI_API_KEY.");
+            string.IsNullOrWhiteSpace(EmbeddingServiceCollectionExtensions.ResolveApiKey(
+                provider, embeddingOptions, Environment.GetEnvironmentVariable)),
+            $"Live retrieval eval needs a {provider} API key in "
+            + $"{EmbeddingOptions.ApiKeyVariableFor(provider)}.");
 
         await using var postgres = new PostgreSqlBuilder("pgvector/pgvector:pg17")
             .Build();
@@ -47,11 +56,12 @@ public class RetrievalEvalLiveTests
             await db.Database.MigrateAsync();
         }
 
-        using var provider = BuildRealEmbeddingProvider();
-        var embedder = provider.GetRequiredService<IEmbedder>();
+        using var services = BuildRealEmbeddingProvider(config);
+        var embedder = services.GetRequiredService<IEmbedder>();
 
         var result = await EvalRunner.RunAsync(
-            NewDb, embedder, EvalFixtures.LoadCorpus(), EvalFixtures.LoadGoldenSet());
+            NewDb, embedder, EvalFixtures.LoadCorpus(), EvalFixtures.LoadGoldenSet(),
+            embeddingOptions.MinSimilarity);
 
         Report(result);
 
@@ -60,22 +70,12 @@ public class RetrievalEvalLiveTests
                 "retrieval quality must not regress below the committed baseline");
     }
 
-    /// <summary>The same real embedding registration production uses (AddGeminiEmbeddings).</summary>
-    private static ServiceProvider BuildRealEmbeddingProvider()
-    {
-        var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["Ai:Gemini:Endpoint"] = "https://generativelanguage.googleapis.com/v1beta/openai",
-                ["Ai:Gemini:EmbeddingModel"] = "gemini-embedding-001",
-            })
-            .Build();
-
-        return new ServiceCollection()
+    /// <summary>The same real embedding registration production uses (AddEmbeddingProvider).</summary>
+    private static ServiceProvider BuildRealEmbeddingProvider(IConfiguration config)
+        => new ServiceCollection()
             .AddLogging()
-            .AddGeminiEmbeddings(config)
+            .AddEmbeddingProvider(config)
             .BuildServiceProvider();
-    }
 
     /// <summary>Full metric readout plus the misbehaving queries — the eval's actual product.</summary>
     private void Report(EvalRunResult result)

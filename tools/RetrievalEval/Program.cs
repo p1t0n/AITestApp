@@ -10,11 +10,17 @@ using Testcontainers.PostgreSql;
 
 // Retrieval eval sweep CLI (P1T-52).
 //
-//   dotnet run -- [--threshold 0.55 | --sweep 0.30:0.80:0.05] [--refine] [--output path.md] [--date d]
+//   dotnet run -- [--provider Gemini] [--threshold 0.55 | --sweep 0.30:0.80:0.05] [--refine]
+//                 [--output path.md] [--date d]
 //
-// Spins up a disposable pgvector container, seeds the frozen eval corpus, indexes it with REAL
-// Gemini embeddings, runs the golden set ONCE at the sweep floor, then scores every
-// candidate threshold as a pure in-memory re-rank. Needs Docker and GEMINI_API_KEY.
+// Spins up a disposable pgvector container, seeds the frozen eval corpus, indexes it with the REAL
+// embeddings of the configured provider, runs the golden set ONCE at the sweep floor, then scores
+// every candidate threshold as a pure in-memory re-rank. Needs Docker and the active provider's key.
+//
+// Which provider, and which floor, come from Ai:* configuration through the same seam the MCP host
+// uses (EXP-64) — environment variables here, since this tool ships no settings file. --provider
+// overrides the discriminator; with no --threshold and no --sweep the run uses that provider's own
+// MinSimilarity rather than a number compiled into the CLI.
 
 const double RefineRadius = 0.025;
 const double RefineStep = 0.005;
@@ -28,23 +34,55 @@ catch (ArgumentException ex)
 {
     Console.Error.WriteLine(ex.Message);
     Console.Error.WriteLine(
-        "Usage: dotnet run -- [--threshold 0.55 | --sweep 0.30:0.80:0.05] [--refine] [--output path.md] [--date yyyy-MM-dd]");
+        "Usage: dotnet run -- [--provider Gemini] [--threshold 0.55 | --sweep 0.30:0.80:0.05] "
+        + "[--refine] [--output path.md] [--date yyyy-MM-dd]");
     return 2;
 }
 
-if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GEMINI_API_KEY")))
+// The provider, its endpoint, its model and its similarity floor, all from one read of the seam.
+var config = new ConfigurationBuilder()
+    .AddEnvironmentVariables()
+    .AddInMemoryCollection(options.Provider is { } chosen
+        ?
+        [
+            new KeyValuePair<string, string?>(
+                EmbeddingServiceCollectionExtensions.ProviderKey, chosen.ToString()),
+        ]
+        : [])
+    .Build();
+
+EmbeddingsProvider provider;
+EmbeddingOptions embeddingOptions;
+try
+{
+    (provider, embeddingOptions) = EmbeddingServiceCollectionExtensions.ResolveProvider(config);
+}
+catch (InvalidOperationException ex)
+{
+    Console.Error.WriteLine(ex.Message);
+    return 2;
+}
+
+var apiKeyVariable = EmbeddingOptions.ApiKeyVariableFor(provider);
+if (string.IsNullOrWhiteSpace(
+        EmbeddingServiceCollectionExtensions.ResolveApiKey(
+            provider, embeddingOptions, Environment.GetEnvironmentVariable)))
 {
     Console.Error.WriteLine(
-        "GEMINI_API_KEY is not set. The eval embeds with the real Gemini backend and cannot " +
-        "run without a key. Export one and retry: GEMINI_API_KEY=<pat> dotnet run -- ...");
+        $"{apiKeyVariable} is not set. The eval embeds with the real {provider} backend and cannot " +
+        $"run without a key. Export one and retry: {apiKeyVariable}=<key> dotnet run -- ...");
     return 1;
 }
 
 var corpus = EvalFixtures.LoadCorpus();
 var goldenSet = EvalFixtures.LoadGoldenSet();
 
+// No --threshold and no --sweep means "the floor this provider actually runs on", read from its
+// own configuration block rather than compiled in: the two providers' plateaus do not overlap.
+var thresholds = options.Thresholds ?? [embeddingOptions.MinSimilarity];
+
 // Capture low enough that a later --refine dip below the coarse winner stays inside the capture.
-var floor = Math.Max(0, options.Thresholds.Min() - (options.Refine ? RefineRadius : 0));
+var floor = Math.Max(0, thresholds.Min() - (options.Refine ? RefineRadius : 0));
 
 Console.Error.WriteLine("Starting pgvector container...");
 await using var postgres = new PostgreSqlBuilder("pgvector/pgvector:pg17")
@@ -60,27 +98,20 @@ await using (var db = NewDb())
     await db.Database.MigrateAsync();
 }
 
-// The same real embedding registration production uses (AddGeminiEmbeddings + GEMINI_API_KEY).
-var config = new ConfigurationBuilder()
-    .AddInMemoryCollection(new Dictionary<string, string?>
-    {
-        ["Ai:Gemini:Endpoint"] = "https://generativelanguage.googleapis.com/v1beta/openai",
-        ["Ai:Gemini:EmbeddingModel"] = "gemini-embedding-001",
-    })
-    .Build();
-await using var provider = new ServiceCollection()
+// The same real embedding registration production uses (AddEmbeddingProvider + the provider's key).
+await using var services = new ServiceCollection()
     .AddLogging()
-    .AddGeminiEmbeddings(config)
+    .AddEmbeddingProvider(config)
     .BuildServiceProvider();
-var embedder = provider.GetRequiredService<IEmbedder>();
+var embedder = services.GetRequiredService<IEmbedder>();
 
 Console.Error.WriteLine(string.Create(CultureInfo.InvariantCulture,
     $"Seeding {corpus.Count} experts, indexing, and running {goldenSet.Count} queries " +
-    $"once at floor {floor:F3} (model: {embedder.Model})..."));
+    $"once at floor {floor:F3} (provider: {provider}, model: {embedder.Model})..."));
 var cached = await EvalRunner.CaptureAsync(
     NewDb, embedder, corpus, goldenSet, floor, QueryRetryPolicy.Default);
 
-var results = SweepEvaluator.Sweep(cached, options.Thresholds).ToList();
+var results = SweepEvaluator.Sweep(cached, thresholds).ToList();
 
 double? selected = null;
 if (options.Refine)

@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 namespace ExpertToJob.Application.Tests;
 
 /// <summary>
-/// Unit tests for <see cref="GeminiEmbedder"/> using a deterministic fake generator — no
+/// Unit tests for <see cref="OpenAICompatibleEmbedder"/> using a deterministic fake generator — no
 /// network. Verifies the batch shape, the reported token count, and that spend is logged (embedding
 /// cost is tracked for visibility, deliberately not charged to per-user caps).
 /// </summary>
@@ -17,9 +17,9 @@ public class EmbedderTests
     [Fact]
     public async Task Embeds_batch_preserving_order_and_reports_tokens()
     {
-        var logger = new CapturingLogger<GeminiEmbedder>();
+        var logger = new CapturingLogger<OpenAICompatibleEmbedder>();
         var generator = new FakeEmbeddingGenerator(dimensions: 1536, inputTokens: 42);
-        var embedder = new GeminiEmbedder(generator, "gemini-embedding-001", 1536, logger);
+        var embedder = new OpenAICompatibleEmbedder(generator, "gemini-embedding-001", 1536, logger);
 
         var batch = await embedder.EmbedAsync(["alpha", "beta"]);
 
@@ -34,8 +34,8 @@ public class EmbedderTests
     [Fact]
     public async Task Logs_token_count_and_model()
     {
-        var logger = new CapturingLogger<GeminiEmbedder>();
-        var embedder = new GeminiEmbedder(
+        var logger = new CapturingLogger<OpenAICompatibleEmbedder>();
+        var embedder = new OpenAICompatibleEmbedder(
             new FakeEmbeddingGenerator(inputTokens: 7),
             "gemini-embedding-001",
             1536,
@@ -51,7 +51,7 @@ public class EmbedderTests
     public async Task Empty_input_returns_empty_batch_without_calling_provider()
     {
         var generator = new FakeEmbeddingGenerator();
-        var embedder = new GeminiEmbedder(generator, "m", 1536, new CapturingLogger<GeminiEmbedder>());
+        var embedder = new OpenAICompatibleEmbedder(generator, "m", 1536, new CapturingLogger<OpenAICompatibleEmbedder>());
 
         var batch = await embedder.EmbedAsync([]);
 
@@ -64,9 +64,9 @@ public class EmbedderTests
     public async Task Exhausted_429_retries_throw_typed_quota_exception()
     {
         var generator = new ThrowingEmbeddingGenerator(status: 429);
-        var embedder = new GeminiEmbedder(
+        var embedder = new OpenAICompatibleEmbedder(
             generator, "gemini-embedding-001", 1536,
-            new CapturingLogger<GeminiEmbedder>(), retryDelay: TimeSpan.Zero);
+            new CapturingLogger<OpenAICompatibleEmbedder>(), retryDelay: TimeSpan.Zero);
 
         var act = () => embedder.EmbedAsync(["x"]);
 
@@ -78,9 +78,9 @@ public class EmbedderTests
     public async Task Recovers_when_429_clears_within_retry_budget()
     {
         var generator = new ThrowingEmbeddingGenerator(status: 429, failuresBeforeSuccess: 2);
-        var embedder = new GeminiEmbedder(
+        var embedder = new OpenAICompatibleEmbedder(
             generator, "gemini-embedding-001", 1536,
-            new CapturingLogger<GeminiEmbedder>(), retryDelay: TimeSpan.Zero);
+            new CapturingLogger<OpenAICompatibleEmbedder>(), retryDelay: TimeSpan.Zero);
 
         var batch = await embedder.EmbedAsync(["x"]);
 
@@ -92,9 +92,9 @@ public class EmbedderTests
     public async Task Non_429_provider_errors_propagate_unwrapped()
     {
         var generator = new ThrowingEmbeddingGenerator(status: 500);
-        var embedder = new GeminiEmbedder(
+        var embedder = new OpenAICompatibleEmbedder(
             generator, "gemini-embedding-001", 1536,
-            new CapturingLogger<GeminiEmbedder>(), retryDelay: TimeSpan.Zero);
+            new CapturingLogger<OpenAICompatibleEmbedder>(), retryDelay: TimeSpan.Zero);
 
         var act = () => embedder.EmbedAsync(["x"]);
 
@@ -107,8 +107,8 @@ public class EmbedderTests
     {
         var clock = new TestClock(DateTimeOffset.Parse("2026-08-11T00:00:00Z"));
         var generator = new ThrowingEmbeddingGenerator(status: 429);
-        var embedder = new GeminiEmbedder(
-            generator, "gemini-embedding-001", 1536, new CapturingLogger<GeminiEmbedder>(),
+        var embedder = new OpenAICompatibleEmbedder(
+            generator, "gemini-embedding-001", 1536, new CapturingLogger<OpenAICompatibleEmbedder>(),
             retryDelay: TimeSpan.Zero, clock: clock, quotaBreakerWindow: TimeSpan.FromMinutes(30));
 
         await embedder.Invoking(e => e.EmbedAsync(["a"]))
