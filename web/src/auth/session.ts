@@ -77,6 +77,16 @@ export function clearSession(): void {
   notify();
 }
 
+/**
+ * Ends the session a refused request was sent with — the server answered 401, so that token is
+ * expired or no longer honoured. Clearing it is what sends the user back to /signin (the router's
+ * gate reads the token reactively). A no-op when the stored token has since changed: a stale
+ * request must not sign out a session that started after it left.
+ */
+export function expireSession(sentToken: string | null): void {
+  if (sentToken !== null && getToken() === sentToken) clearSession();
+}
+
 /** Subscribe to session changes (for useSyncExternalStore). Returns an unsubscribe fn. */
 export function subscribe(listener: () => void): () => void {
   listeners.add(listener);
