@@ -44,7 +44,7 @@ facts were read off `api/Infrastructure/Persistence/AppDbContext.cs` and the ent
 |---|---|---|---|
 | `Employee` + children (languages, availability, skills, qualifications, experiences, achievements) | Yes, directly | Cascade (`DeleteBehavior.Cascade` on each `EmployeeId` FK) | The uncontroversial core |
 | `EmployeeSearchChunk.Content` | Yes — it *is* the CV text, rendered | **Cascade** (FK + cascade configured) | Erasure already reaches it |
-| `EmployeeSearchChunk.Embedding` (`vector(1536)`, `gemini-embedding-001`) | Yes — see [§4](#4-derived-stores-chunks-and-embeddings) | Same row, so cascade | Not a "model"; a per-person record |
+| `EmployeeSearchChunk.Embedding` (`vector(1536)`, from the configured embeddings model — `text-embedding-3-small` by default) | Yes — see [§4](#4-derived-stores-chunks-and-embeddings) | Same row, so cascade | Not a "model"; a per-person record |
 | `ScoringJobCandidate` (`Name`, `Title`, `Digest`, `Score`, `Band`, `Rationale`) | Yes | **No FK to `Employee`, no cascade** — `EmployeeId` is a bare `Guid` | Survives deletion of the Expert, carrying a full career narrative |
 | `StaffingProposalCandidate` (`Name`, `Title`, `Rank`, `MatchScore`, `MatchBand`, `Rationale`) | Yes | **No FK, no cascade** | Same |
 | `StaffingProposal.PackageJson` (jsonb) | Yes — contains a full CV dump plus provenance and rationale | No — it is opaque jsonb | The single largest erasure hazard |
@@ -218,9 +218,12 @@ floats, so it isn't personal data":
 **Design consequence:** embeddings must be erased with the Expert, not left behind as "anonymised
 vectors". Today they already are — the chunk table cascades on `EmployeeId`. That behaviour is now
 a compliance property and should get a test, not just a schema default. Note also that our
-embeddings come from a third-party model (`gemini-embedding-001`): the CV text is *disclosed to a
-recipient* at embedding time, which is an Art. 15(1)(c) recipient disclosure and an Art. 13/14
-transparency item.
+embeddings come from a third-party model named by `Ai:Embeddings:Provider` —
+`text-embedding-3-small` on Azure OpenAI by default, or `gemini-embedding-001` on Gemini: the CV
+text is *disclosed to a recipient* at embedding time, which is an Art. 15(1)(c) recipient disclosure
+and an Art. 13/14 transparency item. Because the provider is per deployment, so is the recipient,
+and a deployment that has switched owes the past-tense disclosure as well as the present-tense one
+([`adr-embeddings-provider-seam.md`](adr-embeddings-provider-seam.md) §2).
 
 ## 5. Portability (Art. 20)
 
@@ -314,10 +317,11 @@ EDPB Guidelines 01/2022 on the right of access adds three things we need:
   outside the tool must still be handled.
 
 For us, (c), (d) and (g) are the ones the current system cannot answer: recipients means naming the
-embedding recipient and the scoring recipient, which since the chat-provider seam need not be the
-same party — embeddings are Gemini's, while scoring goes to whichever provider `Ai:Chat:Provider`
-names ([`adr-chat-provider-seam.md`](adr-chat-provider-seam.md)); retention means committing to
-periods we have not set;
+embedding recipient and the scoring recipient, which need not be the same party — each follows its
+own key, `Ai:Embeddings:Provider` and `Ai:Chat:Provider`
+([`adr-embeddings-provider-seam.md`](adr-embeddings-provider-seam.md),
+[`adr-chat-provider-seam.md`](adr-chat-provider-seam.md)), and both name Azure OpenAI on the shipped
+stack; retention means committing to periods we have not set;
 source means recording whether a row came from the Expert, a Service Manager, or an ingested
 document.
 

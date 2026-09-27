@@ -58,13 +58,13 @@ described here into one streamed, recommendation-first report — see
                     ┌───────────────────────────────────────┼──────────────────────────────┐
                     ▼                                        ▼                              ▼
         ┌────────────────────────┐        ┌───────────────────────────┐     ┌────────────────────────┐
-        │ Application             │        │ Infrastructure             │     │ Gemini                  │
-        │  ChunkProjection        │        │  ExpertSearchChunk        │     │  gemini-embedding-001   │
-        │  Reconciler (pure diff) │        │  (pgvector table)           │     │  (OpenAI-compatible)    │
-        │  ISemanticSearchService │        │  OpenAICompatibleEmbedder │     └────────────────────────┘
-        │  IShortlistSearchService│        │  SearchIndexReconciler      │
-        │  IExemplarSearchService │        │  SemanticSearchService      │
-        │  ShortlistRanker (pure) │        │  ExemplarSearchService      │
+        │ Application             │        │ Infrastructure             │     │ Embeddings provider     │
+        │  ChunkProjection        │        │  ExpertSearchChunk        │     │  Ai:Embeddings:Provider │
+        │  Reconciler (pure diff) │        │  (pgvector table)           │     │  text-embedding-3-small │
+        │  ISemanticSearchService │        │  OpenAICompatibleEmbedder │     │   (Azure, default) or   │
+        │  IShortlistSearchService│        │  SearchIndexReconciler      │     │   gemini-embedding-001  │
+        │  IExemplarSearchService │        │  SemanticSearchService      │     │  (OpenAI-compatible)    │
+        │  ShortlistRanker (pure) │        │  ExemplarSearchService      │     └────────────────────────┘
         │  ExemplarQualityFilter/ │        │  DemoRosterSeeder           │
         │   Anonymizer (pure)     │        └───────────────────────────┘
         │  IEmbedder (contract)   │             Postgres + pgvector
@@ -152,7 +152,9 @@ MCP tool (`mcp:read`, read-only) → `ISemanticSearchService.SearchAsync`:
    - `location` — case-insensitive match.
    - `minYears` — applied to the required skills, or to any skill if no `skillIds` given.
 3. Rank chunks by cosine similarity (`embedding <=> query`); drop anything below `MinSimilarity`
-   (0.55 for gemini-embedding-001) so an off-topic query returns nothing rather than the least-bad rows. Achievement bullet
+   — **per provider**, because the two models' scores are not on the same scale: 0.30 for
+   `text-embedding-3-small`, 0.55 for `gemini-embedding-001` — so an off-topic query returns nothing
+   rather than the least-bad rows. Achievement bullet
    chunks are excluded from this pool (shared with the shortlist path — see bullet rewriting).
 4. Aggregate chunk hits → experts by **best** similarity, take top-K (default 5, max 20), attach
    up to 3 truncated evidence snippets each.
@@ -277,8 +279,8 @@ Unknown/empty ids are skipped silently. Then:
 
 1. **One batched embed call** for all resolved bullets.
 2. Per bullet, rank **other** experts' Achievement chunks by cosine similarity
-   (`ExpertId != owner` — a bullet never gets its own CV back), under the shared `MinSimilarity`
-   floor (0.55) and a SQL length-band pre-filter.
+   (`ExpertId != owner` — a bullet never gets its own CV back), under the active provider's
+   `MinSimilarity` floor (0.30 on Azure, 0.55 on Gemini) and a SQL length-band pre-filter.
 3. **Quality gate** in memory (`ExemplarQualityFilter`): an exemplar must be *quantified* (contain a
    digit or `%` — the hallmark of strong CV phrasing) and sit inside the length band
    (`ExemplarMinChars` 40 – `ExemplarMaxChars` 300: shorter carries no style, longer is a paragraph).
@@ -378,15 +380,19 @@ Retrieval quality is **measured, not vibed** (`tools/RetrievalEval.Core` + `tool
   eval core; labels are versioned truth — never mix demo data in.
 - **Metrics**: recall@5, MRR, negative-query false-positive rate (the trio the threshold trades
   between), plus keyword-subset recall@5 (feeds the hybrid question).
-- **Live regression gate**: `dotnet test --filter "Category=live"` with `GEMINI_API_KEY` — real
-  embeddings against Testcontainers pgvector, asserts no regression vs the committed floor.
+- **Live regression gate**: `dotnet test --filter "Category=live"` — real embeddings against
+  Testcontainers pgvector, asserts no regression vs the committed floor. It runs **once per
+  provider**, each run skipping on its own missing key (`AZURE_FOUNDRY_API_KEY`, `GEMINI_API_KEY`),
+  against that provider's own floor.
 - **Sweep CLI**: embeds once, re-ranks per threshold (a full sweep costs one run's embedding budget):
-  `GEMINI_API_KEY=<key> dotnet run --project tools/RetrievalEval -- --sweep 0.30:0.80:0.05 --refine`.
+  `dotnet run --project tools/RetrievalEval -- --provider AzureFoundry --sweep 0.20:0.50:0.05 --refine`,
+  or `--provider Gemini --sweep 0.30:0.80:0.05`.
 
 **Measured baseline + standing verdicts** (see [`retrieval-eval-baseline.md`](retrieval-eval-baseline.md)):
-at 0.30 (2026-07, retired OpenAI model) — recall@5 **1.0**, MRR **0.985**, negative-FP **0.0**, keyword recall **1.0**. Re-swept 2026-08-01 for `gemini-embedding-001`: plateau 0.540–0.575, all metrics perfect. Verdicts:
-**`MinSimilarity` = 0.55 for Gemini** (was 0.30 for the OpenAI model — Gemini similarities cluster
-higher; since EXP-64 the floor is per provider, in `Ai:<provider>:MinSimilarity`); **hybrid keyword+vector search not
+at 0.30 (2026-07, retired OpenAI model) — recall@5 **1.0**, MRR **0.985**, negative-FP **0.0**, keyword recall **1.0**. Re-swept 2026-08-01 for `gemini-embedding-001`: plateau 0.540–0.575, all metrics perfect. Re-swept 2026-09-27 for `text-embedding-3-small` on Azure (EXP-57): plateau 0.285–0.350, recall@5 **1.0**, MRR **0.985** — row for row the 2026-07 numbers, because it is the same model behind a different provider. Verdicts:
+**`MinSimilarity` = 0.30 for Azure and 0.55 for Gemini** (Gemini similarities cluster higher; since
+EXP-64 the floor is per provider, in `Ai:<provider>:MinSimilarity`, and Gemini's 0.55 applied to
+Azure vectors scores recall@5 0.3030); **hybrid keyword+vector search not
 adopted** (keyword gap 0.0 pts vs the >10-pt adoption rule) — the eval gate re-raises it if the gap
 ever opens. Caveat: the small frozen corpus saturates recall by design; the gate guards regressions,
 it doesn't claim perfection at scale.
@@ -427,9 +433,11 @@ Mcp service `appsettings.json`:
 ```jsonc
 // Since EXP-64 the embeddings provider is chosen by configuration and the similarity floor lives in
 // that provider's own block; a leftover "SemanticSearch": { "MinSimilarity": … } throws at startup.
-"Ai": { "Embeddings": { "Provider": "Gemini" },
-        "Gemini": { "Endpoint": "…", "EmbeddingModel": "gemini-embedding-001", "Dimensions": 1536,
-                    "MinSimilarity": 0.55, "ApiKey": "" } },
+"Ai": { "Embeddings": { "Provider": "AzureFoundry" },
+        "AzureFoundry": { "Endpoint": "…", "EmbeddingModel": "text-embedding-3-small",
+                          "MinSimilarity": 0.30, "QuotaBreakerSeconds": 60, "ApiKey": "" },
+        "Gemini": { "Endpoint": "…", "EmbeddingModel": "gemini-embedding-001",
+                    "MinSimilarity": 0.55, "QuotaBreakerSeconds": 1800, "ApiKey": "" } },
 "SearchIndex":   { "Enabled": true, "IntervalSeconds": 30, "EmbedBatchSize": 32 },
 "SemanticSearch":{ "DefaultTopK": 5, "MaxTopK": 20,
                    "MaxSnippetsPerExpert": 3, "SnippetMaxChars": 500,
@@ -453,7 +461,11 @@ Web service `appsettings.json` (demo seeding, off by default):
 "Seed": { "DemoRoster": false, "DemoRosterCount": null }
 ```
 
-The embedding key is read from the `GEMINI_API_KEY` env var (preferred) or `Gemini:ApiKey`.
+The embedding key is **the active provider's own**, read from its env var (preferred) or its
+`ApiKey` config path: `AZURE_FOUNDRY_API_KEY` / `Ai:AzureFoundry:ApiKey` on the default, and
+`GEMINI_API_KEY` / `Ai:Gemini:ApiKey` on Gemini. Neither branch can read the other's — a key is never
+sent to the other company. In Production the MCP host **refuses to start** without a key for its
+active provider; in Development it starts and semantic search falls back to keyword matching.
 The worker is disabled in the in-memory MCP tests via `SearchIndex:Enabled=false`.
 
 ---
@@ -501,7 +513,7 @@ Docker-in-CI is required for the Testcontainers suites.
 Resolved (with measurements — details in [`retrieval-eval-baseline.md`](retrieval-eval-baseline.md)):
 
 - **JD-shortlist**: shipped (tool + agent + endpoint + widget tab), see the shortlist section above.
-- **Threshold**: measured per embedding model; 0.55 for `gemini-embedding-001` (mid-plateau 0.540–0.575, re-swept 2026-08-01), was 0.30 for the retired OpenAI model.
+- **Threshold**: measured per embedding model, and since EXP-64 configured per provider — 0.30 for `text-embedding-3-small` (mid-plateau 0.285–0.350, swept 2026-09-27 on Azure; the same numbers the retired OpenAI endpoint gave the same model in 2026-07) and 0.55 for `gemini-embedding-001` (mid-plateau 0.540–0.575, re-swept 2026-08-01). There is no global floor: the two are not interchangeable.
 - **Hybrid keyword+vector search**: **not adopted** — keyword-subset recall showed zero gap. The
   pre-decided design (tsvector + GIN, `websearch_to_tsquery`, RRF k=60, transparent in
   `SemanticSearchService`) stays on record in the P1T-46 resolution; every future sweep's

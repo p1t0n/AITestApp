@@ -47,15 +47,24 @@ not — except the basis history, which legitimately grows by exactly the transi
 
 ## 4. Recipients are categories, and one of them is new information
 
-Art. 15(1)(c) permits categories, and this service states three of them — or four, depending on what
-`Ai:Chat:Provider` names: Service Managers, clients it puts people forward to, and the model
-provider. Where the configured chat provider is Gemini that last entry is one category, **Google
-(Gemini), as our AI model provider**, word for word what it has always been. Where it is Azure it is
-two, because there genuinely are two recipients — embeddings stay on Google whatever chat does:
-**Google (Gemini), as our embeddings provider** and **Microsoft (Azure OpenAI), as our AI model
-provider**. `Art15Disclosure.RecipientsFor` derives that from configuration (EXP-21), so the name an
-expert reads is the provider their deployment actually uses rather than a literal that survives a
-provider change silently.
+Art. 15(1)(c) permits categories, and this service states three of them — or four, depending on
+what `Ai:Chat:Provider` **and** `Ai:Embeddings:Provider` name: Service Managers, clients it puts
+people forward to, and the model provider or providers. One company doing both jobs is one category.
+On the shipped stack that is **Microsoft (Azure OpenAI), as our AI model provider**, whose text adds
+that the embeddings are processed within the EU; on an all-Gemini one it is **Google (Gemini), as our
+AI model provider**, word for word what it has always been. Where the two keys name different
+companies there are genuinely two recipients, named by the job each does — **Google (Gemini), as our
+embeddings provider** with **Microsoft (Azure OpenAI), as our AI model provider**, or that pair the
+other way round. `Art15Disclosure.RecipientsFor` derives all four from configuration (EXP-21,
+extended to both keys by EXP-62), so the name an expert reads is the provider their deployment
+actually uses rather than a literal that survives a provider change silently.
+
+A fifth entry is about the past rather than the present. A deployment that has switched away from
+Gemini embeddings shows **Google (Gemini), formerly our embeddings provider** to anybody whose record
+already existed when that period ended, with the date it ended — because Art. 15(1)(c) covers
+recipients data "have been" disclosed to, and dropping the name the moment a key flips would
+understate what happened to those people. It comes from `EmbeddingsProviderPeriods`, a table of
+intervals that holds no personal data.
 
 The provider entry is not a restatement. Until this slice the service named its model provider to
 nobody while sending every CV to it.
