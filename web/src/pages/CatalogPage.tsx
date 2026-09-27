@@ -1,71 +1,109 @@
 import { useMemo, useState } from "react";
 import {
+  Alert,
   Box,
   Button,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
+  Chip,
   IconButton,
   List,
-  ListItem,
-  Menu,
+  ListItemButton,
+  ListItemText,
   MenuItem,
   Paper,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
-import CheckIcon from "@mui/icons-material/Check";
-import CloseIcon from "@mui/icons-material/Close";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import EditIcon from "@mui/icons-material/Edit";
 import {
   apiErrorMessage,
   useCategories,
-  useCategoryTree,
   useCreateCategory,
   useCreateSkill,
   useDeleteCategory,
   useDeleteSkill,
+  useSkills,
   useUpdateCategory,
   useUpdateSkill,
 } from "../api";
-import type { Category, CategoryNode } from "../types";
+import type { Category, SkillDto } from "../types";
 import { ErrorNotice } from "../components/ErrorNotice";
 import PageHeader from "../components/PageHeader";
+import DictionaryTable, { type DictionaryColumn } from "../components/DictionaryTable";
+import EditDialog from "../components/EditDialog";
 
-type EditState = { kind: "category" | "skill"; id: string } | null;
-// Adding a new node: a skill or subcategory under `parentId` (a category id),
-// or a root category when parentId is null.
-type AddState = { kind: "category" | "skill"; parentId: string | null } | null;
-type ConfirmState = { kind: "category" | "skill"; id: string; name: string } | null;
+/**
+ * The skill catalog: a category list beside a skills table (EXP-48, Variant C on
+ * `prototype/table-conventions`).
+ *
+ * It used to be an indented tree whose rows were also its inputs — clicking a name swapped it for
+ * text fields, so a stray click mid-journey was one keystroke from a write. Both of those are gone
+ * for the same reason. ~80 skills in ~13 near-flat categories is a *dictionary*, not a hierarchy to
+ * navigate: it belongs in the shared `DictionaryTable`, which filters, sorts and pages it like
+ * every other dictionary and keeps writes off the row. What is genuinely a tree — a category's
+ * place under its parent — survives as the **path** ("Frontend / React"), which reads the nesting
+ * out in full instead of asking anybody to count indents.
+ */
 
-// Builds "Languages / JavaScript / React"-style labels so duplicate names across
-// branches stay unambiguous in the move dropdown.
-function buildPathLabels(categories: Category[]): Map<string, string> {
+/** A skill as the table shows it: the server's row plus its category's full path. */
+interface SkillRow extends SkillDto {
+  path: string;
+}
+
+/** A category as the list shows it: its full path, and how many skills sit directly under it. */
+interface CategoryRow extends Category {
+  path: string;
+  skillCount: number;
+}
+
+/**
+ * Ordinal, like `DictionaryTable`'s own comparison and for the same reason: CI runs in a different
+ * culture from a developer's machine, and a collator that disagrees about case would make the
+ * category list's order environment-dependent.
+ */
+const byPath = (a: CategoryRow, b: CategoryRow) => {
+  const [x, y] = [a.path.toLowerCase(), b.path.toLowerCase()];
+  return x < y ? -1 : x > y ? 1 : 0;
+};
+
+/**
+ * The catalog, shaped for display: every category with its "Languages / JavaScript / React" path
+ * and its own skill count, and every skill carrying the path of the category it sits in.
+ *
+ * The paths are what make duplicate names across branches unambiguous — two "React" categories are
+ * two different rows in the list, and in the Category dropdown.
+ */
+function shape(categories: Category[], skills: SkillDto[]) {
   const byId = new Map(categories.map((c) => [c.id, c]));
-  const labels = new Map<string, string>();
   const path = (c: Category): string => {
     const parent = c.parentId ? byId.get(c.parentId) : undefined;
     return parent ? `${path(parent)} / ${c.name}` : c.name;
   };
-  for (const c of categories) labels.set(c.id, path(c));
-  return labels;
+  const counts = new Map<string, number>();
+  for (const s of skills) counts.set(s.categoryId, (counts.get(s.categoryId) ?? 0) + 1);
+
+  const categoryRows: CategoryRow[] = categories
+    .map((c) => ({ ...c, path: path(c), skillCount: counts.get(c.id) ?? 0 }))
+    .sort(byPath);
+  const pathOf = new Map(categoryRows.map((c) => [c.id, c.path]));
+  // A skill whose category is not in the list falls back to the name the server sent with it,
+  // rather than rendering blank.
+  const skillRows: SkillRow[] = skills.map((s) => ({
+    ...s,
+    path: pathOf.get(s.categoryId) ?? s.categoryName,
+  }));
+  return { categoryRows, skillRows };
 }
 
-// Set of a category's own id plus all descendants — invalid re-parent targets.
-function descendantsOf(id: string, categories: Category[]): Set<string> {
+/** A category's own id plus all of its descendants — the re-parent targets that would make a cycle. */
+function descendantsOf(id: string, categories: readonly Category[]): Set<string> {
   const childrenOf = new Map<string, string[]>();
   for (const c of categories) {
     if (!c.parentId) continue;
-    const siblings = childrenOf.get(c.parentId) ?? [];
-    siblings.push(c.id);
-    childrenOf.set(c.parentId, siblings);
+    childrenOf.set(c.parentId, [...(childrenOf.get(c.parentId) ?? []), c.id]);
   }
   const blocked = new Set<string>([id]);
   const walk = (cur: string) => {
@@ -78,353 +116,392 @@ function descendantsOf(id: string, categories: Category[]): Set<string> {
   return blocked;
 }
 
+/** What the open popup is editing, or creating. `undefined` row means "new". */
+type Editing =
+  | { kind: "skill"; skill?: SkillRow; categoryId?: string }
+  | { kind: "category"; category?: CategoryRow }
+  | null;
+
 export default function CatalogPage() {
-  const { data: tree, isLoading } = useCategoryTree();
-  const { data: categories } = useCategories();
+  const categories = useCategories();
+  const skills = useSkills();
   const createCategory = useCreateCategory();
-  const createSkill = useCreateSkill();
   const updateCategory = useUpdateCategory();
-  const updateSkill = useUpdateSkill();
   const deleteCategory = useDeleteCategory();
+  const createSkill = useCreateSkill();
+  const updateSkill = useUpdateSkill();
   const deleteSkill = useDeleteSkill();
 
+  /** The category the table is narrowed to, or null for the whole catalog. */
+  const [selected, setSelected] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Editing>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [editing, setEditing] = useState<EditState>(null);
-  const [draftName, setDraftName] = useState("");
-  const [draftParent, setDraftParent] = useState(""); // parentId for category, categoryId for skill
+  const { categoryRows, skillRows } = useMemo(
+    () => shape(categories.data ?? [], skills.data ?? []),
+    [categories.data, skills.data],
+  );
 
-  const [adding, setAdding] = useState<AddState>(null);
-  const [addName, setAddName] = useState("");
+  const chosen = categoryRows.find((c) => c.id === selected) ?? null;
+  // The category list is the table's category filter, so the rows are narrowed before the table
+  // sees them and no second control competes with the list for the same job.
+  const visible = selected ? skillRows.filter((s) => s.categoryId === selected) : skillRows;
 
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const [menu, setMenu] = useState<{ anchor: HTMLElement; categoryId: string } | null>(null);
-  const [confirm, setConfirm] = useState<ConfirmState>(null);
-
-  const pathLabels = useMemo(() => buildPathLabels(categories ?? []), [categories]);
-
-  if (isLoading) return <CircularProgress />;
-
-  const run = (fn: () => Promise<unknown>) => async () => {
+  /**
+   * Every write, with the same two guarantees: a failure is shown in the page's own words, and the
+   * popup only closes when the server accepted it. A dialog that closed on a 400 would take the
+   * typed work with it.
+   */
+  const write = async (fn: () => Promise<unknown>) => {
     setError(null);
     try {
       await fn();
+      setEditing(null);
     } catch (err) {
       setError(apiErrorMessage(err));
     }
   };
 
-  const toggleCollapse = (id: string) =>
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-
-  const expand = (id: string) =>
-    setCollapsed((prev) => {
-      if (!prev.has(id)) return prev;
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-
-  // ---- edit ----
-
-  const startEditCategory = (node: CategoryNode, parent: string | null) => {
+  /** Opens a popup, clearing whatever the last write failed with — that message is spent. */
+  const open = (next: NonNullable<Editing>) => {
     setError(null);
-    setAdding(null);
-    setEditing({ kind: "category", id: node.id });
-    setDraftName(node.name);
-    setDraftParent(parent ?? "");
+    setEditing(next);
   };
 
-  const startEditSkill = (id: string, name: string, categoryId: string) => {
-    setError(null);
-    setAdding(null);
-    setEditing({ kind: "skill", id });
-    setDraftName(name);
-    setDraftParent(categoryId);
-  };
-
-  const saveEdit = run(async () => {
-    if (!editing) return;
-    if (editing.kind === "category") {
-      await updateCategory.mutateAsync({ id: editing.id, name: draftName, parentId: draftParent || null });
-    } else {
-      await updateSkill.mutateAsync({ id: editing.id, name: draftName, categoryId: draftParent });
-    }
-    setEditing(null);
-  });
-
-  // ---- add ----
-
-  const startAdd = (state: NonNullable<AddState>) => {
-    setError(null);
-    setEditing(null);
-    setAdding(state);
-    setAddName("");
-    if (state.parentId) expand(state.parentId);
-  };
-
-  const saveAdd = run(async () => {
-    if (!adding) return;
-    if (adding.kind === "category") {
-      await createCategory.mutateAsync({ name: addName, parentId: adding.parentId });
-    } else if (adding.parentId) {
-      await createSkill.mutateAsync({ name: addName, categoryId: adding.parentId });
-    }
-    setAdding(null);
-  });
-
-  // ---- delete ----
-
-  const confirmDelete = run(async () => {
-    if (!confirm) return;
-    if (confirm.kind === "category") await deleteCategory.mutateAsync(confirm.id);
-    else await deleteSkill.mutateAsync(confirm.id);
-    setConfirm(null);
-  });
-
-  // Category options for re-parenting a node: root + every category that is
-  // neither the node itself nor one of its descendants.
-  const parentOptionsFor = (id: string) =>
-    (categories ?? []).filter((c) => !descendantsOf(id, categories ?? []).has(c.id));
-
-  const editActions = (
-    <>
-      <IconButton edge="end" onClick={saveEdit} aria-label="save">
-        <CheckIcon fontSize="small" />
-      </IconButton>
-      <IconButton edge="end" onClick={() => setEditing(null)} aria-label="cancel">
-        <CloseIcon fontSize="small" />
-      </IconButton>
-    </>
+  const columns: DictionaryColumn<SkillRow>[] = useMemo(
+    () => [
+      { key: "name", label: "Skill", sortValue: (s) => s.name.toLowerCase(), render: (s) => s.name },
+      {
+        key: "path",
+        label: "Category",
+        sortValue: (s) => s.path.toLowerCase(),
+        render: (s) => (
+          <Typography variant="body2" component="span" sx={{ color: "text.secondary" }}>
+            {s.path}
+          </Typography>
+        ),
+      },
+      {
+        // The row's only interactive thing, and it opens a popup rather than writing anything.
+        key: "actions",
+        label: "Actions",
+        align: "right",
+        render: (s) => (
+          <Tooltip title="Edit…">
+            <IconButton aria-label={`Edit ${s.name}`} onClick={() => open({ kind: "skill", skill: s })}>
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        ),
+      },
+    ],
+    [],
   );
 
-  const addRow = (depth: number, label: string) => (
-    <ListItem
-      sx={{ pl: 2 + depth * 2, py: 0.5 }}
-      secondaryAction={
+  const loadError = categories.isError
+    ? apiErrorMessage(categories.error)
+    : skills.isError
+      ? apiErrorMessage(skills.error)
+      : null;
+
+  return (
+    // A list beside a table, both of which want room — the same wide cap as the roster.
+    <PageHeader title="Skill Catalog" width="wide">
+      <ErrorNotice message={loadError ?? error} sx={{ mb: 2 }} />
+
+      <Stack
+        direction={{ xs: "column", md: "row" }}
+        spacing={2}
+        sx={{ alignItems: { md: "flex-start" } }}
+      >
+        <Paper sx={{ width: { xs: "100%", md: 280 }, flexShrink: 0 }}>
+          <Stack direction="row" sx={{ pl: 2, pr: 1, py: 1, alignItems: "center" }}>
+            <Typography variant="overline" sx={{ flexGrow: 1 }}>
+              Categories
+            </Typography>
+            <Tooltip title="New category">
+              <IconButton aria-label="New category" onClick={() => open({ kind: "category" })}>
+                <AddIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+          <List dense disablePadding aria-label="Categories">
+            <ListItemButton selected={selected === null} onClick={() => setSelected(null)}>
+              <ListItemText primary="All skills" />
+              <Chip size="small" label={skillRows.length} />
+            </ListItemButton>
+            {categoryRows.map((c) => (
+              <ListItemButton
+                key={c.id}
+                selected={selected === c.id}
+                onClick={() => setSelected(c.id)}
+              >
+                <ListItemText primary={c.path} />
+                <Chip size="small" label={c.skillCount} />
+              </ListItemButton>
+            ))}
+          </List>
+          {!categories.isLoading && categoryRows.length === 0 && (
+            <Typography variant="body2" sx={{ color: "text.secondary", p: 2 }}>
+              No categories yet. Add one to get started.
+            </Typography>
+          )}
+        </Paper>
+
+        <Box sx={{ flexGrow: 1, minWidth: 0, width: "100%" }}>
+          {chosen && (
+            <Stack direction="row" spacing={1} sx={{ mb: 2, alignItems: "center" }}>
+              <Typography variant="h6" component="h2">
+                {chosen.path}
+              </Typography>
+              <Button
+                size="small"
+                startIcon={<EditIcon />}
+                onClick={() => open({ kind: "category", category: chosen })}
+              >
+                Edit category…
+              </Button>
+            </Stack>
+          )}
+          <DictionaryTable
+            label="Skills"
+            rows={visible}
+            columns={columns}
+            rowKey={(s) => s.id}
+            search={{ label: "Search skills", of: (s) => `${s.name} ${s.path}` }}
+            initialSort={{ key: "name", dir: "asc" }}
+            loading={skills.isLoading}
+            // A new skill lands in whatever the list is showing, so creating several in one
+            // category does not mean picking it out of the dropdown every time.
+            actions={
+              <Button
+                variant="outlined"
+                startIcon={<AddIcon />}
+                onClick={() => open({ kind: "skill", categoryId: selected ?? undefined })}
+              >
+                New skill
+              </Button>
+            }
+            empty={selected ? "No skills in this category yet." : "No skills yet."}
+            emptyFiltered="No skills match."
+          />
+        </Box>
+      </Stack>
+
+      {editing?.kind === "skill" && (
+        <SkillDialog
+          skill={editing.skill}
+          defaultCategoryId={editing.categoryId}
+          categories={categoryRows}
+          saving={createSkill.isPending || updateSkill.isPending || deleteSkill.isPending}
+          onClose={() => setEditing(null)}
+          onSave={(dto) =>
+            write(() =>
+              editing.skill
+                ? updateSkill.mutateAsync({ id: editing.skill.id, ...dto })
+                : createSkill.mutateAsync(dto),
+            )
+          }
+          onDelete={() => write(() => deleteSkill.mutateAsync(editing.skill!.id))}
+        />
+      )}
+
+      {editing?.kind === "category" && (
+        <CategoryDialog
+          category={editing.category}
+          categories={categoryRows}
+          saving={createCategory.isPending || updateCategory.isPending || deleteCategory.isPending}
+          onClose={() => setEditing(null)}
+          onSave={(dto) =>
+            write(() =>
+              editing.category
+                ? updateCategory.mutateAsync({ id: editing.category.id, ...dto })
+                : createCategory.mutateAsync(dto),
+            )
+          }
+          onDelete={() =>
+            write(async () => {
+              await deleteCategory.mutateAsync(editing.category!.id);
+              // The list cannot stay pointed at a category that no longer exists.
+              if (selected === editing.category!.id) setSelected(null);
+            })
+          }
+        />
+      )}
+    </PageHeader>
+  );
+}
+
+/**
+ * Deleting, from inside the popup that edits the thing (EXP-48).
+ *
+ * It asks in an `Alert` here rather than in a second `Dialog` over the first, for the reason
+ * `EditDialog` already gives about its discard question: a modal over a modal takes focus away from
+ * what it is asking about. The row it used to live on is gone entirely — a delete one click deep on
+ * a row, behind nothing but a browser `confirm()`, is exactly the accident this page was changed to
+ * prevent.
+ */
+function DeleteInDialog({
+  noun,
+  name,
+  busy,
+  onDelete,
+}: {
+  noun: string;
+  name: string;
+  busy: boolean;
+  onDelete: () => void;
+}) {
+  const [asking, setAsking] = useState(false);
+
+  if (!asking) {
+    return (
+      <Box>
+        <Button color="error" size="small" startIcon={<DeleteIcon />} onClick={() => setAsking(true)}>
+          Delete {noun}…
+        </Button>
+      </Box>
+    );
+  }
+  return (
+    <Alert
+      severity="error"
+      action={
         <>
-          <IconButton edge="end" onClick={saveAdd} aria-label="save">
-            <CheckIcon fontSize="small" />
-          </IconButton>
-          <IconButton edge="end" onClick={() => setAdding(null)} aria-label="cancel">
-            <CloseIcon fontSize="small" />
-          </IconButton>
+          <Button color="inherit" size="small" onClick={() => setAsking(false)}>
+            Keep it
+          </Button>
+          <Button color="inherit" size="small" disabled={busy} onClick={onDelete}>
+            Delete
+          </Button>
         </>
       }
     >
-      <TextField
-        autoFocus
-        label={label}
-        value={addName}
-        onChange={(e) => setAddName(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && addName) saveAdd();
-          if (e.key === "Escape") setAdding(null);
-        }}
-        sx={{ flex: 1, pr: 8 }}
-      />
-    </ListItem>
+      Delete &ldquo;{name}&rdquo;? This cannot be undone.
+    </Alert>
   );
+}
 
-  const renderSkill = (id: string, name: string, categoryId: string, depth: number) => {
-    const isEditing = editing?.kind === "skill" && editing.id === id;
-    return (
-      <ListItem
-        key={id}
-        sx={{ pl: 2 + depth * 2, py: 0.25 }}
-        secondaryAction={
-          isEditing ? (
-            editActions
-          ) : (
-            <IconButton edge="end" onClick={() => setConfirm({ kind: "skill", id, name })} aria-label="delete skill">
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-          )
-        }
-      >
-        {isEditing ? (
-          <Stack direction="row" spacing={1} sx={{ flex: 1, pr: 8 }}>
-            <TextField label="Name" value={draftName} onChange={(e) => setDraftName(e.target.value)} />
-            <TextField
-              select
-              label="Category"
-              value={draftParent}
-              onChange={(e) => setDraftParent(e.target.value)}
-              sx={{ minWidth: 200 }}
-            >
-              {(categories ?? []).map((c) => (
-                <MenuItem key={c.id} value={c.id}>
-                  {pathLabels.get(c.id) ?? c.name}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Stack>
-        ) : (
-          <Typography
-            variant="body2"
-            onClick={() => startEditSkill(id, name, categoryId)}
-            sx={{
-              color: "text.secondary",
-              cursor: "pointer",
-              "&:hover": { textDecoration: "underline" }
-            }}>
-            {name}
-          </Typography>
-        )}
-      </ListItem>
-    );
-  };
+/** One skill's whole editable surface, and the only place any of it can be changed. */
+function SkillDialog({
+  skill,
+  defaultCategoryId,
+  categories,
+  saving,
+  onClose,
+  onSave,
+  onDelete,
+}: {
+  skill?: SkillRow;
+  /** Pre-filled for a new skill from the category the list is showing, when it is showing one. */
+  defaultCategoryId?: string;
+  categories: readonly CategoryRow[];
+  saving: boolean;
+  onClose: () => void;
+  onSave: (dto: { name: string; categoryId: string }) => void;
+  onDelete: () => void;
+}) {
+  const initialCategory = skill?.categoryId ?? defaultCategoryId ?? "";
+  const [name, setName] = useState(skill?.name ?? "");
+  const [categoryId, setCategoryId] = useState(initialCategory);
 
-  const renderCategory = (node: CategoryNode, depth: number, parent: string | null) => {
-    const isEditing = editing?.kind === "category" && editing.id === node.id;
-    const hasContent = node.children.length > 0 || node.skills.length > 0;
-    const isCollapsed = collapsed.has(node.id);
-    return (
-      <Box key={node.id}>
-        <ListItem
-          sx={{ pl: 2 + depth * 2, py: 0.5 }}
-          secondaryAction={
-            isEditing ? (
-              editActions
-            ) : (
-              <>
-                <IconButton
-                  edge="end"
-                  onClick={(e) => setMenu({ anchor: e.currentTarget, categoryId: node.id })}
-                  aria-label="add to category"
-                >
-                  <AddIcon fontSize="small" />
-                </IconButton>
-                <IconButton edge="end" onClick={() => setConfirm({ kind: "category", id: node.id, name: node.name })} aria-label="delete category">
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
-              </>
-            )
-          }
-        >
-          {isEditing ? (
-            <Stack direction="row" spacing={1} sx={{ flex: 1, pr: 8 }}>
-              <TextField label="Name" value={draftName} onChange={(e) => setDraftName(e.target.value)} />
-              <TextField
-                select
-                label="Parent"
-                value={draftParent}
-                onChange={(e) => setDraftParent(e.target.value)}
-                sx={{ minWidth: 200 }}
-              >
-                <MenuItem value="">— none (root) —</MenuItem>
-                {parentOptionsFor(node.id).map((c) => (
-                  <MenuItem key={c.id} value={c.id}>
-                    {pathLabels.get(c.id) ?? c.name}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Stack>
-          ) : (
-            <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
-              {hasContent ? (
-                <IconButton onClick={() => toggleCollapse(node.id)} aria-label="toggle">
-                  {isCollapsed ? <ChevronRightIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
-                </IconButton>
-              ) : (
-                <Box sx={{ width: 28 }} />
-              )}
-              <Typography
-                onClick={() => startEditCategory(node, parent)}
-                sx={{
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  "&:hover": { textDecoration: "underline" }
-                }}>
-                {node.name}
-              </Typography>
-            </Stack>
-          )}
-        </ListItem>
-
-        {!isCollapsed && (
-          <>
-            {node.skills.map((s) => renderSkill(s.id, s.name, s.categoryId, depth + 1))}
-            {adding?.kind === "skill" && adding.parentId === node.id && addRow(depth + 1, "New skill")}
-            {node.children.map((c) => renderCategory(c, depth + 1, node.id))}
-            {adding?.kind === "category" && adding.parentId === node.id && addRow(depth + 1, "New subcategory")}
-          </>
-        )}
-      </Box>
-    );
-  };
+  const dirty = name !== (skill?.name ?? "") || categoryId !== initialCategory;
 
   return (
-    <PageHeader
-      title="Skill Catalog"
-      // A tree of categories and skills, indented: a table by another shape, and the deeper the
-      // nesting the more width the leaf rows want.
-      width="wide"
-      actions={
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => startAdd({ kind: "category", parentId: null })}
-        >
-          Add category
-        </Button>
-      }
+    <EditDialog
+      title={skill ? `Edit ${skill.name}` : "New skill"}
+      dirty={dirty}
+      // A skill without a category has nowhere to live, and the server would refuse it. The name is
+      // checked the same way rather than trimmed into existence.
+      canSave={name.trim() !== "" && categoryId !== ""}
+      saving={saving}
+      onClose={onClose}
+      onSave={() => onSave({ name: name.trim(), categoryId })}
     >
-      <ErrorNotice message={error} sx={{ mb: 2 }} />
+      <TextField
+        label="Name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        autoFocus
+        fullWidth
+      />
+      <TextField
+        label="Category"
+        select
+        value={categoryId}
+        onChange={(e) => setCategoryId(e.target.value)}
+        fullWidth
+      >
+        {categories.map((c) => (
+          <MenuItem key={c.id} value={c.id}>
+            {c.path}
+          </MenuItem>
+        ))}
+      </TextField>
+      {skill && <DeleteInDialog noun="skill" name={skill.name} busy={saving} onDelete={onDelete} />}
+    </EditDialog>
+  );
+}
 
-      <Paper sx={{ p: 3 }}>
-        <List dense>
-          {tree?.map((n) => renderCategory(n, 0, null))}
-          {adding?.kind === "category" && adding.parentId === null && addRow(0, "New category")}
-          {!tree?.length && adding === null && (
-            <Typography sx={{
-              color: "text.secondary"
-            }}>No categories yet. Add one to get started.</Typography>
-          )}
-        </List>
-      </Paper>
+/** One category's whole editable surface — its name, and where it sits. */
+function CategoryDialog({
+  category,
+  categories,
+  saving,
+  onClose,
+  onSave,
+  onDelete,
+}: {
+  category?: CategoryRow;
+  categories: readonly CategoryRow[];
+  saving: boolean;
+  onClose: () => void;
+  onSave: (dto: { name: string; parentId: string | null }) => void;
+  onDelete: () => void;
+}) {
+  const [name, setName] = useState(category?.name ?? "");
+  const [parentId, setParentId] = useState(category?.parentId ?? "");
 
-      <Menu anchorEl={menu?.anchor} open={!!menu} onClose={() => setMenu(null)}>
-        <MenuItem
-          onClick={() => {
-            if (menu) startAdd({ kind: "skill", parentId: menu.categoryId });
-            setMenu(null);
-          }}
-        >
-          Add skill
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            if (menu) startAdd({ kind: "category", parentId: menu.categoryId });
-            setMenu(null);
-          }}
-        >
-          Add subcategory
-        </MenuItem>
-      </Menu>
+  const dirty = name !== (category?.name ?? "") || parentId !== (category?.parentId ?? "");
 
-      <Dialog open={!!confirm} onClose={() => setConfirm(null)}>
-        <DialogTitle>Delete {confirm?.kind}</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Delete &ldquo;{confirm?.name}&rdquo;? This cannot be undone.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirm(null)}>Cancel</Button>
-          <Button color="error" variant="contained" onClick={confirmDelete}>
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </PageHeader>
+  // Re-parenting a category under itself or under one of its own descendants would detach that
+  // whole branch from the root, so those are not offered at all.
+  const blocked = category ? descendantsOf(category.id, categories) : new Set<string>();
+  const parents = categories.filter((c) => !blocked.has(c.id));
+
+  return (
+    <EditDialog
+      title={category ? `Edit ${category.path}` : "New category"}
+      dirty={dirty}
+      canSave={name.trim() !== ""}
+      saving={saving}
+      onClose={onClose}
+      onSave={() => onSave({ name: name.trim(), parentId: parentId === "" ? null : parentId })}
+    >
+      <TextField
+        label="Name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        autoFocus
+        fullWidth
+      />
+      <TextField
+        label="Parent"
+        select
+        value={parentId}
+        onChange={(e) => setParentId(e.target.value)}
+        fullWidth
+      >
+        <MenuItem value="">— none (top level) —</MenuItem>
+        {parents.map((c) => (
+          <MenuItem key={c.id} value={c.id}>
+            {c.path}
+          </MenuItem>
+        ))}
+      </TextField>
+      {category && (
+        <DeleteInDialog noun="category" name={category.path} busy={saving} onDelete={onDelete} />
+      )}
+    </EditDialog>
   );
 }

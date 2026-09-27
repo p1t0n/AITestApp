@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import DictionaryTable, { type DictionaryColumn } from "./DictionaryTable";
@@ -262,5 +262,24 @@ describe("while the dictionary is loading", () => {
 
     expect(screen.getByText("Loading…")).toBeVisible();
     expect(screen.queryByText("No pets yet.")).not.toBeInTheDocument();
+  });
+});
+
+describe("the toolbar's action slot", () => {
+  it("renders the table's own writes beside the filters", async () => {
+    const onNew = vi.fn();
+    renderTable({ actions: <button onClick={onNew}>New pet</button> });
+
+    await userEvent.click(screen.getByRole("button", { name: "New pet" }));
+
+    expect(onNew).toHaveBeenCalled();
+  });
+
+  // A table with nothing to search and nothing to filter still has a toolbar when it has a New
+  // button — otherwise the one way to create a row would have nowhere to render.
+  it("brings the toolbar with it on a table that has neither search nor filters", () => {
+    renderTable({ search: undefined, filters: undefined, actions: <button>New pet</button> });
+
+    expect(screen.getByRole("button", { name: "New pet" })).toBeVisible();
   });
 });

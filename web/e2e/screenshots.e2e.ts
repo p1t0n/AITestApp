@@ -157,7 +157,7 @@ for (const mode of ["light", "dark"] as const) {
       // keeps the capture independent of what the e2e database happens to hold.
       await page.goto("/catalog");
       await expect(page.getByRole("heading", { name: "Skill Catalog" })).toBeVisible();
-      await expect(page.getByRole("progressbar")).toHaveCount(0);
+      await expect(page.getByText("Loading…")).toHaveCount(0);
       await shoot(page, mode, "5-catalog");
 
       await page.goto("/users");

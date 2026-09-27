@@ -75,6 +75,12 @@ export interface DictionaryTableProps<Row> {
   rowKey: (row: Row) => string;
   filters?: readonly DictionaryFilter<Row>[];
   search?: DictionarySearch<Row>;
+  /**
+   * The table's own writes, right-aligned in the toolbar — a "New skill" button and nothing that
+   * belongs to a single row. It sits here rather than in the page header because what it creates is
+   * shaped by what the toolbar is showing: a New button beside a narrowed list can pre-fill from it.
+   */
+  actions?: ReactNode;
   initialSort?: { key: string; dir: SortDir };
   loading?: boolean;
   /** What the body says when the dictionary itself is empty. */
@@ -106,6 +112,7 @@ export default function DictionaryTable<Row>({
   rowKey,
   filters,
   search,
+  actions,
   initialSort,
   loading,
   empty,
@@ -171,7 +178,7 @@ export default function DictionaryTable<Row>({
 
   return (
     <>
-      {(search || (filters?.length ?? 0) > 0) && (
+      {(search || (filters?.length ?? 0) > 0 || actions) && (
         <Paper sx={{ p: 2, mb: 2 }}>
           <Stack
             direction={{ xs: "column", md: "row" }}
@@ -203,6 +210,12 @@ export default function DictionaryTable<Row>({
                 ))}
               </TextField>
             ))}
+            {actions && (
+              <>
+                <Box sx={{ flexGrow: 1 }} />
+                {actions}
+              </>
+            )}
           </Stack>
           {chips.length > 0 && (
             <Stack direction="row" spacing={1} sx={{ mt: 2, flexWrap: "wrap", rowGap: 1 }}>
