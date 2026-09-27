@@ -64,8 +64,11 @@ await using (var db = NewDb())
 var config = new ConfigurationBuilder()
     .AddInMemoryCollection(new Dictionary<string, string?>
     {
-        ["Ai:Gemini:Endpoint"] = "https://generativelanguage.googleapis.com/v1beta/openai",
-        ["Ai:Gemini:EmbeddingModel"] = "gemini-embedding-001",
+        // PROTOTYPE (EXP-57): Azure OpenAI v1 endpoint + the text-embedding-3-small deployment.
+        // The key still arrives through GEMINI_API_KEY (the embedder reads that first), set to the
+        // Azure key for this process only.
+        ["Ai:Gemini:Endpoint"] = "https://experttojob-openai-swc.openai.azure.com/openai/v1/",
+        ["Ai:Gemini:EmbeddingModel"] = "text-embedding-3-small",
     })
     .Build();
 await using var provider = new ServiceCollection()
