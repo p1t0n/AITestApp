@@ -21,8 +21,14 @@ namespace ExpertToJob.Mcp.Tests.Eval;
 /// <c>dotnet test --filter "Category=live"</c>.
 ///
 /// <para>Since EXP-64 the provider, its model and its similarity floor all come from the same seam
-/// the MCP host reads, so this gate measures whatever a deployment is actually configured to run.
-/// The committed baseline is Gemini's; EXP-67 adds the per-provider floors.</para>
+/// the MCP host reads. Since EXP-67 there is <b>a gate per provider</b>, each pinned to its own
+/// measured floor and each skipping on its own missing key (ADR §2 decision 8) — so exporting one
+/// vendor's key runs one gate and says nothing about the other, rather than silently measuring
+/// whichever provider happened to be configured.</para>
+///
+/// <para>The provider is forced into the configuration this test builds rather than read out of
+/// it: a gate that only ever measured the shipped default could not have caught the number that
+/// moved when the default did.</para>
 /// </summary>
 [Trait("Category", "live")]
 public class RetrievalEvalLiveTests
@@ -32,10 +38,22 @@ public class RetrievalEvalLiveTests
     public RetrievalEvalLiveTests(ITestOutputHelper output) => _output = output;
 
     [SkippableFact]
-    public async Task Recall_at_5_does_not_regress_below_the_committed_baseline()
+    public Task Azure_floor_holds() => FloorHoldsFor(EmbeddingsProvider.AzureFoundry);
+
+    [SkippableFact]
+    public Task Gemini_floor_holds() => FloorHoldsFor(EmbeddingsProvider.Gemini);
+
+    private async Task FloorHoldsFor(EmbeddingsProvider provider)
     {
-        var config = new ConfigurationBuilder().AddEnvironmentVariables().Build();
-        var (provider, embeddingOptions) = EmbeddingServiceCollectionExtensions.ResolveProvider(config);
+        var config = new ConfigurationBuilder()
+            .AddEnvironmentVariables()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [EmbeddingServiceCollectionExtensions.ProviderKey] = provider.ToString(),
+            })
+            .Build();
+
+        var embeddingOptions = EmbeddingServiceCollectionExtensions.ResolveProvider(config).Options;
 
         Skip.If(
             string.IsNullOrWhiteSpace(EmbeddingServiceCollectionExtensions.ResolveApiKey(
@@ -66,8 +84,9 @@ public class RetrievalEvalLiveTests
         Report(result);
 
         result.Metrics.RecallAt5.Should()
-            .BeGreaterThanOrEqualTo(EvalBaselines.RecallAt5 - EvalBaselines.Tolerance,
-                "retrieval quality must not regress below the committed baseline");
+            .BeGreaterThanOrEqualTo(EvalBaselines.RecallAt5For(provider) - EvalBaselines.Tolerance,
+                $"retrieval quality on {provider} must not regress below its committed baseline, "
+                + $"measured at that provider's own threshold {embeddingOptions.MinSimilarity}");
     }
 
     /// <summary>The same real embedding registration production uses (AddEmbeddingProvider).</summary>

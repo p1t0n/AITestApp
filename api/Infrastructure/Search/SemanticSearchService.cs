@@ -46,18 +46,19 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
 
         var limit = Math.Clamp(topK ?? _options.DefaultTopK, 1, _options.MaxTopK);
 
-        // Embed the query. Retrieval failing must not fault the caller: quota exhaustion degrades
-        // to lexical ranking over the same chunk pool; anything else returns a soft error so the
-        // agent can fall back to structured tools.
+        // Embed the query. Retrieval failing must not fault the caller: an embeddings backend that
+        // cannot serve this deployment at all — quota spent, or no credential on a development host
+        // (EXP-67) — degrades to lexical ranking over the same chunk pool; anything else returns a
+        // soft error so the agent can fall back to structured tools.
         Vector queryVector;
         try
         {
             var embedded = await _embedder.EmbedAsync([query], ct);
             queryVector = new Vector(embedded.Vectors[0]);
         }
-        catch (EmbeddingQuotaExceededException ex)
+        catch (EmbeddingUnavailableException ex)
         {
-            _logger.LogWarning(ex, "Semantic search embedding quota exhausted; using lexical fallback.");
+            _logger.LogWarning(ex, "Semantic search cannot embed the query; using lexical fallback.");
             return await LexicalSearchAsync(query, filters, limit, ct);
         }
         catch (Exception ex)

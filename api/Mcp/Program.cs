@@ -55,6 +55,13 @@ builder.Services.AddScoped<
     ExpertToJob.Application.Auth.UnrestrictedOwnershipScopeProvider>();
 
 // Embedding backend for semantic roster search (reconciliation worker + search query).
+//
+// Production refuses to boot without a key for the active provider (EXP-67): a roster whose search
+// quietly stopped being semantic is a failure nobody gets told about. Development starts without
+// one and degrades to keyword matching. Ordered before the seam so the named failure wins over the
+// SDK's own complaint about an empty credential.
+ExpertToJob.Infrastructure.Embeddings.EmbeddingProviderStartupGuard.RequireActiveProviderCredential(
+    builder.Configuration, builder.Environment);
 builder.Services.AddEmbeddingProvider(builder.Configuration);
 builder.Services.AddSearchIndexing(builder.Configuration);
 builder.Services.AddHostedService<ReconcileWorker>();

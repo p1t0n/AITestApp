@@ -77,9 +77,10 @@ var azureFoundryKey = builder.AddParameter(
         ?? "",
     secret: true);
 
-// Gemini no longer answers chat by default. Its key is still forwarded so that setting
-// Ai:Chat:Provider back to Gemini needs no AppHost change. (Embeddings run in the MCP host, which
-// reads GEMINI_API_KEY from the inherited environment, not from this parameter.) Set it with
+// Gemini no longer answers chat by default, and since EXP-67 it does not embed by default either.
+// Its key is still forwarded — to Agents and, since EXP-67, to the MCP host as well — so that
+// setting Ai:Chat:Provider or Ai:Embeddings:Provider back to Gemini needs no AppHost change. Set it
+// with
 //   dotnet user-secrets set Parameters:gemini-api-key <key> --project api/AppHost
 //
 // The environment fallback is not decoration. Injecting a parameter *overrides* the inherited
@@ -93,6 +94,18 @@ var geminiKey = builder.AddParameter(
         ?? "",
     secret: true);
 
+// Both provider names, set once and injected into all three hosts (EXP-67,
+// manuals/adr-embeddings-provider-seam.md §2 decision 4). Each host's own appsettings.json carries
+// the same values — a solo `dotnet run` and a real deployment never see the AppHost — and
+// tests/ServiceDefaults.Tests/AppHostWiringTests.cs asserts these literals against the shipped
+// files, so this cannot quietly become a second, disagreeing source of truth.
+//
+// The injection is what keeps the orchestrated stack honest: the Web host derives the Art. 15
+// recipient list from these two keys while the Agents host runs chat and the MCP host embeds, so a
+// host started on a stale value would name a company that receives nothing (EXP-61).
+const string chatProvider = "AzureFoundry";
+const string embeddingsProvider = "AzureFoundry";
+
 // Resource names match the OTel service names each host sets in its own ConfigureResource, so the
 // dashboard's resource list and its telemetry never disagree. launchProfileName pins them to the
 // http profile — their 5069/5100/5200 become the proxy ports at no extra cost, which is what keeps
@@ -100,16 +113,29 @@ var geminiKey = builder.AddParameter(
 var webHost = builder.AddProject<Projects.ExpertToJob_Web>("experttojob-web", launchProfileName: "http")
     .WithReference(db, connectionName: "Default")
     .WithEnvironment("Auth__Jwt__SigningKey", signingKey)
+    .WithEnvironment("Ai__Chat__Provider", chatProvider)
+    .WithEnvironment("Ai__Embeddings__Provider", embeddingsProvider)
     .WaitForCompletion(migrator);
 
+// The host that actually embeds, so it is the one that needs a key. Both are passed, explicitly,
+// exactly as they are to Agents: which one is read is decided by Ai__Embeddings__Provider, and the
+// seam reads only the active provider's variable (EXP-53), so forwarding both cannot send one
+// vendor's credential to the other. Before this the MCP host got GEMINI_API_KEY only by inheriting
+// the developer's environment, which no Azure key was ever going to arrive through.
 builder.AddProject<Projects.ExpertToJob_Mcp>("experttojob-mcp", launchProfileName: "http")
     .WithReference(db, connectionName: "Default")
+    .WithEnvironment("Ai__Chat__Provider", chatProvider)
+    .WithEnvironment("Ai__Embeddings__Provider", embeddingsProvider)
+    .WithEnvironment("GEMINI_API_KEY", geminiKey)
+    .WithEnvironment("AZURE_FOUNDRY_API_KEY", azureFoundryKey)
     .WaitForCompletion(migrator)
     .WaitFor(keycloak);
 
 var agentsHost = builder.AddProject<Projects.ExpertToJob_Agents>("experttojob-agents", launchProfileName: "http")
     .WithReference(db, connectionName: "Default")
     .WithEnvironment("Auth__Jwt__SigningKey", signingKey)
+    .WithEnvironment("Ai__Chat__Provider", chatProvider)
+    .WithEnvironment("Ai__Embeddings__Provider", embeddingsProvider)
     .WithEnvironment("GEMINI_API_KEY", geminiKey)
     .WithEnvironment("AZURE_FOUNDRY_API_KEY", azureFoundryKey)
     .WaitForCompletion(migrator)

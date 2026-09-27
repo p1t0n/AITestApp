@@ -51,13 +51,15 @@ public sealed class ReconcileWorker : BackgroundService
             {
                 break;
             }
-            catch (EmbeddingQuotaExceededException ex)
+            catch (EmbeddingUnavailableException ex)
             {
                 // The daily cap won't clear on the normal tick; hammering it burns the next
-                // day's allowance on guaranteed failures (P1T-98).
+                // day's allowance on guaranteed failures (P1T-98). A missing credential on a
+                // development host (EXP-67) clears on no tick at all, so it earns the same long
+                // wait rather than an error in the log every 30 seconds.
                 failure = ex;
                 _logger.LogWarning(ex,
-                    "Embedding quota exhausted; backing off for {Backoff} before the next reconcile pass.",
+                    "Cannot embed; backing off for {Backoff} before the next reconcile pass.",
                     NextDelay(ex, _options));
             }
             catch (Exception ex)
@@ -79,10 +81,10 @@ public sealed class ReconcileWorker : BackgroundService
     }
 
     /// <summary>How long to wait before the next pass, given how the last one ended. Pure and
-    /// unit-tested directly; quota exhaustion earns the long backoff, everything else stays on
-    /// the normal tick.</summary>
+    /// unit-tested directly; an embeddings backend that cannot serve this deployment earns the long
+    /// backoff, everything else stays on the normal tick.</summary>
     public static TimeSpan NextDelay(Exception? failure, SearchIndexOptions options)
-        => failure is EmbeddingQuotaExceededException
+        => failure is EmbeddingUnavailableException
             ? TimeSpan.FromSeconds(Math.Max(1, options.QuotaBackoffSeconds))
             : TimeSpan.FromSeconds(Math.Max(1, options.IntervalSeconds));
 }

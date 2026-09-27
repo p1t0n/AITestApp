@@ -4,15 +4,15 @@
 Google out, provider selected by configuration"). Its decision tickets carry the evidence behind
 every claim here, and are cited as `EXP-nn`. **Supersedes in part** `manuals/adr-chat-provider-seam.md`:
 that ADR's §2 decision 3 assumed embeddings would keep calling Google whatever chat does, and they
-no longer have to (§8). The build tickets are listed in §10; tickets 1 (`EXP-64`), 2 (`EXP-65`)
-and 3 (`EXP-66`) have landed. Decisions 1–3 and 5 are implemented with Gemini as the only
-construction branch, and the eval reads the provider from configuration (the first half of decision
-8 — the per-provider baselines arrive with ticket 4). Decisions 9–14 are implemented: every vector
-carries a `<provider>/<model>` tag, all three search paths compare only within the active one, and
-the reconciler heals a mismatch. Decisions 16–18 are implemented: the recipient list follows both
-providers, `EmbeddingsProviderPeriods` records the history, and an Expert whose record predates a
-closed Gemini period is told Google was formerly the embeddings recipient. The Azure branch and
-default are still ahead.
+no longer have to (§8). The build tickets are listed in §10; tickets 1 (`EXP-64`), 2 (`EXP-65`),
+3 (`EXP-66`) and 4 (`EXP-67`) have landed. **Every decision in §2 is implemented**, and
+**`AzureFoundry` is the shipped default in all three hosts** — on the default stack Google receives
+no career narrative. Both construction branches exist, each provider carries its own similarity
+floor, breaker window and key, a 429 honours `retry-after-ms` then `Retry-After`, a Production MCP
+host refuses to boot without a key for its active provider while a development one degrades to
+keyword matching, the AppHost injects both provider names and both keys into all three hosts, and
+the eval and live gates run per provider on per-provider baselines. What is left is ticket 5
+(`EXP-68`): the compliance documents that still describe embeddings as Google's.
 
 ## The decision
 
@@ -212,10 +212,10 @@ the code tickets: it must not ship onto a mixed index or behind a wrong disclosu
 
 | # | Ticket | | Blocked by |
 |---|---|---|---|
-| 1 | Embeddings seam with Gemini as the only provider: AddEmbeddingProvider, per-provider settings and keys | `EXP-64` | — |
-| 2 | Safe embeddings provider switches: provider/model vector tags, tag-filtered search, in-place re-embed, coverage note | `EXP-65` | 1 |
-| 3 | Art. 15 recipients follow both providers, with a former-recipient entry from the embeddings provider history | `EXP-66` | 1 |
-| 4 | Azure OpenAI embeddings, made the default: construction branch, per-provider retry and breaker, AppHost wiring, live gates | `EXP-67` | 1, 2, 3, `EXP-61` |
+| 1 | Embeddings seam with Gemini as the only provider: AddEmbeddingProvider, per-provider settings and keys | `EXP-64` ✅ | — |
+| 2 | Safe embeddings provider switches: provider/model vector tags, tag-filtered search, in-place re-embed, coverage note | `EXP-65` ✅ | 1 |
+| 3 | Art. 15 recipients follow both providers, with a former-recipient entry from the embeddings provider history | `EXP-66` ✅ | 1 |
+| 4 | Azure OpenAI embeddings, made the default: construction branch, per-provider retry and breaker, AppHost wiring, live gates | `EXP-67` ✅ | 1, 2, 3, `EXP-61` |
 | 5 | Compliance documents follow embeddings to Azure: DPIA, provider prose, README and CLAUDE.md | `EXP-68` | 4 |
 
 `EXP-61` ("Privacy page names Google as the AI model provider while chat runs on Azure") is a live

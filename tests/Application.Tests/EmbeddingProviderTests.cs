@@ -10,9 +10,10 @@ using Microsoft.Extensions.Options;
 namespace ExpertToJob.Application.Tests;
 
 /// <summary>
-/// The embeddings provider seam (EXP-64, <c>manuals/adr-embeddings-provider-seam.md</c> §2
-/// decisions 1–3, 5): <c>Ai:Embeddings:Provider</c> chooses who turns a career narrative into a
-/// vector, independently of <c>Ai:Chat:Provider</c>.
+/// The embeddings provider seam (EXP-64 and EXP-67,
+/// <c>manuals/adr-embeddings-provider-seam.md</c> §2 decisions 1–3, 5–7):
+/// <c>Ai:Embeddings:Provider</c> chooses who turns a career narrative into a vector, independently
+/// of <c>Ai:Chat:Provider</c>. Both branches exist, and Azure is the default.
 ///
 /// <para>Every assertion here is about the <em>edge</em> — which key is read, which block is bound,
 /// what throws and when. None of it calls a provider: the failures this file exists to catch are
@@ -59,26 +60,30 @@ public class EmbeddingProviderTests
     /// it lands on — a branch that reads the other provider's variable and happens to discard it is
     /// still one refactor away from sending it.
     /// </summary>
-    [Fact]
-    public void Each_provider_reads_only_its_own_key()
+    [Theory]
+    [InlineData(EmbeddingsProvider.Gemini, "GEMINI_API_KEY", "AZURE_FOUNDRY_API_KEY")]
+    [InlineData(EmbeddingsProvider.AzureFoundry, "AZURE_FOUNDRY_API_KEY", "GEMINI_API_KEY")]
+    public void Each_provider_reads_only_its_own_key(
+        EmbeddingsProvider provider, string ownVariable, string otherVariable)
     {
         var consulted = new List<string>();
         string? Reader(string name)
         {
             consulted.Add(name);
-            return name == "AZURE_FOUNDRY_API_KEY" ? "azure-key" : null;
+            // Only the *other* provider's variable is exported. A branch that consults it lands on
+            // a credential aimed at the wrong vendor.
+            return name == otherVariable ? "the-other-vendors-key" : null;
         }
 
-        var cfg = EmbeddingOptions.Defaults(EmbeddingsProvider.Gemini);
-        cfg.ApiKey = "gemini-key-from-config";
+        var cfg = EmbeddingOptions.Defaults(provider);
+        cfg.ApiKey = "own-key-from-config";
 
-        var resolved = EmbeddingServiceCollectionExtensions.ResolveApiKey(
-            EmbeddingsProvider.Gemini, cfg, Reader);
+        var resolved = EmbeddingServiceCollectionExtensions.ResolveApiKey(provider, cfg, Reader);
 
-        resolved.Should().Be("gemini-key-from-config",
-            "with no GEMINI_API_KEY exported the Gemini branch falls back to its own config path, "
-            + "never to whatever Azure's variable happens to hold");
-        consulted.Should().Equal("GEMINI_API_KEY");
+        resolved.Should().Be("own-key-from-config",
+            $"with no {ownVariable} exported the {provider} branch falls back to its own config "
+            + $"path, never to whatever {otherVariable} happens to hold");
+        consulted.Should().Equal(ownVariable);
     }
 
     /// <summary>The environment variable still wins over the config path, for the provider whose
@@ -97,25 +102,39 @@ public class EmbeddingProviderTests
     /// <summary>The similarity floor is calibrated per embedding model — Gemini's 0.55 hides 70% of
     /// the correct matches on Azure vectors (ADR §3) — so it comes out of the active provider's own
     /// block, and every search path takes it from there.</summary>
-    [Fact]
-    public void MinSimilarity_follows_the_active_provider()
+    [Theory]
+    [InlineData(EmbeddingsProvider.Gemini, 0.55)]
+    [InlineData(EmbeddingsProvider.AzureFoundry, 0.30)]
+    public void MinSimilarity_follows_the_active_provider(EmbeddingsProvider provider, double floor)
     {
-        var (provider, options) = EmbeddingServiceCollectionExtensions.ResolveProvider(
-            new ConfigurationBuilder().Build());
+        // Literals, not a re-read of Defaults(): these two numbers are the measurement (ADR §3),
+        // and a test that derived them from the code under test would pass on any pair.
+        var config = Config((EmbeddingServiceCollectionExtensions.ProviderKey, provider.ToString()));
 
-        provider.Should().Be(EmbeddingsProvider.Gemini);
-        options.MinSimilarity.Should().Be(0.55, "the measured Gemini plateau (ADR §3)");
+        EmbeddingServiceCollectionExtensions.ResolveProvider(config).Options.MinSimilarity
+            .Should().Be(floor, $"the measured {provider} plateau (ADR §3)");
 
         // And it is what the three search paths actually read: they all share this one options
         // object, resolved out of the container the MCP host builds.
         using var services = new ServiceCollection()
             .AddLogging()
-            .AddSearchIndexing(Config(("Ai:Gemini:MinSimilarity", "0.62")))
+            .AddSearchIndexing(Config(
+                (EmbeddingServiceCollectionExtensions.ProviderKey, provider.ToString()),
+                ($"{EmbeddingOptions.SectionFor(provider)}:MinSimilarity", "0.62")))
             .BuildServiceProvider();
 
         services.GetRequiredService<IOptions<SemanticSearchOptions>>().Value.MinSimilarity
             .Should().Be(0.62, "the provider's block is where the floor is configured now");
     }
+
+    /// <summary>The two floors are different numbers, which is the entire reason this setting moved
+    /// out of a shared <c>SemanticSearch</c> section. Asserted separately, because a refactor that
+    /// collapsed them to one value would leave the theory above green on both rows.</summary>
+    [Fact]
+    public void The_two_providers_floors_are_not_the_same_number()
+        => EmbeddingOptions.Defaults(EmbeddingsProvider.AzureFoundry).MinSimilarity
+            .Should().NotBe(EmbeddingOptions.Defaults(EmbeddingsProvider.Gemini).MinSimilarity,
+                "Gemini's 0.55 scores recall@5 0.3030 on Azure's vectors (ADR §3)");
 
     /// <summary>The global key is gone, and a leftover one throws rather than binding to a property
     /// nobody reads — the same rule, and the same reason, as the legacy chat section.</summary>
@@ -161,19 +180,69 @@ public class EmbeddingProviderTests
         services.GetRequiredService<IEmbedder>().Model.Should().Be("gemini-embedding-001");
     }
 
-    /// <summary>Azure is a member of the enum before it is a construction branch (EXP-67). It has
-    /// to fail saying so, rather than binding an empty block and embedding against nothing.</summary>
+    /// <summary>The Azure branch (EXP-67), binding from its own block and carrying its own
+    /// deployment name — which is what <c>EmbeddingModel</c> is on this provider, not a model id.
+    /// The model is what every vector's tag is half of, so an unbound block here would silently
+    /// stamp the wrong identity on the whole index.</summary>
     [Fact]
-    public void AzureFoundry_is_named_but_not_built_yet()
+    public void AzureFoundry_binds_embedding_settings_from_its_own_block()
     {
-        var config = Config((EmbeddingServiceCollectionExtensions.ProviderKey, "AzureFoundry"));
+        var config = Config(
+            (EmbeddingServiceCollectionExtensions.ProviderKey, "AzureFoundry"),
+            ("Ai:AzureFoundry:EmbeddingModel", "text-embedding-3-small"),
+            ("Ai:AzureFoundry:ApiKey", "test-key"));
 
-        EmbeddingServiceCollectionExtensions.ReadProvider(config)
-            .Should().Be(EmbeddingsProvider.AzureFoundry, "the name is valid; the branch is not there yet");
+        using var services = new ServiceCollection()
+            .AddLogging()
+            .AddEmbeddingProvider(config)
+            .BuildServiceProvider();
 
-        var act = () => new ServiceCollection().AddLogging().AddEmbeddingProvider(config);
+        services.GetRequiredService<EmbeddingsProvider>().Should().Be(EmbeddingsProvider.AzureFoundry);
+        var embedder = services.GetRequiredService<IEmbedder>();
+        embedder.Model.Should().Be("text-embedding-3-small");
+        embedder.Tag.Should().Be("AzureFoundry/text-embedding-3-small");
+    }
 
-        act.Should().Throw<InvalidOperationException>().WithMessage("*EXP-67*");
+    /// <summary>The Azure block is read, not merely present: a value set there reaches the embedder
+    /// the container builds. Asserted with a deployment name nobody would choose, so a branch that
+    /// fell back to the code default cannot pass by coincidence.</summary>
+    [Fact]
+    public void The_azure_block_overrides_its_code_defaults()
+    {
+        var config = Config(
+            (EmbeddingServiceCollectionExtensions.ProviderKey, "AzureFoundry"),
+            ("Ai:AzureFoundry:EmbeddingModel", "embeddings-eu-2"),
+            ("Ai:AzureFoundry:ApiKey", "test-key"));
+
+        using var services = new ServiceCollection()
+            .AddLogging()
+            .AddEmbeddingProvider(config)
+            .BuildServiceProvider();
+
+        services.GetRequiredService<IEmbedder>().Tag.Should().Be("AzureFoundry/embeddings-eu-2");
+    }
+
+    /// <summary>The breaker window is the active provider's own <c>QuotaBreakerSeconds</c> (ADR §2
+    /// decisions 2 and 7): a minute against Azure's per-minute token cap, half an hour against
+    /// Gemini's daily request allowance. Read off the embedder the container actually built —
+    /// asserting the options object alone would not show that the number reaches the breaker.</summary>
+    [Theory]
+    [InlineData(EmbeddingsProvider.Gemini, 1800)]
+    [InlineData(EmbeddingsProvider.AzureFoundry, 60)]
+    public void Quota_breaker_opens_for_the_active_providers_seconds(
+        EmbeddingsProvider provider, int seconds)
+    {
+        var config = Config(
+            (EmbeddingServiceCollectionExtensions.ProviderKey, provider.ToString()),
+            ($"{EmbeddingOptions.SectionFor(provider)}:ApiKey", "test-key"));
+
+        using var services = new ServiceCollection()
+            .AddLogging()
+            .AddEmbeddingProvider(config)
+            .BuildServiceProvider();
+
+        services.GetRequiredService<IEmbedder>().Should().BeOfType<OpenAICompatibleEmbedder>()
+            .Which.QuotaBreakerWindow.Should().Be(TimeSpan.FromSeconds(seconds));
     }
 
     /// <summary>The shipped MCP settings bind where the options class reads. Asserted against the
@@ -186,14 +255,37 @@ public class EmbeddingProviderTests
             .AddJsonFile(Path.Combine(RepoRoot(), "api/Mcp/appsettings.json"))
             .Build();
 
-        config[EmbeddingServiceCollectionExtensions.ProviderKey].Should().Be("Gemini");
+        config[EmbeddingServiceCollectionExtensions.ProviderKey].Should().Be("AzureFoundry",
+            "EXP-67 made Azure the default, so on the shipped stack Google receives no narrative");
         config[EmbeddingServiceCollectionExtensions.LegacyMinSimilarityKey].Should().BeNull(
             "the global floor was removed, and a leftover one throws at startup");
+
+        var (provider, options) = EmbeddingServiceCollectionExtensions.ResolveProvider(config);
+        provider.Should().Be(EmbeddingsProvider.AzureFoundry);
+        options.MinSimilarity.Should().Be(0.30);
+        options.EmbeddingModel.Should().Be("text-embedding-3-small");
+        options.QuotaBreakerSeconds.Should().Be(60);
+        options.Endpoint.Should().Be("https://experttojob-openai-swc.openai.azure.com/openai/v1/");
+        options.ApiKey.Should().BeEmpty("the key comes from AZURE_FOUNDRY_API_KEY, never a tracked file");
+    }
+
+    /// <summary>The Gemini block stays shipped and stays bindable: it is one configuration key away
+    /// from being active again (ADR §5 keeps it for development and demo), and a block that quietly
+    /// stopped binding would only be discovered by someone switching back.</summary>
+    [Fact]
+    public void The_shipped_mcp_settings_still_bind_the_provider_that_is_not_active()
+    {
+        var config = new ConfigurationBuilder()
+            .AddJsonFile(Path.Combine(RepoRoot(), "api/Mcp/appsettings.json"))
+            .AddInMemoryCollection([new KeyValuePair<string, string?>(
+                EmbeddingServiceCollectionExtensions.ProviderKey, "Gemini")])
+            .Build();
 
         var (provider, options) = EmbeddingServiceCollectionExtensions.ResolveProvider(config);
         provider.Should().Be(EmbeddingsProvider.Gemini);
         options.MinSimilarity.Should().Be(0.55);
         options.EmbeddingModel.Should().Be("gemini-embedding-001");
+        options.QuotaBreakerSeconds.Should().Be(1800);
     }
 
     /// <summary>A bare <see cref="SemanticSearchOptions"/> — what every search unit test builds —
