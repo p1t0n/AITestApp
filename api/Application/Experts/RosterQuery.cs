@@ -1,3 +1,4 @@
+using ExpertToJob.Domain.Enums;
 using FluentValidation;
 
 namespace ExpertToJob.Application.Experts;
@@ -19,19 +20,128 @@ namespace ExpertToJob.Application.Experts;
 /// <param name="Dir">"asc" or "desc"; null means ascending.</param>
 /// <param name="Page">1-based.</param>
 /// <param name="PageSize">1..<see cref="RosterPaging.MaxPageSize"/>.</param>
+/// <param name="Statuses">Any of <see cref="RosterStatuses.Keys"/>; empty or null means every
+/// status. Several are a union, as a group of checkboxes reads (EXP-47).</param>
+/// <param name="Locations">Exact location matches, unioned the same way. Free text rather than a
+/// closed set, because the roster's locations <em>are</em> whatever the roster holds.</param>
+/// <param name="Band">One of <see cref="RosterBand.Keys"/>; null means any availability.</param>
 public sealed record RosterQuery(
     string? Q = null,
     string? Sort = null,
     string? Dir = null,
     int? Page = null,
-    int? PageSize = null);
+    int? PageSize = null,
+    IReadOnlyList<string>? Statuses = null,
+    IReadOnlyList<string>? Locations = null,
+    string? Band = null);
 
 /// <summary>
 /// The page itself. <c>Total</c> is the size of the whole match, counted in SQL rather than by
 /// measuring a materialised list — the roster heading reads "N experts" and the footer prints
 /// "Showing from–to of total", and both of those are lies the moment the count is of one page.
 /// </summary>
-public sealed record RosterPage(IReadOnlyList<ExpertSummaryDto> Items, int Total);
+public sealed record RosterPage(IReadOnlyList<ExpertSummaryDto> Items, int Total, RosterFacets Facets);
+
+/// <summary>One choice a person can make in the sidebar, and how many rows it would leave.</summary>
+public sealed record RosterFacetCount(string Value, int Count);
+
+/// <summary>
+/// The counts beside the sidebar's filters (EXP-47), one list per group.
+///
+/// <para><b>Each group is counted against every other active filter and never against its own.</b>
+/// That is the whole point of a facet sidebar and the one thing a naive implementation gets wrong:
+/// count Status under the Status filter and every unchecked box reads 0, which tells a person
+/// nothing they did not already know. Counted the other way, "Draft (2)" beside a roster already
+/// narrowed to Active says exactly what ticking Draft as well would add.</para>
+///
+/// <para><see cref="Status"/> and <see cref="Band"/> always carry every value, at zero if need be —
+/// a checkbox that disappears when its count reaches zero cannot be unchecked back into existence.
+/// <see cref="Location"/> carries every location on the caller's roster for the same reason, which
+/// is why a zero there is a row to grey out rather than a row to drop.</para>
+/// </summary>
+public sealed record RosterFacets(
+    IReadOnlyList<RosterFacetCount> Status,
+    IReadOnlyList<RosterFacetCount> Band,
+    IReadOnlyList<RosterFacetCount> Location);
+
+/// <summary>
+/// The availability bands the sidebar offers, as the wire spells them, and the capacity range each
+/// one covers. Three named buckets rather than a number pair on the query: "who is free today" is
+/// the question the roster is actually asked, and a range control invites the other one.
+/// </summary>
+public static class RosterBand
+{
+    /// <summary>100% — free all day.</summary>
+    public const string Full = "full";
+    /// <summary>1–99% — some of the day.</summary>
+    public const string Partial = "partial";
+    /// <summary>0%, including somebody with no schedule at all.</summary>
+    public const string None = "none";
+
+    /// <summary>Most available first, which is the order the sidebar reads in.</summary>
+    public static readonly IReadOnlyList<string> Keys = [Full, Partial, None];
+
+    /// <summary>The band as the service compares it: trimmed, lowered, null for "any". The
+    /// validator has already refused anything not in <see cref="Keys"/> by the time this is used
+    /// to choose a range.</summary>
+    public static string? Normalize(string? band) =>
+        string.IsNullOrWhiteSpace(band) ? null : band.Trim().ToLowerInvariant();
+
+    /// <summary>The inclusive capacity range a band covers. <see cref="Full"/> reaches past 100 on
+    /// purpose: the band means "nothing booked", and a schedule that somehow says 120 is not
+    /// suddenly a partial day.</summary>
+    public static (int Min, int Max) Range(string band) => band switch
+    {
+        Full => (100, int.MaxValue),
+        Partial => (1, 99),
+        None => (0, 0),
+        _ => throw new ArgumentOutOfRangeException(nameof(band), band, "Not a roster band."),
+    };
+}
+
+/// <summary>The statuses the sidebar offers, as the wire spells them.</summary>
+public static class RosterStatuses
+{
+    /// <summary>Every <see cref="ExpertStatus"/>, in the order the sidebar lists them: the
+    /// published people first, then the ones still waiting at the gate.</summary>
+    public static readonly IReadOnlyList<string> Keys =
+        [nameof(ExpertStatus.Active), nameof(ExpertStatus.Draft)];
+
+    /// <summary>
+    /// A status name off the wire, trimmed and case-insensitive. Deliberately <em>not</em>
+    /// <see cref="Enum.TryParse{TEnum}(string, bool, out TEnum)"/>, which also accepts "2" and
+    /// "Draft, Active": the number is a storage detail that must not become a public spelling, and
+    /// a comma-separated pair silently means something no caller asked for.
+    /// </summary>
+    public static bool TryParse(string? value, out ExpertStatus status)
+    {
+        status = default;
+        var name = value?.Trim();
+        if (string.IsNullOrEmpty(name)) return false;
+
+        foreach (var candidate in Enum.GetValues<ExpertStatus>())
+        {
+            if (!string.Equals(candidate.ToString(), name, StringComparison.OrdinalIgnoreCase))
+                continue;
+            status = candidate;
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>The statuses a query actually filters on: parsed, de-duplicated, blanks dropped.
+    /// An empty result is "every status", which is what an untouched group of checkboxes means.</summary>
+    public static IReadOnlyList<ExpertStatus> Selected(IReadOnlyList<string>? values)
+    {
+        if (values is null || values.Count == 0) return [];
+        var chosen = new List<ExpertStatus>();
+        foreach (var value in values)
+        {
+            if (TryParse(value, out var status) && !chosen.Contains(status)) chosen.Add(status);
+        }
+        return chosen;
+    }
+}
 
 /// <summary>The sort keys the roster offers, as the wire spells them.</summary>
 public static class RosterSort
@@ -106,5 +216,25 @@ public class RosterQueryValidator : AbstractValidator<RosterQuery>
             .InclusiveBetween(1, RosterPaging.MaxPageSize)
             .When(q => q.PageSize.HasValue)
             .WithMessage($"PageSize must be between 1 and {RosterPaging.MaxPageSize}.");
+
+        // A status the roster does not have is a 400 rather than a filter that quietly matches
+        // nobody: an empty roster and a misspelled filter look identical on screen, and only one of
+        // them is the caller's fault.
+        RuleFor(q => q.Statuses)
+            .Must(statuses => statuses is null || statuses.All(IsBlankOrKnownStatus))
+            .WithMessage($"Statuses must each be one of: {string.Join(", ", RosterStatuses.Keys)}.");
+
+        RuleFor(q => q.Band)
+            .Must(band => band is null || RosterBand.Keys.Contains(RosterBand.Normalize(band)!))
+            .WithMessage($"Band must be one of: {string.Join(", ", RosterBand.Keys)}.");
+
+        // Locations are deliberately not validated. There is no closed set to check against — the
+        // roster's places are whatever its rows say — so a bookmark naming a city the last person
+        // left shows an empty roster with the sidebar's way out still on screen, not a 400.
     }
+
+    /// <summary>A blank entry is what an empty <c>?statuses=</c> binds to; it asks for nothing and
+    /// is filtered out later, so it is not an error.</summary>
+    private static bool IsBlankOrKnownStatus(string? value) =>
+        string.IsNullOrWhiteSpace(value) || RosterStatuses.TryParse(value, out _);
 }

@@ -725,7 +725,10 @@ A dictionary is short enough to fetch whole; **the Roster is not**, so every que
 the server's:
 
 ```
-GET /api/experts/roster?q=&sort=&dir=&page=&pageSize=   →  { items, total }
+GET /api/experts/roster
+      ?q=&sort=&dir=&page=&pageSize=            search, order, slice   (EXP-45)
+      &statuses=&locations=&band=               the sidebar's filters  (EXP-47)
+  →  { items, total, facets: { status[], band[], location[] } }
 ```
 
 `sort` ∈ `name` (last name, then first) | `title` | `location` | `capacity` (availability today) |
@@ -740,8 +743,8 @@ The layout: a left sidebar holding **Search the roster** (debounced 300ms, match
 title), and a results pane with an `N experts` heading, a **Sort by** dropdown, a compact table —
 name over `title · location`, then Status, Availability (today), Actions — and **‹ Prev / Next ›**
 over `Showing from–to of total`. Sort is a dropdown rather than clickable headers because the pairs
-a person actually wants are single thoughts ("Most available"), not a key plus a direction. Filters
-with live counts are EXP-47 and the row-actions menu is EXP-50; both land in this frame.
+a person actually wants are single thoughts ("Most available"), not a key plus a direction. The
+sidebar's filters are below; the row-actions menu is EXP-50 and lands in the same frame.
 
 Three things are load-bearing:
 
@@ -769,3 +772,50 @@ ordered by last name, over a shared database. `e2e/roster.ts`'s `findInRoster` t
 the search box first, so a spec that adds ten more people cannot silently push another spec's row
 onto page two — and every create-then-open journey drives the new search against a real server on
 its way past.
+
+### 14.1 The filters, and the counts beside them
+
+*EXP-47.* Three groups under the search box, each row labelled with a **count the server computed**:
+**Status** (Active / Draft, checkboxes), **Availability today** (Any / Full 100% / Partial 1–99% /
+Unavailable 0%, radio buttons over the same figure the table's chip shows), and **Location**
+(checkboxes, a scrollable list). **Reset filters** clears all three and the search. Every filter
+combines with the search and the sort, goes back to page 1, and round-trips through the URL beside
+the EXP-45 state: `?status=Active&status=Draft&location=London&band=full`.
+
+**Each group is counted against every *other* active filter and never against its own.** That is
+the whole point of a facet sidebar and the one thing a naive implementation gets wrong: count
+Status under the Status filter and every unchecked box reads 0, which tells a person nothing they
+did not already know. Counted the other way, `Draft (2)` beside a roster already narrowed to Active
+says exactly what ticking Draft as well would add. `RosterFacetTests` holds the rule per group, and
+the assertion that fails first when somebody "simplifies" it is
+`Two_groups_chosen_and_each_of_them_still_counts_without_itself`.
+
+The rest is where the sharp edges turned out to be:
+
+* **A zero is greyed out, not dropped.** A checkbox that vanishes when its count reaches zero
+  cannot be unchecked back into view — and the one most likely to hit zero is one that is still
+  *ticked*, and therefore still narrowing the roster. The server returns the row; the page disables
+  it unless it is selected.
+* **The location list follows the search, and nothing else.** The universe is every location in the
+  search's match, unioned with whatever is already ticked. Not the whole roster: after typing a
+  name, offering forty cities at zero is noise. Not the filtered match either, or the point above
+  fails. Status and Band always carry every value, at zero if need be — they are closed sets.
+* **A blank location is not a place.** Nobody without one appears in any location bucket, so
+  ticking any place at all excludes them, and the sidebar offers no "—" row to tick.
+* **Statuses and bands are validated; locations are not.** There is no closed set to check a
+  location against — the roster's places are whatever its rows say — so a bookmark naming a city the
+  last person left renders an empty roster with the ticked box still there to untick, rather than a
+  400. An unknown status or band *is* a 400, from `RosterQueryValidator` like every other rule.
+* **Repeated query keys, never a joined value.** `?location=Cambridge,+MA` is one place; joined and
+  split back apart it would be two nobody is in. axios indexes array params as `statuses[0]=` by
+  default and ASP.NET Core binds neither that nor `statuses[]=` to a `string[]` action parameter —
+  so `paramsSerializer: { indexes: null }` in `useRosterPage` is load-bearing, and its failure mode
+  is silent: the request succeeds and the filter is simply absent. `api/experts.roster.test.tsx`
+  is the only thing that would notice, which is why it exists.
+* **Reset flushes the debounce.** Clearing the box is not enough: a pending search 300ms from
+  firing would write itself back into the URL the person had just cleared. `useDebounced` returns a
+  setter for exactly this, and `reset` claims the write by moving `settled` itself, so the effect
+  that mirrors search into the URL sees nothing left to do.
+
+Each facet group is a real `role="group"` with a name. Inside the Location list, `Cambridge (2)` is
+only unambiguous once a screen reader can say which question it answers.

@@ -102,23 +102,27 @@ public class ExpertService : IExpertService
         var (unrestricted, owned) = await _scope.CurrentAsync(ct);
         var today = Today;
 
-        var matches = _db.Experts
+        var visible = _db.Experts
             .AsNoTracking()
             .ForAudience(_audience.Current, includeDrafts: true)
             .Where(e => unrestricted || e.Id == owned);
 
-        var needle = query.Q?.Trim().ToLower();
-        if (!string.IsNullOrEmpty(needle))
-        {
-            // ToLower rather than string.Contains(..., StringComparison): EF Core translates the
-            // former to SQL on both Postgres and the in-memory provider the unit tests run on. The
-            // name is matched as one string so "ada love" finds Ada Lovelace, which neither half
-            // would on its own.
-            matches = matches.Where(e =>
-                (e.FirstName + " " + e.LastName).ToLower().Contains(needle)
-                || e.Email.ToLower().Contains(needle)
-                || e.Title.ToLower().Contains(needle));
-        }
+        var searched = WithSearch(visible, query.Q);
+
+        var statuses = RosterStatuses.Selected(query.Statuses);
+        var locations = SelectedLocations(query.Locations);
+        var band = RosterBand.Normalize(query.Band);
+
+        // The facet rule, spelled out by what each line leaves out (EXP-47): a group is counted
+        // against every *other* active filter and never against its own, so an unchecked box says
+        // what checking it would add rather than the 0 its own filter would force it to.
+        var facets = new RosterFacets(
+            Status: await CountByStatusAsync(WithBand(WithLocations(searched, locations), band, today), ct),
+            Band: await CountByBandAsync(WithLocations(WithStatuses(searched, statuses), locations), today, ct),
+            Location: await CountByLocationAsync(
+                WithBand(WithStatuses(searched, statuses), band, today), searched, locations, ct));
+
+        var matches = WithBand(WithLocations(WithStatuses(searched, statuses), locations), band, today);
 
         // Counted before the slice is taken, and by the database: the heading says "N experts" and
         // the footer "Showing from–to of total", and both are wrong the moment N is a page length.
@@ -133,8 +137,138 @@ public class ExpertService : IExpertService
             .Take(pageSize)
             .ToListAsync(ct);
 
-        return new RosterPage(experts.Select(e => e.ToSummary(today)).ToList(), total);
+        return new RosterPage(experts.Select(e => e.ToSummary(today)).ToList(), total, facets);
     }
+
+    private static IQueryable<Expert> WithSearch(IQueryable<Expert> experts, string? q)
+    {
+        var needle = q?.Trim().ToLower();
+        if (string.IsNullOrEmpty(needle)) return experts;
+
+        // ToLower rather than string.Contains(..., StringComparison): EF Core translates the
+        // former to SQL on both Postgres and the in-memory provider the unit tests run on. The
+        // name is matched as one string so "ada love" finds Ada Lovelace, which neither half
+        // would on its own.
+        return experts.Where(e =>
+            (e.FirstName + " " + e.LastName).ToLower().Contains(needle)
+            || e.Email.ToLower().Contains(needle)
+            || e.Title.ToLower().Contains(needle));
+    }
+
+    /// <summary>Nothing checked is not "match nothing" — it is the group left alone.</summary>
+    private static IQueryable<Expert> WithStatuses(
+        IQueryable<Expert> experts, IReadOnlyList<ExpertStatus> statuses) =>
+        statuses.Count == 0 ? experts : experts.Where(e => statuses.Contains(e.Status));
+
+    private static IQueryable<Expert> WithLocations(
+        IQueryable<Expert> experts, IReadOnlyList<string> locations) =>
+        locations.Count == 0
+            ? experts
+            // Somebody with no location is in no location's bucket, so choosing any place at all
+            // excludes them. That is the same rule the sidebar draws: a blank is not a place.
+            : experts.Where(e => e.Location != null && locations.Contains(e.Location));
+
+    private static IQueryable<Expert> WithBand(
+        IQueryable<Expert> experts, string? band, DateOnly today)
+    {
+        if (band is null) return experts;
+        var (min, max) = RosterBand.Range(band);
+        return experts.Where(CapacityCalculator.CapacityBetween(today, min, max));
+    }
+
+    /// <summary>The locations a query actually filters on: trimmed, de-duplicated, blanks dropped —
+    /// a blank would be a filter for people who have no location, which the sidebar cannot ask for
+    /// and the checkbox list does not offer.</summary>
+    private static IReadOnlyList<string> SelectedLocations(IReadOnlyList<string>? values)
+    {
+        if (values is null || values.Count == 0) return [];
+        return values
+            .Where(v => !string.IsNullOrWhiteSpace(v))
+            .Select(v => v.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+    }
+
+    /// <summary>Every status, at zero if need be: a checkbox that vanishes when its count reaches
+    /// zero cannot be unchecked back into view.</summary>
+    private static async Task<IReadOnlyList<RosterFacetCount>> CountByStatusAsync(
+        IQueryable<Expert> experts, CancellationToken ct)
+    {
+        var counted = await experts
+            .GroupBy(e => e.Status)
+            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+
+        return RosterStatuses.Keys
+            .Select(name => new RosterFacetCount(
+                name,
+                counted.FirstOrDefault(c => c.Status.ToString() == name)?.Count ?? 0))
+            .ToList();
+    }
+
+    /// <summary>
+    /// One <c>COUNT</c> per band rather than a <c>GROUP BY</c> over a CASE: the band is a
+    /// correlated subquery compared against two bounds, and three cheap counted predicates
+    /// translate everywhere the roster runs — including the in-memory provider the rules are
+    /// settled over — where a grouping key built from that subquery does not.
+    /// </summary>
+    private static async Task<IReadOnlyList<RosterFacetCount>> CountByBandAsync(
+        IQueryable<Expert> experts, DateOnly today, CancellationToken ct)
+    {
+        var counts = new List<RosterFacetCount>(RosterBand.Keys.Count);
+        foreach (var band in RosterBand.Keys)
+        {
+            var (min, max) = RosterBand.Range(band);
+            counts.Add(new RosterFacetCount(
+                band,
+                await experts.CountAsync(CapacityCalculator.CapacityBetween(today, min, max), ct)));
+        }
+        return counts;
+    }
+
+    /// <summary>
+    /// The location rows, busiest first with the name breaking ties — a scrollable list needs one
+    /// fixed order, and "where are most of these people" is the question it is scanned for.
+    ///
+    /// <para>Two queries, because which rows exist and how many there are answer different
+    /// questions. The numbers come from <paramref name="experts"/> — the match under every group
+    /// but this one — so a place the status or band filter has counted down to zero keeps its row
+    /// and is greyed out rather than vanishing; dropping it would leave widening another group as
+    /// the only way to discover the place exists.</para>
+    ///
+    /// <para>The rows come from <paramref name="searched"/>, the match under the search alone.
+    /// The search is the sidebar's own coarse cut and the list should follow it: after typing a
+    /// name, offering forty cities at zero is noise, not information. <paramref name="selected"/>
+    /// is unioned back in regardless, so a location somebody has ticked never disappears out from
+    /// under them and leaves a filter they cannot see or undo.</para>
+    /// </summary>
+    private static async Task<IReadOnlyList<RosterFacetCount>> CountByLocationAsync(
+        IQueryable<Expert> experts,
+        IQueryable<Expert> searched,
+        IReadOnlyList<string> selected,
+        CancellationToken ct)
+    {
+        var counted = await Placed(experts)
+            .GroupBy(e => e.Location!)
+            .Select(g => new { Location = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+
+        var offered = await Placed(searched)
+            .Select(e => e.Location!)
+            .Distinct()
+            .ToListAsync(ct);
+
+        return offered
+            .Union(selected, StringComparer.Ordinal)
+            .Select(l => new RosterFacetCount(
+                l, counted.FirstOrDefault(c => c.Location == l)?.Count ?? 0))
+            .OrderByDescending(f => f.Count)
+            .ThenBy(f => f.Value, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    private static IQueryable<Expert> Placed(IQueryable<Expert> experts) =>
+        experts.Where(e => e.Location != null && e.Location != "");
 
     /// <summary>
     /// The roster's order, as SQL. Every branch ends in the same total order, which is the part
