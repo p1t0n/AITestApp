@@ -56,6 +56,10 @@ builder.Services.AddControllers()
 // disclosure follows the seam rather than a literal (EXP-21). Registered before AddApplication,
 // whose own registration is a TryAdd: the same key the Agents host binds, read here because the
 // Application layer may not reference api/Agents and does not read configuration itself.
+//
+// This host does not run chat, so a wrong value here breaks nothing and reads plausibly — it just
+// names the wrong company to the person the data is about. That is EXP-61, and it is why
+// Web.Tests/ChatProviderSettingsTests asserts this host's shipped value against the Agents host's.
 builder.Services.AddSingleton(ExpertToJob.Application.Compliance.ChatProviderDisclosure.From(
     builder.Configuration[ExpertToJob.Application.Compliance.ChatProviderDisclosure.ConfigurationKey]));
 

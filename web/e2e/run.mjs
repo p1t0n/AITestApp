@@ -7,6 +7,7 @@
 //
 // Nothing here touches the dev stack: its own ports, its own container, its own database.
 import { spawn, spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -46,8 +47,15 @@ const CONTAINER_BROWSER = VISUAL || process.env.E2E_CONTAINER_BROWSER === "1";
  * it to the data subject (EXP-21), so the privacy spec has to assert the provider this stack is
  * actually running rather than a literal that would keep passing after the provider moved. Set here
  * and handed to both the API and Playwright, so the two cannot disagree about what was configured.
+ *
+ * The default is read out of the Web host's own settings rather than written here (EXP-61). A
+ * literal would be a third place naming the provider, and the only one no backend test can see —
+ * so the suite would have kept asserting Google after the shipped default moved to Azure, which is
+ * the exact shape of the bug this spec exists to catch.
  */
-const CHAT_PROVIDER = process.env.E2E_CHAT_PROVIDER ?? "Gemini";
+const CHAT_PROVIDER =
+  process.env.E2E_CHAT_PROVIDER ??
+  JSON.parse(readFileSync(path.join(repoRoot, "api/Web/appsettings.json"), "utf8")).Ai.Chat.Provider;
 const BROWSER_CONTAINER = "experttojob-e2e-browser";
 const BROWSER_IMAGE = "mcr.microsoft.com/playwright:v1.63.0-noble";
 /** How the container reaches the host it is running on. */
