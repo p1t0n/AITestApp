@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Button,
   Chip,
@@ -9,14 +9,7 @@ import {
   DialogTitle,
   IconButton,
   MenuItem,
-  Paper,
-  Select,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
   TextField,
   Tooltip,
   Typography,
@@ -49,8 +42,17 @@ import { ErrorNotice } from "../components/ErrorNotice";
 import PageHeader from "../components/PageHeader";
 import ClaimQueue from "../components/ClaimQueue";
 import ContestQueue from "../components/ContestQueue";
+import DictionaryTable, { type DictionaryColumn } from "../components/DictionaryTable";
+import EditDialog from "../components/EditDialog";
 
 const capLabel = (v: number | null) => (v === null ? "default" : v.toLocaleString());
+
+/**
+ * A cap's sort key. `null` means "inherit the system default", which is not a number and has no
+ * honest place on the scale — it sorts below every explicit cap rather than being dropped, so the
+ * column still accounts for every row.
+ */
+const capOrder = (v: number | null) => v ?? -1;
 
 /**
  * What a demotion costs, in one sentence, shown before it happens (P1T-239).
@@ -67,6 +69,8 @@ export const DEMOTION_CONSEQUENCE =
 /** The roles on offer, in the order the column reads them. */
 const ROLES: readonly SessionRole[] = ["Administrator", "User"];
 
+const STATUSES: readonly UserStatus[] = ["Active", "Deactivated"];
+
 export default function UsersPage() {
   const { data: users, isLoading, isError, error } = useUsers();
   const claims = useClaimQueue();
@@ -77,15 +81,20 @@ export default function UsersPage() {
   const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
   const changeRole = useChangeUserRole();
-  const [editing, setEditing] = useState<UserSummary | null>(null);
+  // The *id* being edited, not the row: a role change refetches the list, and a captured row would
+  // leave the popup's own selector showing the value it was opened with.
+  const [editingId, setEditingId] = useState<string | null>(null);
   // The demotion waiting on an answer, or null. The row rather than the id, because the question
   // names the account.
   const [demoting, setDemoting] = useState<UserSummary | null>(null);
+  const [deleting, setDeleting] = useState<UserSummary | null>(null);
   const signedInUserId = useSessionUserId();
+
+  const editing = users?.find((u) => u.id === editingId) ?? null;
 
   // Both refusals the server enforces, computed from what this page already holds — the loaded list
   // and the session. Shown as text beside the control rather than hidden behind a disabled input:
-  // a blocked row with no reason on it reads as broken, not as protected.
+  // a blocked control with no reason on it reads as broken, not as protected.
   const administrators = users?.filter((u) => u.role === "Administrator").length ?? 0;
   const refusalFor = (u: UserSummary): string | null => {
     if (u.id === signedInUserId) return SELF_ROLE_REFUSAL;
@@ -114,23 +123,77 @@ export default function UsersPage() {
     }
   };
 
-  const toggleStatus = (u: UserSummary) => {
-    const next: UserStatus = u.status === "Active" ? "Deactivated" : "Active";
-    updateUser.mutate({
-      id: u.id,
-      email: u.email,
-      status: next,
-      dailyTokenCap: u.dailyTokenCap,
-      weeklyTokenCap: u.weeklyTokenCap,
-      monthlyTokenCap: u.monthlyTokenCap,
-    });
-  };
-
-  const remove = (u: UserSummary) => {
-    if (window.confirm(`Delete ${u.email}? This removes the account and its passkeys.`)) {
-      deleteUser.mutate(u.id);
-    }
-  };
+  /**
+   * The eight columns, and the rule that shapes them: not one of them writes anything. Status used
+   * to carry an Activate/Deactivate button right in the row — one click from ending somebody's
+   * access — and it is now a field in the edit popup like every other editable thing.
+   */
+  const columns: DictionaryColumn<UserSummary>[] = useMemo(
+    () => [
+      { key: "email", label: "Email", sortValue: (u) => u.email.toLowerCase(), render: (u) => u.email },
+      { key: "role", label: "Role", sortValue: (u) => u.role, render: (u) => u.role },
+      {
+        key: "status",
+        label: "Status",
+        sortValue: (u) => u.status,
+        render: (u) => (
+          <Chip
+            label={u.status}
+            color={u.status === "Active" ? "success" : "default"}
+            variant={u.status === "Active" ? "filled" : "outlined"}
+          />
+        ),
+      },
+      {
+        key: "passkeys",
+        label: "Passkeys",
+        align: "right",
+        sortValue: (u) => u.passkeyCount,
+        render: (u) => u.passkeyCount,
+      },
+      {
+        key: "daily",
+        label: "Daily",
+        align: "right",
+        sortValue: (u) => capOrder(u.dailyTokenCap),
+        render: (u) => capLabel(u.dailyTokenCap),
+      },
+      {
+        key: "weekly",
+        label: "Weekly",
+        align: "right",
+        sortValue: (u) => capOrder(u.weeklyTokenCap),
+        render: (u) => capLabel(u.weeklyTokenCap),
+      },
+      {
+        key: "monthly",
+        label: "Monthly",
+        align: "right",
+        sortValue: (u) => capOrder(u.monthlyTokenCap),
+        render: (u) => capLabel(u.monthlyTokenCap),
+      },
+      {
+        key: "actions",
+        label: "Actions",
+        align: "right",
+        render: (u) => (
+          <>
+            <Tooltip title="Edit">
+              <IconButton onClick={() => setEditingId(u.id)}>
+                <EditIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Delete">
+              <IconButton color="error" onClick={() => setDeleting(u)}>
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </>
+        ),
+      },
+    ],
+    [],
+  );
 
   return (
     // Eight columns of roles, caps and counts — a table, so the same wide cap as the roster.
@@ -194,73 +257,21 @@ export default function UsersPage() {
         sx={{ mb: 2 }}
       />
 
-      <Paper>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Email</TableCell>
-              <TableCell>Role</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell align="right">Passkeys</TableCell>
-              <TableCell align="right">Daily</TableCell>
-              <TableCell align="right">Weekly</TableCell>
-              <TableCell align="right">Monthly</TableCell>
-              <TableCell align="right">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {isLoading && (
-              <TableRow>
-                <TableCell colSpan={8}>Loading…</TableCell>
-              </TableRow>
-            )}
-            {users?.map((u) => (
-              <TableRow key={u.id} hover>
-                <TableCell>{u.email}</TableCell>
-                <TableCell>
-                  <RoleCell
-                    user={u}
-                    refusal={refusalFor(u)}
-                    busy={changeRole.isPending}
-                    onChoose={(next) => chooseRole(u, next)}
-                  />
-                </TableCell>
-                <TableCell>
-                  <Chip
-                    label={u.status}
-                    color={u.status === "Active" ? "success" : "default"}
-                    variant={u.status === "Active" ? "filled" : "outlined"}
-                  />
-                </TableCell>
-                <TableCell align="right">{u.passkeyCount}</TableCell>
-                <TableCell align="right">{capLabel(u.dailyTokenCap)}</TableCell>
-                <TableCell align="right">{capLabel(u.weeklyTokenCap)}</TableCell>
-                <TableCell align="right">{capLabel(u.monthlyTokenCap)}</TableCell>
-                <TableCell align="right">
-                  <Button onClick={() => toggleStatus(u)} disabled={updateUser.isPending}>
-                    {u.status === "Active" ? "Deactivate" : "Activate"}
-                  </Button>
-                  <Tooltip title="Edit">
-                    <IconButton onClick={() => setEditing(u)}>
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Delete">
-                    <IconButton color="error" onClick={() => remove(u)}>
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                </TableCell>
-              </TableRow>
-            ))}
-            {users?.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={8}>No users yet.</TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </Paper>
+      <DictionaryTable
+        label="Accounts"
+        rows={users}
+        columns={columns}
+        rowKey={(u) => u.id}
+        search={{ label: "Search email", of: (u) => u.email }}
+        filters={[
+          { key: "role", label: "Role", options: ROLES, valueOf: (u) => u.role },
+          { key: "status", label: "Status", options: STATUSES, valueOf: (u) => u.status },
+        ]}
+        initialSort={{ key: "email", dir: "asc" }}
+        loading={isLoading}
+        empty="No users yet."
+        emptyFiltered="No accounts match."
+      />
 
       {demoting && (
         <ConfirmDemotionDialog
@@ -276,14 +287,29 @@ export default function UsersPage() {
         />
       )}
 
+      {deleting && (
+        <ConfirmDeleteDialog
+          user={deleting}
+          busy={deleteUser.isPending}
+          onClose={() => setDeleting(null)}
+          onConfirm={() =>
+            deleteUser.mutate(deleting.id, { onSuccess: () => setDeleting(null) })
+          }
+        />
+      )}
+
       {editing && (
         <EditUserDialog
+          key={editing.id}
           user={editing}
-          onClose={() => setEditing(null)}
+          refusal={refusalFor(editing)}
+          roleBusy={changeRole.isPending}
+          onChooseRole={(next) => chooseRole(editing, next)}
+          onClose={() => setEditingId(null)}
           onSave={(dto) =>
             updateUser.mutate(
               { id: editing.id, ...dto },
-              { onSuccess: () => setEditing(null) },
+              { onSuccess: () => setEditingId(null) },
             )
           }
           saving={updateUser.isPending}
@@ -293,13 +319,28 @@ export default function UsersPage() {
   );
 }
 
+/**
+ * One account's whole editable surface, and the only place any of it can be changed.
+ *
+ * The role sits here with the rest of it but does not behave like the rest of it: it has its own
+ * endpoint (`PUT /users/{id}/role`), so choosing one writes immediately instead of waiting for
+ * Save, and it is deliberately outside the dirty check. A role that Save could forget to send would
+ * be worse than one that applies on the spot.
+ */
 function EditUserDialog({
   user,
+  refusal,
+  roleBusy,
+  onChooseRole,
   onClose,
   onSave,
   saving,
 }: {
   user: UserSummary;
+  /** Why this account's role cannot change, in the server's words — or null when it can. */
+  refusal: string | null;
+  roleBusy: boolean;
+  onChooseRole: (role: SessionRole) => void;
   onClose: () => void;
   onSave: (dto: UpdateUser) => void;
   saving: boolean;
@@ -314,92 +355,75 @@ function EditUserDialog({
     const t = s.trim();
     return t === "" ? null : Number(t);
   };
+  const capText = (v: number | null) => v?.toString() ?? "";
 
-  const handleSave = () => {
-    onSave({
-      email: email.trim(),
-      status,
-      dailyTokenCap: toCap(daily),
-      weeklyTokenCap: toCap(weekly),
-      monthlyTokenCap: toCap(monthly),
-    });
-  };
+  const dirty =
+    email !== user.email
+    || status !== user.status
+    || daily !== capText(user.dailyTokenCap)
+    || weekly !== capText(user.weeklyTokenCap)
+    || monthly !== capText(user.monthlyTokenCap);
 
   return (
-    <Dialog open onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>Edit user</DialogTitle>
-      <DialogContent>
-        <Stack spacing={2} sx={{ mt: 1 }}>
-          <TextField label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} fullWidth />
-          <TextField
-            label="Status"
-            select
-            value={status}
-            onChange={(e) => setStatus(e.target.value as UserStatus)}
-            fullWidth
-          >
-            <MenuItem value="Active">Active</MenuItem>
-            <MenuItem value="Deactivated">Deactivated</MenuItem>
-          </TextField>
-          <Typography variant="body2" sx={{ color: "text.secondary" }}>
-            Token caps — leave blank to inherit the system default.
-          </Typography>
-          <Stack direction="row" spacing={2}>
-            <TextField label="Daily" type="number" value={daily} onChange={(e) => setDaily(e.target.value)} fullWidth />
-            <TextField label="Weekly" type="number" value={weekly} onChange={(e) => setWeekly(e.target.value)} fullWidth />
-            <TextField label="Monthly" type="number" value={monthly} onChange={(e) => setMonthly(e.target.value)} fullWidth />
-          </Stack>
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={handleSave} disabled={saving}>
-          Save
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-}
-
-/**
- * One row's role control, with the reason it cannot be used rendered next to it rather than in a
- * tooltip. The `Select` still carries the current value when it is blocked, so the column reads the
- * same whether or not this row can be changed.
- */
-function RoleCell({
-  user,
-  refusal,
-  busy,
-  onChoose,
-}: {
-  user: UserSummary;
-  /** Why this row cannot change, in the server's words — or null when it can. */
-  refusal: string | null;
-  busy: boolean;
-  onChoose: (role: SessionRole) => void;
-}) {
-  return (
-    <Stack spacing={0.5} sx={{ minWidth: 168 }}>
-      <Select
-        size="small"
-        value={user.role}
-        disabled={refusal !== null || busy}
-        onChange={(e) => onChoose(e.target.value as SessionRole)}
-        inputProps={{ "aria-label": `Role for ${user.email}` }}
-        data-testid="users-role-select"
+    <EditDialog
+      title={`Edit ${user.email}`}
+      dirty={dirty}
+      saving={saving}
+      onClose={onClose}
+      onSave={() =>
+        onSave({
+          email: email.trim(),
+          status,
+          dailyTokenCap: toCap(daily),
+          weeklyTokenCap: toCap(weekly),
+          monthlyTokenCap: toCap(monthly),
+        })
+      }
+    >
+      <TextField label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} fullWidth />
+      <Stack spacing={0.5}>
+        <TextField
+          label="Role"
+          select
+          value={user.role}
+          disabled={refusal !== null || roleBusy}
+          onChange={(e) => onChooseRole(e.target.value as SessionRole)}
+          slotProps={{ htmlInput: { "aria-label": `Role for ${user.email}` } }}
+          data-testid="users-role-select"
+          fullWidth
+        >
+          {ROLES.map((role) => (
+            <MenuItem key={role} value={role}>
+              {role}
+            </MenuItem>
+          ))}
+        </TextField>
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
+          {refusal ?? "Applies immediately, and signs that account out."}
+        </Typography>
+      </Stack>
+      <TextField
+        label="Status"
+        select
+        value={status}
+        onChange={(e) => setStatus(e.target.value as UserStatus)}
+        fullWidth
       >
-        {ROLES.map((role) => (
-          <MenuItem key={role} value={role}>
-            {role}
+        {STATUSES.map((s) => (
+          <MenuItem key={s} value={s}>
+            {s}
           </MenuItem>
         ))}
-      </Select>
-      {refusal && (
-        <Typography variant="caption" sx={{ color: "text.secondary" }}>
-          {refusal}
-        </Typography>
-      )}
-    </Stack>
+      </TextField>
+      <Typography variant="body2" sx={{ color: "text.secondary" }}>
+        Token caps — leave blank to inherit the system default.
+      </Typography>
+      <Stack direction="row" spacing={2}>
+        <TextField label="Daily" type="number" value={daily} onChange={(e) => setDaily(e.target.value)} fullWidth />
+        <TextField label="Weekly" type="number" value={weekly} onChange={(e) => setWeekly(e.target.value)} fullWidth />
+        <TextField label="Monthly" type="number" value={monthly} onChange={(e) => setMonthly(e.target.value)} fullWidth />
+      </Stack>
+    </EditDialog>
   );
 }
 
@@ -428,6 +452,43 @@ function ConfirmDemotionDialog({
         <Button onClick={onClose}>Cancel</Button>
         <Button color="error" variant="contained" onClick={onConfirm} disabled={busy}>
           Demote to User
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+/**
+ * Deleting an account, asked in a dialog rather than `window.confirm`.
+ *
+ * Not a cosmetic swap: a native confirm is unstyleable, unreadable to the e2e suite, and — being
+ * the browser's own chrome — looks identical to every other page's. The convention is that a write
+ * happens in a popup this app drew.
+ */
+function ConfirmDeleteDialog({
+  user,
+  busy,
+  onClose,
+  onConfirm,
+}: {
+  user: UserSummary;
+  busy: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Dialog open onClose={onClose} fullWidth maxWidth="sm">
+      <DialogTitle>Delete {user.email}?</DialogTitle>
+      <DialogContent>
+        <DialogContentText>
+          This removes the account and its passkeys. They cannot sign in again, and it cannot be
+          undone.
+        </DialogContentText>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Cancel</Button>
+        <Button color="error" variant="contained" onClick={onConfirm} disabled={busy}>
+          Delete account
         </Button>
       </DialogActions>
     </Dialog>

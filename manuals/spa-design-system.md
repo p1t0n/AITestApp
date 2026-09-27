@@ -671,3 +671,49 @@ merge of the two branches, with the merged tree's suites run.
 - Whether the highlighted row is *painted* differently rather than only classed differently. Two
   rows, two resolved `backgroundColor`s. `Mui-selected` emitting a rule proves nothing about whether
   it won, which is §11's standing lesson arriving for the fifth time.
+
+## 13. Dictionaries: one table, and editing only in popups
+
+*EXP-46.* Decided on the throwaway branch `prototype/table-conventions`, which put three
+structurally different tables on the roster route and let them be compared side by side. **Variant A
+— "toolbar + chips" — is the convention for every small dictionary in the app**: Users today, the
+skill catalog and the lookup tables next.
+
+A *dictionary* is a list short enough to fetch whole. That is the whole reason the convention can be
+this cheap: `web/src/components/DictionaryTable.tsx` filters, sorts and pages **client-side over the
+complete list**, so a page adopting it needs no server contract for any of the three. The Experts
+roster is explicitly not a dictionary — it pages on the server (EXP-45) — and the two must not be
+merged into one component to save a file.
+
+What the block is:
+
+* a **toolbar**: a search box plus one select per key field, with the active set echoed as removable
+  chips and a **Clear all**;
+* **sortable headers** on the columns that have an order, and plain text on the ones that do not —
+  a column of buttons offers nothing to click, which is the honest rendering;
+* a **`TablePagination` footer**: 10/25/50/100, first/last, "from–to of total".
+
+Two details are load-bearing and not obvious from the screenshot. The comparison is **ordinal, not
+`localeCompare`** — CI runs in a different culture from a developer's machine, and this repo has
+been bitten by that three times; a column that wants case-insensitive order lowercases in its own
+`sortValue`. And the page number is **clamped on read** rather than stored: a filter can shorten the
+list under a page that was valid when it was set, and every other arrangement eventually strands
+somebody on an empty table with rows counted in the footer below it.
+
+**The row is never an input.** This is the rule the whole convention exists for: a stray click
+mid-journey must not change data. Nothing a column renders writes anything; a write is reached
+through an explicit ✎ that opens `web/src/components/EditDialog.tsx`, and create and delete go
+through dialogs of their own — including delete, which used to be a `window.confirm` and is now a
+popup this app drew. A **dirty** dialog refuses Esc, the backdrop *and* Cancel, marks itself
+`Unsaved changes`, and asks `Discard your changes?` before it will go. The question is an `Alert`
+inside the dialog rather than a second modal on top of it, because "Keep editing" has to put focus
+straight back on the fields it is asking about.
+
+Applying it to Users moved two things that had been sitting in the row: the role selector (which
+still carries its two frozen hooks — `users-role-select` is now one per open popup rather than one
+per row) and an Activate/Deactivate button that was one click from ending somebody's access.
+Status is a field in the popup now, like everything else editable.
+
+The accounts table is named — `<Table aria-label="Accounts">`. Not decoration: the page carries the
+claim and contest queues as tables too, and before the name every suite that wanted this one was
+reaching for it through whichever cell text happened to be unique that week.

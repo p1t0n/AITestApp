@@ -9,11 +9,17 @@ import { LAST_ADMINISTRATOR_REFUSAL, SELF_ROLE_REFUSAL, type UserSummary } from 
 import { clearSession, setSession } from "../auth/session";
 
 /**
- * The role selector in the users dictionary (P1T-239).
+ * The role selector in the users dictionary (P1T-239), as it stands after EXP-46 moved it off the
+ * row and into the edit popup.
  *
- * The two refusals the server enforces are *shown* here, as text, before anybody clicks — which is
- * the whole point of the chosen variant. A disabled control whose reason lives only in a tooltip
- * makes a blocked row look merely inert, and the person never learns why.
+ * The two refusals the server enforces are *shown*, as text, before anybody clicks — which is the
+ * whole point of the chosen variant. A disabled control whose reason lives only in a tooltip makes
+ * a blocked control look merely inert, and the person never learns why.
+ *
+ * What EXP-46 changed is where the click happens, not what it means: the row is no longer an input,
+ * so every assertion below opens the popup first. Both frozen hooks came with it — `users-role-
+ * select` is now one per open dialog rather than one per row, and `users-role-confirm` still sits
+ * between a click and somebody else's session ending.
  */
 
 const ACTOR_ID = "11111111-1111-1111-1111-111111111111";
@@ -69,14 +75,25 @@ function renderPage() {
 }
 
 /** The row for an address, so a test never asserts against the wrong person's control. */
-const rowFor = (email: string) => screen.getByText(email).closest("tr") as HTMLElement;
+const rowFor = (email: string) =>
+  within(accountsTable()).getByText(email).closest("tr") as HTMLElement;
 
-/** That row's role control — the thing a person clicks. */
-const selectIn = (email: string) =>
-  within(within(rowFor(email)).getByTestId("users-role-select")).getByRole("combobox");
+/** The accounts table by name: the claim and contest queues on this page are tables too. */
+const accountsTable = () => screen.getByRole("table", { name: "Accounts" });
+
+/** The edit popup for one account — the only place a role can be changed. */
+async function openEditor(email: string) {
+  await userEvent.click(within(rowFor(email)).getByRole("button", { name: "Edit" }));
+  return screen.getByRole("dialog");
+}
+
+/** The popup's role control — the thing a person clicks. */
+const roleSelect = () =>
+  within(screen.getByTestId("users-role-select")).getByRole("combobox");
 
 async function choose(email: string, role: string) {
-  await userEvent.click(selectIn(email));
+  await openEditor(email);
+  await userEvent.click(roleSelect());
   await userEvent.click(screen.getByRole("option", { name: role }));
 }
 
@@ -103,20 +120,33 @@ describe("the role column", () => {
     renderPage();
 
     // Scoped to the accounts table: the claim and contest queues above it have headers too.
-    const accounts = screen.getByText("Email").closest("table") as HTMLElement;
-    const headers = within(accounts).getAllByRole("columnheader").map((h) => h.textContent);
+    const headers = within(accountsTable()).getAllByRole("columnheader").map((h) => h.textContent);
     expect(headers.slice(0, 3)).toEqual(["Email", "Role", "Status"]);
   });
 
-  it("shows each account's current role", () => {
+  it("shows each account's current role, in the column and in its popup", async () => {
     users = [
       row({ id: ACTOR_ID, email: "actor@example.com", role: "Administrator" }),
       row({ id: OTHER_ID, email: "ada@example.com", role: "User" }),
     ];
     renderPage();
 
-    expect(selectIn("ada@example.com")).toHaveTextContent("User");
-    expect(selectIn("actor@example.com")).toHaveTextContent("Administrator");
+    expect(within(rowFor("ada@example.com")).getByText("User")).toBeVisible();
+    expect(within(rowFor("actor@example.com")).getByText("Administrator")).toBeVisible();
+
+    await openEditor("ada@example.com");
+    expect(roleSelect()).toHaveTextContent("User");
+  });
+
+  // The rule EXP-46 is here to hold: a stray click on a row cannot change anybody's role, because
+  // there is nothing in the row to click.
+  it("puts no control in the row itself", () => {
+    users = TWO_ADMINISTRATORS();
+    renderPage();
+
+    expect(within(rowFor("ada@example.com")).queryByTestId("users-role-select"))
+      .not.toBeInTheDocument();
+    expect(within(rowFor("ada@example.com")).queryByRole("combobox")).not.toBeInTheDocument();
   });
 
   it("no longer claims roles are flat", () => {
@@ -127,34 +157,38 @@ describe("the role column", () => {
 });
 
 describe("refusals, visible before the click", () => {
-  it("blocks the signed-in person's own row and says why, as text", () => {
+  it("blocks the signed-in person's own account and says why, as text", async () => {
     users = TWO_ADMINISTRATORS();
     renderPage();
 
-    expect(selectIn("actor@example.com")).toHaveAttribute("aria-disabled", "true");
-    // In the row, not in a tooltip: it has to be readable without hovering a dead control.
-    expect(within(rowFor("actor@example.com")).getByText(SELF_ROLE_REFUSAL)).toBeVisible();
+    const dialog = await openEditor("actor@example.com");
+
+    expect(roleSelect()).toHaveAttribute("aria-disabled", "true");
+    // Beside the control, not in a tooltip: it has to be readable without hovering a dead input.
+    expect(within(dialog).getByText(SELF_ROLE_REFUSAL)).toBeVisible();
   });
 
-  it("blocks the last Administrator and says why, as text", () => {
+  it("blocks the last Administrator and says why, as text", async () => {
     users = [
       row({ id: ACTOR_ID, email: "actor@example.com", role: "User" }),
       row({ id: OTHER_ID, email: "solo@example.com", role: "Administrator" }),
     ];
     renderPage();
 
-    expect(selectIn("solo@example.com")).toHaveAttribute("aria-disabled", "true");
-    expect(within(rowFor("solo@example.com")).getByText(LAST_ADMINISTRATOR_REFUSAL)).toBeVisible();
+    const dialog = await openEditor("solo@example.com");
+
+    expect(roleSelect()).toHaveAttribute("aria-disabled", "true");
+    expect(within(dialog).getByText(LAST_ADMINISTRATOR_REFUSAL)).toBeVisible();
   });
 
-  it("leaves an Administrator selectable while a second one exists", () => {
+  it("leaves an Administrator selectable while a second one exists", async () => {
     users = TWO_ADMINISTRATORS();
     renderPage();
 
-    expect(selectIn("ada@example.com")).not.toHaveAttribute("aria-disabled");
-    expect(
-      within(rowFor("ada@example.com")).queryByText(LAST_ADMINISTRATOR_REFUSAL),
-    ).not.toBeInTheDocument();
+    const dialog = await openEditor("ada@example.com");
+
+    expect(roleSelect()).not.toHaveAttribute("aria-disabled");
+    expect(within(dialog).queryByText(LAST_ADMINISTRATOR_REFUSAL)).not.toBeInTheDocument();
   });
 
   it("uses the server's sentences verbatim", () => {
