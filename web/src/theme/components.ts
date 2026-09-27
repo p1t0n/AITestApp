@@ -234,6 +234,22 @@ export function componentOverrides(t: ThemeModeTokens, mode: ThemeMode): Compone
 
     MuiTextField: { defaultProps: { size: "small" } },
 
+    // A floated label sits wholly above its field. MUI's straddles the top edge and trusts the
+    // notch to clear the way, but the notch cuts the border only — a Well's fill and inset shadow
+    // ran through the label's lower half. The field reserves the label's height (≈15px at 0.75,
+    // plus a gap) above itself, so the label never lands on whatever sits there.
+    MuiFormControl: {
+      styleOverrides: {
+        root: { "&:has(> .MuiInputLabel-outlined)": { marginTop: 20 } },
+      },
+    },
+
+    MuiInputLabel: {
+      styleOverrides: {
+        outlined: { "&.MuiInputLabel-shrink": { transform: "translate(4px, -20px) scale(0.75)" } },
+      },
+    },
+
     MuiOutlinedInput: {
       styleOverrides: {
         root: {
@@ -255,7 +271,10 @@ export function componentOverrides(t: ThemeModeTokens, mode: ThemeMode): Compone
         // pointing at it), and neumorphism is why it now matters more, not less: 1.4.11 wants a
         // boundary that can be *measured*, and a shadow edge has nothing to measure. The relief
         // above says "field"; this line is what proves it.
-        notchedOutline: { borderColor: t.surface.outline },
+        // The label floats above the field (`MuiInputLabel`), so there is nothing for a notch to
+        // clear. `shrink: true` call sites pass `notched` explicitly, which is why this is the
+        // legend's width and not a `notched: false` default prop.
+        notchedOutline: { borderColor: t.surface.outline, "& > legend": { maxWidth: "0.01px" } },
       },
     },
 
