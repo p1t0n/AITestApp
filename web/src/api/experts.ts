@@ -48,10 +48,25 @@ export const ROSTER_SORTS = ["name", "title", "location", "capacity", "status"] 
 export type RosterSort = (typeof ROSTER_SORTS)[number];
 export type RosterDir = "asc" | "desc";
 
+/** The statuses the sidebar filters on, in the order it lists them. A value outside this set is a
+ *  400 — Paused is not one of them, because a pause is a timestamp on an Active row. */
+export const ROSTER_STATUSES = ["Active", "Draft"] as const;
+export type RosterStatusFilter = (typeof ROSTER_STATUSES)[number];
+
+/** The availability-today bands, most available first. `null` is "Any". */
+export const ROSTER_BANDS = ["full", "partial", "none"] as const;
+export type RosterBand = (typeof ROSTER_BANDS)[number];
+
 /** What the roster page is currently showing — the whole of it, and the whole of the URL. */
 export interface RosterQuery {
   /** Case-insensitive contains over full name, email and title. */
   q: string;
+  /** Empty means every status, which is what an untouched group of checkboxes asks for. */
+  statuses: RosterStatusFilter[];
+  /** Exact location matches, unioned. Empty means everywhere. */
+  locations: string[];
+  /** null means any availability. */
+  band: RosterBand | null;
   sort: RosterSort;
   dir: RosterDir;
   /** 1-based, as the server counts. */
@@ -59,14 +74,36 @@ export interface RosterQuery {
   pageSize: number;
 }
 
+/** One choice in the sidebar, and how many rows it would leave. */
+export interface RosterFacetCount {
+  value: string;
+  count: number;
+}
+
+/**
+ * The counts beside the sidebar's filters (EXP-47). Each group is counted by the server against
+ * every *other* active filter and never against its own, so an unchecked box says what checking it
+ * would add rather than the 0 its own filter would force it to.
+ */
+export interface RosterFacets {
+  status: RosterFacetCount[];
+  band: RosterFacetCount[];
+  /** Busiest first. A zero here is a row to disable, not a row to drop. */
+  location: RosterFacetCount[];
+}
+
 export interface RosterPageResult {
   items: ExpertSummary[];
   /** The size of the whole match, not of this page. */
   total: number;
+  facets: RosterFacets;
 }
 
 export const ROSTER_DEFAULTS: RosterQuery = {
   q: "",
+  statuses: [],
+  locations: [],
+  band: null,
   sort: "name",
   dir: "asc",
   page: 1,
@@ -89,7 +126,17 @@ export function useRosterPage(query: RosterQuery) {
   return useQuery({
     queryKey: ["experts", "roster", query],
     queryFn: async () =>
-      (await http.get<RosterPageResult>("/experts/roster", { params: query })).data,
+      (
+        await http.get<RosterPageResult>("/experts/roster", {
+          // `band: null` would serialise as the literal string "null" and be refused; undefined is
+          // simply absent, which is what "Any" means.
+          params: { ...query, band: query.band ?? undefined },
+          // Repeated keys without brackets — `statuses=Active&statuses=Draft`. axios indexes array
+          // params as `statuses[0]=` by default, and ASP.NET Core binds neither that nor the
+          // `statuses[]=` form to a `string[]` action parameter, so both arrive as no filter at all.
+          paramsSerializer: { indexes: null },
+        })
+      ).data,
     placeholderData: keepPreviousData,
   });
 }

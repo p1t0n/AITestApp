@@ -28,8 +28,12 @@ const rows: ExpertSummary[] = Array.from({ length: 3 }, (_, i) => ({
   status: "Active",
 }));
 
+/** The sidebar's own behaviour is `ExpertsPage.facets.test.tsx`'s; here the groups just have to
+ *  be present and empty, because that is a shape the server really does send. */
+const noFacets = { status: [], band: [], location: [] };
+
 const useRosterPage = vi.fn((_query: RosterQuery) => ({
-  data: { items: rows, total: 42 },
+  data: { items: rows, total: 42, facets: noFacets },
   isLoading: false,
   isFetching: false,
 }));
@@ -80,7 +84,16 @@ describe("the roster's view is the server's query", () => {
   it("asks for the first page in name order when the URL says nothing", () => {
     renderPage();
 
-    expect(asked()).toEqual({ q: "", sort: "name", dir: "asc", page: 1, pageSize: 25 });
+    expect(asked()).toEqual({
+      q: "",
+      statuses: [],
+      locations: [],
+      band: null,
+      sort: "name",
+      dir: "asc",
+      page: 1,
+      pageSize: 25,
+    });
   });
 
   it("heads the results with the server's total, not the number of rows on screen", () => {
@@ -169,6 +182,9 @@ describe("the view round-trips through the URL", () => {
 
     expect(asked()).toEqual({
       q: "lovelace",
+      statuses: [],
+      locations: [],
+      band: null,
       sort: "capacity",
       dir: "desc",
       page: 2,
@@ -194,7 +210,16 @@ describe("the view round-trips through the URL", () => {
   it("ignores a sort key the server would refuse rather than asking for it", () => {
     renderPage("/experts?sort=firstname&dir=sideways&page=0");
 
-    expect(asked()).toEqual({ q: "", sort: "name", dir: "asc", page: 1, pageSize: 25 });
+    expect(asked()).toEqual({
+      q: "",
+      statuses: [],
+      locations: [],
+      band: null,
+      sort: "name",
+      dir: "asc",
+      page: 1,
+      pageSize: 25,
+    });
   });
 
   it("follows the URL when it moves without the page's help", async () => {
@@ -220,7 +245,7 @@ describe("what the row shows", () => {
 
   it("says so when nothing matches", () => {
     useRosterPage.mockReturnValueOnce({
-      data: { items: [], total: 0 },
+      data: { items: [], total: 0, facets: noFacets },
       isLoading: false,
       isFetching: false,
     });
