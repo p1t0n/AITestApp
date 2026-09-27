@@ -15,7 +15,7 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DescriptionIcon from "@mui/icons-material/Description";
-import { useCreateExpert, useDeleteExpert, useExperts } from "../api";
+import { useCreateExpert, useDeleteExpert, useRoster } from "../api";
 import PageHeader, { PageContainer } from "../components/PageHeader";
 import ExpertFormDialog from "./ExpertFormDialog";
 
@@ -26,7 +26,9 @@ function capacityColor(pct: number): "success" | "warning" | "default" {
 }
 
 export default function ExpertsPage() {
-  const { data, isLoading } = useExperts();
+  // The whole Roster, not the bench: Draft, Active and Paused (EXP-49). This page is the only
+  // surface from which a human can find a Draft the ingest agent staged and promote it.
+  const { data, isLoading } = useRoster();
   const create = useCreateExpert();
   const del = useDeleteExpert();
   const navigate = useNavigate();
@@ -74,6 +76,18 @@ export default function ExpertsPage() {
               >
                 <TableCell>
                   {e.firstName} {e.lastName}
+                  {/* Staged by the ingest agent and not yet published (EXP-49). Marked the same way
+                      a pause is, because both say the same kind of thing: this person is on the
+                      roster and not on the bench. */}
+                  {e.status === "Draft" && (
+                    <Chip
+                      label="Draft"
+                      size="small"
+                      variant="outlined"
+                      sx={{ ml: 1 }}
+                      title="Staged by the resume ingest agent — open the record to review and publish it."
+                    />
+                  )}
                   {/* Seen and marked, never dropped (P1T-185): staff must be able to tell somebody
                       who paused themselves from somebody who was never here. */}
                   {e.hiddenAt && (

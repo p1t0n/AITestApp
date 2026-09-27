@@ -54,7 +54,12 @@ vi.mock("../api", async (importOriginal) => {
     // QueryClientProvider here, like every other hook in this factory.
     useAgentModels: () => ({ data: undefined, isError: false }),
     // Read through a getter so a test can change the roster without re-mocking the module.
-    useExperts: () => ({ data: roster, isLoading: rosterLoading, isError: false, error: null }),
+    // `useRoster` — the whole Roster, Drafts included (EXP-49) — is the list this surface shows;
+    // the bench list stays with the agent pickers.
+    useRoster: () => ({ data: roster, isLoading: rosterLoading, isError: false, error: null }),
+    useExperts: () => {
+      throw new Error("the palette reads the whole Roster (useRoster), not the bench list");
+    },
     useUsage: () => ({ data: undefined, isLoading: false, isError: false, error: null }),
     useSkills: () => ({ data: [], isLoading: false }),
     useCategories: () => ({ data: [], isLoading: false }),
@@ -266,6 +271,27 @@ describe("finding a person", () => {
 
     await user.type(input(), "hopper");
     expect(optionNames()).toEqual([expect.stringContaining("Grace Hopper")]);
+  });
+
+  /**
+   * A Draft is offered, unlike a pause (EXP-49). The palette is a jump-to-a-person surface and
+   * the person a Draft names is exactly the one somebody has to open in order to publish them —
+   * which is the same reason the roster page lists it.
+   */
+  it("offers a Draft, because publishing one starts by jumping to it", async () => {
+    roster = [
+      person({ id: "e1", firstName: "Grace", lastName: "Hopper" }),
+      person({ id: "e2", firstName: "Staged", lastName: "Hopper", status: "Draft" }),
+    ];
+
+    const { user } = renderPalette();
+    open();
+
+    await user.type(input(), "hopper");
+    expect(optionNames()).toEqual([
+      expect.stringContaining("Grace Hopper"),
+      expect.stringContaining("Staged Hopper"),
+    ]);
   });
 
   it("matches on the title, the location and the email as well as the name", async () => {

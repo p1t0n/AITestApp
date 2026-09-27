@@ -3,7 +3,8 @@
 // keys but they are a different kind of write.
 //
 // Query keys, invalidated by prefix:
-//   ["experts"]              the list
+//   ["experts"]              the bench list (Active only)
+//   ["experts", "roster"]    the whole Roster, Drafts included — the staff list
 //   ["experts", id]          one detail projection
 //   ["experts", id, "cv"]    the assembled CV
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -11,10 +12,33 @@ import type { Cv, ExpertDetail, ExpertSummary, SaveExpert } from "../types";
 import { http } from "./http";
 import { saveAsFile } from "./download";
 
+/**
+ * The **bench** list: published (Active) Experts only, which is what the server returns when
+ * `includeDrafts` is not asked for. This is the list the agent widget's expert pickers offer —
+ * a Draft is agent-staged and unvetted, so it is not somebody to tailor a CV for or to match
+ * against a job description (EXP-49).
+ */
 export function useExperts() {
   return useQuery({
     queryKey: ["experts"],
     queryFn: async () => (await http.get<ExpertSummary[]>("/experts")).data,
+  });
+}
+
+/**
+ * The whole **Roster**: Draft, Active and Paused. The staff roster surfaces read this one —
+ * the roster table and the ⌘K palette's People group — because they are where a human accounts
+ * for every Expert the instance holds, including a Draft waiting at the publication gate.
+ *
+ * A separate request rather than a widened `useExperts`, deliberately: the pickers share that
+ * hook and must keep offering only published people. It stays under the `["experts"]` prefix so
+ * every existing `invalidateQueries({ queryKey: ["experts"] })` still refreshes it.
+ */
+export function useRoster() {
+  return useQuery({
+    queryKey: ["experts", "roster"],
+    queryFn: async () =>
+      (await http.get<ExpertSummary[]>("/experts", { params: { includeDrafts: true } })).data,
   });
 }
 

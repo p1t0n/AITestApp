@@ -16,7 +16,7 @@ import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
 import SearchIcon from "@mui/icons-material/Search";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import { useNavigate } from "react-router";
-import { useExperts } from "../api";
+import { useRoster } from "../api";
 import { apiErrorMessage } from "../api/http";
 import { navFor } from "./AppRail";
 import { useSessionRole } from "../auth/useAuth";
@@ -71,24 +71,24 @@ function matchesQuery(query: string, ...fields: (string | null | undefined)[]): 
 /**
  * The palette's body, mounted only while it is open.
  *
- * That is what makes the roster query honest *and* free: `useExperts` is the same
- * `["experts"]` query the roster page uses, so an already-loaded roster costs nothing and a cold
- * one is fetched on the first ⌘K rather than on every page load.
+ * That is what makes the roster query honest *and* free: `useRoster` is the same
+ * `["experts", "roster"]` query the roster page uses, so an already-loaded roster costs nothing
+ * and a cold one is fetched on the first ⌘K rather than on every page load.
  *
  * **What "search" means here** (the question P1T-165 was deferred to answer). `GET /api/experts`
- * is unpaged — it returns every active expert in one response, which is why the roster page can
- * be a client-side table at all — so filtering that cached list *is* searching the whole roster.
- * The palette therefore searches exactly what the roster page shows: all of it, drafts excluded,
- * with no new endpoint and no second definition of what a match is. A server search becomes
- * necessary on the day the list endpoint starts paging, and on that day the roster page needs one
- * too; the guard is `Roster_list_returns_every_active_expert_in_one_response` in
+ * is unpaged — it returns every expert in one response, which is why the roster page can be a
+ * client-side table at all — so filtering that cached list *is* searching the whole roster.
+ * The palette therefore searches exactly what the roster page shows: all of it, Drafts included
+ * since EXP-49, with no new endpoint and no second definition of what a match is. A server search
+ * becomes necessary on the day the list endpoint starts paging, and on that day the roster page
+ * needs one too; the guard is `Roster_list_returns_every_active_expert_in_one_response` in
  * `tests/Web.Tests/ExpertCrudTests.cs`, which fails the moment that stops being true.
  */
 function PaletteBody({ dock }: { dock: AgentDock }) {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
-  const { data: experts, isLoading, isError, error } = useExperts();
+  const { data: experts, isLoading, isError, error } = useRoster();
   const listRef = useRef<HTMLUListElement | null>(null);
   // Same list the rail shows, for the same reason: offering a place this role cannot reach would
   // make ⌘K a way to bounce yourself back to where you started.
@@ -109,6 +109,8 @@ function PaletteBody({ dock }: { dock: AgentDock }) {
     // Paused people are left out (P1T-185). The roster list keeps them, marked, because that page
     // is where staff account for who is on the bench; the palette is a jump-to-a-person surface and
     // offering somebody who has taken themselves off the bench is offering them for work.
+    // A Draft is offered, though (EXP-49): the palette is how staff jump to a person, and the
+    // person a Draft names is exactly the one somebody has to open in order to publish them.
     const people = query.trim()
       ? (experts ?? []).filter(
           (e) =>
