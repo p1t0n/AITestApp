@@ -1,3 +1,4 @@
+using ExpertToJob.Infrastructure.Embeddings;
 using ExpertToJob.RetrievalEval;
 using FluentAssertions;
 
@@ -5,21 +6,29 @@ namespace ExpertToJob.Mcp.Tests.Eval;
 
 /// <summary>
 /// Unit tests for the sweep CLI's argument grammar:
-/// <c>[--threshold X | --sweep a:b:c] [--refine] [--output path] [--date d]</c>.
+/// <c>[--provider P] [--threshold X | --sweep a:b:c] [--refine] [--output path] [--date d]</c>.
 /// </summary>
 public class CliArgsTests
 {
+    /// <summary>With nothing asked for, nothing is decided here: since EXP-64 the provider and its
+    /// similarity floor come from <c>Ai:*</c> configuration, and a number compiled into the CLI
+    /// would be one provider's plateau applied to another's vectors.</summary>
     [Fact]
-    public void Defaults_to_a_single_run_at_the_production_threshold()
+    public void Defaults_to_the_configured_provider_and_its_own_floor()
     {
         var args = CliArgs.Parse([]);
 
-        args.Thresholds.Should().Equal(0.55);
+        args.Thresholds.Should().BeNull();
+        args.Provider.Should().BeNull();
         args.IsSweep.Should().BeFalse();
         args.Refine.Should().BeFalse();
         args.OutputPath.Should().BeNull();
         args.Date.Should().Be("unspecified");
     }
+
+    [Fact]
+    public void Parses_a_provider_override()
+        => CliArgs.Parse(["--provider", "gemini"]).Provider.Should().Be(EmbeddingsProvider.Gemini);
 
     [Fact]
     public void Parses_a_single_threshold_run()
@@ -43,6 +52,10 @@ public class CliArgsTests
     [InlineData("--threshold", "abc")]                   // non-numeric
     [InlineData("--threshold", "0.3", "--sweep", "0.1:0.2:0.05")] // mutually exclusive
     [InlineData("--wat")]                                // unknown flag
+    [InlineData("--provider")]                           // missing value
+    [InlineData("--provider", "Azure")]                  // not a provider name
+    [InlineData("--provider", "1")]                      // a number is not a name
+    [InlineData("--provider", "Gemini,AzureFoundry")]    // two asked for, one silently chosen
     public void Rejects_malformed_argument_lists(params string[] argv)
     {
         var act = () => CliArgs.Parse(argv);

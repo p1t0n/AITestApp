@@ -1,5 +1,6 @@
 using ExpertToJob.Application.Abstractions;
 using ExpertToJob.Infrastructure.Persistence;
+using ExpertToJob.Infrastructure.Search;
 using ExpertToJob.RetrievalEval;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -47,7 +48,11 @@ public sealed class EvalRunnerTests : IAsyncLifetime
             new GoldenQuery("logistics", GoldenQueryCategory.Negative, []),
         };
 
-        var result = await EvalRunner.RunAsync(NewDb, new KeywordEmbedder(), corpus, goldenSet);
+        var result = await EvalRunner.RunAsync(
+            NewDb, new KeywordEmbedder(), corpus, goldenSet,
+            // The plumbing measurement is against the incumbent's floor, which is what a bare
+            // SemanticSearchOptions also carries; stated rather than defaulted since EXP-64.
+            new SemanticSearchOptions().MinSimilarity);
 
         // recall@5 = mean(1, 1, 0.5) ; MRR = mean(1, 1, 1) ; negatives stayed empty.
         result.Metrics.RecallAt5.Should().BeApproximately(5.0 / 6.0, 1e-9);

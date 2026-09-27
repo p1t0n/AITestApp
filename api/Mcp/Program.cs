@@ -54,7 +54,7 @@ builder.Services.AddScoped<
     ExpertToJob.Application.Auth.UnrestrictedOwnershipScopeProvider>();
 
 // Embedding backend for semantic roster search (reconciliation worker + search query).
-builder.Services.AddGeminiEmbeddings(builder.Configuration);
+builder.Services.AddEmbeddingProvider(builder.Configuration);
 builder.Services.AddSearchIndexing(builder.Configuration);
 builder.Services.AddHostedService<ReconcileWorker>();
 

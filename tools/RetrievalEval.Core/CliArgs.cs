@@ -1,22 +1,27 @@
 using System.Globalization;
+using ExpertToJob.Infrastructure.Embeddings;
 
 namespace ExpertToJob.RetrievalEval;
 
 /// <summary>
 /// The sweep CLI's parsed arguments:
-/// <c>[--threshold X | --sweep start:end:step] [--refine] [--output path] [--date d]</c>.
-/// Defaults to a single run at the production threshold (0.55). The date is a plain string the
-/// report echoes verbatim — "unspecified" unless the caller passes one.
+/// <c>[--provider Gemini|AzureFoundry] [--threshold X | --sweep start:end:step] [--refine]
+/// [--output path] [--date d]</c>. The date is a plain string the report echoes verbatim —
+/// "unspecified" unless the caller passes one.
+///
+/// <para><see cref="Thresholds"/> and <see cref="Provider"/> are both <c>null</c> when the caller
+/// did not say: since EXP-64 the eval reads the provider from <c>Ai:*</c> configuration and takes
+/// its floor from that provider's block, so a code default here would be one provider's number
+/// silently applied to another's vectors. The flags are overrides, not defaults.</para>
 /// </summary>
 public sealed record CliArgs(
-    IReadOnlyList<double> Thresholds,
+    IReadOnlyList<double>? Thresholds,
     bool IsSweep,
     bool Refine,
     string? OutputPath,
-    string Date)
+    string Date,
+    EmbeddingsProvider? Provider)
 {
-    public const double DefaultThreshold = 0.55;
-
     public static CliArgs Parse(IReadOnlyList<string> argv)
     {
         double? threshold = null;
@@ -24,6 +29,7 @@ public sealed record CliArgs(
         var refine = false;
         string? output = null;
         var date = "unspecified";
+        EmbeddingsProvider? provider = null;
 
         for (var i = 0; i < argv.Count; i++)
         {
@@ -44,6 +50,9 @@ public sealed record CliArgs(
                 case "--date":
                     date = Value(argv, ref i, "--date");
                     break;
+                case "--provider":
+                    provider = ParseProvider(Value(argv, ref i, "--provider"));
+                    break;
                 default:
                     throw new ArgumentException($"Unknown argument '{argv[i]}'.");
             }
@@ -55,12 +64,25 @@ public sealed record CliArgs(
         }
 
         return new CliArgs(
-            Thresholds: sweep ?? [threshold ?? DefaultThreshold],
+            Thresholds: sweep ?? (threshold is { } single ? [single] : null),
             IsSweep: sweep is not null,
             Refine: refine,
             OutputPath: output,
-            Date: date);
+            Date: date,
+            Provider: provider);
     }
+
+    /// <summary>The override has to <b>name a member</b>, the same test the seam applies to
+    /// <c>Ai:Embeddings:Provider</c> — a bare number or a comma-separated pair is not a provider
+    /// anyone meant.</summary>
+    private static EmbeddingsProvider ParseProvider(string text)
+        => Enum.GetNames<EmbeddingsProvider>()
+               .FirstOrDefault(name => string.Equals(name, text.Trim(), StringComparison.OrdinalIgnoreCase))
+           is { } named
+            ? Enum.Parse<EmbeddingsProvider>(named)
+            : throw new ArgumentException(
+                $"--provider '{text}' is not an embeddings provider this build knows. "
+                + $"Valid values: {string.Join(", ", Enum.GetNames<EmbeddingsProvider>())}.");
 
     private static string Value(IReadOnlyList<string> argv, ref int i, string flag)
         => ++i < argv.Count

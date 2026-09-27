@@ -61,7 +61,7 @@ described here into one streamed, recommendation-first report — see
         │ Application             │        │ Infrastructure             │     │ Gemini                  │
         │  ChunkProjection        │        │  ExpertSearchChunk        │     │  gemini-embedding-001   │
         │  Reconciler (pure diff) │        │  (pgvector table)           │     │  (OpenAI-compatible)    │
-        │  ISemanticSearchService │        │  GeminiEmbedder       │     └────────────────────────┘
+        │  ISemanticSearchService │        │  OpenAICompatibleEmbedder │     └────────────────────────┘
         │  IShortlistSearchService│        │  SearchIndexReconciler      │
         │  IExemplarSearchService │        │  SemanticSearchService      │
         │  ShortlistRanker (pure) │        │  ExemplarSearchService      │
@@ -385,7 +385,8 @@ Retrieval quality is **measured, not vibed** (`tools/RetrievalEval.Core` + `tool
 
 **Measured baseline + standing verdicts** (see [`retrieval-eval-baseline.md`](retrieval-eval-baseline.md)):
 at 0.30 (2026-07, retired OpenAI model) — recall@5 **1.0**, MRR **0.985**, negative-FP **0.0**, keyword recall **1.0**. Re-swept 2026-08-01 for `gemini-embedding-001`: plateau 0.540–0.575, all metrics perfect. Verdicts:
-**`MinSimilarity` = 0.55 for Gemini** (was 0.30 for the OpenAI model — Gemini similarities cluster higher); **hybrid keyword+vector search not
+**`MinSimilarity` = 0.55 for Gemini** (was 0.30 for the OpenAI model — Gemini similarities cluster
+higher; since EXP-64 the floor is per provider, in `Ai:<provider>:MinSimilarity`); **hybrid keyword+vector search not
 adopted** (keyword gap 0.0 pts vs the >10-pt adoption rule) — the eval gate re-raises it if the gap
 ever opens. Caveat: the small frozen corpus saturates recall by design; the gate guards regressions,
 it doesn't claim perfection at scale.
@@ -424,9 +425,13 @@ it doesn't claim perfection at scale.
 Mcp service `appsettings.json`:
 
 ```jsonc
-"Gemini":        { "Endpoint": "…", "EmbeddingModel": "gemini-embedding-001", "Dimensions": 1536, "ApiKey": "" },
+// Since EXP-64 the embeddings provider is chosen by configuration and the similarity floor lives in
+// that provider's own block; a leftover "SemanticSearch": { "MinSimilarity": … } throws at startup.
+"Ai": { "Embeddings": { "Provider": "Gemini" },
+        "Gemini": { "Endpoint": "…", "EmbeddingModel": "gemini-embedding-001", "Dimensions": 1536,
+                    "MinSimilarity": 0.55, "ApiKey": "" } },
 "SearchIndex":   { "Enabled": true, "IntervalSeconds": 30, "EmbedBatchSize": 32 },
-"SemanticSearch":{ "MinSimilarity": 0.55, "DefaultTopK": 5, "MaxTopK": 20,
+"SemanticSearch":{ "DefaultTopK": 5, "MaxTopK": 20,
                    "MaxSnippetsPerExpert": 3, "SnippetMaxChars": 500,
                    "ShortlistDefaultTopK": 10, "ShortlistMaxTopK": 20,
                    // style exemplars (bullet rewriting):
@@ -457,9 +462,10 @@ The worker is disabled in the in-memory MCP tests via `SearchIndex:Enabled=false
 
 - **Pure/unit** (`Application.Tests`): `ChunkProjection` (rendering, blank-summary skip, ordered
   achievements, hash stability, reorder-changes-hash), `Reconciler.Diff`
-  (insert/no-op/update/delete/mixed), and `GeminiEmbedder` (batch shape, token count, logging)
-  with a deterministic fake generator. Plus a skippable live embedding smoke test
-  (`Category=live`, needs `GEMINI_API_KEY`).
+  (insert/no-op/update/delete/mixed), and `OpenAICompatibleEmbedder` (batch shape, token count,
+  logging) with a deterministic fake generator; `EmbeddingProviderTests` covers the provider seam
+  (discriminator, per-provider key, per-provider floor). Plus a skippable live embedding smoke test
+  (`Category=live`, needs the active provider's key).
 - **Integration** (`Mcp.Tests`, Testcontainers `pgvector/pgvector:pg17`, fake embedder):
   `SearchIndexReconciler` (backfill, no-op second pass, edit re-embeds only the changed chunk,
   orphan delete, expert cascade) and `SemanticSearchService` (topical ranking + threshold

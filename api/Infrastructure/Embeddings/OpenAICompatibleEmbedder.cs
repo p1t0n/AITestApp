@@ -9,11 +9,17 @@ namespace ExpertToJob.Infrastructure.Embeddings;
 /// <see cref="IEmbedder"/> over an OpenAI-compatible <see cref="IEmbeddingGenerator{TInput,TEmbedding}"/>.
 /// Logs the input-token count of every batch: embedding spend is an infra/operational cost, tracked
 /// for visibility only — it is deliberately NOT charged against per-user token caps (see the RAG plan).
+///
+/// <para><b>Provider-neutral, and named so since EXP-64.</b> It was called <c>GeminiEmbedder</c>,
+/// but nothing in it ever was Gemini-specific: the endpoint, the model and the breaker window all
+/// arrive as constructor arguments, and everything vendor-shaped happens in the construction branch
+/// that builds the generator (<see cref="EmbeddingServiceCollectionExtensions"/>). That is what lets
+/// a second provider be an argument rather than a fork.</para>
 /// </summary>
-public sealed class GeminiEmbedder : IEmbedder
+public sealed class OpenAICompatibleEmbedder : IEmbedder
 {
     private readonly IEmbeddingGenerator<string, Embedding<float>> _generator;
-    private readonly ILogger<GeminiEmbedder> _logger;
+    private readonly ILogger<OpenAICompatibleEmbedder> _logger;
 
     private readonly int _dimensions;
     private readonly TimeSpan _retryDelay;
@@ -23,11 +29,11 @@ public sealed class GeminiEmbedder : IEmbedder
     private readonly object _breakerLock = new();
     private DateTimeOffset _quotaOpenUntil = DateTimeOffset.MinValue;
 
-    public GeminiEmbedder(
+    public OpenAICompatibleEmbedder(
         IEmbeddingGenerator<string, Embedding<float>> generator,
         string model,
         int dimensions,
-        ILogger<GeminiEmbedder> logger,
+        ILogger<OpenAICompatibleEmbedder> logger,
         TimeSpan? retryDelay = null,
         TimeProvider? clock = null,
         TimeSpan? quotaBreakerWindow = null)
@@ -64,7 +70,7 @@ public sealed class GeminiEmbedder : IEmbedder
         return new EmbeddingBatch(vectors, inputTokens);
     }
 
-    /// <summary>Gemini's free tier throttles embedding requests per minute; a burst (reconciler
+    /// <summary>Providers throttle embedding requests per minute; a burst (reconciler
     /// backfill, eval corpus) trips 429s that clear on their own. Waits and retries a few times;
     /// a 429 that outlives the whole retry budget is the daily request cap, not a throttle, so it
     /// surfaces as <see cref="EmbeddingQuotaExceededException"/> for callers to back off on

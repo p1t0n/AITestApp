@@ -10,6 +10,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- The eval ships no settings file: Ai:* reaches it as Ai__* environment variables. -->
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" />
     <PackageReference Include="Testcontainers.PostgreSql" />
   </ItemGroup>
 
