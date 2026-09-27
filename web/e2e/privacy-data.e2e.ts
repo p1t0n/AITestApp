@@ -19,11 +19,16 @@ function realPersonEmail(): string {
  * the API and hands it here, so this asserts what the host was told rather than a name that was
  * true when the spec was written (EXP-21). Chat is the only half that moves: embeddings stay on
  * Google whatever the provider is, so under Azure the page names two recipients, not one.
+ *
+ * `run.mjs` always sets the variable, so the fallback only matters when Playwright is driven at a
+ * stack somebody started by hand. It names Gemini as the exception rather than the default (EXP-61)
+ * — a fallback that assumes the provider the shipped settings moved away from is how this spec
+ * would go on passing while the page named the wrong company.
  */
 const MODEL_PROVIDER =
-  (process.env.E2E_CHAT_PROVIDER ?? "Gemini") === "AzureFoundry"
-    ? /Microsoft \(Azure OpenAI\), as our AI model provider/
-    : /Google \(Gemini\), as our AI model provider/;
+  process.env.E2E_CHAT_PROVIDER === "Gemini"
+    ? /Google \(Gemini\), as our AI model provider/
+    : /Microsoft \(Azure OpenAI\), as our AI model provider/;
 
 /**
  * The privacy page at the real surface (P1T-191). Three of its rights cannot be shown by a unit

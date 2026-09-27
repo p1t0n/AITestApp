@@ -68,6 +68,30 @@ public class TransparencyTests(WebApiFactory factory)
     }
 
     /// <summary>
+    /// The same disclosure with <b>nothing overridden</b> — the host reading its own shipped
+    /// <c>api/Web/appsettings.json</c>, which is what a data subject actually gets served (EXP-61).
+    ///
+    /// <para>The theory above passes a provider in, so it proves the seam works and says nothing
+    /// about which way this deployment is pointing. That gap is the whole of EXP-61: the Agents
+    /// host moved to Azure OpenAI and the Web host stayed on Gemini, so every parameterised test
+    /// stayed green while the page named the wrong company to the person it was about.
+    /// <c>ChatProviderSettingsTests</c> guards the two files against drifting apart again; this
+    /// guards the end of the pipe they feed.</para>
+    /// </summary>
+    [Fact]
+    public async Task The_default_stack_names_microsoft_as_the_model_provider()
+    {
+        var world = await GivenAScoredPersonAsync();
+
+        var view = await (await world.Client.GetAsync("/api/me/access")).ReadOkAsync<AccessViewDto>();
+
+        var modelProvider = view.Recipients.Single(r => r.Recipient.Contains("AI model provider"));
+        modelProvider.Recipient.Should().Contain("Microsoft (Azure OpenAI)");
+        modelProvider.Recipient.Should().NotContain("Google");
+        modelProvider.Why.Should().Contain("outside this company");
+    }
+
+    /// <summary>
     /// Embeddings stay on Google whatever chat does (<c>manuals/adr-chat-provider-seam.md</c>), so
     /// the Azure deployment has genuinely two recipients rather than a renamed one. Collapsing them
     /// into a single entry would understate the transfer to whichever provider went unnamed.
