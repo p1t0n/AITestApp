@@ -19,6 +19,9 @@ import UsersPage from "./pages/UsersPage";
 import MyCvPage from "./pages/MyCvPage";
 import PrivacyDataPage from "./pages/PrivacyDataPage";
 import ClaimStatusPage from "./pages/ClaimStatusPage";
+// PROTOTYPE — throwaway routes (branch prototype/dashboard).
+import DashboardPrototype from "./pages/prototype/DashboardPrototype";
+import MyAvailabilityPrototype from "./pages/prototype/MyAvailabilityPrototype";
 import AgentWidget from "./components/AgentWidget";
 import AppRailNav, { BRAND } from "./components/AppRail";
 import CommandPalette from "./components/CommandPalette";
@@ -168,6 +171,7 @@ export default function App() {
             <Route path="/experts/:id/cv" element={<CvPage />} />
             <Route path="/catalog" element={<CatalogPage />} />
             <Route path="/users" element={<UsersPage />} />
+            <Route path="/prototype/dashboard" element={<DashboardPrototype />} />
           </Route>
 
           {/* The User's two places (P1T-190). My CV is the landing, because editing it is what
@@ -179,6 +183,7 @@ export default function App() {
             <Route path="/me/cv" element={<MyCvPage />} />
             <Route path="/me/claim" element={<ClaimStatusPage />} />
             <Route path="/me/privacy" element={<PrivacyDataPage />} />
+            <Route path="/me/prototype/availability" element={<MyAvailabilityPrototype />} />
           </Route>
         </Routes>
       </RoutedArea>
