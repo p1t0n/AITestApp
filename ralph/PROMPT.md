@@ -9,7 +9,41 @@ progress file.
 addresses**: the workspace behind them is gone and no lookup resolves them. Never try to fetch one,
 and never let one block you — read it as a pointer to the commit or manual that explains it.
 
-## Do exactly one ticket, then stop
+## First, reconcile what has already merged
+
+Before picking, close out the work that has landed since the last iteration. This workspace has no
+working GitHub link — Linear never sees a PR merge, so nothing moves an issue to `Done` on its own
+(EXP-51). And step 1 only takes a ticket whose `blockedBy` issues are all `Done`, so one merged but
+unclosed ticket stalls the whole chain behind it.
+
+For **every** issue on team `ExpertToJob` in state `In Progress`, find its PR by the issue's own
+`gitBranchName`:
+
+```bash
+gh pr list --head "<gitBranchName>" --state all --json number,state,mergeCommit \
+  -q '.[] | "\(.number) \(.state) \(.mergeCommit.oid)"'
+# then, for a MERGED one, main CI on its merge commit:
+gh run list --branch main --commit "<mergeCommit.oid>" --json databaseId,status,conclusion \
+  -q '.[] | "\(.databaseId) \(.status) \(.conclusion)"'
+```
+
+Then exactly one of:
+
+* **Merged, and that main run `completed` / `success`** → set the issue to `Done` and comment:
+  the PR number, the main run id, and that the close came from this reconcile step.
+* **Merged, main run not finished (or not started yet)** → leave it. A later iteration closes it.
+  Do not wait on it here.
+* **Merged, main run `completed` with any other conclusion** → leave it `In Progress`. Comment
+  with the failing run id — **once**: read the issue's comments first and skip it if one already
+  names that run. Red on `main` is a finding under the CI rules in step 7, not a reason to close.
+* **No PR, an open PR, or a PR closed without merging** → do not touch it. That is work in flight
+  (possibly a human's) or a decision that is not yours.
+
+Reconciling is bookkeeping, not your ticket: it does not count as the one ticket this iteration
+does, and you still go on to step 1 — a close you just made may be what unblocks the next pick.
+Merging stays human; this step only records what a human already merged.
+
+## Then do exactly one ticket, and stop
 
 1. **Pick the ticket.** List issues on team `ExpertToJob` with label `ready-for-agent`
    and state `Todo`. A `wayfinder:*` label means the issue is a planning ticket a human resolves —
@@ -63,7 +97,8 @@ and never let one block you — read it as a pointer to the commit or manual tha
 
    CI is the last word on green, not the local run. Report a ticket done only when CI says so.
 8. **Record it.** Comment on the Linear issue with what you did, the PR link and the CI result,
-   then leave the issue `In Progress` — a human moves it to `Done` when the PR merges.
+   then leave the issue `In Progress`. Do not set it to `Done` yourself: a human merges the PR,
+   and a later iteration's reconcile step closes the issue once `main` is green on that merge.
 
    **Report only commands you actually ran.** Every number you quote — a test count, a row count,
    an exit code — has to come from output you saw in this session. Do not describe what a command

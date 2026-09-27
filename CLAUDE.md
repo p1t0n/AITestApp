@@ -173,8 +173,11 @@ lookup will resolve. New work cites `EXP-*`.
 
 **The Ralph loop** (`ralph/PROMPT.md`, `ralph/ralph-once.sh`) is an unattended agent that takes one
 Linear issue per iteration: label `ready-for-agent`, state `Todo`, `blockedBy` respected as
-load-bearing. It builds TDD, runs the full suite, opens a PR, and never merges. Issues written for
-it need acceptance criteria precise enough to build from without asking.
+load-bearing. It builds TDD, runs the full suite, opens a PR, and never merges. Each iteration
+first closes any `In Progress` issue whose PR has merged with `main` green on the merge — the
+workspace has no GitHub link, so nothing else moves a merged issue to `Done`, and an unclosed one
+blocks everything behind it (EXP-51). Issues written for it need acceptance criteria precise
+enough to build from without asking.
 
 **CI is the last word on green.** A pushed PR is not a landed one: watch the run to a conclusion
 (`gh pr checks <pr>`, `gh run watch <id> --exit-status`) before calling a ticket done, and read the
