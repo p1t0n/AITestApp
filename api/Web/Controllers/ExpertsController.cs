@@ -52,8 +52,15 @@ public class ExpertsController : ControllerBase
         [FromQuery] string? dir,
         [FromQuery] int? page,
         [FromQuery] int? pageSize,
+        // The sidebar's filters (EXP-47). Repeated keys — `?statuses=Active&statuses=Draft` —
+        // rather than one comma-joined value, because a location may legitimately contain a comma
+        // and splitting it back would invent two places nobody is in.
+        [FromQuery] string[]? statuses,
+        [FromQuery] string[]? locations,
+        [FromQuery] string? band,
         CancellationToken ct) =>
-        _experts.SearchAsync(new RosterQuery(q, sort, dir, page, pageSize), ct);
+        _experts.SearchAsync(
+            new RosterQuery(q, sort, dir, page, pageSize, statuses, locations, band), ct);
 
     [HttpGet("{id:guid}")]
     public Task<ExpertDetailDto> Get(Guid id, CancellationToken ct) => _experts.GetAsync(id, ct);

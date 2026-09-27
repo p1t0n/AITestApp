@@ -40,4 +40,25 @@ public static class CapacityCalculator
             .OrderByDescending(a => a.EffectiveFrom)
             .Select(a => (int?)a.CapacityPercent)
             .FirstOrDefault() ?? 0;
+
+    /// <summary>
+    /// "Is this person's availability today between these two numbers?", as SQL — the predicate
+    /// behind the roster's availability bands and behind their counts (EXP-47).
+    ///
+    /// <para>Assembled from <see cref="CapacityOn(DateOnly)"/>'s own expression tree rather than
+    /// written out again. There are already two spellings of the step function in this file and a
+    /// test whose only job is to keep them honest; a third, differing only in the comparison
+    /// bolted to the end, would be the one that drifts. Here the subquery <em>is</em> the same
+    /// node — comparing it against a bound is all this method contributes.</para>
+    /// </summary>
+    /// <param name="min">Inclusive lower bound.</param>
+    /// <param name="max">Inclusive upper bound.</param>
+    public static Expression<Func<Expert, bool>> CapacityBetween(DateOnly onDate, int min, int max)
+    {
+        var capacity = CapacityOn(onDate);
+        var within = Expression.AndAlso(
+            Expression.GreaterThanOrEqual(capacity.Body, Expression.Constant(min)),
+            Expression.LessThanOrEqual(capacity.Body, Expression.Constant(max)));
+        return Expression.Lambda<Func<Expert, bool>>(within, capacity.Parameters[0]);
+    }
 }

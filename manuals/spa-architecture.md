@@ -250,7 +250,7 @@ A flat, hierarchical convention, invalidated by prefix:
 ```
 ["experts"]                    the bench list (Active only) — what the agent pickers read
 ["experts", "roster"]          the whole Roster, Drafts included — the ⌘K palette's people
-["experts", "roster", query]   one searched, sorted, paged screenful of it (EXP-45)
+["experts", "roster", query]   one screenful of it — searched, filtered, sorted, paged (EXP-45, EXP-47)
 ["experts", id]                detail
 ["experts", id, "cv"]          assembled CV
 ["categories"] ["categories","tree"] ["skills"]

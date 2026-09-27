@@ -3,9 +3,12 @@ import { useNavigate, useSearchParams } from "react-router";
 import {
   Box,
   Button,
+  Checkbox,
   Chip,
   CircularProgress,
   FormControl,
+  FormControlLabel,
+  FormGroup,
   IconButton,
   InputAdornment,
   InputLabel,
@@ -13,6 +16,8 @@ import {
   Menu,
   MenuItem,
   Paper,
+  Radio,
+  RadioGroup,
   Select,
   Stack,
   Table,
@@ -26,18 +31,26 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
+import DeleteIcon from "@mui/icons-material/Delete";
+import DescriptionIcon from "@mui/icons-material/Description";
+import FilterListIcon from "@mui/icons-material/FilterList";
 import SearchIcon from "@mui/icons-material/Search";
 import {
+  ROSTER_BANDS,
   ROSTER_DEFAULTS,
   ROSTER_SORTS,
+  ROSTER_STATUSES,
   useCreateExpert,
   useDeleteExpert,
   useExpert,
   useRosterPage,
   useUpdateExpert,
+  type RosterBand,
   type RosterDir,
+  type RosterFacetCount,
   type RosterQuery,
   type RosterSort,
+  type RosterStatusFilter,
 } from "../api";
 import type { ExpertSummary } from "../types";
 import PageHeader, { PageContainer } from "../components/PageHeader";
@@ -68,17 +81,38 @@ function isSort(value: string | null): value is RosterSort {
   return ROSTER_SORTS.includes(value as RosterSort);
 }
 
+function isBand(value: string | null): value is RosterBand {
+  return ROSTER_BANDS.includes(value as RosterBand);
+}
+
+/** The availability facet's labels, spelling out the boundaries the server splits on. */
+const BAND_LABELS: Record<RosterBand, string> = {
+  full: "Full (100%)",
+  partial: "Partial (1–99%)",
+  none: "Unavailable (0%)",
+};
+
 /**
  * The view, read out of the URL — which is where it lives, so a reload or a pasted link reproduces
- * the same page (EXP-45). Anything unreadable falls back to the default rather than being sent to
- * the server to be refused: a stale bookmark should show the roster, not an error.
+ * the same page (EXP-45, EXP-47). Anything unreadable falls back to the default rather than being
+ * sent to the server to be refused: a stale bookmark should show the roster, not an error.
  */
 function queryFromUrl(params: URLSearchParams): RosterQuery {
   const page = Number(params.get("page"));
   const sort = params.get("sort");
   const dir = params.get("dir");
+  const band = params.get("band");
   return {
     q: params.get("q") ?? ROSTER_DEFAULTS.q,
+    // A status the server would refuse is dropped here rather than forwarded, for the same reason
+    // an unreadable sort key is: a link somebody edited by hand should show a roster.
+    statuses: params
+      .getAll("status")
+      .filter((s): s is RosterStatusFilter => ROSTER_STATUSES.includes(s as RosterStatusFilter)),
+    // Locations are free text off the roster itself, so there is nothing to check them against —
+    // one nobody is in shows an empty roster with the checkbox still there to untick.
+    locations: params.getAll("location").filter(Boolean),
+    band: isBand(band) ? band : ROSTER_DEFAULTS.band,
     sort: isSort(sort) ? sort : ROSTER_DEFAULTS.sort,
     dir: dir === "desc" ? "desc" : ROSTER_DEFAULTS.dir,
     page: Number.isInteger(page) && page >= 1 ? page : ROSTER_DEFAULTS.page,
@@ -94,20 +128,56 @@ function queryFromUrl(params: URLSearchParams): RosterQuery {
 function urlFromQuery(query: RosterQuery): URLSearchParams {
   const params = new URLSearchParams();
   if (query.q) params.set("q", query.q);
+  // Repeated keys rather than one comma-joined value: a location may legitimately contain a comma,
+  // and splitting it back apart would invent two places nobody is in.
+  for (const status of query.statuses) params.append("status", status);
+  for (const location of query.locations) params.append("location", location);
+  if (query.band) params.set("band", query.band);
   if (query.sort !== ROSTER_DEFAULTS.sort) params.set("sort", query.sort);
   if (query.dir !== ROSTER_DEFAULTS.dir) params.set("dir", query.dir);
   if (query.page !== ROSTER_DEFAULTS.page) params.set("page", String(query.page));
   return params;
 }
 
-/** Debounced text → server param: typing stays instant, the request waits for a pause. */
-function useDebounced<T>(value: T, ms = 300): T {
+/** Checked → unchecked and back, without caring which it was. */
+function toggle<T>(list: readonly T[], value: T): T[] {
+  return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
+}
+
+function facetCount(facet: RosterFacetCount[] | undefined, value: string): number {
+  return facet?.find((f) => f.value === value)?.count ?? 0;
+}
+
+/**
+ * One labelled group in the sidebar. A real `group` with a name, not a heading over a div: a
+ * screen reader reaching the eighth checkbox in the Location list has to be able to say which
+ * question it answers, and "Active" and "Full (100%)" are only unambiguous inside their own group.
+ */
+function Facet({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <Box role="group" aria-label={title} sx={{ mt: 2 }}>
+      <Typography variant="overline" color="text.secondary" component="h3">
+        {title}
+      </Typography>
+      {children}
+    </Box>
+  );
+}
+
+/**
+ * Debounced text → server param: typing stays instant, the request waits for a pause.
+ *
+ * The second element skips the wait. **Reset filters** needs it: without a flush the box clears
+ * and the roster keeps showing the old search for another 300ms, because the pending debounce is
+ * still the value the request is built from and it is about to fire anyway.
+ */
+function useDebounced<T>(value: T, ms = 300): [T, (value: T) => void] {
   const [settled, setSettled] = useState(value);
   useEffect(() => {
     const timer = setTimeout(() => setSettled(value), ms);
     return () => clearTimeout(timer);
   }, [value, ms]);
-  return settled;
+  return [settled, setSettled];
 }
 
 export default function ExpertsPage() {
@@ -117,7 +187,7 @@ export default function ExpertsPage() {
   // The box is local and the URL is not: a keystroke must not push a history entry, and the
   // request must not fire on every letter. The debounced value is what reaches both.
   const [search, setSearch] = useState(query.q);
-  const debounced = useDebounced(search);
+  const [debounced, flushSearch] = useDebounced(search);
   // The last value the two agreed on, so each effect below can tell "I did that" from "something
   // else did". Without it they push each other round in a circle.
   const settled = useRef(query.q);
@@ -183,6 +253,22 @@ export default function ExpertsPage() {
   const from = total === 0 ? 0 : (view.page - 1) * view.pageSize + 1;
   const to = Math.min(view.page * view.pageSize, total);
   const go = (patch: Partial<RosterQuery>) => setParams(urlFromQuery({ ...view, ...patch }));
+  // Any filter reshapes the whole match, so the page number from the old one points at rows
+  // nobody was looking at. Every one of them goes back to the first page.
+  const filter = (patch: Partial<RosterQuery>) => go({ ...patch, page: 1 });
+  const facets = data?.facets;
+  const filtered =
+    !!view.q || view.statuses.length > 0 || view.locations.length > 0 || view.band !== null;
+
+  const reset = () => {
+    setSearch("");
+    flushSearch("");
+    // Claim the write before the effect below can: it reacts to the debounced value changing and
+    // would answer this one by editing the *old* URL — deleting `q` from it and leaving every
+    // filter the reset had just cleared back in place.
+    settled.current = "";
+    setParams(urlFromQuery(ROSTER_DEFAULTS));
+  };
 
   /** Run a menu item's job and put the menu away — every item wants both. */
   const fromMenu = (run: (row: ExpertSummary) => void) => () => {
@@ -237,6 +323,82 @@ export default function ExpertsPage() {
           <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
             Matches a name, an email or a title.
           </Typography>
+
+          {/* Every count below is the server's, and every one of them is computed against the
+              *other* groups rather than its own (EXP-47) — so "Draft (2)" beside a roster already
+              narrowed to Active says what ticking Draft as well would add. Counted its own way it
+              would read 0 for every unchecked box and tell nobody anything. */}
+          <Facet title="Status">
+            <FormGroup>
+              {ROSTER_STATUSES.map((status) => (
+                <FormControlLabel
+                  key={status}
+                  label={`${status} (${facetCount(facets?.status, status)})`}
+                  control={
+                    <Checkbox
+                      size="small"
+                      checked={view.statuses.includes(status)}
+                      onChange={() => filter({ statuses: toggle(view.statuses, status) })}
+                    />
+                  }
+                />
+              ))}
+            </FormGroup>
+          </Facet>
+
+          <Facet title="Availability today">
+            <RadioGroup
+              value={view.band ?? ""}
+              onChange={(e) => filter({ band: (e.target.value || null) as RosterBand | null })}
+            >
+              <FormControlLabel value="" control={<Radio size="small" />} label="Any" />
+              {ROSTER_BANDS.map((band) => (
+                <FormControlLabel
+                  key={band}
+                  value={band}
+                  control={<Radio size="small" />}
+                  label={`${BAND_LABELS[band]} (${facetCount(facets?.band, band)})`}
+                />
+              ))}
+            </RadioGroup>
+          </Facet>
+
+          <Facet title="Location">
+            {facets?.location.length === 0 && (
+              <Typography variant="body2" color="text.secondary">
+                No locations on record.
+              </Typography>
+            )}
+            {/* The server orders these, busiest first. A zero is greyed out rather than dropped:
+                a checkbox that vanishes at zero cannot be unchecked back into view — which matters
+                most for one that is still ticked, and is therefore still narrowing the roster. */}
+            <FormGroup sx={{ maxHeight: 260, overflow: "auto", flexWrap: "nowrap" }}>
+              {facets?.location.map(({ value, count }) => (
+                <FormControlLabel
+                  key={value}
+                  label={`${value} (${count})`}
+                  disabled={count === 0 && !view.locations.includes(value)}
+                  control={
+                    <Checkbox
+                      size="small"
+                      checked={view.locations.includes(value)}
+                      onChange={() => filter({ locations: toggle(view.locations, value) })}
+                    />
+                  }
+                />
+              ))}
+            </FormGroup>
+          </Facet>
+
+          <Button
+            size="small"
+            startIcon={<FilterListIcon />}
+            disabled={!filtered}
+            onClick={reset}
+            sx={{ mt: 2 }}
+          >
+            Reset filters
+          </Button>
         </Paper>
 
         <Box sx={{ flex: 1, minWidth: 0, width: "100%" }}>
