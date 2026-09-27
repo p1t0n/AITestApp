@@ -1,5 +1,7 @@
+using System.Linq.Expressions;
 using ExpertToJob.Application.Abstractions;
 using ExpertToJob.Application.Auth;
+using ExpertToJob.Application.Availability;
 using ExpertToJob.Application.Common;
 using ExpertToJob.Application.Visibility;
 using ExpertToJob.Domain.Entities;
@@ -18,6 +20,9 @@ public interface IExpertService
 {
     /// <summary>Active experts only by default; drafts opt in (review surfaces).</summary>
     Task<IReadOnlyList<ExpertSummaryDto>> ListAsync(bool includeDrafts = false, CancellationToken ct = default);
+    /// <summary>One page of the whole Roster — Draft, Active and Paused — searched, sorted and
+    /// counted in SQL (EXP-45). The staff roster's query; <see cref="ListAsync"/> stays the bench's.</summary>
+    Task<RosterPage> SearchAsync(RosterQuery query, CancellationToken ct = default);
     Task<ExpertDetailDto> GetAsync(Guid id, CancellationToken ct = default);
     Task<ExpertDetailDto> CreateAsync(SaveExpertDto dto, CancellationToken ct = default);
     /// <summary>Creates a Draft expert (resume ingestion): invisible to roster/search/staffing
@@ -36,6 +41,7 @@ public class ExpertService : IExpertService
     private readonly IAppDbContext _db;
     private readonly IValidator<SaveExpertDto> _validator;
     private readonly IValidator<UpdateExpertDto> _patchValidator;
+    private readonly IValidator<RosterQuery> _rosterValidator;
     private readonly IOwnershipScopeProvider _scope;
     private readonly IRosterAudienceProvider _audience;
     private readonly TimeProvider _clock;
@@ -43,6 +49,7 @@ public class ExpertService : IExpertService
         IAppDbContext db,
         IValidator<SaveExpertDto> validator,
         IValidator<UpdateExpertDto> patchValidator,
+        IValidator<RosterQuery> rosterValidator,
         IOwnershipScopeProvider scope,
         IRosterAudienceProvider audience,
         TimeProvider clock)
@@ -50,6 +57,7 @@ public class ExpertService : IExpertService
         _db = db;
         _validator = validator;
         _patchValidator = patchValidator;
+        _rosterValidator = rosterValidator;
         _scope = scope;
         _audience = audience;
         _clock = clock;
@@ -83,6 +91,93 @@ public class ExpertService : IExpertService
 
         return experts.Select(e => e.ToSummary(Today)).ToList();
     }
+
+    public async Task<RosterPage> SearchAsync(RosterQuery query, CancellationToken ct = default)
+    {
+        await _rosterValidator.ValidateAndThrowAsync(query, ct);
+
+        // Same two seams as ListAsync, and the same reason: the scope says who is asking, the
+        // audience says what the row permits. Drafts are always in — this is the Roster, and a
+        // Draft nothing lists is a Draft nobody can promote (EXP-49).
+        var (unrestricted, owned) = await _scope.CurrentAsync(ct);
+        var today = Today;
+
+        var matches = _db.Experts
+            .AsNoTracking()
+            .ForAudience(_audience.Current, includeDrafts: true)
+            .Where(e => unrestricted || e.Id == owned);
+
+        var needle = query.Q?.Trim().ToLower();
+        if (!string.IsNullOrEmpty(needle))
+        {
+            // ToLower rather than string.Contains(..., StringComparison): EF Core translates the
+            // former to SQL on both Postgres and the in-memory provider the unit tests run on. The
+            // name is matched as one string so "ada love" finds Ada Lovelace, which neither half
+            // would on its own.
+            matches = matches.Where(e =>
+                (e.FirstName + " " + e.LastName).ToLower().Contains(needle)
+                || e.Email.ToLower().Contains(needle)
+                || e.Title.ToLower().Contains(needle));
+        }
+
+        // Counted before the slice is taken, and by the database: the heading says "N experts" and
+        // the footer "Showing from–to of total", and both are wrong the moment N is a page length.
+        var total = await matches.CountAsync(ct);
+
+        var page = query.Page ?? 1;
+        var pageSize = query.PageSize ?? RosterPaging.DefaultPageSize;
+
+        var experts = await InOrder(matches, query, today)
+            .Include(e => e.AvailabilityEntries)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        return new RosterPage(experts.Select(e => e.ToSummary(today)).ToList(), total);
+    }
+
+    /// <summary>
+    /// The roster's order, as SQL. Every branch ends in the same total order, which is the part
+    /// that matters for a paged list: two rows tied on the chosen key must still come back in one
+    /// fixed sequence, or a page boundary falling between them repeats one row and skips another
+    /// with nothing in the response to show it happened.
+    /// </summary>
+    private static IQueryable<Expert> InOrder(IQueryable<Expert> experts, RosterQuery query, DateOnly today)
+    {
+        var descending = RosterDirection.IsDescending(query.Dir);
+
+        var chosen = RosterSort.Normalize(query.Sort) switch
+        {
+            RosterSort.Title => By(experts, e => e.Title, descending),
+            // A missing location reads as the empty string rather than falling out of the order:
+            // where NULLs land differs between providers, and the page has to be the same one
+            // everywhere.
+            RosterSort.Location => By(experts, e => e.Location ?? "", descending),
+            RosterSort.Capacity => By(experts, CapacityCalculator.CapacityOn(today), descending),
+            // Draft (1) before Active (2) ascending — the staff roster's unfinished work first,
+            // which is what this list exists to surface.
+            RosterSort.Status => By(experts, e => e.Status, descending),
+            // null: the name order, which is also the tiebreak below, so it is applied once here
+            // with the caller's direction rather than twice with two.
+            _ => null,
+        };
+
+        var byName = chosen is null
+            ? Then(By(experts, e => e.LastName, descending), e => e.FirstName, descending)
+            : Then(Then(chosen, e => e.LastName, false), e => e.FirstName, false);
+
+        // Id closes the order. Two people really can share a full name on this roster —
+        // CreateDraftAsync exists to warn about exactly that — so name alone is not total.
+        return byName.ThenBy(e => e.Id);
+    }
+
+    private static IOrderedQueryable<Expert> By<TKey>(
+        IQueryable<Expert> experts, Expression<Func<Expert, TKey>> key, bool descending) =>
+        descending ? experts.OrderByDescending(key) : experts.OrderBy(key);
+
+    private static IOrderedQueryable<Expert> Then<TKey>(
+        IOrderedQueryable<Expert> experts, Expression<Func<Expert, TKey>> key, bool descending) =>
+        descending ? experts.ThenByDescending(key) : experts.ThenBy(key);
 
     public async Task<ExpertDetailDto> GetAsync(Guid id, CancellationToken ct = default)
     {

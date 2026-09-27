@@ -15,6 +15,7 @@ import path from "node:path";
 import { expect, test } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 import { addVirtualAuthenticator, signUp, uniqueEmail } from "./passkey";
+import { findInRoster } from "./roster";
 
 const CAPTURE = process.env.E2E_SHOTS === "1";
 
@@ -73,9 +74,8 @@ async function seedExpert(page: Page, mode: keyof typeof PEOPLE): Promise<string
   await dialog.getByLabel("Summary").fill("Wrote the first algorithm intended for a machine.");
   await dialog.getByRole("button", { name: "Save" }).click();
 
-  const row = page.getByRole("row", { name: new RegExp(fullName) });
-  await expect(row).toBeVisible();
-  await row.getByRole("cell", { name: fullName }).click();
+  const row = await findInRoster(page, fullName);
+  await row.getByText(fullName).click();
   await expect(page).toHaveURL(/\/experts\/[0-9a-f-]{36}$/);
   return page.url();
 }

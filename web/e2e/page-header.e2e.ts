@@ -12,6 +12,7 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { addVirtualAuthenticator, signUp, uniqueEmail } from "./passkey";
+import { findInRoster } from "./roster";
 
 /** The page's `<h1>`. Located by role and by frozen name; classes are not part of any contract. */
 function heading(page: Page, name: string) {
@@ -137,10 +138,7 @@ test.describe("the page header", () => {
     expect(await pageBox(page).evaluate((el) => getComputedStyle(el).maxWidth)).toBe("1440px");
     expect(roster.width).toBeGreaterThan(1000);
 
-    await page
-      .getByRole("row", { name: /Margaret Hamilton/ })
-      .getByRole("cell", { name: "Margaret Hamilton" })
-      .click();
+    await (await findInRoster(page, "Margaret Hamilton")).getByText("Margaret Hamilton").click();
     await expect(heading(page, "Margaret Hamilton")).toBeVisible();
 
     // The profile is read rather than scanned, and says so at the top of its own file.
@@ -163,7 +161,7 @@ test.describe("the page header", () => {
 
   test("prints the CV and none of its own chrome", async ({ page }) => {
     await seed(page, "Annie", "Easley");
-    await page.getByRole("row", { name: /Annie Easley/ }).getByTitle("View CV").click();
+    await (await findInRoster(page, "Annie Easley")).getByTitle("View CV").click();
     await expect(page).toHaveURL(/\/cv$/);
 
     // The page's own title is `CV`; the sheet's heading is the person. Two headings named the same

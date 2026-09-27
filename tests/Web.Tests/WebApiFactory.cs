@@ -1,5 +1,7 @@
+using System.Data.Common;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using ExpertToJob.Application.Auth;
 using ExpertToJob.Domain.Entities;
 using ExpertToJob.Domain.Enums;
@@ -57,6 +59,15 @@ public sealed class WebApiFactory : WebApplicationFactory<Program>, IAsyncLifeti
         await _postgres.DisposeAsync();
     }
 
+    /// <summary>
+    /// The SQL the host's own queries send, so a test can assert that work the design says happens
+    /// in the database really does (EXP-45). "Paged in SQL" and "paged over a materialised list"
+    /// return exactly the same rows for any set a test can afford to seed — the difference only
+    /// shows at a scale nobody runs in a test, and it is the whole point of the contract. Reading
+    /// the command text is the only way to tell them apart cheaply.
+    /// </summary>
+    public SqlLog Sql { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         // Development explicitly: it is the environment whose appsettings supply the dev signing
@@ -64,6 +75,10 @@ public sealed class WebApiFactory : WebApplicationFactory<Program>, IAsyncLifeti
         // placeholder key.
         builder.UseEnvironment("Development");
         builder.UseSetting("ConnectionStrings:Default", _postgres.GetConnectionString());
+
+        // EF resolves IInterceptor registrations out of the application container, so this attaches
+        // to the host's real DbContext without the fixture re-configuring it.
+        builder.ConfigureServices(services => services.AddSingleton<IInterceptor>(Sql));
     }
 
     /// <summary>
@@ -203,6 +218,49 @@ public sealed class WebApiFactory : WebApplicationFactory<Program>, IAsyncLifeti
 
         using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(key));
         return $"{header}.{payload}.{B64(hmac.ComputeHash(Encoding.UTF8.GetBytes($"{header}.{payload}")))}";
+    }
+}
+
+/// <summary>
+/// A rolling record of the SQL the host sent. Safe to keep as one instance across the assembly
+/// because <see cref="WebApiCollection"/> runs its classes one at a time — a test clears it, makes
+/// its call, and reads what that call produced.
+/// </summary>
+public sealed class SqlLog : DbCommandInterceptor
+{
+    private readonly List<string> _commands = [];
+
+    /// <summary>Everything sent since the last <see cref="Clear"/>, oldest first.</summary>
+    public IReadOnlyList<string> Commands
+    {
+        get { lock (_commands) { return _commands.ToList(); } }
+    }
+
+    public void Clear()
+    {
+        lock (_commands) { _commands.Clear(); }
+    }
+
+    public override InterceptionResult<DbDataReader> ReaderExecuting(
+        DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result)
+    {
+        Record(command.CommandText);
+        return result;
+    }
+
+    public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+        DbCommand command,
+        CommandEventData eventData,
+        InterceptionResult<DbDataReader> result,
+        CancellationToken cancellationToken = default)
+    {
+        Record(command.CommandText);
+        return new(result);
+    }
+
+    private void Record(string sql)
+    {
+        lock (_commands) { _commands.Add(sql); }
     }
 }
 

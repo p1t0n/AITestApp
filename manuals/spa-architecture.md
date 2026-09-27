@@ -248,7 +248,9 @@ region.
 A flat, hierarchical convention, invalidated by prefix:
 
 ```
-["experts"]                    list
+["experts"]                    the bench list (Active only) — what the agent pickers read
+["experts", "roster"]          the whole Roster, Drafts included — the ⌘K palette's people
+["experts", "roster", query]   one searched, sorted, paged screenful of it (EXP-45)
 ["experts", id]                detail
 ["experts", id, "cv"]          assembled CV
 ["categories"] ["categories","tree"] ["skills"]
@@ -389,7 +391,12 @@ The write shapes echo the API's own semantics rather than smoothing them over: `
 flattens achievements and skill links **into** the experience payload, because an experience save
 replaces both lists wholesale. The form is a nested-collection editor, not three resources.
 
-`ExpertsPage` and `CatalogPage` are list + dialog. `UsersPage` is the admin surface.
+`CatalogPage` is list + dialog and `UsersPage` is the admin surface. `ExpertsPage` is neither since
+EXP-45: it is a facet sidebar over a **server-side** query — search, sort, page and total all come
+from `GET /api/experts/roster`, and the view round-trips through the URL search params so a reload
+or a shared link reproduces the same screen. `manuals/spa-design-system.md` §14 is the governing
+description; §13's `DictionaryTable`, which does all three client-side, is deliberately not reused
+here.
 
 ## 9. CV and printing
 

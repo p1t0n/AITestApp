@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { addVirtualAuthenticator, signUp, uniqueEmail } from "./passkey";
+import { findInRoster } from "./roster";
 
 test.describe("roster round trip", () => {
   test.beforeEach(async ({ context, page }) => {
@@ -20,13 +21,12 @@ test.describe("roster round trip", () => {
     await dialog.getByLabel("Summary").fill("First programmer.");
     await dialog.getByRole("button", { name: "Save" }).click();
 
-    const row = page.getByRole("row", { name: /Ada Lovelace/ });
-    await expect(row).toBeVisible();
-    await expect(row).toContainText("Analytical Engineer");
-    await expect(row).toContainText("London");
+    const row = await findInRoster(page, "Ada Lovelace");
+    // Title and location moved under the name rather than into columns of their own (EXP-45).
+    await expect(row).toContainText("Analytical Engineer · London");
 
     // The row navigates to the detail page, and the detail page to the CV.
-    await row.getByRole("cell", { name: "Ada Lovelace" }).click();
+    await row.getByText("Ada Lovelace").click();
     await expect(page).toHaveURL(/\/experts\/[0-9a-f-]{36}$/);
     await expect(page.getByRole("heading", { name: "Ada Lovelace" })).toBeVisible();
 
@@ -47,7 +47,7 @@ test.describe("roster round trip", () => {
     await dialog.getByLabel("Email").fill(expertEmail);
     await dialog.getByRole("button", { name: "Save" }).click();
 
-    await page.getByRole("row", { name: /Grace Hopper/ }).getByTitle("View CV").click();
+    await (await findInRoster(page, "Grace Hopper")).getByTitle("View CV").click();
     await expect(page).toHaveURL(/\/cv$/);
 
     // The button fetches the bytes with the session token and hands them to the browser, so a

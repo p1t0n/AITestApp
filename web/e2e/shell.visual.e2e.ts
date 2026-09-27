@@ -63,8 +63,9 @@ for (const mode of ["light", "dark"] as const) {
 
       // The account's own address, which is a different string on every run.
       const email = page.getByText(/@/).first();
-      // The column whose value is the date, not the design.
-      const availability = page.locator("td:nth-child(4)");
+      // The column whose value is the date, not the design. Third since EXP-45 folded title and
+      // location under the name: Name, Status, Availability (today), Actions.
+      const availability = page.locator("td:nth-child(3)");
 
       // The shell: rail, brand tile, page header, and the roster under it — the frame the whole
       // re-skin was about. Viewport rather than full page: the strip's pinned state is part of the
