@@ -59,6 +59,10 @@ builder.Services.AddEmbeddingProvider(builder.Configuration);
 builder.Services.AddSearchIndexing(builder.Configuration);
 builder.Services.AddHostedService<ReconcileWorker>();
 
+// Art. 15(1)(c) has to name a provider this deployment has *left*, not only the one it runs
+// (EXP-66). This is the host that does the sending, so it is the host whose record of it counts.
+builder.Services.AddHostedService<ExpertToJob.Mcp.Compliance.EmbeddingsProviderPeriodWriter>();
+
 // OAuth 2.1: this server is the Resource Server. Keycloak (the Authorization Server) issues
 // tokens and runs the PKCE auth-code flow; here we only validate JWTs and advertise the AS.
 var authority = builder.Configuration["Mcp:Authority"] ?? "http://localhost:8080/realms/expert-to-job";

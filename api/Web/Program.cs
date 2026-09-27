@@ -63,6 +63,12 @@ builder.Services.AddControllers()
 builder.Services.AddSingleton(ExpertToJob.Application.Compliance.ChatProviderDisclosure.From(
     builder.Configuration[ExpertToJob.Application.Compliance.ChatProviderDisclosure.ConfigurationKey]));
 
+// The embeddings half of the same list (EXP-66). This host runs no embedder either, so the same
+// asymmetry applies with more force: the only consequence of a wrong value here is the wrong
+// company named to the person the data is about.
+builder.Services.AddSingleton(ExpertToJob.Application.Compliance.EmbeddingsProviderDisclosure.From(
+    builder.Configuration[ExpertToJob.Application.Compliance.EmbeddingsProviderDisclosure.ConfigurationKey]));
+
 builder.Services.AddApplication();
 
 // Registered before AddInfrastructure so the DbContext picks it up: an Expert doing something with

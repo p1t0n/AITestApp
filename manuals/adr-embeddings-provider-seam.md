@@ -4,12 +4,15 @@
 Google out, provider selected by configuration"). Its decision tickets carry the evidence behind
 every claim here, and are cited as `EXP-nn`. **Supersedes in part** `manuals/adr-chat-provider-seam.md`:
 that ADR's §2 decision 3 assumed embeddings would keep calling Google whatever chat does, and they
-no longer have to (§8). The build tickets are listed in §10; tickets 1 (`EXP-64`) and 2
-(`EXP-65`) have landed, so decisions 1–3 and 5 are implemented with Gemini as the only construction
-branch, the eval reads the provider from configuration (the first half of decision 8 — the
-per-provider baselines arrive with ticket 4), and decisions 9–14 are implemented: every vector
+no longer have to (§8). The build tickets are listed in §10; tickets 1 (`EXP-64`), 2 (`EXP-65`)
+and 3 (`EXP-66`) have landed. Decisions 1–3 and 5 are implemented with Gemini as the only
+construction branch, and the eval reads the provider from configuration (the first half of decision
+8 — the per-provider baselines arrive with ticket 4). Decisions 9–14 are implemented: every vector
 carries a `<provider>/<model>` tag, all three search paths compare only within the active one, and
-the reconciler heals a mismatch. The Azure branch and default, and the disclosure, are still ahead.
+the reconciler heals a mismatch. Decisions 16–18 are implemented: the recipient list follows both
+providers, `EmbeddingsProviderPeriods` records the history, and an Expert whose record predates a
+closed Gemini period is told Google was formerly the embeddings recipient. The Azure branch and
+default are still ahead.
 
 ## The decision
 

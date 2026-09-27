@@ -15,20 +15,39 @@ function realPersonEmail(): string {
 }
 
 /**
- * The model provider the stack under test is configured with — `e2e/run.mjs` sets the same value on
- * the API and hands it here, so this asserts what the host was told rather than a name that was
- * true when the spec was written (EXP-21). Chat is the only half that moves: embeddings stay on
- * Google whatever the provider is, so under Azure the page names two recipients, not one.
+ * The two providers the stack under test is configured with — `e2e/run.mjs` sets the same values on
+ * the API and hands them here, so this asserts what the host was told rather than names that were
+ * true when the spec was written (EXP-21, EXP-66). Chat and embeddings move on separate keys, so
+ * the page names one recipient when one provider does both jobs and two when they differ.
  *
- * `run.mjs` always sets the variable, so the fallback only matters when Playwright is driven at a
- * stack somebody started by hand. It names Gemini as the exception rather than the default (EXP-61)
- * — a fallback that assumes the provider the shipped settings moved away from is how this spec
- * would go on passing while the page named the wrong company.
+ * `run.mjs` always sets both variables, so the fallbacks only matter when Playwright is driven at a
+ * stack somebody started by hand. Each names Gemini as the exception rather than the default
+ * (EXP-61) — a fallback that assumes the provider the shipped settings moved away from is how this
+ * spec would go on passing while the page named the wrong company.
  */
-const MODEL_PROVIDER =
-  process.env.E2E_CHAT_PROVIDER === "Gemini"
-    ? /Google \(Gemini\), as our AI model provider/
-    : /Microsoft \(Azure OpenAI\), as our AI model provider/;
+const COMPANY = {
+  chat: process.env.E2E_CHAT_PROVIDER === "Gemini" ? "Google (Gemini)" : "Microsoft (Azure OpenAI)",
+  embeddings:
+    process.env.E2E_EMBEDDINGS_PROVIDER === "AzureFoundry"
+      ? "Microsoft (Azure OpenAI)"
+      : "Google (Gemini)",
+};
+
+/**
+ * What the recipient list has to read as. One company doing both jobs is a single "AI model
+ * provider" entry covering embeddings and scoring; two companies are two entries, each named by the
+ * job it does. Escaped for `RegExp`, because every one of these names carries brackets.
+ */
+const RECIPIENTS =
+  COMPANY.chat === COMPANY.embeddings
+    ? [`${COMPANY.chat}, as our AI model provider`]
+    : [
+        `${COMPANY.embeddings}, as our embeddings provider`,
+        `${COMPANY.chat}, as our AI model provider`,
+      ];
+
+const asPattern = (text: string) =>
+  new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
 
 /**
  * The privacy page at the real surface (P1T-191). Three of its rights cannot be shown by a unit
@@ -51,8 +70,10 @@ test.describe("privacy and data", () => {
     await expect(page.getByRole("heading", { name: "Privacy and data" })).toBeVisible();
     await expect(page.getByText(/Your record is active and can be offered for work/)).toBeVisible();
     // The disclosure that is new information rather than a restatement (P1T-187), and the one
-    // sentence on this page that can be a false statement if the provider moves under it.
-    await expect(page.getByText(MODEL_PROVIDER)).toBeVisible();
+    // part of this page that can be a false statement if a provider moves under it.
+    for (const entry of RECIPIENTS) {
+      await expect(page.getByText(asPattern(entry))).toBeVisible();
+    }
     await expect(page.getByTestId("row-How long we keep it")).toContainText(/due to be deleted on/);
   });
 

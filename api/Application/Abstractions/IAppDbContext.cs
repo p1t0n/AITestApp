@@ -35,5 +35,9 @@ public interface IAppDbContext
     DbSet<RosterQaTurn> RosterQaTurns { get; }
     DbSet<RosterQaTurnExpert> RosterQaTurnExperts { get; }
 
+    /// <summary>The embeddings provider history (EXP-66). Deployment-wide and personal-data-free —
+    /// it names a provider and two dates, never a person.</summary>
+    DbSet<EmbeddingsProviderPeriod> EmbeddingsProviderPeriods { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

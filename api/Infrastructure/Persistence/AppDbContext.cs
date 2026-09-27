@@ -33,6 +33,7 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<RosterQaConversation> RosterQaConversations => Set<RosterQaConversation>();
     public DbSet<RosterQaTurn> RosterQaTurns => Set<RosterQaTurn>();
     public DbSet<RosterQaTurnExpert> RosterQaTurnExperts => Set<RosterQaTurnExpert>();
+    public DbSet<EmbeddingsProviderPeriod> EmbeddingsProviderPeriods => Set<EmbeddingsProviderPeriod>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -159,6 +160,14 @@ public class AppDbContext : DbContext, IAppDbContext
             e.HasOne<User>().WithMany()
                 .HasForeignKey(x => x.ExportedByUserId).OnDelete(DeleteBehavior.SetNull);
             e.HasIndex(x => x.ExpertId);
+        });
+
+        b.Entity<EmbeddingsProviderPeriod>(e =>
+        {
+            // No foreign key and no person column anywhere, on purpose (EXP-66): which Experts a
+            // period covers is worked out from their own record's creation date, so this table
+            // never points at anybody and erasure never has to reach it.
+            e.Property(x => x.Provider).HasMaxLength(64).IsRequired();
         });
 
         b.Entity<SpokenLanguage>(e =>

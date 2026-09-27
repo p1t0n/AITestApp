@@ -47,6 +47,15 @@ public static class DependencyInjection
         // forgets therefore over-tells somebody rather than quietly printing the wrong name at them.
         services.TryAddSingleton(new Compliance.ChatProviderDisclosure(null));
 
+        // The other half of the same disclosure (EXP-66): chat and embeddings move independently,
+        // so each is read from its own key and defaults here to "we do not know" for the same
+        // reason — a host that forgets over-tells somebody rather than naming the wrong company.
+        services.TryAddSingleton(new Compliance.EmbeddingsProviderDisclosure(null));
+
+        // Reads the provider history the MCP host writes. Scoped because it reads through the
+        // DbContext; the access view is the only caller.
+        services.AddScoped<Compliance.IEmbeddingsProviderHistory, Compliance.EmbeddingsProviderHistory>();
+
         // Every host that composes the Application layer needs a clock now that lawful-basis
         // records are timestamped, and only two of the three registered one. TryAdd so a host that
         // supplies its own (a test's fake clock) still wins.
