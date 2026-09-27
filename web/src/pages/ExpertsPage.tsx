@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import {
   Button,
   Chip,
@@ -18,6 +18,9 @@ import DescriptionIcon from "@mui/icons-material/Description";
 import { useCreateExpert, useDeleteExpert, useExperts } from "../api";
 import PageHeader, { PageContainer } from "../components/PageHeader";
 import ExpertFormDialog from "./ExpertFormDialog";
+// PROTOTYPE — throwaway, branch prototype/table-conventions only.
+import PrototypeSwitcher from "../components/PrototypeSwitcher";
+import { ExpertsTablePrototype, tableVariants } from "./ExpertsPage.prototype";
 
 function capacityColor(pct: number): "success" | "warning" | "default" {
   if (pct >= 100) return "success";
@@ -31,6 +34,8 @@ export default function ExpertsPage() {
   const del = useDeleteExpert();
   const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [params] = useSearchParams();
+  const variant = params.get("variant") ?? "";
 
   // Deliberately still an early return rather than a spinner *under* the header: the e2e capture
   // waits for `New CV` to decide the roster has arrived, and a header that renders while the table
@@ -41,6 +46,8 @@ export default function ExpertsPage() {
         <CircularProgress />
       </PageContainer>
     );
+
+  if (variant) return <ExpertsTablePrototype variant={variant} all={data ?? []} />;
 
   return (
     <PageHeader
@@ -120,6 +127,7 @@ export default function ExpertsPage() {
         onClose={() => setDialogOpen(false)}
         onSave={(dto) => create.mutateAsync(dto)}
       />
+      {!import.meta.env.PROD && <PrototypeSwitcher variants={tableVariants} />}
     </PageHeader>
   );
 }
