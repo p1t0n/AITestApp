@@ -1,4 +1,4 @@
-import { getToken } from "./auth/session";
+import { expireSession, getToken } from "./auth/session";
 
 // Minimal SSE-over-POST client. The axios clients in api.ts buffer whole responses, so streaming
 // endpoints (POST /agents/staffing) go through fetch + ReadableStream instead. Scope is exactly
@@ -57,6 +57,7 @@ export async function postSse(
   });
 
   if (!response.ok) {
+    if (response.status === 401) expireSession(token);
     let data: unknown = null;
     try {
       data = await response.json();

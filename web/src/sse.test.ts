@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { clearSession, getToken, setSession } from "./auth/session";
 import { postSse, SseHttpError, type SseMessage } from "./sse";
 
 // ---- synthetic stream plumbing ----
@@ -163,5 +164,18 @@ describe("postSse", () => {
 
     await expect(run).rejects.toMatchObject({ name: "AbortError" });
     expect(messages).toEqual([{ event: "step", data: "{}" }]);
+  });
+});
+
+describe("postSse on 401", () => {
+  afterEach(() => clearSession());
+
+  it("clears the session that sent the request", async () => {
+    setSession("expired-token", "sm@example.com", "User", "u1");
+    mockFetch({ ok: false, status: 401, body: null, json: async () => { throw new Error("empty"); } });
+
+    await expect(postSse("/agents/staffing", {}, () => {})).rejects.toBeInstanceOf(SseHttpError);
+
+    expect(getToken()).toBeNull();
   });
 });

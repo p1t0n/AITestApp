@@ -1,7 +1,7 @@
 // Transport for the two backends the SPA talks to. Nothing above this module knows a base URL,
 // and nothing below it knows about React Query.
 import axios from "axios";
-import { getToken } from "../auth/session";
+import { expireSession, getToken } from "../auth/session";
 
 export const http = axios.create({ baseURL: "/api" });
 
@@ -17,6 +17,15 @@ for (const client of [http, agentHttp]) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
+  });
+  // A 401 means the token is expired or refused — there is no refresh token to trade in, so the
+  // session ends and the router sends the user to sign in again.
+  client.interceptors.response.use(undefined, (error: unknown) => {
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      const sent = error.config?.headers?.Authorization;
+      expireSession(typeof sent === "string" ? sent.replace(/^Bearer /, "") : null);
+    }
+    return Promise.reject(error);
   });
 }
 
