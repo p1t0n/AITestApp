@@ -4,13 +4,15 @@
 Google out, provider selected by configuration"). Its decision tickets carry the evidence behind
 every claim here, and are cited as `EXP-nn`. **Supersedes in part** `manuals/adr-chat-provider-seam.md`:
 that ADR's §2 decision 3 assumed embeddings would keep calling Google whatever chat does, and they
-no longer have to (§8). The build tickets are listed in §10; ticket 1 (`EXP-64`) has landed, so
-decisions 1–3 and 5 are implemented with Gemini as the only construction branch, and the eval reads
-the provider from configuration (the first half of decision 8 — the per-provider baselines arrive
-with ticket 4). Ticket 3 (`EXP-66`) has landed too, so decisions 16–18 are implemented: the recipient
-list follows both providers, `EmbeddingsProviderPeriods` records the history, and an Expert whose
-record predates a closed Gemini period is told Google was formerly the embeddings recipient. The
-Azure branch and default, and switch safety, are still ahead.
+no longer have to (§8). The build tickets are listed in §10; tickets 1 (`EXP-64`), 2 (`EXP-65`)
+and 3 (`EXP-66`) have landed. Decisions 1–3 and 5 are implemented with Gemini as the only
+construction branch, and the eval reads the provider from configuration (the first half of decision
+8 — the per-provider baselines arrive with ticket 4). Decisions 9–14 are implemented: every vector
+carries a `<provider>/<model>` tag, all three search paths compare only within the active one, and
+the reconciler heals a mismatch. Decisions 16–18 are implemented: the recipient list follows both
+providers, `EmbeddingsProviderPeriods` records the history, and an Expert whose record predates a
+closed Gemini period is told Google was formerly the embeddings recipient. The Azure branch and
+default are still ahead.
 
 ## The decision
 
@@ -83,7 +85,9 @@ re-embeds whatever doesn't match. The privacy page names the provider actually i
 
 9. **The tag is `<provider>/<model>`**, written to the **existing** `ExpertSearchChunk.Model` column,
    so there's no schema change. A bare model name could collide, because Azure's value is a deployment
-   name someone chooses.
+   name someone chooses. It is formed in one place, `OpenAICompatibleEmbedder.TagFor`, and reaches every
+   caller as `IEmbedder.Tag`; that interface's default (the bare model) is what an embedder with no
+   provider behind it honestly is, and is the shape decision 12 recognises as legacy.
 10. **All three search paths** (semantic search, shortlist, exemplar) filter on `Model = <active tag>`
     next to `Embedding IS NOT NULL`. Comparing across models becomes impossible, not merely unlikely.
 11. **The reconciler re-embeds** any chunk whose tag differs from the active one, through its existing

@@ -110,6 +110,57 @@ public class ErasureTests(WebApiFactory factory)
                             + "migration could drop that cascade and nothing else would notice");
     }
 
+    /// <summary>
+    /// Erasure is indifferent to which model made a vector. Since EXP-65 a chunk carries a
+    /// <c>&lt;provider&gt;/&lt;model&gt;</c> tag, and every read path filters on the active one — so a row
+    /// left behind under a retired tag would be invisible to search and invisible to a reviewer,
+    /// while still being derived personal data sitting in the database. The cascade is on the
+    /// expert, not on the tag, and this is the assertion that says so.
+    /// </summary>
+    [Fact]
+    public async Task Removes_chunks_of_every_model_tag()
+    {
+        var world = await GivenAFullyPopulatedPersonAsync();
+
+        string[] tags =
+        [
+            "Gemini/gemini-embedding-001",       // the tag in use
+            "AzureFoundry/text-embedding-3-small", // a provider switched away from
+            "gemini-embedding-001",              // untagged, from before tags existed (P1T-88)
+            string.Empty,                        // rendered but never embedded
+        ];
+
+        using (var seed = factory.Services.CreateScope())
+        {
+            var db = seed.ServiceProvider.GetRequiredService<AppDbContext>();
+            foreach (var tag in tags)
+            {
+                db.ExpertSearchChunks.Add(new ExpertSearchChunk
+                {
+                    Id = Guid.NewGuid(),
+                    ExpertId = world.ExpertId,
+                    SourceType = SearchChunkSource.Experience,
+                    SourceId = Guid.NewGuid(),
+                    Content = world.Fingerprint,
+                    ContentHash = $"hash-{tag}",
+                    Embedding = tag.Length == 0 ? null : new Pgvector.Vector(new float[1536]),
+                    Model = tag,
+                    EmbeddedAt = tag.Length == 0 ? null : DateTimeOffset.UtcNow,
+                });
+            }
+
+            await db.SaveChangesAsync();
+        }
+
+        await world.Client.PostAsJsonAsync("/api/me/account/erase", new { controlWord = ControlWord });
+
+        using var scope = factory.Services.CreateScope();
+        var after = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        (await after.ExpertSearchChunks.CountAsync(c => c.ExpertId == world.ExpertId))
+            .Should().Be(0, "a vector under a retired tag is still derived personal data, and no "
+                            + "search path would ever surface it to show that it survived");
+    }
+
     /// <summary>The proposal is a decision record, so the envelope survives and the report stops
     /// saying anything about the person. The typed half — that the document still deserializes and
     /// the approver view still renders — is asserted in <c>Agents.Tests/HandoffPackageScrubTests</c>,

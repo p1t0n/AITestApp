@@ -54,7 +54,8 @@ public sealed class ExemplarSearchServiceTests : IAsyncLifetime
         // Build the chunk index (experience + summary + achievement bullet chunks) with the same
         // embedder the search uses.
         await new SearchIndexReconciler(db, new CountingKeywordEmbedder(),
-            Options.Create(new SearchIndexOptions()), NullLogger<SearchIndexReconciler>.Instance)
+            Options.Create(new SearchIndexOptions()), new SearchIndexMetrics(),
+                NullLogger<SearchIndexReconciler>.Instance)
             .RunOnceAsync();
     }
 
@@ -76,6 +77,30 @@ public sealed class ExemplarSearchServiceTests : IAsyncLifetime
 
         // The scrub ran: the source company never leaves the service.
         group.Exemplars.Should().NotContain(e => e.Text.Contains("Initech"));
+    }
+
+    [Fact]
+    public async Task Never_compares_vectors_from_another_model()
+    {
+        // Same bullets, same vectors, another provider's tag. Both exemplar modes must come back
+        // empty rather than ranked against a foreign embedding space: an exemplar is shown to a
+        // person as "here is how someone else phrased this", and a nonsense one is indistinguishable
+        // from a real one at a glance.
+        var switched = Service(new CountingKeywordEmbedder("AzureFoundry/text-embedding-3-small"));
+
+        var byId = await switched.SearchAsync([_oliveFintechBulletId], topKPerBullet: 5);
+        byId.Error.Should().BeNull("a mid-switch index is incomplete, not broken");
+        byId.Results.Should().ContainSingle().Which.Exemplars.Should().BeEmpty();
+
+        var byTheme = await switched.SearchAsync(null, theme: "fintech", topKPerBullet: 5);
+        byTheme.Error.Should().BeNull();
+        byTheme.ThemeResult!.Exemplars.Should().BeEmpty();
+
+        // The control: the same two calls on the tag the index actually carries do find bullets.
+        (await Service().SearchAsync([_oliveFintechBulletId], topKPerBullet: 5))
+            .Results.Should().ContainSingle().Which.Exemplars.Should().NotBeEmpty();
+        (await Service().SearchAsync(null, theme: "fintech", topKPerBullet: 5))
+            .ThemeResult!.Exemplars.Should().NotBeEmpty();
     }
 
     [Fact]
@@ -306,13 +331,17 @@ public sealed class ExemplarSearchServiceTests : IAsyncLifetime
 
     /// <summary>Topical fake embedder (see <see cref="SemanticSearchServiceTests"/>) that also
     /// counts EmbedAsync calls, so tests can assert bullets are embedded in one batch.</summary>
-    private sealed class CountingKeywordEmbedder : IEmbedder
+    private sealed class CountingKeywordEmbedder(string? tag = null) : IEmbedder
     {
         private static readonly string[] Vocab = ["fintech", "gaming", "logistics", "payments"];
 
         public int Calls { get; private set; }
 
         public string Model => "keyword-embedder";
+
+        /// <summary>Same vectors, optionally a different identity — a provider switch as the query
+        /// side sees it.</summary>
+        public string Tag => tag ?? Model;
 
         public Task<EmbeddingBatch> EmbedAsync(IReadOnlyList<string> inputs, CancellationToken ct = default)
         {

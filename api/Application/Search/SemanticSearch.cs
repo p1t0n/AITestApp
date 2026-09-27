@@ -28,11 +28,16 @@ public sealed record SemanticSearchHit(
 /// <see cref="DegradedReason"/> is non-null when retrieval DID run but without semantic ranking
 /// (keyword fallback while the embedding quota is exhausted) — results are real matches, scores are
 /// lexical ranks, and the caller should tell the user ranking quality is reduced.
+/// <see cref="CoverageNote"/> is non-null while the index is mid-rebuild after an embeddings
+/// provider or model change: ranking is real, but it ran over the part of the roster already
+/// re-embedded, so the answer may be incomplete
+/// (<c>manuals/adr-embeddings-provider-seam.md</c> §2 decision 13).
 /// </summary>
 public sealed record SemanticSearchResult(
     IReadOnlyList<SemanticSearchHit> Results,
     string? Error = null,
-    string? DegradedReason = null)
+    string? DegradedReason = null,
+    string? CoverageNote = null)
 {
     public static SemanticSearchResult Empty { get; } = new([]);
     public static SemanticSearchResult Failed(string error) => new([], error);

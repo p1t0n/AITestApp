@@ -32,7 +32,8 @@ public sealed class SemanticSearchServiceTests : IAsyncLifetime
         await SeedAsync(db);
         // Backfill the index with the same embedder the search uses.
         await new SearchIndexReconciler(db, new KeywordEmbedder(),
-            Options.Create(new SearchIndexOptions()), NullLogger<SearchIndexReconciler>.Instance)
+            Options.Create(new SearchIndexOptions()), new SearchIndexMetrics(),
+                NullLogger<SearchIndexReconciler>.Instance)
             .RunOnceAsync();
         await SeedLarrysBulletChunkAsync(db);
     }
@@ -105,9 +106,51 @@ public sealed class SemanticSearchServiceTests : IAsyncLifetime
         result.Error.Should().NotBeNullOrWhiteSpace();
     }
 
-    private SemanticSearchService Service() => new(
-        NewDb(), new KeywordEmbedder(),
+    private SemanticSearchService Service(string? embedderTag = null) => new(
+        NewDb(), new KeywordEmbedder(embedderTag),
         Options.Create(new SemanticSearchOptions()), NullLogger<SemanticSearchService>.Instance);
+
+    /// <summary>The tag an embeddings provider switch would move the index to. The vectors in the
+    /// index were all written by <c>keyword-embedder</c>, so under this tag none of them count.</summary>
+    private const string OtherProviderTag = "AzureFoundry/text-embedding-3-small";
+
+    [Fact]
+    public async Task Never_compares_vectors_from_another_model()
+    {
+        // Same query, same vectors, same rows — only the active tag differs. Cosine distance is
+        // perfectly well defined between any two 1536-dim vectors, so without the tag filter this
+        // would return Fiona and Pat with confident scores off another model's embedding space.
+        var underItsOwnTag = await Service().SearchAsync("fintech");
+        underItsOwnTag.Results.Should().NotBeEmpty("this is the control — the filter is the only difference");
+
+        var afterASwitch = await Service(OtherProviderTag).SearchAsync("fintech");
+
+        afterASwitch.Results.Should().BeEmpty();
+        afterASwitch.Error.Should().BeNull("a mid-switch index is incomplete, not broken");
+    }
+
+    [Fact]
+    public async Task Reports_index_coverage_below_one_during_a_switch()
+    {
+        // The first moment of a switch: the provider changed, the reconciler has not run yet, so
+        // nothing in the index carries the new tag. The caller must be told, or an empty result
+        // reads as "nobody in the roster matches".
+        var result = await Service(OtherProviderTag).SearchAsync("fintech");
+
+        result.CoverageNote.Should().NotBeNull();
+        result.CoverageNote.Should().StartWith("index rebuilding: 0% re-embedded");
+    }
+
+    [Fact]
+    public async Task Omits_the_coverage_note_when_fully_embedded()
+    {
+        // Every chunk carries the active tag, so there is nothing to warn about. A note that is
+        // always present is a note nobody reads.
+        var result = await Service().SearchAsync("fintech");
+
+        result.Results.Should().NotBeEmpty();
+        result.CoverageNote.Should().BeNull();
+    }
 
     private AppDbContext NewDb()
     {
@@ -188,11 +231,16 @@ public sealed class SemanticSearchServiceTests : IAsyncLifetime
 
     /// <summary>Topical fake embedder: a small keyword vocabulary maps to basis dimensions, plus a
     /// tiny baseline so no vector is all-zero (pgvector cosine distance is undefined for that).</summary>
-    private sealed class KeywordEmbedder : IEmbedder
+    private sealed class KeywordEmbedder(string? tag = null) : IEmbedder
     {
         private static readonly string[] Vocab = ["fintech", "gaming", "payments", "logistics"];
 
         public string Model => "keyword-embedder";
+
+        /// <summary>Same vectors, optionally a different identity — which is exactly what a
+        /// provider switch looks like to the query side, and the only way to test the tag filter
+        /// without a second embedding space.</summary>
+        public string Tag => tag ?? Model;
 
         public Task<EmbeddingBatch> EmbedAsync(IReadOnlyList<string> inputs, CancellationToken ct = default)
             => Task.FromResult(new EmbeddingBatch(inputs.Select(Vectorize).ToList(), inputs.Count));

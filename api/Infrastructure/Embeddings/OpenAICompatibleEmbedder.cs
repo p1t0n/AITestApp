@@ -15,6 +15,10 @@ namespace ExpertToJob.Infrastructure.Embeddings;
 /// arrive as constructor arguments, and everything vendor-shaped happens in the construction branch
 /// that builds the generator (<see cref="EmbeddingServiceCollectionExtensions"/>). That is what lets
 /// a second provider be an argument rather than a fork.</para>
+///
+/// <para>The provider arrives as a constructor argument for one reason beyond symmetry: it is half
+/// of the <see cref="Tag"/> every vector is stamped with, and the tag is what makes mixing vectors
+/// from two models impossible rather than merely unlikely (EXP-65).</para>
 /// </summary>
 public sealed class OpenAICompatibleEmbedder : IEmbedder
 {
@@ -31,6 +35,7 @@ public sealed class OpenAICompatibleEmbedder : IEmbedder
 
     public OpenAICompatibleEmbedder(
         IEmbeddingGenerator<string, Embedding<float>> generator,
+        EmbeddingsProvider provider,
         string model,
         int dimensions,
         ILogger<OpenAICompatibleEmbedder> logger,
@@ -40,6 +45,7 @@ public sealed class OpenAICompatibleEmbedder : IEmbedder
     {
         _generator = generator;
         Model = model;
+        Tag = TagFor(provider, model);
         _dimensions = dimensions;
         _logger = logger;
         _retryDelay = retryDelay ?? TimeSpan.FromSeconds(20);
@@ -48,6 +54,16 @@ public sealed class OpenAICompatibleEmbedder : IEmbedder
     }
 
     public string Model { get; }
+
+    /// <inheritdoc />
+    public string Tag { get; }
+
+    /// <summary>
+    /// The one place a vector tag is spelled. Kept as a static so the search paths and the
+    /// reconciler tests can form the same string without standing an embedder up, and so the
+    /// separator exists once rather than in every call site that splits on it.
+    /// </summary>
+    public static string TagFor(EmbeddingsProvider provider, string model) => $"{provider}/{model}";
 
     public async Task<EmbeddingBatch> EmbedAsync(IReadOnlyList<string> inputs, CancellationToken ct = default)
     {
