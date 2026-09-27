@@ -25,6 +25,7 @@ namespace ExpertToJob.Web.Tests;
 public class ChatProviderSettingsTests
 {
     private const string ProviderKey = ChatProviderDisclosure.ConfigurationKey;
+    private const string EmbeddingsKey = EmbeddingsProviderDisclosure.ConfigurationKey;
 
     /// <summary>
     /// The host that answers <c>GET /api/me/access</c> has to name the backend that actually runs
@@ -79,15 +80,40 @@ public class ChatProviderSettingsTests
     [Fact]
     public void The_shipped_web_settings_disclose_microsoft_as_the_model_provider()
     {
-        var disclosure = ChatProviderDisclosure.From(Shipped("api/Web/appsettings.json")[ProviderKey]);
+        var web = Shipped("api/Web/appsettings.json");
+        var chat = ChatProviderDisclosure.From(web[ProviderKey]);
+        var embeddings = EmbeddingsProviderDisclosure.From(web[EmbeddingsKey]);
 
-        disclosure.Provider.Should().Be(DisclosedChatProvider.AzureFoundry);
+        chat.Provider.Should().Be(DisclosedChatProvider.AzureFoundry);
 
-        var recipients = Art15Disclosure.RecipientsFor(disclosure.Provider);
+        var recipients = Art15Disclosure.RecipientsFor(chat.Provider, embeddings.Provider);
         recipients.Single(r => r.Recipient.Contains("AI model provider"))
             .Recipient.Should().Contain("Microsoft");
         recipients.Single(r => r.Recipient.Contains("embeddings provider"))
-            .Recipient.Should().Contain("Google", "embeddings stay on Google whatever chat does");
+            .Recipient.Should().Contain("Google", "embeddings are still on Gemini until EXP-67");
+    }
+
+    /// <summary>
+    /// The same drift, on the second key (EXP-66). The Web host does not embed either, so a value
+    /// here that disagrees with the host that <em>does</em> is the exact EXP-61 failure one key
+    /// over: nothing breaks, and the privacy page names a company that receives nothing.
+    ///
+    /// <para>Scoped to the two files that spell the key today. EXP-67 widens this to a sweep over
+    /// all three hosts and both keys once the Agents host names one too.</para>
+    /// </summary>
+    [Fact]
+    public void The_web_host_discloses_the_embeddings_provider_the_mcp_host_actually_runs()
+    {
+        var disclosed = Shipped("api/Web/appsettings.json")[EmbeddingsKey];
+        var running = Shipped("api/Mcp/appsettings.json")[EmbeddingsKey];
+
+        running.Should().NotBeNull("the MCP host is the one that embeds, and it names its provider");
+        disclosed.Should().Be(running,
+            "the Web host derives the Art. 15 embeddings recipient from this key, and a host that "
+            + "does not embed cannot notice it is wrong");
+
+        EmbeddingsProviderDisclosure.From(disclosed).Provider.Should().NotBeNull(
+            "a value that parses to nothing makes the page over-disclose rather than fail");
     }
 
     private static IConfigurationRoot Shipped(string relativePath) =>

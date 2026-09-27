@@ -92,23 +92,70 @@ public class TransparencyTests(WebApiFactory factory)
     }
 
     /// <summary>
-    /// Embeddings stay on Google whatever chat does (<c>manuals/adr-chat-provider-seam.md</c>), so
-    /// the Azure deployment has genuinely two recipients rather than a renamed one. Collapsing them
-    /// into a single entry would understate the transfer to whichever provider went unnamed.
+    /// Two providers are genuinely two recipients, named by the job each does. Collapsing them into
+    /// a single entry would understate the transfer to whichever provider went unnamed.
+    ///
+    /// <para>Both mixed combinations, in both directions (EXP-66): chat and embeddings move on
+    /// separate keys, and a disclosure that only ever saw one of the two orders would keep passing
+    /// for the deployment nobody tested.</para>
     /// </summary>
-    [Fact]
-    public async Task The_access_view_names_the_embeddings_provider_separately_under_azure()
+    [Theory]
+    [InlineData("AzureFoundry", "Gemini", "Google", "Microsoft")]
+    [InlineData("Gemini", "AzureFoundry", "Microsoft", "Google")]
+    public async Task The_access_view_names_the_embeddings_provider_separately(
+        string chat, string embeddingsProvider, string embedder, string scorer)
     {
         var world = await GivenAScoredPersonAsync();
 
-        var view = await AccessViewUnderAsync(world, "AzureFoundry");
+        var view = await AccessViewUnderAsync(world, chat, embeddingsProvider);
 
         var embeddings = view.Recipients.Single(r => r.Recipient.Contains("embeddings provider"));
-        embeddings.Recipient.Should().Contain("Google");
+        embeddings.Recipient.Should().Contain(embedder);
         embeddings.Why.Should().Contain("outside this company");
 
         view.Recipients.Single(r => r.Recipient.Contains("AI model provider"))
-            .Recipient.Should().Contain("Microsoft");
+            .Recipient.Should().Contain(scorer);
+    }
+
+    /// <summary>
+    /// One provider doing both jobs is <em>one</em> entry — the sentence a Gemini-only deployment
+    /// has always carried, and now its Azure mirror. Two entries here would tell somebody their
+    /// narrative goes to two companies when it goes to one.
+    /// </summary>
+    [Theory]
+    [InlineData("Gemini", "Google", "Microsoft")]
+    [InlineData("AzureFoundry", "Microsoft", "Google")]
+    public async Task One_provider_doing_both_jobs_is_one_recipient(
+        string provider, string named, string absent)
+    {
+        var world = await GivenAScoredPersonAsync();
+
+        var view = await AccessViewUnderAsync(world, provider, provider);
+
+        view.Recipients.Should().ContainSingle(r => r.Recipient.Contains(named));
+        view.Recipients.Should().NotContain(r => r.Recipient.Contains(absent));
+        view.Recipients.Single(r => r.Recipient.Contains(named))
+            .Why.Should().Contain("turned into search embeddings")
+            .And.Contain("scored against job descriptions");
+    }
+
+    /// <summary>
+    /// The derived-data note is the second string on this page that names a company (EXP-55 audit,
+    /// site #2), and it is served by the same request as the first. Asserted here, through HTTP,
+    /// because a page that credits Google for the embeddings while its recipient list names
+    /// Microsoft is a contradiction a data subject can read and neither string can see.
+    /// </summary>
+    [Theory]
+    [InlineData("Gemini", "Google's Gemini models")]
+    [InlineData("AzureFoundry", "Microsoft's Azure OpenAI service")]
+    public async Task The_search_index_note_names_the_active_embeddings_provider(
+        string provider, string expected)
+    {
+        var world = await GivenAScoredPersonAsync();
+
+        var view = await AccessViewUnderAsync(world, "AzureFoundry", provider);
+
+        view.Derived.SearchIndexNote.Should().Contain(expected);
     }
 
     /// <summary>
@@ -116,9 +163,14 @@ public class TransparencyTests(WebApiFactory factory)
     /// derived host rather than a second fixture: it inherits the factory's connection string, so
     /// it is the same database, the same row and the same session — only the seam's value differs.
     /// </summary>
-    private async Task<AccessViewDto> AccessViewUnderAsync(World world, string provider)
+    private async Task<AccessViewDto> AccessViewUnderAsync(
+        World world, string provider, string? embeddings = null)
     {
-        using var host = factory.WithWebHostBuilder(b => b.UseSetting("Ai:Chat:Provider", provider));
+        using var host = factory.WithWebHostBuilder(b =>
+        {
+            b.UseSetting("Ai:Chat:Provider", provider);
+            b.UseSetting("Ai:Embeddings:Provider", embeddings ?? "Gemini");
+        });
         using var client = host.CreateClient();
         client.DefaultRequestHeaders.Authorization = world.Client.DefaultRequestHeaders.Authorization;
 

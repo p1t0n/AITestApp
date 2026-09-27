@@ -56,6 +56,19 @@ const CONTAINER_BROWSER = VISUAL || process.env.E2E_CONTAINER_BROWSER === "1";
 const CHAT_PROVIDER =
   process.env.E2E_CHAT_PROVIDER ??
   JSON.parse(readFileSync(path.join(repoRoot, "api/Web/appsettings.json"), "utf8")).Ai.Chat.Provider;
+
+/**
+ * Which embeddings provider the stack under test is configured with (EXP-66). Chat and embeddings
+ * move on separate keys, so the recipient list the privacy page renders is a function of both —
+ * reading only the chat half would leave the spec asserting one of two entries and blind to the
+ * other. Read out of the Web host's own settings for the same reason as above: this host is the one
+ * that derives the disclosure, and a literal here would be a place to name a provider that no
+ * backend test can see.
+ */
+const EMBEDDINGS_PROVIDER =
+  process.env.E2E_EMBEDDINGS_PROVIDER ??
+  JSON.parse(readFileSync(path.join(repoRoot, "api/Web/appsettings.json"), "utf8")).Ai.Embeddings
+    .Provider;
 const BROWSER_CONTAINER = "experttojob-e2e-browser";
 const BROWSER_IMAGE = "mcr.microsoft.com/playwright:v1.63.0-noble";
 /** How the container reaches the host it is running on. */
@@ -198,6 +211,7 @@ async function startApi() {
       ASPNETCORE_URLS: `http://localhost:${PORTS.api}`,
       ConnectionStrings__Default: DB_CONNECTION,
       Ai__Chat__Provider: CHAT_PROVIDER,
+      Ai__Embeddings__Provider: EMBEDDINGS_PROVIDER,
       // The passkey relying party checks the browser's origin against this list, and the suite
       // serves the SPA on its own port. The visual pass borrows the same origin — see
       // `FORWARD_TO_HOST` for why its containerised browser also says `localhost`.
@@ -244,6 +258,7 @@ async function main() {
           ...process.env,
           E2E_BASE_URL: `http://localhost:${PORTS.spa}`,
           E2E_CHAT_PROVIDER: CHAT_PROVIDER,
+          E2E_EMBEDDINGS_PROVIDER: EMBEDDINGS_PROVIDER,
           // Read by `playwright.config.ts`. Only set for a visual or container-browser run, so the
           // ordinary suite keeps launching a local browser and needs no Docker image.
           ...(CONTAINER_BROWSER ? { E2E_BROWSER_WS: `ws://localhost:${PORTS.browser}/` } : {}),

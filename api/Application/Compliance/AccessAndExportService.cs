@@ -142,6 +142,8 @@ public class AccessAndExportService(
     ICvService cv,
     IProcessingRecordService records,
     ChatProviderDisclosure chatProvider,
+    EmbeddingsProviderDisclosure embeddingsProvider,
+    IEmbeddingsProviderHistory embeddingsHistory,
     TimeProvider clock) : IAccessAndExportService
 {
     public async Task<AccessViewDto> AccessAsync(Guid expertId, CancellationToken ct = default)
@@ -173,7 +175,14 @@ public class AccessAndExportService(
             retention.IsInFinalWarningAt(clock.GetUtcNow()),
             Art15Disclosure.Purposes,
             Art15Disclosure.DataCategories,
-            Art15Disclosure.RecipientsFor(chatProvider.Provider),
+            Art15Disclosure.RecipientsFor(
+                chatProvider.Provider,
+                embeddingsProvider.Provider,
+                // Art. 15(1)(c) asks who the data has been disclosed to, not only who it goes to
+                // now: somebody whose record predates a provider switch is owed the provider that
+                // has already had their narrative (EXP-62).
+                Art15Disclosure.FormerEmbeddingsRecipientFor(
+                    history[0].RecordedAt, await embeddingsHistory.PeriodsAsync(ct))),
             $"{Art15Disclosure.Retention} {RetentionPolicy.DescriptionFor(retention.Clock)}",
             Art15Disclosure.Art22Logic,
             Art15Disclosure.Rights,
@@ -280,10 +289,7 @@ public class AccessAndExportService(
 
         return new DerivedDataDto(
             assessments,
-            "Your summary and each of your roles are also held as numeric representations "
-            + "(embeddings) produced by Google's Gemini models, so that a search for a capability "
-            + "can find your record. They are derived from the text above and hold nothing you have "
-            + "not already read here.",
+            Art15Disclosure.SearchIndexNoteFor(embeddingsProvider.Provider),
             await RosterQaMentionsAsync(expertId, ct));
     }
 

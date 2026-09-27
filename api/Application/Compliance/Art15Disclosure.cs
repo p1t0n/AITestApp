@@ -46,27 +46,121 @@ public static class Art15Disclosure
     ];
 
     /// <summary>
-    /// Art. 15(1)(c) — categories of recipient, for the chat provider this deployment is actually
-    /// running (EXP-21). <b>Stated as categories, not as a log of who looked at what.</b> Logging
-    /// every view by everyone would answer a disclosure duty by manufacturing a large new store of
-    /// personal data about access, which would then need its own disclosure, retention and erasure.
+    /// Art. 15(1)(c) — categories of recipient, for the two providers this deployment is actually
+    /// running (EXP-21, EXP-66). <b>Stated as categories, not as a log of who looked at what.</b>
+    /// Logging every view by everyone would answer a disclosure duty by manufacturing a large new
+    /// store of personal data about access, which would then need its own disclosure, retention and
+    /// erasure.
     ///
-    /// <para>The model provider entry is the one that is new information rather than a
-    /// restatement — until this existed the service disclosed it to nobody — and it is the one
-    /// entry that can be a <em>false</em> statement, which is why it is a parameter rather than a
-    /// literal. A hard-coded name survives a provider change silently, and the person reading it
-    /// has no way to tell.</para>
+    /// <para>The provider entries are the ones that are new information rather than a restatement —
+    /// until this existed the service disclosed it to nobody — and they are the entries that can be
+    /// <em>false</em> statements, which is why they are parameters rather than literals. A
+    /// hard-coded name survives a provider change silently, and the person reading it has no way to
+    /// tell.</para>
     ///
-    /// <para><b>Azure splits the entry in two rather than renaming it.</b> Embeddings keep going to
-    /// Google whatever chat does (<c>manuals/adr-chat-provider-seam.md</c>), so an Azure deployment
-    /// genuinely has two recipients, and naming only one would understate the transfer to the
-    /// other. <paramref name="provider"/> being null means configuration named nothing we
-    /// recognise, and the honest answer there is both.</para>
+    /// <para><b>Chat and embeddings move independently</b>
+    /// (<c>manuals/adr-embeddings-provider-seam.md</c> §2 decision 16), so this is four present-tense
+    /// combinations rather than two. One provider doing both jobs is one entry; two providers are
+    /// two, named by the job each does, because naming only one would understate the transfer to
+    /// the other. Either parameter being null means configuration named nothing we recognise, and
+    /// the honest answer there is to name both companies.</para>
     /// </summary>
-    public static IReadOnlyList<RecipientCategory> RecipientsFor(DisclosedChatProvider? provider) =>
-        provider == DisclosedChatProvider.Gemini
-            ? [Administrators, GoogleForEverything, Clients]
-            : [Administrators, GoogleForEmbeddings, MicrosoftForChat, Clients];
+    /// <param name="chat">The chat provider, from <see cref="ChatProviderDisclosure"/>.</param>
+    /// <param name="embeddings">The embeddings provider, from
+    /// <see cref="EmbeddingsProviderDisclosure"/>.</param>
+    /// <param name="formerEmbeddings">A provider this deployment has since left, which this
+    /// person's narrative reached while it was active — from
+    /// <see cref="FormerEmbeddingsRecipientFor"/>. Placed with the other third parties rather than
+    /// after the clients row, because that is what it is.</param>
+    public static IReadOnlyList<RecipientCategory> RecipientsFor(
+        DisclosedChatProvider? chat,
+        DisclosedEmbeddingsProvider? embeddings,
+        RecipientCategory? formerEmbeddings = null)
+    {
+        RecipientCategory[] providers = (chat, embeddings) switch
+        {
+            (DisclosedChatProvider.Gemini, DisclosedEmbeddingsProvider.Gemini) =>
+                [GoogleForEverything],
+            (DisclosedChatProvider.AzureFoundry, DisclosedEmbeddingsProvider.AzureFoundry) =>
+                [MicrosoftForEverything],
+            (DisclosedChatProvider.AzureFoundry, DisclosedEmbeddingsProvider.Gemini) =>
+                [GoogleForEmbeddings, MicrosoftForChat],
+            (DisclosedChatProvider.Gemini, DisclosedEmbeddingsProvider.AzureFoundry) =>
+                [MicrosoftForEmbeddings, GoogleForChat],
+
+            // Nothing we recognise on one side or both: name every company it might be. Over-telling
+            // a data subject is survivable; naming the wrong recipient is not.
+            _ => [GoogleForEmbeddings, MicrosoftForChat],
+        };
+
+        return
+        [
+            Administrators,
+            .. providers,
+            .. formerEmbeddings is null ? Array.Empty<RecipientCategory>() : [formerEmbeddings],
+            Clients,
+        ];
+    }
+
+    /// <summary>
+    /// The one recipient entry that is about the past (EXP-62, ADR §2 decision 18): a provider this
+    /// deployment has left, whose models this person's career narrative reached while it was
+    /// active. Null when there is nothing in the past tense to say.
+    ///
+    /// <para><b>It states only what this service can verify</b> — that the data was sent, and until
+    /// when. It says nothing about what the former provider retained or deleted, because that is
+    /// not a fact this service knows, and Art. 5(1)(a) forbids a disclosure that implies otherwise.
+    /// The provider's own terms belong in the DPIA, not in a sentence written at a data
+    /// subject.</para>
+    ///
+    /// <para>Whether a period covers somebody is decided by their <em>own record's</em> creation
+    /// date, which is why the period table needs no Expert id and holds no personal data.</para>
+    /// </summary>
+    /// <param name="recordCreatedAt">When this person's record was first held — the first entry in
+    /// their lawful-basis history.</param>
+    /// <param name="periods">The deployment's embeddings provider history, in any order.</param>
+    public static RecipientCategory? FormerEmbeddingsRecipientFor(
+        DateTimeOffset recordCreatedAt,
+        IReadOnlyList<Domain.Entities.EmbeddingsProviderPeriod> periods)
+    {
+        // The latest Gemini period that has actually ended and was still running when this record
+        // was created. Latest, because an earlier end date would tell somebody Google stopped
+        // receiving their data long before it did.
+        var endedAt = periods
+            .Where(p => string.Equals(p.Provider, nameof(DisclosedEmbeddingsProvider.Gemini),
+                StringComparison.OrdinalIgnoreCase))
+            .Where(p => p.EndedAt is { } ended && recordCreatedAt < ended)
+            .Max(p => p.EndedAt);
+
+        if (endedAt is not { } until)
+        {
+            return null;
+        }
+
+        return new RecipientCategory(
+            "Google (Gemini), formerly our embeddings provider",
+            $"Until {until:yyyy-MM-dd}, your career narrative was sent to Google's Gemini models to "
+            + "be turned into search embeddings. Since then, embeddings are produced by another "
+            + "provider named on this page, and Google receives nothing new from us.");
+    }
+
+    /// <summary>
+    /// The search-index note on the access view, naming the provider that actually produces the
+    /// embeddings. A literal here was the second string EXP-55's audit found: it reads as a
+    /// contradiction next to a changed recipient list, and it goes silently wrong the day
+    /// embeddings move.
+    /// </summary>
+    public static string SearchIndexNoteFor(DisclosedEmbeddingsProvider? embeddings) =>
+        "Your summary and each of your roles are also held as numeric representations (embeddings) "
+        + embeddings switch
+        {
+            DisclosedEmbeddingsProvider.Gemini => "produced by Google's Gemini models",
+            DisclosedEmbeddingsProvider.AzureFoundry =>
+                "produced by Microsoft's Azure OpenAI service, within the EU",
+            _ => "produced by the embeddings provider named among the recipients above",
+        }
+        + ", so that a search for a capability can find your record. They are derived from the text "
+        + "above and hold nothing you have not already read here.";
 
     private static readonly RecipientCategory Administrators =
         new("Administrators of this organisation",
@@ -86,17 +180,38 @@ public static class Art15Disclosure
             + "embeddings and to be scored against job descriptions. This is a named third party "
             + "outside this company, and it is how the scoring described above actually happens.");
 
+    /// <summary>The same sentence for the other provider, plus the one fact that makes its transfer
+    /// different in kind rather than only in name: the deployment is EU-confined (ADR §7).</summary>
+    private static readonly RecipientCategory MicrosoftForEverything =
+        new("Microsoft (Azure OpenAI), as our AI model provider",
+            "Your career narrative is sent to Microsoft's Azure OpenAI service to be turned into "
+            + "search embeddings and to be scored against job descriptions. The embeddings are "
+            + "processed within the EU. This is a named third party outside this company, and it is "
+            + "how the scoring described above actually happens.");
+
     private static readonly RecipientCategory GoogleForEmbeddings =
         new("Google (Gemini), as our embeddings provider",
             "Your career narrative is sent to Google's Gemini models to be turned into search "
             + "embeddings, so that a search for a capability can find your record. This is a named "
             + "third party outside this company.");
 
+    private static readonly RecipientCategory MicrosoftForEmbeddings =
+        new("Microsoft (Azure OpenAI), as our embeddings provider",
+            "Your career narrative is sent to Microsoft's Azure OpenAI service to be turned into "
+            + "search embeddings, so that a search for a capability can find your record. They are "
+            + "processed within the EU. This is a named third party outside this company.");
+
     private static readonly RecipientCategory MicrosoftForChat =
         new("Microsoft (Azure OpenAI), as our AI model provider",
             "Your career narrative, your skills and your availability are sent to Microsoft's Azure "
             + "OpenAI service to be scored against job descriptions. This is a named third party "
             + "outside this company, and it is how the scoring described above actually happens.");
+
+    private static readonly RecipientCategory GoogleForChat =
+        new("Google (Gemini), as our AI model provider",
+            "Your career narrative, your skills and your availability are sent to Google's Gemini "
+            + "models to be scored against job descriptions. This is a named third party outside "
+            + "this company, and it is how the scoring described above actually happens.");
 
     /// <summary>
     /// Art. 15(1)(d) — retention. Criteria rather than a date, because the clock itself is

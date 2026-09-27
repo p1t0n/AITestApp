@@ -34,7 +34,12 @@ function accessView(over: Partial<AccessView> = {}): AccessView {
     dataCategories: ["Your name and contact details.", "Your career history.", "Your skills."],
     recipients: [
       { recipient: "Administrators of this organisation", why: "They maintain the bench." },
-      { recipient: "Google (Gemini), as our AI model provider", why: "Scoring happens there." },
+      { recipient: "Google (Gemini), as our embeddings provider", why: "Embedding happens there." },
+      { recipient: "Microsoft (Azure OpenAI), as our AI model provider", why: "Scoring happens there." },
+      {
+        recipient: "Google (Gemini), formerly our embeddings provider",
+        why: "Until 2026-10-01, your career narrative was sent there.",
+      },
     ],
     retention: "We keep your record while it is in use.",
     art22Logic: "### How the scoring works\n\nA model reads your CV.",
@@ -127,11 +132,24 @@ describe("what we hold on you (P1T-191)", () => {
     expect(screen.getByText(/A model reads your CV/)).toBeInTheDocument();
   });
 
-  /** The disclosure that is new information rather than a restatement (P1T-187). */
-  it("names the model provider among the recipients", () => {
+  /**
+   * The disclosure that is new information rather than a restatement (P1T-187). The page holds no
+   * provider literal of its own — it renders whatever the API sent — so this proves the rendering,
+   * including the past-tense entry a deployment gains after switching provider (EXP-66). Which
+   * companies the API actually names is settled by `Web.Tests/TransparencyTests`.
+   */
+  it("names every provider recipient the API sent, present and former", () => {
     renderPage();
 
-    expect(screen.getByText(/Google \(Gemini\)/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Google \(Gemini\), as our embeddings provider/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Microsoft \(Azure OpenAI\), as our AI model provider/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Google \(Gemini\), formerly our embeddings provider/),
+    ).toBeInTheDocument();
   });
 
   /**
