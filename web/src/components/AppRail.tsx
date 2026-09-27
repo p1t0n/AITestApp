@@ -17,7 +17,6 @@ import {
   Typography,
 } from "@mui/material";
 import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
-import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
 import BadgeOutlinedIcon from "@mui/icons-material/BadgeOutlined";
 import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
@@ -26,6 +25,7 @@ import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
 import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
 import LightModeOutlinedIcon from "@mui/icons-material/LightModeOutlined";
 import LogoutIcon from "@mui/icons-material/Logout";
+import ManageAccountsOutlinedIcon from "@mui/icons-material/ManageAccountsOutlined";
 import MenuIcon from "@mui/icons-material/Menu";
 import SearchIcon from "@mui/icons-material/Search";
 import SettingsBrightnessOutlinedIcon from "@mui/icons-material/SettingsBrightnessOutlined";
@@ -59,9 +59,12 @@ export const BRAND = "ExpertToJob";
  * them would be a place to forget the fourth.
  */
 export const NAV: NavPlace[] = [
-  { label: "CVs", to: "/", icon: <ArticleOutlinedIcon /> },
+  // Experts, not CVs: the place lists people, and a CV is a document about one of them (EXP-44).
+  // Hence the icons too — a group for the Roster, and account management for the accounts page,
+  // which administers Roles rather than people.
+  { label: "Experts", to: "/experts", icon: <GroupOutlinedIcon /> },
   { label: "Skill Catalog", to: "/catalog", icon: <AccountTreeOutlinedIcon /> },
-  { label: "Users", to: "/users", icon: <GroupOutlinedIcon /> },
+  { label: "Users", to: "/users", icon: <ManageAccountsOutlinedIcon /> },
 ];
 
 /**
@@ -98,9 +101,13 @@ const THEME_CHOICES: { value: ThemeModeChoice; label: string; icon: ReactNode }[
   { value: "system", label: "System", icon: <SettingsBrightnessOutlinedIcon /> },
 ];
 
-/** Which route the rail should mark as current. `/` only matches exactly; the rest by prefix. */
+/**
+ * Which route the rail should mark as current, by prefix — one expert's page is still the Experts
+ * place, and `/me/cv` is still My CV. No place is `/` any more (EXP-44), so the exact-match case
+ * the roster used to need is gone: `/` is a landing that redirects, and nothing stays on it.
+ */
 function isCurrent(pathname: string, to: string): boolean {
-  return to === "/" ? pathname === "/" : pathname.startsWith(to);
+  return pathname.startsWith(to);
 }
 
 /**

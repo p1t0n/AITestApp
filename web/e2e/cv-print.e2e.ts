@@ -64,7 +64,7 @@ test.describe("CV print artifact", () => {
     // makes *its* row locator ambiguous, not this one's, so the collision surfaces somewhere else
     // entirely. Taken already: Ada Lovelace, Grace Hopper, Grace Murray, Barbara Liskov, Katherine
     // Johnson, Alan Turing.
-    await page.getByRole("button", { name: "New CV" }).click();
+    await page.getByRole("button", { name: "New expert" }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("First name").fill("Dorothy");
     await dialog.getByLabel("Last name").fill("Vaughan");

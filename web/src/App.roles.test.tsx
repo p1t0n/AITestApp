@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, useLocation } from "react-router";
 import App from "./App";
 import { setSession } from "./auth/session";
 
@@ -41,29 +41,55 @@ function renderApp(path: string) {
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[path]}>
         <App />
+        <Where />
       </MemoryRouter>
     </QueryClientProvider>,
   );
 }
 
+/**
+ * Where the router ended up. A redirect is only half-proved by what renders — `/` and `/experts`
+ * would both show the roster if `/` still *were* the roster — so EXP-44's landing is asserted on
+ * the path itself. A sibling of `App` rather than anything inside it: it reads the same router.
+ */
+function Where() {
+  return <div data-testid="pathname">{useLocation().pathname}</div>;
+}
+
+function pathname(): string {
+  return screen.getByTestId("pathname").textContent ?? "";
+}
+
 describe("route audiences (P1T-181)", () => {
-  it("lands an Administrator on the roster", () => {
+  // `/` is the landing and no longer the roster itself (EXP-44): it redirects each audience to its
+  // own home, and an Administrator's is `/experts`.
+  it("lands an Administrator on /experts", () => {
     signedInAs("Administrator");
 
     renderApp("/");
+
+    expect(pathname()).toBe("/experts");
+    expect(screen.getByText("the roster page")).toBeInTheDocument();
+  });
+
+  it("renders the roster at /experts, beside one expert's own page", () => {
+    signedInAs("Administrator");
+
+    renderApp("/experts");
 
     expect(screen.getByText("the roster page")).toBeInTheDocument();
   });
 
   // The whole point of the slice: an Expert asking for a staff route is a signed-in person, so the
   // answer is their own page — not the sign-in screen, which would tell them they are signed out.
-  it.each(["/", "/users", "/catalog", "/experts/abc"])(
+  it.each(["/", "/experts", "/users", "/catalog", "/experts/abc"])(
     "sends an Expert asking for %s to their own landing page, not /signin",
     (path) => {
       signedInAs("User");
 
       renderApp(path);
 
+      expect(pathname()).toBe("/me/cv");
       expect(screen.getByText("the my-cv page")).toBeInTheDocument();
       expect(screen.queryByText("the sign-in gate")).not.toBeInTheDocument();
       expect(screen.queryByText("the roster page")).not.toBeInTheDocument();
@@ -75,6 +101,7 @@ describe("route audiences (P1T-181)", () => {
 
     renderApp("/me");
 
+    expect(pathname()).toBe("/experts");
     expect(screen.getByText("the roster page")).toBeInTheDocument();
   });
 
@@ -85,7 +112,7 @@ describe("route audiences (P1T-181)", () => {
 
     expect(screen.getByRole("link", { name: "My CV" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Privacy & data" })).toBeInTheDocument();
-    for (const staffPlace of ["CVs", "Skill Catalog", "Users"]) {
+    for (const staffPlace of ["Experts", "Skill Catalog", "Users"]) {
       expect(screen.queryByRole("link", { name: staffPlace })).not.toBeInTheDocument();
     }
   });

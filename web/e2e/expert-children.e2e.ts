@@ -18,7 +18,7 @@ test.describe("expert child editing", () => {
 
   /** Creates an expert through the roster dialog and lands on their detail page. */
   async function createExpert(page: import("@playwright/test").Page, first: string, last: string) {
-    await page.getByRole("button", { name: "New CV" }).click();
+    await page.getByRole("button", { name: "New expert" }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("First name").fill(first);
     await dialog.getByLabel("Last name").fill(last);

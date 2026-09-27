@@ -202,7 +202,7 @@ describe("what it offers", () => {
     for (const place of NAV) {
       expect(screen.getByRole("option", { name: new RegExp(place.label) })).toBeInTheDocument();
     }
-    expect(NAV.map((p) => p.label)).toEqual(["CVs", "Skill Catalog", "Users"]);
+    expect(NAV.map((p) => p.label)).toEqual(["Experts", "Skill Catalog", "Users"]);
   });
 
   it("lists every Agent Surface the dock's picker offers, in the picker's groups", () => {

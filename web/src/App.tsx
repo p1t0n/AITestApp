@@ -54,6 +54,21 @@ function RequireAuth({ role }: { role: SessionRole }) {
 }
 
 /**
+ * `/` is the way in, not a page (EXP-44): the roster moved to `/experts`, and the two audiences have
+ * different homes, so this route's only job is to hand a session to `landingFor`. Signed out it is
+ * the gate, which is the same answer {@link RequireAuth} gives and for the same reason.
+ *
+ * It sits outside `RequireAuth` because both audiences pass through it — guarding it for one role
+ * would send the other one here twice.
+ */
+function Landing() {
+  const authed = useIsAuthenticated();
+  const role = useSessionRole();
+
+  return <Navigate to={!authed || role === null ? "/signin" : landingFor(role)} replace />;
+}
+
+/**
  * The routed area under its own error boundary: a render throw inside a page shows a fallback with
  * a way back instead of a white screen. Keyed by the path, so navigating away clears the error and
  * the next route renders normally.
@@ -142,10 +157,13 @@ export default function App() {
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/recover" element={<RecoverPage />} />
 
+          {/* The landing, for whoever arrives on it. */}
+          <Route path="/" element={<Landing />} />
+
           {/* Staff surfaces. The roster, the catalog and user administration are all staffing
               data — a User reaching any of them would be reading other people's CVs. */}
           <Route element={<RequireAuth role="Administrator" />}>
-            <Route path="/" element={<ExpertsPage />} />
+            <Route path="/experts" element={<ExpertsPage />} />
             <Route path="/experts/:id" element={<ExpertDetailPage />} />
             <Route path="/experts/:id/cv" element={<CvPage />} />
             <Route path="/catalog" element={<CatalogPage />} />

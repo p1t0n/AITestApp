@@ -47,7 +47,7 @@ test.describe("the shell's two edges", () => {
     await addVirtualAuthenticator(context, page);
     await signUp(page);
 
-    await expect(page.getByRole("link", { name: "CVs" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Experts" })).toBeVisible();
     expect(await railPush(page)).toBe("240px");
     // The whole contract in one assertion: the rail took no part in layout, and the content moved.
     await expectPadding(page, "left").toBe(240);
@@ -129,7 +129,7 @@ test.describe("the shell's two edges", () => {
     await expectPadding(page, "right").toBe(0);
     // The rail itself is gone, not merely un-padded — and located by CSS rather than by role,
     // because a role locator will not match a `display: none` element and would simply hang.
-    expect(await page.locator("a[aria-label='CVs']").boundingBox()).toBeNull();
+    expect(await page.locator("a[aria-label='Experts']").boundingBox()).toBeNull();
 
     await page.emulateMedia({ media: "screen" });
   });
@@ -147,13 +147,13 @@ test.describe("the shell's two edges", () => {
     // swapped, not that a key was written.
     const dark = await page.$eval("body", (el) => getComputedStyle(el).backgroundColor);
     await page.reload();
-    await expect(page.getByRole("link", { name: "CVs" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Experts" })).toBeVisible();
     expect(await page.$eval("body", (el) => getComputedStyle(el).backgroundColor)).toBe(dark);
 
     // A second tab in the same context: the `storage` event is what carries the change across.
     const second = await context.newPage();
-    await second.goto("/");
-    await expect(second.getByRole("link", { name: "CVs" })).toBeVisible();
+    await second.goto("/experts");
+    await expect(second.getByRole("link", { name: "Experts" })).toBeVisible();
     expect(await second.$eval("body", (el) => getComputedStyle(el).backgroundColor)).toBe(dark);
 
     await second.getByRole("button", { name: "Theme" }).click();
@@ -170,16 +170,16 @@ test.describe("the shell's two edges", () => {
     await addVirtualAuthenticator(context, page);
     await signUp(page);
 
-    await page.goto("/");
-    await expect(page.getByRole("link", { name: "CVs" })).toBeVisible();
+    await page.goto("/experts");
+    await expect(page.getByRole("link", { name: "Experts" })).toBeVisible();
 
     // Tabbed to, not `.focus()`ed: `:focus-visible` is a heuristic on *how* focus arrived, so a
     // programmatic focus renders no ring and would fail this assertion for the wrong reason.
     //
     // The palette's trigger is the rail's first row since P1T-165, so it is what the first Tab
     // reaches — the only assertion in this chain rewritten because the *fact* changed rather than
-    // because a grip on the DOM slipped. The ring below is still measured on `CVs`, the frozen name
-    // this test exists for.
+    // because a grip on the DOM slipped. The ring below is still measured on `Experts`, the frozen
+    // name this test exists for — renamed from `CVs` in EXP-44, and still frozen under the new one.
     await page.keyboard.press("Tab");
     expect(await page.evaluate(() => document.activeElement?.getAttribute("aria-label"))).toBe(
       "Search",
@@ -187,10 +187,10 @@ test.describe("the shell's two edges", () => {
 
     await page.keyboard.press("Tab");
     expect(await page.evaluate(() => document.activeElement?.getAttribute("aria-label"))).toBe(
-      "CVs",
+      "Experts",
     );
 
-    const outline = await page.$eval("a[aria-label='CVs']", (el) => {
+    const outline = await page.$eval("a[aria-label='Experts']", (el) => {
       const s = getComputedStyle(el);
       return { width: s.outlineWidth, style: s.outlineStyle };
     });

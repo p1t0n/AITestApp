@@ -57,8 +57,8 @@ for (const mode of ["light", "dark"] as const) {
       // startup seed — three fixed people — so both modes shoot the same table and neither depends
       // on the other having run. A spec that seeded its own rows would put six rows in the second
       // frame and three in the first, and the difference would look like a design change.
-      await page.goto("/");
-      await expect(page.getByRole("heading", { level: 1, name: "CVs" })).toBeVisible();
+      await page.goto("/experts");
+      await expect(page.getByRole("heading", { level: 1, name: "Experts" })).toBeVisible();
       await readyToShoot(page);
 
       // The account's own address, which is a different string on every run.

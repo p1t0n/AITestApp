@@ -70,7 +70,7 @@ async function signInFresh(page: Page, context: Parameters<typeof addVirtualAuth
   await page.goto("/signin");
   await addVirtualAuthenticator(context, page);
   await signUp(page);
-  await expect(page.getByRole("link", { name: "CVs" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Experts" })).toBeVisible();
 }
 
 test.describe("the print cascade outside the CV page", () => {

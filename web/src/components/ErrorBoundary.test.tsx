@@ -113,8 +113,8 @@ describe("PageErrorFallback (P1T-153)", () => {
 
     expect(screen.getByRole("alert")).toHaveTextContent("This page stopped working");
     expect(screen.getByRole("alert")).toHaveTextContent("render blew up");
-    await user.click(screen.getByRole("button", { name: "Back to CVs" }));
-    // Reset and navigate together, so the button also works when the crashed route *is* "/".
+    await user.click(screen.getByRole("button", { name: "Back to Experts" }));
+    // Reset and navigate together, so the button also works when the crashed route *is* the roster.
     expect(reset).toHaveBeenCalledOnce();
   });
 });

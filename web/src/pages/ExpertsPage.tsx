@@ -35,7 +35,7 @@ export default function ExpertsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   // Deliberately still an early return rather than a spinner *under* the header: the e2e capture
-  // waits for `New CV` to decide the roster has arrived, and a header that renders while the table
+  // waits for `New expert` to decide the roster has arrived, and a header that renders while the table
   // is empty would hand it a screenshot of a spinner (`manuals/spa-design-system.md` §10).
   if (isLoading)
     return (
@@ -46,12 +46,12 @@ export default function ExpertsPage() {
 
   return (
     <PageHeader
-      title="CVs"
+      title="Experts"
       // The roster is nine columns wide at its widest and reads better the more of them fit.
       width="wide"
       actions={
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => setDialogOpen(true)}>
-          New CV
+          New expert
         </Button>
       }
     >

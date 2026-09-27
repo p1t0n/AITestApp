@@ -40,7 +40,8 @@ const DB_NAME = "experttojob_e2e";
 
 /**
  * Signs a brand-new **Administrator** up through the real UI: the form, the registration ceremony,
- * and the redirect onto the roster. Returns the email so a test can sign the same account back in.
+ * and the redirect onto the roster at `/experts` (EXP-44 — `/` is the landing and bounces off it).
+ * Returns the email so a test can sign the same account back in.
  *
  * Staff, not a User, because that is what the rest of this suite is about — the roster, the
  * catalog, the agent dock. Since P1T-181 a self-serve signup is a User, so this pre-creates the
@@ -51,7 +52,7 @@ const DB_NAME = "experttojob_e2e";
 export async function signUp(page: Page, email = uniqueEmail("e2e")): Promise<string> {
   inviteAdministrator(email);
   await signUpThroughTheForm(page, email);
-  await page.waitForURL("**/", { timeout: 30_000 });
+  await page.waitForURL("**/experts", { timeout: 30_000 });
   return email;
 }
 

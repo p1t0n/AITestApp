@@ -107,9 +107,23 @@ describe("the rail, expanded", () => {
     renderRail(railWith());
 
     expect(screen.getByText("ExpertToJob")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "CVs" })).toHaveAttribute("href", "/");
+    expect(screen.getByRole("link", { name: "Experts" })).toHaveAttribute("href", "/experts");
     expect(screen.getByRole("link", { name: "Skill Catalog" })).toHaveAttribute("href", "/catalog");
     expect(screen.getByRole("link", { name: "Users" })).toHaveAttribute("href", "/users");
+  });
+
+  // The icons say what each place is about, and the pair only reads right together: Experts is a
+  // list of people, Users administers accounts and Roles (EXP-44). Asserted through the
+  // `data-testid` MUI puts on every icon it builds, which is the only name an icon has.
+  it("gives Experts the group icon and Users the manage-accounts one", () => {
+    renderRail(railWith());
+
+    expect(
+      within(screen.getByRole("link", { name: "Experts" })).getByTestId("GroupOutlinedIcon"),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("link", { name: "Users" })).getByTestId("ManageAccountsOutlinedIcon"),
+    ).toBeInTheDocument();
   });
 
   it("keeps `Sign out` a button by that name — the e2e suite asserts exactly this", () => {
@@ -122,13 +136,15 @@ describe("the rail, expanded", () => {
     renderRail(railWith(), "/catalog");
 
     expect(screen.getByRole("link", { name: "Skill Catalog" })).toHaveClass("Mui-selected");
-    expect(screen.getByRole("link", { name: "CVs" })).not.toHaveClass("Mui-selected");
+    expect(screen.getByRole("link", { name: "Experts" })).not.toHaveClass("Mui-selected");
   });
 
-  it("does not treat every path as the roster: `/` matches exactly", () => {
+  // One Expert's page is still the Experts place (EXP-44). Before the roster moved off `/` this
+  // read the other way round — `/` had to match exactly, so an expert's page marked nothing at all.
+  it("keeps Experts current on one expert's own page", () => {
     renderRail(railWith(), "/experts/abc");
 
-    expect(screen.getByRole("link", { name: "CVs" })).not.toHaveClass("Mui-selected");
+    expect(screen.getByRole("link", { name: "Experts" })).toHaveClass("Mui-selected");
   });
 
   it("shows who is signed in", () => {
@@ -200,7 +216,7 @@ describe("the rail, collapsed", () => {
 
     // The whole point of the `aria-label`: an icon with no name is a broken test, not a style
     // choice (`manuals/spa-design-system.md` §9).
-    expect(screen.getByRole("link", { name: "CVs" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Experts" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Skill Catalog" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Users" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument();

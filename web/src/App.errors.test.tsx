@@ -77,7 +77,7 @@ describe("routed-area error boundary (P1T-153)", () => {
     expect(screen.getByText("ExpertToJob")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Users" })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Back to CVs" }));
+    await user.click(screen.getByRole("button", { name: "Back to Experts" }));
     expect(screen.getByText("the roster page")).toBeInTheDocument();
     expect(screen.queryByText("This page stopped working")).not.toBeInTheDocument();
   });
@@ -87,7 +87,7 @@ describe("routed-area error boundary (P1T-153)", () => {
     renderApp("/catalog");
 
     expect(screen.getByRole("alert")).toHaveTextContent("This page stopped working");
-    await user.click(screen.getByRole("link", { name: "CVs" }));
+    await user.click(screen.getByRole("link", { name: "Experts" }));
     expect(screen.getByText("the roster page")).toBeInTheDocument();
   });
 });
