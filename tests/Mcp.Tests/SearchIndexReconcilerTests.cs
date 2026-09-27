@@ -162,6 +162,178 @@ public sealed class SearchIndexReconcilerTests : IAsyncLifetime
         (await db.ExpertSearchChunks.CountAsync(c => c.ExpertId == expert.Id)).Should().Be(0);
     }
 
+    // ---- provider/model tags and switch safety (EXP-65) ----
+
+    /// <summary>A tagged embedder, as the seam builds one: the bare model plus who served it.</summary>
+    private sealed class TaggedEmbedder(string provider, string model) : IEmbedder
+    {
+        public string Model => model;
+
+        public string Tag => $"{provider}/{model}";
+
+        public Task<EmbeddingBatch> EmbedAsync(IReadOnlyList<string> inputs, CancellationToken ct = default)
+            => Task.FromResult(new EmbeddingBatch(
+                inputs.Select(i => Constant(i, provider)).ToList(), inputs.Count * 5L));
+
+        /// <summary>Each provider gets its own vector for the same text, so a stale vector is
+        /// distinguishable from a re-embedded one by value and not only by its tag.</summary>
+        private static float[] Constant(string text, string provider)
+        {
+            var seed = provider.Length + (text.Length % 7);
+            var vector = new float[1536];
+            for (var i = 0; i < vector.Length; i++)
+            {
+                vector[i] = (seed + i % 13) / 100f;
+            }
+
+            return vector;
+        }
+    }
+
+    private static readonly TaggedEmbedder Gemini = new("Gemini", "gemini-embedding-001");
+    private static readonly TaggedEmbedder Azure = new("AzureFoundry", "text-embedding-3-small");
+
+    [Fact]
+    public async Task Stamps_each_vector_with_provider_and_model()
+    {
+        await using var db = NewDb();
+        await db.Database.MigrateAsync();
+        SeedExpert(db, summary: "Senior backend engineer.", experiences: 2);
+
+        var report = await Reconciler(db, Gemini).RunOnceAsync();
+
+        report.Embedded.Should().Be(5);
+        report.Coverage.Should().Be(1.0);
+        var chunks = await db.ExpertSearchChunks.AsNoTracking().ToListAsync();
+        chunks.Should().OnlyContain(c => c.Model == "Gemini/gemini-embedding-001");
+    }
+
+    [Fact]
+    public async Task Re_embeds_chunks_whose_tag_differs_from_the_active_embedder()
+    {
+        await using var db = NewDb();
+        await db.Database.MigrateAsync();
+        SeedExpert(db, summary: "Senior backend engineer.", experiences: 2);
+        await Reconciler(db, Gemini).RunOnceAsync();
+
+        // Nothing about the roster changed — only the configured provider did.
+        var afterSwitch = await Reconciler(db, Azure).RunOnceAsync();
+
+        afterSwitch.Inserted.Should().Be(0);
+        afterSwitch.Updated.Should().Be(0);
+        afterSwitch.Deleted.Should().Be(0);
+        afterSwitch.Relabelled.Should().Be(0, "a Gemini tag is not Azure's bare model name");
+        afterSwitch.Embedded.Should().Be(5);
+        afterSwitch.Coverage.Should().Be(1.0);
+
+        var chunks = await db.ExpertSearchChunks.AsNoTracking().ToListAsync();
+        chunks.Should().OnlyContain(c => c.Model == "AzureFoundry/text-embedding-3-small");
+
+        // And the pass after it is idle again: "wrong tag" is staleness, not a standing condition.
+        (await Reconciler(db, Azure).RunOnceAsync()).DidWork.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Overwrites_a_stale_vector_in_place_without_blanking_the_rest()
+    {
+        await using var db = NewDb();
+        await db.Database.MigrateAsync();
+        SeedExpert(db, summary: "Senior backend engineer.", experiences: 2);
+        await Reconciler(db, Gemini).RunOnceAsync();
+
+        var before = await db.ExpertSearchChunks.AsNoTracking()
+            .ToDictionaryAsync(c => c.Id, c => c.Embedding!.ToArray());
+
+        // One chunk at a time, so the index is observed mid-switch rather than only at the ends.
+        await Reconciler(db, Azure, batchSize: 1).RunOnceAsync();
+
+        var after = await db.ExpertSearchChunks.AsNoTracking().ToListAsync();
+        after.Should().HaveCount(before.Count, "re-embedding replaces rows, it does not delete them");
+        after.Should().OnlyContain(c => c.Embedding != null,
+            "a bulk blank would empty search for the whole rebuild");
+        after.Should().OnlyContain(c => c.EmbeddedAt != null);
+        after.Should().OnlyContain(c => !c.Embedding!.ToArray().SequenceEqual(before[c.Id]),
+            "every vector is genuinely the new provider's, not the old one restamped");
+    }
+
+    [Fact]
+    public async Task Legacy_bare_tag_matching_the_active_model_is_relabelled_others_count_as_stale()
+    {
+        await using var db = NewDb();
+        await db.Database.MigrateAsync();
+        SeedExpert(db, summary: "Senior backend engineer.", experiences: 2);
+        await Reconciler(db, Gemini).RunOnceAsync();
+
+        // The index as P1T-88 left it: some rows stamped with the bare current model, some with
+        // the bare name of the model before it. No row has ever carried a provider.
+        var ids = await db.ExpertSearchChunks.AsNoTracking().OrderBy(c => c.Id)
+            .Select(c => c.Id).ToListAsync();
+        var current = ids.Take(3).ToList();
+        var previous = ids.Skip(3).ToList();
+        await db.ExpertSearchChunks.Where(c => current.Contains(c.Id))
+            .ExecuteUpdateAsync(set => set.SetProperty(c => c.Model, "gemini-embedding-001"));
+        await db.ExpertSearchChunks.Where(c => previous.Contains(c.Id))
+            .ExecuteUpdateAsync(set => set.SetProperty(c => c.Model, "text-embedding-3-small"));
+        var untouched = await db.ExpertSearchChunks.AsNoTracking()
+            .Where(c => current.Contains(c.Id))
+            .ToDictionaryAsync(c => c.Id, c => c.Embedding!.ToArray());
+
+        // A fresh context: the deployment that finds these rows is a process that has just
+        // started, not one holding entities it loaded before the relabel.
+        await using var restarted = NewDb();
+        var report = await Reconciler(restarted, Gemini).RunOnceAsync();
+
+        // The three already made by gemini-embedding-001 are relabelled, not re-embedded — that is
+        // what spares the free tier a three-day rebuild it would gain nothing from.
+        report.Relabelled.Should().Be(3);
+        report.Embedded.Should().Be(2);
+        report.Coverage.Should().Be(1.0);
+
+        var after = await restarted.ExpertSearchChunks.AsNoTracking().ToListAsync();
+        after.Should().OnlyContain(c => c.Model == "Gemini/gemini-embedding-001");
+        after.Where(c => untouched.ContainsKey(c.Id))
+            .Should().OnlyContain(c => c.Embedding!.ToArray().SequenceEqual(untouched[c.Id]),
+                "a relabel changes the label and nothing else");
+    }
+
+    [Fact]
+    public async Task Coverage_is_one_on_an_empty_index_and_partial_mid_switch()
+    {
+        await using var db = NewDb();
+        await db.Database.MigrateAsync();
+
+        // Nothing to rebuild is full coverage, not zero: a brand-new deployment is not mid-switch.
+        (await Reconciler(db, Gemini).RunOnceAsync()).Coverage.Should().Be(1.0);
+
+        SeedExpert(db, summary: "Senior backend engineer.", experiences: 3);
+        await Reconciler(db, Gemini).RunOnceAsync();
+
+        // 7 chunks; stop the switch after 3 by failing the fourth batch of one.
+        var failing = new FailAfterEmbedder(Azure, allowedBatches: 3);
+        await Reconciler(db, failing, batchSize: 1)
+            .Invoking(r => r.RunOnceAsync()).Should().ThrowAsync<InvalidOperationException>();
+
+        var coverage = await IndexCoverage.MeasureAsync(db, Azure.Tag, CancellationToken.None);
+        coverage.Should().BeApproximately(3d / 7d, 1e-9);
+        IndexCoverage.NoteFor(coverage).Should().StartWith("index rebuilding: 43% re-embedded");
+    }
+
+    /// <summary>An embedder that dies partway through a rebuild — the case the in-place overwrite
+    /// rule exists for.</summary>
+    private sealed class FailAfterEmbedder(IEmbedder inner, int allowedBatches) : IEmbedder
+    {
+        private int _batches;
+
+        public string Model => inner.Model;
+
+        public string Tag => inner.Tag;
+
+        public Task<EmbeddingBatch> EmbedAsync(IReadOnlyList<string> inputs, CancellationToken ct = default)
+            => _batches++ < allowedBatches
+                ? inner.EmbedAsync(inputs, ct)
+                : throw new InvalidOperationException("the provider went away mid-rebuild");
+    }
+
     private AppDbContext NewDb()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
@@ -170,10 +342,12 @@ public sealed class SearchIndexReconcilerTests : IAsyncLifetime
         return new AppDbContext(options);
     }
 
-    private static SearchIndexReconciler Reconciler(AppDbContext db) => new(
+    private static SearchIndexReconciler Reconciler(
+        AppDbContext db, IEmbedder? embedder = null, int batchSize = 8) => new(
         db,
-        new FakeEmbedder(),
-        Options.Create(new SearchIndexOptions { EmbedBatchSize = 8 }),
+        embedder ?? new FakeEmbedder(),
+        Options.Create(new SearchIndexOptions { EmbedBatchSize = batchSize }),
+        new SearchIndexMetrics(),
         NullLogger<SearchIndexReconciler>.Instance);
 
     private static Expert SeedExpert(AppDbContext db, string? summary, int experiences)

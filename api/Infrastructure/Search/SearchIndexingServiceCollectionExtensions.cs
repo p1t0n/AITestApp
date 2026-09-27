@@ -1,3 +1,4 @@
+using System.Diagnostics.Metrics;
 using ExpertToJob.Application.Search;
 using ExpertToJob.Infrastructure.Embeddings;
 using Microsoft.Extensions.Configuration;
@@ -31,6 +32,11 @@ public static class SearchIndexingServiceCollectionExtensions
             EmbeddingServiceCollectionExtensions.ResolveProvider(config).Options.MinSimilarity;
 
         services.AddSingleton(Options.Create(searchOptions));
+
+        // Singleton: a Meter is process-wide and disposing one per reconcile pass would unregister
+        // the instrument from every listener. IMeterFactory when the host has one, so the meter is
+        // scoped to the host's telemetry rather than to a static.
+        services.AddSingleton(sp => new SearchIndexMetrics(sp.GetService<IMeterFactory>()));
 
         // Scoped: share the request/scope AppDbContext; the worker opens a scope per pass.
         services.AddScoped<ISearchIndexReconciler, SearchIndexReconciler>();

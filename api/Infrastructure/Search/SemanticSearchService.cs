@@ -74,9 +74,17 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
 
         var ranked = await RankChunksAsync(queryVector, eligibleIds, Fetch(limit), ct);
 
+        // Measured per call, after ranking: mid-switch the roster this query could see is smaller
+        // than the roster, and an empty or short result then means "not re-embedded yet" rather
+        // than "nobody matches". One grouped query (IndexCoverage), and null once coverage is 1.
+        var coverageNote = IndexCoverage.NoteFor(
+            await IndexCoverage.MeasureAsync(_db, _embedder.Tag, ct));
+
         if (ranked.Count == 0)
         {
-            return SemanticSearchResult.Empty;
+            return coverageNote is null
+                ? SemanticSearchResult.Empty
+                : new SemanticSearchResult([], null, null, coverageNote);
         }
 
         var byExpert = ranked
@@ -115,7 +123,7 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
             })
             .ToList();
 
-        return new SemanticSearchResult(hits);
+        return new SemanticSearchResult(hits, null, null, coverageNote);
     }
 
     /// <summary>
@@ -312,8 +320,15 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
         // the fine-grained unit for exemplar retrieval, and the live eval showed they raise the
         // negative-false-positive rate when they compete here (their narrative already reaches
         // these paths rolled into the parent experience chunk).
+        // The tag filter is what makes comparing vectors from two models impossible rather than
+        // merely unlikely (EXP-65). It sits next to the null check because it means the same thing:
+        // a vector another model made is not a vector this query can rank. Without it a provider
+        // switch would return confident nonsense — cosine distance is defined between any two
+        // 1536-dim vectors, it just does not mean anything across embedding spaces.
+        var tag = _embedder.Tag;
         var candidates = _db.ExpertSearchChunks
-            .Where(c => c.Embedding != null && c.SourceType != SearchChunkSource.Achievement)
+            .Where(c => c.Embedding != null && c.Model == tag
+                && c.SourceType != SearchChunkSource.Achievement)
             // See LexicalSearchAsync: the vectors stay, the paused person does not surface.
             .Where(c => _db.Experts.OnTheBench().Any(e => e.Id == c.ExpertId));
         if (eligibleIds is not null)

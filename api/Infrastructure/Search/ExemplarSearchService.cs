@@ -100,6 +100,7 @@ public sealed class ExemplarSearchService : IExemplarSearchService
         }
 
         var maxDistance = 1.0 - _options.MinSimilarity;
+        var tag = _embedder.Tag;
         var usedSourceIds = new HashSet<Guid>(); // a source bullet is returned at most once per request
         var picks = new List<(Guid AchievementId, List<ExemplarHit> Hits)>(bullets.Count);
 
@@ -111,7 +112,10 @@ public sealed class ExemplarSearchService : IExemplarSearchService
             // Over-fetch: the quantified-quality gate and the cross-request dedupe run in memory.
             var fetch = perBullet * 5 + 20;
             var rows = await _db.ExpertSearchChunks
-                .Where(c => c.Embedding != null
+                // Model == tag: a vector another embedding model made is not comparable with this
+                // one, so it is not a candidate (EXP-65). Same rule, same place, as the other two
+                // search paths.
+                .Where(c => c.Embedding != null && c.Model == tag
                     && c.SourceType == SearchChunkSource.Achievement
                     && c.ExpertId != bullet.OwnerId
                     // Anonymised or not, it is still a paused person's own writing being put to
@@ -166,11 +170,13 @@ public sealed class ExemplarSearchService : IExemplarSearchService
         }
 
         var maxDistance = 1.0 - _options.MinSimilarity;
+        var tag = _embedder.Tag;
         // No requesting expert, so there is no owner to exclude — every expert's bullets are
         // eligible, unlike the id-keyed path.
         var fetch = topK * 5 + 20;
         var rows = await _db.ExpertSearchChunks
-            .Where(c => c.Embedding != null
+            // See the id-keyed path: only vectors this embedder made are comparable (EXP-65).
+            .Where(c => c.Embedding != null && c.Model == tag
                 && c.SourceType == SearchChunkSource.Achievement
                 && c.Content.Length >= _options.ExemplarMinChars
                 && c.Content.Length <= _options.ExemplarMaxChars)

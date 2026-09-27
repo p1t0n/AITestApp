@@ -40,7 +40,8 @@ public sealed class RosterVisibilityTests : IAsyncLifetime
         await db.Database.MigrateAsync();
         await SeedAsync(db);
         await new SearchIndexReconciler(db, new KeywordEmbedder(),
-                Options.Create(new SearchIndexOptions()), NullLogger<SearchIndexReconciler>.Instance)
+                Options.Create(new SearchIndexOptions()), new SearchIndexMetrics(),
+                NullLogger<SearchIndexReconciler>.Instance)
             .RunOnceAsync();
     }
 
