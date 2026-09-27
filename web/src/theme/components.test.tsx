@@ -374,6 +374,34 @@ describe.each(modes)("%s mode — the accent is the primary action and nothing e
     );
     expect(s.borderColor).toBe(rgb(t.surface.outline));
   });
+
+  it("floats a field's label above the Well, not across its edge", () => {
+    // MUI's floated label straddles the top edge and relies on the notch to clear the border. The
+    // notch cuts the border and nothing else, so a Well's fill and inset shadow ran through the
+    // label's lower half. The label now sits wholly above the field, in space the field reserves.
+    const label = styleOf(
+      theme,
+      <TextField label="Years" value="1" onChange={() => {}} />,
+      ".MuiInputLabel-root",
+    );
+    expect(label.transform).toBe("translate(4px, -20px) scale(0.75)");
+
+    const control = styleOf(theme, <TextField label="Years" />, ".MuiFormControl-root");
+    expect(control.marginTop).toBe("20px");
+
+    // With the label outside, a notch would only leave a gap in the border above nothing.
+    const legend = styleOf(
+      theme,
+      <TextField label="Years" value="1" onChange={() => {}} />,
+      ".MuiOutlinedInput-notchedOutline > legend",
+    );
+    expect(legend.maxWidth).toBe("0.01px");
+  });
+
+  it("reserves no label space for a field without a label", () => {
+    const control = styleOf(theme, <TextField />, ".MuiFormControl-root");
+    expect(control.marginTop).toBe("0px");
+  });
 });
 
 describe.each(modes)("%s mode — a tinted Alert stays readable over any surface", (_m, theme, t) => {
