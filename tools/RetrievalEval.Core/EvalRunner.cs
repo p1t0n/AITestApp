@@ -152,8 +152,10 @@ public static class EvalRunner
 
         await db.SaveChangesAsync(ct);
 
+        using var metrics = new SearchIndexMetrics();
         await new SearchIndexReconciler(db, embedder,
-                Options.Create(new SearchIndexOptions()), NullLogger<SearchIndexReconciler>.Instance)
+                Options.Create(new SearchIndexOptions()), metrics,
+                NullLogger<SearchIndexReconciler>.Instance)
             .RunOnceAsync(ct);
 
         return keysById;

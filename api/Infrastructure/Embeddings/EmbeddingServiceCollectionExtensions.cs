@@ -62,6 +62,7 @@ public static class EmbeddingServiceCollectionExtensions
         // ---- provider-neutral from here down ----
         services.AddSingleton<IEmbedder>(sp => new OpenAICompatibleEmbedder(
             sp.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>(),
+            provider,
             cfg.EmbeddingModel,
             cfg.Dimensions,
             sp.GetRequiredService<ILogger<OpenAICompatibleEmbedder>>(),

@@ -19,7 +19,7 @@ public class EmbedderTests
     {
         var logger = new CapturingLogger<OpenAICompatibleEmbedder>();
         var generator = new FakeEmbeddingGenerator(dimensions: 1536, inputTokens: 42);
-        var embedder = new OpenAICompatibleEmbedder(generator, "gemini-embedding-001", 1536, logger);
+        var embedder = new OpenAICompatibleEmbedder(generator, EmbeddingsProvider.Gemini, "gemini-embedding-001", 1536, logger);
 
         var batch = await embedder.EmbedAsync(["alpha", "beta"]);
 
@@ -32,11 +32,25 @@ public class EmbedderTests
     }
 
     [Fact]
+    public void Tags_its_vectors_with_provider_and_model()
+    {
+        // The model alone would not do: on Azure it is a deployment name somebody chooses, so two
+        // providers can honestly report the same one (EXP-65, ADR §2 decision 9).
+        var embedder = new OpenAICompatibleEmbedder(
+            new FakeEmbeddingGenerator(), EmbeddingsProvider.AzureFoundry, "text-embedding-3-small",
+            1536, new CapturingLogger<OpenAICompatibleEmbedder>());
+
+        embedder.Model.Should().Be("text-embedding-3-small");
+        embedder.Tag.Should().Be("AzureFoundry/text-embedding-3-small");
+    }
+
+    [Fact]
     public async Task Logs_token_count_and_model()
     {
         var logger = new CapturingLogger<OpenAICompatibleEmbedder>();
         var embedder = new OpenAICompatibleEmbedder(
             new FakeEmbeddingGenerator(inputTokens: 7),
+            EmbeddingsProvider.Gemini,
             "gemini-embedding-001",
             1536,
             logger);
@@ -51,7 +65,7 @@ public class EmbedderTests
     public async Task Empty_input_returns_empty_batch_without_calling_provider()
     {
         var generator = new FakeEmbeddingGenerator();
-        var embedder = new OpenAICompatibleEmbedder(generator, "m", 1536, new CapturingLogger<OpenAICompatibleEmbedder>());
+        var embedder = new OpenAICompatibleEmbedder(generator, EmbeddingsProvider.Gemini, "m", 1536, new CapturingLogger<OpenAICompatibleEmbedder>());
 
         var batch = await embedder.EmbedAsync([]);
 
@@ -65,7 +79,7 @@ public class EmbedderTests
     {
         var generator = new ThrowingEmbeddingGenerator(status: 429);
         var embedder = new OpenAICompatibleEmbedder(
-            generator, "gemini-embedding-001", 1536,
+            generator, EmbeddingsProvider.Gemini, "gemini-embedding-001", 1536,
             new CapturingLogger<OpenAICompatibleEmbedder>(), retryDelay: TimeSpan.Zero);
 
         var act = () => embedder.EmbedAsync(["x"]);
@@ -79,7 +93,7 @@ public class EmbedderTests
     {
         var generator = new ThrowingEmbeddingGenerator(status: 429, failuresBeforeSuccess: 2);
         var embedder = new OpenAICompatibleEmbedder(
-            generator, "gemini-embedding-001", 1536,
+            generator, EmbeddingsProvider.Gemini, "gemini-embedding-001", 1536,
             new CapturingLogger<OpenAICompatibleEmbedder>(), retryDelay: TimeSpan.Zero);
 
         var batch = await embedder.EmbedAsync(["x"]);
@@ -93,7 +107,7 @@ public class EmbedderTests
     {
         var generator = new ThrowingEmbeddingGenerator(status: 500);
         var embedder = new OpenAICompatibleEmbedder(
-            generator, "gemini-embedding-001", 1536,
+            generator, EmbeddingsProvider.Gemini, "gemini-embedding-001", 1536,
             new CapturingLogger<OpenAICompatibleEmbedder>(), retryDelay: TimeSpan.Zero);
 
         var act = () => embedder.EmbedAsync(["x"]);
@@ -108,7 +122,7 @@ public class EmbedderTests
         var clock = new TestClock(DateTimeOffset.Parse("2026-08-11T00:00:00Z"));
         var generator = new ThrowingEmbeddingGenerator(status: 429);
         var embedder = new OpenAICompatibleEmbedder(
-            generator, "gemini-embedding-001", 1536, new CapturingLogger<OpenAICompatibleEmbedder>(),
+            generator, EmbeddingsProvider.Gemini, "gemini-embedding-001", 1536, new CapturingLogger<OpenAICompatibleEmbedder>(),
             retryDelay: TimeSpan.Zero, clock: clock, quotaBreakerWindow: TimeSpan.FromMinutes(30));
 
         await embedder.Invoking(e => e.EmbedAsync(["a"]))

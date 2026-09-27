@@ -33,7 +33,8 @@ public sealed class ShortlistSearchServiceTests : IAsyncLifetime
         await SeedAsync(db);
         // Backfill the index with the same embedder the search uses.
         await new SearchIndexReconciler(db, new CountingKeywordEmbedder(),
-            Options.Create(new SearchIndexOptions()), NullLogger<SearchIndexReconciler>.Instance)
+            Options.Create(new SearchIndexOptions()), new SearchIndexMetrics(),
+                NullLogger<SearchIndexReconciler>.Instance)
             .RunOnceAsync();
         await SeedLarrysBulletChunkAsync(db);
     }
@@ -54,6 +55,23 @@ public sealed class ShortlistSearchServiceTests : IAsyncLifetime
         bella.TotalRequirements.Should().Be(2);
         bella.Score.Should().BeGreaterThan(result.Results[1].Score);
         bella.Evidence.Should().OnlyContain(e => e.Matched && e.Snippet != null && e.Similarity >= 0.30);
+    }
+
+    [Fact]
+    public async Task Never_compares_vectors_from_another_model()
+    {
+        // The index was built by keyword-embedder; this run is on another provider's tag. Every
+        // requirement must come back unmatched rather than scored against a foreign embedding
+        // space — shortlist ranking is coverage-first, so a bogus match here promotes a candidate
+        // straight to the top of a list a human reads as a recommendation.
+        var control = await Service().SearchAsync(["fintech", "gaming"]);
+        control.Results.Should().NotBeEmpty("this is the control — the tag filter is the only difference");
+
+        var afterASwitch = await Service(new CountingKeywordEmbedder("AzureFoundry/text-embedding-3-small"))
+            .SearchAsync(["fintech", "gaming"]);
+
+        afterASwitch.Results.Should().BeEmpty();
+        afterASwitch.Error.Should().BeNull("a mid-switch index is incomplete, not broken");
     }
 
     [Fact]
@@ -206,13 +224,17 @@ public sealed class ShortlistSearchServiceTests : IAsyncLifetime
 
     /// <summary>Topical fake embedder (see <see cref="SemanticSearchServiceTests"/>) that also
     /// counts EmbedAsync calls, so tests can assert requirements are embedded in one batch.</summary>
-    private sealed class CountingKeywordEmbedder : IEmbedder
+    private sealed class CountingKeywordEmbedder(string? tag = null) : IEmbedder
     {
         private static readonly string[] Vocab = ["fintech", "gaming", "payments", "logistics"];
 
         public int Calls { get; private set; }
 
         public string Model => "keyword-embedder";
+
+        /// <summary>Same vectors, optionally a different identity — a provider switch as the query
+        /// side sees it.</summary>
+        public string Tag => tag ?? Model;
 
         public Task<EmbeddingBatch> EmbedAsync(IReadOnlyList<string> inputs, CancellationToken ct = default)
         {

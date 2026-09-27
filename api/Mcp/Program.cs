@@ -40,7 +40,8 @@ builder.Services.AddOpenTelemetry()
             "Experimental.ModelContextProtocol",
             "Experimental.Microsoft.Extensions.AI",
             "System.Net.Http",
-            "Npgsql"));
+            "Npgsql",
+            "ExpertToJob.Search"));   // index coverage during an embeddings provider switch
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);

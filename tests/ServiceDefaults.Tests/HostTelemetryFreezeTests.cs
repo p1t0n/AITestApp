@@ -36,6 +36,11 @@ public class HostTelemetryFreezeTests
         "Experimental.Microsoft.Extensions.AI",
         "System.Net.Http",
         "Npgsql",
+        // The search index's own meter (EXP-65). It carries one instrument,
+        // experttojob.search.index.coverage, and the only time anyone wants it is during an
+        // embeddings provider switch — which is exactly when a dropped subscription would be
+        // discovered by nobody.
+        "ExpertToJob.Search",
     ];
 
     private static readonly string[] AgentsSources =
