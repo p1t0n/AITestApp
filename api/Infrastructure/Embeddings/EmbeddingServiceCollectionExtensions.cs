@@ -20,9 +20,11 @@ namespace ExpertToJob.Infrastructure.Embeddings;
 /// <see cref="IEmbeddingGenerator{TInput,TEmbedding}"/> and cannot tell who is behind it, which is
 /// why <see cref="OpenAICompatibleEmbedder"/> needed renaming rather than forking.</para>
 ///
-/// <para>Only the Gemini branch exists today. Azure OpenAI is named by
-/// <see cref="EmbeddingsProvider"/> and arrives with EXP-67; asking for it now fails at startup
-/// saying so.</para>
+/// <para>Both branches exist since EXP-67, and they are deliberately the same four lines: neither
+/// of the two shims the <em>chat</em> client carries for Gemini has an analog on an embeddings
+/// endpoint, which only ever returns vectors. They stay separate <c>case</c> labels all the same,
+/// so a shim that turns out to be needed on one provider can be attached where only that provider
+/// reaches it — which is the property the seam exists for.</para>
 /// </summary>
 public static class EmbeddingServiceCollectionExtensions
 {
@@ -43,19 +45,32 @@ public static class EmbeddingServiceCollectionExtensions
         // the enum rather than a string so a reader still fails at the config edge.
         services.AddSingleton(typeof(EmbeddingsProvider), provider);
 
+        // A host with no credential for its active provider cannot embed, and saying so once here
+        // is the difference between a development stack that degrades and one that throws an
+        // unreadable SDK error on every search. Production never reaches this: the startup guard
+        // has already refused to boot (ADR §2 decision 6).
+        if (string.IsNullOrWhiteSpace(ResolveApiKey(provider, cfg, Environment.GetEnvironmentVariable)))
+        {
+            services.AddSingleton<IEmbedder>(new CredentiallessEmbedder(provider, cfg.EmbeddingModel));
+            return services;
+        }
+
         // ---- the construction branch: the only code below that knows a provider's name ----
         switch (provider)
         {
             case EmbeddingsProvider.Gemini:
-                AddGeminiEmbeddingClient(services, provider, cfg);
+                AddOpenAICompatibleEmbeddingClient(services, provider, cfg);
+                break;
+            case EmbeddingsProvider.AzureFoundry:
+                AddOpenAICompatibleEmbeddingClient(services, provider, cfg);
                 break;
             default:
                 // Unreachable while Defaults() is the only source of an options object: it throws
-                // for a provider with no branch. Kept so that adding a Defaults entry without a
+                // for a provider with no defaults. Kept so that adding a Defaults entry without a
                 // branch fails here rather than registering an embedder over nothing.
                 throw new InvalidOperationException(
-                    $"'{ProviderKey}' bound to {provider}, which no construction branch builds. The "
-                    + "Azure OpenAI branch arrives with EXP-67. "
+                    $"'{ProviderKey}' bound to {provider}, which no construction branch builds. A "
+                    + $"new {nameof(EmbeddingsProvider)} member needs a branch here. "
                     + "See manuals/adr-embeddings-provider-seam.md.");
         }
 
@@ -142,11 +157,16 @@ public static class EmbeddingServiceCollectionExtensions
             : cfg.ApiKey;
 
     /// <summary>
-    /// The Gemini construction branch: one OpenAI-compatible embedding client (endpoint +
-    /// credential). No shim — neither of the two the chat client carries has an analog on the
-    /// embeddings endpoint, which only ever returns vectors.
+    /// What both construction branches build: one OpenAI-compatible embedding client (endpoint +
+    /// that provider's own credential). No shim on either — neither of the two the chat client
+    /// carries for Gemini has an analog on an embeddings endpoint, which only ever returns vectors,
+    /// and Azure's v1 endpoint takes the same <c>Authorization: Bearer</c> an
+    /// <see cref="ApiKeyCredential"/> sends (chat ADR §3 measured that against the real resource).
+    ///
+    /// <para>Called from a <c>case</c> per provider rather than before the switch, so that a shim
+    /// one of them turns out to need is attached where the other cannot reach it.</para>
     /// </summary>
-    private static void AddGeminiEmbeddingClient(
+    private static void AddOpenAICompatibleEmbeddingClient(
         IServiceCollection services, EmbeddingsProvider provider, EmbeddingOptions cfg)
     {
         services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>>(_ =>

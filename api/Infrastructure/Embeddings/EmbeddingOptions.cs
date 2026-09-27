@@ -67,9 +67,8 @@ public sealed class EmbeddingOptions
     };
 
     /// <summary>A provider's code defaults, before its configuration block is bound over them.
-    /// <see cref="EmbeddingsProvider.AzureFoundry"/> deliberately has no entry yet: naming it in the
-    /// enum is what EXP-64 delivers, and building it is EXP-67's ticket. Failing here says so,
-    /// rather than binding an empty block and embedding against nothing.</summary>
+    /// Every member of <see cref="EmbeddingsProvider"/> has an entry since EXP-67; a member added
+    /// without one fails here, rather than binding an empty block and embedding against nothing.</summary>
     public static EmbeddingOptions Defaults(EmbeddingsProvider provider) => provider switch
     {
         EmbeddingsProvider.Gemini => new EmbeddingOptions
@@ -82,10 +81,27 @@ public sealed class EmbeddingOptions
             // 1.0 with no false positives. See manuals/retrieval-eval-baseline.md.
             MinSimilarity = 0.55,
         },
+        EmbeddingsProvider.AzureFoundry => new EmbeddingOptions
+        {
+            // The v1 endpoint of the resource EXP-56 provisioned, shared with chat
+            // (api/Agents/appsettings.json names the same one). EmbeddingModel is the DEPLOYMENT
+            // name, which happens to equal the model behind it here.
+            Endpoint = "https://experttojob-openai-swc.openai.azure.com/openai/v1/",
+            EmbeddingModel = "text-embedding-3-small",
+            Dimensions = 1536,
+            // A minute, not Gemini's half hour: Azure's cap is tokens per minute
+            // (x-ratelimit-limit-tokens), not a daily request allowance, so a breaker that stayed
+            // open for 1800s would keep search on the lexical fallback long after the throttle
+            // cleared (ADR §2 decision 7).
+            QuotaBreakerSeconds = 60,
+            // Measured 2026-09-27 over the same frozen 24-expert corpus: plateau 0.285-0.350,
+            // recall@5 1.0 with no false positives. Gemini's 0.55 applied to these vectors scores
+            // recall@5 0.3030 — the reason this number is per provider (ADR §3).
+            MinSimilarity = 0.30,
+        },
         var unbuilt => throw new InvalidOperationException(
-            $"'{EmbeddingServiceCollectionExtensions.ProviderKey}' is '{unbuilt}', which this build "
-            + "does not embed with yet. The Azure OpenAI branch arrives with EXP-67; until then the "
-            + $"only provider with an embedding backend is {EmbeddingsProvider.Gemini}. "
-            + "See manuals/adr-embeddings-provider-seam.md."),
+            $"'{EmbeddingServiceCollectionExtensions.ProviderKey}' is '{unbuilt}', which has no "
+            + $"code defaults. A new {nameof(EmbeddingsProvider)} member needs an entry here as "
+            + "well as a construction branch. See manuals/adr-embeddings-provider-seam.md."),
     };
 }
