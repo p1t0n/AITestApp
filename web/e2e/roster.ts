@@ -19,3 +19,15 @@ export async function findInRoster(page: Page, fullName: string): Promise<Locato
   await expect(row).toBeVisible();
   return row;
 }
+
+/**
+ * Reach one row's action through its ⋮ menu — the only route to any of them since EXP-50.
+ *
+ * The menu is a portal, so it is never inside the row the button is in: the click starts at the
+ * row and the item is looked for on the page. Nothing here is a `data-testid`; the items are named
+ * exactly as somebody reads them.
+ */
+export async function rowAction(page: Page, row: Locator, action: string): Promise<void> {
+  await row.getByRole("button", { name: /^Actions for / }).click();
+  await page.getByRole("menuitem", { name: action, exact: true }).click();
+}

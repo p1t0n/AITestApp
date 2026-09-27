@@ -12,7 +12,7 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { addVirtualAuthenticator, signUp, uniqueEmail } from "./passkey";
-import { findInRoster } from "./roster";
+import { findInRoster, rowAction } from "./roster";
 
 /** The page's `<h1>`. Located by role and by frozen name; classes are not part of any contract. */
 function heading(page: Page, name: string) {
@@ -161,7 +161,7 @@ test.describe("the page header", () => {
 
   test("prints the CV and none of its own chrome", async ({ page }) => {
     await seed(page, "Annie", "Easley");
-    await (await findInRoster(page, "Annie Easley")).getByTitle("View CV").click();
+    await rowAction(page, await findInRoster(page, "Annie Easley"), "View CV");
     await expect(page).toHaveURL(/\/cv$/);
 
     // The page's own title is `CV`; the sheet's heading is the person. Two headings named the same

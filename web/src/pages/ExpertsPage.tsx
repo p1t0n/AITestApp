@@ -10,6 +10,7 @@ import {
   InputAdornment,
   InputLabel,
   LinearProgress,
+  Menu,
   MenuItem,
   Paper,
   Select,
@@ -23,19 +24,22 @@ import {
   Typography,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
-import DeleteIcon from "@mui/icons-material/Delete";
-import DescriptionIcon from "@mui/icons-material/Description";
+import FilterAltIcon from "@mui/icons-material/FilterAlt";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 import SearchIcon from "@mui/icons-material/Search";
 import {
   ROSTER_DEFAULTS,
   ROSTER_SORTS,
   useCreateExpert,
   useDeleteExpert,
+  useExpert,
   useRosterPage,
+  useUpdateExpert,
   type RosterDir,
   type RosterQuery,
   type RosterSort,
 } from "../api";
+import type { ExpertSummary } from "../types";
 import PageHeader, { PageContainer } from "../components/PageHeader";
 import ExpertFormDialog from "./ExpertFormDialog";
 
@@ -151,14 +155,41 @@ export default function ExpertsPage() {
 
   const { data, isLoading, isFetching } = useRosterPage(view);
   const create = useCreateExpert();
-  const del = useDeleteExpert();
   const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  // The open ⋮ menu: which row it belongs to, and the button it hangs off. One menu for the whole
+  // table rather than one per row — twenty-five mounted menus to show at most one.
+  const [menu, setMenu] = useState<{ row: ExpertSummary; anchor: HTMLElement } | null>(null);
+  // The row being edited, by id. The dialog fetches the whole record for itself; the row only
+  // carries a summary, and a PUT built from a summary would blank everything it does not show.
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  // The refine box (EXP-50) — deliberately *not* in the URL and deliberately not debounced. It
+  // narrows the rows already on screen and nothing else, so there is no request to wait for and
+  // nothing worth putting in a shared link: the link would reproduce a page, not a result.
+  const [refine, setRefine] = useState("");
+  const needle = refine.trim().toLowerCase();
+  const rows = data?.items ?? [];
+  const shown = needle
+    ? rows.filter((e) =>
+        `${e.firstName} ${e.lastName} ${e.title} ${e.location ?? ""} ${e.email}`
+          .toLowerCase()
+          .includes(needle),
+      )
+    : rows;
 
   const total = data?.total ?? 0;
   const from = total === 0 ? 0 : (view.page - 1) * view.pageSize + 1;
   const to = Math.min(view.page * view.pageSize, total);
   const go = (patch: Partial<RosterQuery>) => setParams(urlFromQuery({ ...view, ...patch }));
+
+  /** Run a menu item's job and put the menu away — every item wants both. */
+  const fromMenu = (run: (row: ExpertSummary) => void) => () => {
+    const row = menu!.row;
+    setMenu(null);
+    run(row);
+  };
 
   // Deliberately still an early return rather than a spinner *under* the header: the e2e capture
   // waits for `New expert` to decide the roster has arrived, and a header that renders while the
@@ -214,6 +245,25 @@ export default function ExpertsPage() {
               {total} {total === 1 ? "expert" : "experts"}
             </Typography>
             <Box sx={{ flex: 1 }} />
+            <TextField
+              size="small"
+              label="Refine these results"
+              value={refine}
+              onChange={(e) => setRefine(e.target.value)}
+              sx={{ minWidth: 220 }}
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <FilterAltIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                },
+              }}
+              // Said at the control, not only in the count below it: somebody who types a name here
+              // and sees nothing has to be able to tell "not on the roster" from "not on this page".
+              helperText="This page only"
+            />
             <FormControl size="small" sx={{ minWidth: 180 }}>
               <InputLabel id="roster-sort-label">Sort by</InputLabel>
               <Select
@@ -250,7 +300,7 @@ export default function ExpertsPage() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {data?.items.map((e) => (
+                {shown.map((e) => (
                   <TableRow
                     key={e.id}
                     hover
@@ -299,25 +349,27 @@ export default function ExpertsPage() {
                         color={capacityColor(e.currentCapacityPercent)}
                       />
                     </TableCell>
+                    {/* Nothing on the row writes (EXP-50). Every action is named, in a menu that
+                        has to be opened on purpose — including the two that only navigate, so the
+                        row offers one target rather than a bank of icons to mis-aim at. */}
                     <TableCell align="right" onClick={(ev) => ev.stopPropagation()}>
-                      <IconButton title="View CV" onClick={() => navigate(`/experts/${e.id}/cv`)}>
-                        <DescriptionIcon />
-                      </IconButton>
                       <IconButton
-                        title="Delete"
-                        color="error"
-                        onClick={() => {
-                          if (confirm(`Delete ${e.firstName} ${e.lastName}?`)) del.mutate(e.id);
-                        }}
+                        aria-label={`Actions for ${e.firstName} ${e.lastName}`}
+                        title="Actions"
+                        onClick={(ev) => setMenu({ row: e, anchor: ev.currentTarget })}
                       >
-                        <DeleteIcon />
+                        <MoreVertIcon />
                       </IconButton>
                     </TableCell>
                   </TableRow>
                 ))}
-                {data?.items.length === 0 && (
+                {shown.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={4}>No experts match.</TableCell>
+                    <TableCell colSpan={4}>
+                      {rows.length === 0
+                        ? "No experts match."
+                        : "No rows on this page match the refine."}
+                    </TableCell>
                   </TableRow>
                 )}
               </TableBody>
@@ -326,6 +378,7 @@ export default function ExpertsPage() {
             <Stack direction="row" spacing={1} sx={{ alignItems: "center", p: 1.5 }}>
               <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
                 Showing {from}–{to} of {total}
+                {needle && ` · ${shown.length} after refine`}
               </Typography>
               <Button
                 size="small"
@@ -346,12 +399,65 @@ export default function ExpertsPage() {
         </Box>
       </Stack>
 
+      <Menu
+        anchorEl={menu?.anchor ?? null}
+        open={menu !== null}
+        onClose={() => setMenu(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        <MenuItem onClick={fromMenu((row) => navigate(`/experts/${row.id}`))}>Open</MenuItem>
+        <MenuItem onClick={fromMenu((row) => navigate(`/experts/${row.id}/cv`))}>View CV</MenuItem>
+        <MenuItem onClick={fromMenu((row) => setEditingId(row.id))}>Edit…</MenuItem>
+      </Menu>
+
       <ExpertFormDialog
         open={dialogOpen}
         title="New expert"
         onClose={() => setDialogOpen(false)}
         onSave={(dto) => create.mutateAsync(dto)}
       />
+
+      {editingId && <RosterEditDialog id={editingId} onClose={() => setEditingId(null)} />}
     </PageHeader>
+  );
+}
+
+/**
+ * Editing one roster row, in the popup (EXP-50).
+ *
+ * It fetches the whole record before it renders anything. The row carries an `ExpertSummary` —
+ * name, title, location, status, capacity — and `PUT /experts/{id}` replaces the record, so a form
+ * prefilled from the row alone would save the phone, summary and photo away as blank. Nothing on
+ * screen would say it had.
+ *
+ * Delete lives in here rather than on the row, behind the form's own confirmation.
+ */
+function RosterEditDialog({ id, onClose }: { id: string; onClose: () => void }) {
+  const { data: e } = useExpert(id);
+  const update = useUpdateExpert(id);
+  const del = useDeleteExpert();
+
+  if (!e) return null;
+
+  return (
+    <ExpertFormDialog
+      open
+      title={`Edit ${e.firstName} ${e.lastName}`}
+      initial={{
+        firstName: e.firstName,
+        lastName: e.lastName,
+        title: e.title,
+        email: e.email,
+        phone: e.phone,
+        location: e.location,
+        summary: e.summary,
+        photoUrl: e.photoUrl,
+      }}
+      onClose={onClose}
+      onSave={(dto) => update.mutateAsync(dto)}
+      deleteSubject={`${e.firstName} ${e.lastName}`}
+      onDelete={() => del.mutateAsync(id)}
+    />
   );
 }

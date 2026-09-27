@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import {
   Alert,
+  Box,
   Button,
   Chip,
   Dialog,
@@ -35,6 +36,12 @@ export interface EditDialogProps {
   /** A save already in flight — the button is spent until it lands. */
   saving?: boolean;
   /**
+   * An action on the *record* rather than on this edit — Delete, in practice (EXP-50). It sits at
+   * the far end of the action row, a row's width from Save, and putting a confirmation behind it is
+   * the caller's job: this dialog only guards work that would be lost, not work that is destroyed.
+   */
+  recordAction?: ReactNode;
+  /**
    * Whether the form is complete enough to send. Defaults to true, so a dialog whose every field is
    * optional says nothing. A form with a required field it cannot default — a new skill's category —
    * sets it false, because "dirty" only knows something was typed, not that it was enough.
@@ -50,6 +57,7 @@ export default function EditDialog({
   dirty,
   saving,
   canSave = true,
+  recordAction,
   onClose,
   onSave,
   children,
@@ -89,6 +97,12 @@ export default function EditDialog({
         </Stack>
       </DialogContent>
       <DialogActions>
+        {recordAction && (
+          <>
+            {recordAction}
+            <Box sx={{ flex: 1 }} />
+          </>
+        )}
         <Button onClick={tryClose}>Cancel</Button>
         <Button variant="contained" onClick={onSave} disabled={!dirty || saving || !canSave}>
           Save
