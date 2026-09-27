@@ -41,7 +41,7 @@ public class RosterCapacityClockTests
             .Options);
 
     private static ExpertService ServiceOn(AppDbContext db, DateOnly day) =>
-        new(db, new SaveExpertValidator(), new UpdateExpertValidator(),
+        new(db, new SaveExpertValidator(), new UpdateExpertValidator(), new RosterQueryValidator(),
             new UnrestrictedOwnershipScopeProvider(), new AdministrationAudienceProvider(),
             new PinnedClock(day));
 

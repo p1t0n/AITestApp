@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { addVirtualAuthenticator, signUp, uniqueEmail } from "./passkey";
+import { findInRoster } from "./roster";
 
 /**
  * The languages / qualifications / experiences forms (P1T-142), and availability / expert skills
@@ -26,8 +27,8 @@ test.describe("expert child editing", () => {
     await dialog.getByLabel("Email").fill(uniqueEmail(first.toLowerCase()));
     await dialog.getByRole("button", { name: "Save" }).click();
 
-    const row = page.getByRole("row", { name: new RegExp(`${first} ${last}`) });
-    await row.getByRole("cell", { name: `${first} ${last}` }).click();
+    const row = await findInRoster(page, `${first} ${last}`);
+    await row.getByText(`${first} ${last}`).click();
     await expect(page).toHaveURL(/\/experts\/[0-9a-f-]{36}$/);
     return page.url();
   }

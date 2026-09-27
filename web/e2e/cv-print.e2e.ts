@@ -15,6 +15,7 @@
 import { expect, test } from "@playwright/test";
 import type { ElementHandle } from "@playwright/test";
 import { addVirtualAuthenticator, signUp, uniqueEmail } from "./passkey";
+import { findInRoster } from "./roster";
 
 /**
  * The colours the sheet must resolve to, as Chromium reports them. Kept literal rather than
@@ -74,7 +75,7 @@ test.describe("CV print artifact", () => {
     await dialog.getByLabel("Summary").fill("Computed trajectories by hand.");
     await dialog.getByRole("button", { name: "Save" }).click();
 
-    await page.getByRole("row", { name: /Dorothy Vaughan/ }).getByTitle("View CV").click();
+    await (await findInRoster(page, "Dorothy Vaughan")).getByTitle("View CV").click();
     await expect(page).toHaveURL(/\/cv$/);
     await expect(page.getByRole("heading", { name: "Dorothy Vaughan" })).toBeVisible();
 

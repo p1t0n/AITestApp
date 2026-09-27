@@ -36,6 +36,25 @@ public class ExpertsController : ControllerBase
     public Task<IReadOnlyList<ExpertSummaryDto>> List(
         [FromQuery] bool includeDrafts, CancellationToken ct) => _experts.ListAsync(includeDrafts, ct);
 
+    /// <summary>
+    /// One page of the staff roster (EXP-45): the whole Roster — Draft, Active and Paused —
+    /// searched, sorted, paged and counted by the database. Beside <see cref="List"/> rather than
+    /// replacing it, because that projection is what <c>expert_list</c> hands an agent and its
+    /// shape is a contract. The parameters are named one by one so the query string the SPA builds
+    /// is the one the action reads, with no model-binder convention in between; the rules they must
+    /// satisfy are <see cref="RosterQueryValidator"/>'s, in the Application layer.
+    /// </summary>
+    [Authorize(Policy = AuthPolicies.Administrator)]
+    [HttpGet("roster")]
+    public Task<RosterPage> Roster(
+        [FromQuery] string? q,
+        [FromQuery] string? sort,
+        [FromQuery] string? dir,
+        [FromQuery] int? page,
+        [FromQuery] int? pageSize,
+        CancellationToken ct) =>
+        _experts.SearchAsync(new RosterQuery(q, sort, dir, page, pageSize), ct);
+
     [HttpGet("{id:guid}")]
     public Task<ExpertDetailDto> Get(Guid id, CancellationToken ct) => _experts.GetAsync(id, ct);
 

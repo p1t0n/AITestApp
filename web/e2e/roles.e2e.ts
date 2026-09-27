@@ -107,7 +107,7 @@ test.describe("role split", () => {
     await signUp(page);
 
     await expect(page).toHaveURL(/\/experts$/);
-    await expect(page.getByRole("heading", { name: "Experts" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Experts" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Users" })).toBeVisible();
   });
 });

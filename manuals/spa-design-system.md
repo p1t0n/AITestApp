@@ -490,7 +490,7 @@ now.
 | Frozen | Why |
 |---|---|
 | Every `data-testid` hook the app emits — 39 at the end of the chain, and the count moves | The unit suite's grip on the DOM; renaming one is a silent test deletion. Held by `src/frozenHooks.test.ts`, which holds the *names* and is the inventory — a number in this table is a copy that goes stale (it did: `row-*` in P1T-191, then `users-role-select` and `users-role-confirm` in P1T-239, arrived in the test and not here). That a hook is still on the right element is held by the suite that queries it |
-| Accessible names `Sign out`, `Experts`, `Sign in` | The e2e suite asserts by role + name (`e2e/auth.e2e.ts`). `Experts` was `CVs` until EXP-44 renamed the place — the roster lists people, and a CV is a document about one of them. Renamed, not loosened: every assertion moved to the new name in the same commit, and the same commit moved the place's route from `/` to `/experts` (`/` is now a landing that redirects by role through `landingFor`) |
+| Accessible names `Sign out`, `Experts`, `Sign in` | The e2e suite asserts by role + name (`e2e/auth.e2e.ts`). `Experts` was `CVs` until EXP-44 renamed the place — the roster lists people, and a CV is a document about one of them. Renamed, not loosened: every assertion moved to the new name in the same commit, and the same commit moved the place's route from `/` to `/experts` (`/` is now a landing that redirects by role through `landingFor`). EXP-45 gave the results pane its own `N experts` heading, and Playwright matches a name as a *substring* — so the three specs meaning the page's own title now say `{ level: 1, name: "Experts" }`, as the visual and screenshot specs already did. The name did not move; the locators got narrower (§14) |
 | The dock's push contract (`DOCK_PUSH_VAR`) | The rail copies it; changing it breaks both edges at once |
 | Accessible name `Open the agents assistant` | The dock's own entry point, asserted by the e2e suite and the screenshot pass |
 | Accessible names `Close the agents assistant`, `Resize the agents dock` | Added by slice 5 and frozen on arrival: the close control had no name at all before it, and the handle is only reachable by one |
@@ -717,3 +717,55 @@ Status is a field in the popup now, like everything else editable.
 The accounts table is named — `<Table aria-label="Accounts">`. Not decoration: the page carries the
 claim and contest queues as tables too, and before the name every suite that wanted this one was
 reaching for it through whichever cell text happened to be unique that week.
+
+## 14. The Experts roster: a facet sidebar, and the server answers
+
+*EXP-45.* Variant C from the same throwaway branch as §13, and the deliberate counterpart to it.
+A dictionary is short enough to fetch whole; **the Roster is not**, so every question it answers is
+the server's:
+
+```
+GET /api/experts/roster?q=&sort=&dir=&page=&pageSize=   →  { items, total }
+```
+
+`sort` ∈ `name` (last name, then first) | `title` | `location` | `capacity` (availability today) |
+`status`; `dir` asc/desc; `page` 1-based; `pageSize` defaults to 25 and caps at 100. A key outside
+that set, a page before the first or a size past the cap is a **400** from
+`RosterQueryValidator` in the Application layer, not a clamp — a caller that thinks it asked for
+500 rows and received 100 pages wrongly and never finds out. It sits beside `GET /api/experts`
+rather than replacing it: that projection is what `expert_list` hands an agent, and its shape is a
+contract.
+
+The layout: a left sidebar holding **Search the roster** (debounced 300ms, matching name, email or
+title), and a results pane with an `N experts` heading, a **Sort by** dropdown, a compact table —
+name over `title · location`, then Status, Availability (today), Actions — and **‹ Prev / Next ›**
+over `Showing from–to of total`. Sort is a dropdown rather than clickable headers because the pairs
+a person actually wants are single thoughts ("Most available"), not a key plus a direction. Filters
+with live counts are EXP-47 and the row-actions menu is EXP-50; both land in this frame.
+
+Three things are load-bearing:
+
+* **The view lives in the URL.** `queryFromUrl`/`urlFromQuery` round-trip it, writing only what
+  differs from the default so `/experts` keeps meaning "first page, by name". A value the server
+  would refuse falls back to the default rather than being sent — a stale bookmark shows the roster,
+  not an error.
+* **`keepPreviousData`.** The rows already on screen stay put while the next page is in flight, so
+  sorting and paging never fall back to a spinner. It also keeps `isLoading` true exactly once, on
+  the first fetch, which is what the page's early return — and therefore §10's capture waiting on
+  **New expert** — depends on.
+* **The order is total.** Whatever the chosen key, the query ends `…, LastName, FirstName, Id`. Two
+  rows tied on the key must still come back in one fixed sequence, or a page boundary falling
+  between them repeats one row and skips another with nothing in the response to say so.
+
+One frozen surface moved by a hair, and it is worth naming because §9 says these are held rather
+than assumed. The results pane's `N experts` is an `<h2>`, and Playwright matches an accessible name
+as a **substring** — so `getByRole("heading", { name: "Experts" })` began resolving to two elements.
+The three specs that meant the page's own title now say `{ level: 1, name: "Experts" }`, which is
+what `shell.visual.e2e.ts` and `screenshots.e2e.ts` already said. The frozen name is unchanged; the
+locators around it got more specific, which is the opposite of a loosening.
+
+Paging also changed what "find the row I just created" means for the e2e suite: 25 rows a screen,
+ordered by last name, over a shared database. `e2e/roster.ts`'s `findInRoster` types the name into
+the search box first, so a spec that adds ten more people cannot silently push another spec's row
+onto page two — and every create-then-open journey drives the new search against a real server on
+its way past.

@@ -29,7 +29,14 @@ const DRAFT = row({ id: "d", firstName: "Staged", lastName: "Draftly", status: "
 const ACTIVE = row({ id: "a", firstName: "Published", lastName: "Activeson" });
 const PAUSED = row({ id: "p", firstName: "Self", lastName: "Pausewell", hiddenAt: "2026-09-01T00:00:00Z" });
 
-const useRoster = vi.fn(() => ({ data: [DRAFT, ACTIVE, PAUSED], isLoading: false }));
+// EXP-45 moved the page onto the server's paged query. The hook's name changed and the payload
+// gained a total; what this file asserts did not, which is why every expectation below is the one
+// it was — a rename, not a loosening.
+const useRosterPage = vi.fn(() => ({
+  data: { items: [DRAFT, ACTIVE, PAUSED], total: 3 },
+  isLoading: false,
+  isFetching: false,
+}));
 const useExperts = vi.fn(() => ({ data: [ACTIVE, PAUSED], isLoading: false }));
 
 vi.mock("../api", async (importOriginal) => {
@@ -37,7 +44,7 @@ vi.mock("../api", async (importOriginal) => {
   const idle = { isPending: false, isError: false, error: null };
   return {
     ...actual,
-    useRoster: () => useRoster(),
+    useRosterPage: () => useRosterPage(),
     useExperts: () => useExperts(),
     useCreateExpert: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), ...idle }),
     useDeleteExpert: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), ...idle }),
@@ -71,7 +78,7 @@ describe("the staff roster list", () => {
   it("reads the whole Roster, not the bench list the agent pickers share", () => {
     renderPage();
 
-    expect(useRoster).toHaveBeenCalled();
+    expect(useRosterPage).toHaveBeenCalled();
     expect(useExperts).not.toHaveBeenCalled();
   });
 

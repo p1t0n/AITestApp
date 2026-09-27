@@ -3,11 +3,12 @@
 // keys but they are a different kind of write.
 //
 // Query keys, invalidated by prefix:
-//   ["experts"]              the bench list (Active only)
-//   ["experts", "roster"]    the whole Roster, Drafts included — the staff list
-//   ["experts", id]          one detail projection
-//   ["experts", id, "cv"]    the assembled CV
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+//   ["experts"]                     the bench list (Active only)
+//   ["experts", "roster"]           the whole Roster, Drafts included — the ⌘K palette's list
+//   ["experts", "roster", query]    one page of it, searched and sorted by the server
+//   ["experts", id]                 one detail projection
+//   ["experts", id, "cv"]           the assembled CV
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Cv, ExpertDetail, ExpertSummary, SaveExpert } from "../types";
 import { http } from "./http";
 import { saveAsFile } from "./download";
@@ -39,6 +40,57 @@ export function useRoster() {
     queryKey: ["experts", "roster"],
     queryFn: async () =>
       (await http.get<ExpertSummary[]>("/experts", { params: { includeDrafts: true } })).data,
+  });
+}
+
+/** The sort keys `/experts/roster` accepts. A value outside this set is a 400, by design. */
+export const ROSTER_SORTS = ["name", "title", "location", "capacity", "status"] as const;
+export type RosterSort = (typeof ROSTER_SORTS)[number];
+export type RosterDir = "asc" | "desc";
+
+/** What the roster page is currently showing — the whole of it, and the whole of the URL. */
+export interface RosterQuery {
+  /** Case-insensitive contains over full name, email and title. */
+  q: string;
+  sort: RosterSort;
+  dir: RosterDir;
+  /** 1-based, as the server counts. */
+  page: number;
+  pageSize: number;
+}
+
+export interface RosterPageResult {
+  items: ExpertSummary[];
+  /** The size of the whole match, not of this page. */
+  total: number;
+}
+
+export const ROSTER_DEFAULTS: RosterQuery = {
+  q: "",
+  sort: "name",
+  dir: "asc",
+  page: 1,
+  pageSize: 25,
+};
+
+/**
+ * One page of the Roster, searched, sorted and counted by the server (EXP-45).
+ *
+ * `keepPreviousData` is what makes paging and sorting feel like a table rather than a reload: the
+ * rows already on screen stay put while the next page is in flight, so the header does not fall
+ * back to a spinner and the page does not jump. It also means `isLoading` is true exactly once —
+ * on the first fetch — which is what the roster's early return depends on, and what the e2e
+ * capture's wait on **New expert** depends on in turn (`manuals/spa-design-system.md` §10).
+ *
+ * Under the `["experts"]` prefix, so the existing `invalidateQueries({ queryKey: ["experts"] })`
+ * after a create or a delete still refreshes whatever page is on screen.
+ */
+export function useRosterPage(query: RosterQuery) {
+  return useQuery({
+    queryKey: ["experts", "roster", query],
+    queryFn: async () =>
+      (await http.get<RosterPageResult>("/experts/roster", { params: query })).data,
+    placeholderData: keepPreviousData,
   });
 }
 

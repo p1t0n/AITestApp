@@ -22,7 +22,7 @@ test.describe("passkey access", () => {
 
     await signUp(page);
 
-    await expect(page.getByRole("heading", { name: "Experts" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Experts" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
   });
 
@@ -38,7 +38,7 @@ test.describe("passkey access", () => {
     await page.getByLabel("Email (optional)").fill(email);
     await page.getByRole("button", { name: /sign in with a passkey/i }).click();
 
-    await expect(page.getByRole("heading", { name: "Experts" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Experts" })).toBeVisible();
   });
 
   test("signing in with an unknown email fails without letting the caller through", async ({
