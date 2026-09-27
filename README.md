@@ -68,7 +68,8 @@ See [SPEC.md](SPEC.md).
 
 - **Backend:** ASP.NET Core Web API (.NET 10), layered Domain / Application / Infrastructure / Web
 - **MCP server:** ModelContextProtocol (Streamable HTTP), thin adapters over the Application layer, OAuth 2.1 (Keycloak) with per-tool scopes
-- **AI agents:** Microsoft Agent Framework over provider-agnostic `IChatClient`, behind a chat-provider seam that configuration selects — an Azure OpenAI deployment (default, `gpt-4-1-mini`) or the Gemini free tier; embeddings always Gemini (`gemini-embedding-001`, 1536 dims), whichever provider chat uses
+- **AI agents:** Microsoft Agent Framework over provider-agnostic `IChatClient`, behind a chat-provider seam that configuration selects — an Azure OpenAI deployment (default, `gpt-4-1-mini`) or the Gemini free tier
+- **Embeddings:** their own seam and their own key, selected independently of chat — Azure OpenAI `text-embedding-3-small` (default, EU-confined) or Gemini `gemini-embedding-001` (development and demo only), 1536 dims either way
 - **Local orchestration:** .NET Aspire AppHost (`api/AppHost`) — one command starts every container and process (see `manuals/adr-aspire-apphost.md`)
 - **Observability:** OpenTelemetry tracing + metrics from both services (MAF workflow/executor spans, gen_ai chat spans, MCP RPCs, SQL) into the Aspire dashboard the AppHost serves (it prints the URL on startup)
 - **Vector search:** PostgreSQL + pgvector (cosine), EF Core mapping via Pgvector.EntityFrameworkCore
@@ -147,38 +148,61 @@ An exported `AZURE_FOUNDRY_API_KEY` works too. Semantic roster search still embe
 dotnet user-secrets set Parameters:gemini-api-key <your-key> --project api/AppHost
 ```
 
-The chat backend is named by configuration: `Ai:Chat:Provider` is `AzureFoundry` (shipped) or
-`Gemini`, and that provider's own block holds the rest —
+Two backends are named by configuration, and they move independently: `Ai:Chat:Provider` chooses
+the chat client in the Agents host, `Ai:Embeddings:Provider` chooses the embedder in the MCP host.
+Both are `AzureFoundry` (shipped) or `Gemini`, and each provider's own block holds the rest —
 
 ```
-Ai:Gemini:{Endpoint, Model, ApiKey, EmbeddingModel, Dimensions, QuotaBreakerSeconds, Agents:<agent>}
-Ai:AzureFoundry:{Endpoint, Model, ApiKey, Agents:<agent>}
+Ai:Chat:Provider                  AzureFoundry | Gemini
+Ai:Embeddings:Provider            AzureFoundry | Gemini
+Ai:Gemini:{Endpoint, Model, ApiKey, EmbeddingModel, Dimensions, MinSimilarity, QuotaBreakerSeconds, Agents:<agent>}
+Ai:AzureFoundry:{Endpoint, Model, ApiKey, EmbeddingModel, Dimensions, MinSimilarity, QuotaBreakerSeconds, Agents:<agent>}
 ```
 
-Embeddings bind `Ai:Gemini` whatever chat does, because they share that endpoint and key — which is
-also why `Ai:Gemini` keeps the embedding keys. `GEMINI_API_KEY` still wins over `Ai:Gemini:ApiKey`;
-`AZURE_FOUNDRY_API_KEY` is its opposite number.
+**Each provider carries its own numbers**, because they are not interchangeable: `MinSimilarity` is
+`0.30` for `text-embedding-3-small` and `0.55` for `gemini-embedding-001`, measured rather than
+guessed (`manuals/retrieval-eval-baseline.md`), and a single global floor would hide 70% of the
+correct matches on one of them. Chat and embeddings **share a provider's endpoint and key** when they
+name the same one: `AZURE_FOUNDRY_API_KEY` serves both on Azure, `GEMINI_API_KEY` both on Gemini, and
+each still wins over that provider's `ApiKey` config path. A key is never sent to the other company.
+
+Two keys, not one, because the backends are genuinely independent — one would turn "switch chat back
+to Gemini to compare" into "and re-embed the whole index". Switching embeddings is safe rather than
+free: every vector is tagged `<provider>/<model>`, search only compares against the current tag, and
+the reconciler re-embeds whatever does not match.
 
 **`Ai:AzureFoundry:Model` holds the deployment name, not a model id** (`gpt-4-1-mini`, with
-gpt-4.1-mini behind it), and the endpoint ends in `openai/v1/`. Azure bills per token. To go back
-to the free Gemini tier, override the provider from the environment the AppHost's children inherit:
+gpt-4.1-mini behind it), and so does its `EmbeddingModel` (`text-embedding-3-small`); the endpoint
+ends in `openai/v1/`. Azure bills per token. The embeddings deployment runs on **`DataZoneStandard`**
+quota, so embeddings are processed **within the EU** — chat is `GlobalStandard` and is not. To go
+back to the free Gemini tier, override either key from the environment the AppHost's children
+inherit:
 
 ```bash
 Ai__Chat__Provider=Gemini dotnet run --project api/AppHost
+Ai__Embeddings__Provider=Gemini dotnet run --project api/AppHost   # dev and demo data only
 ```
 
-Two startup rules, deliberately different: an **unknown** `Ai:Chat:Provider` value throws in every
-environment (a typo is wrong everywhere), while a **missing credential** throws only in Production,
-and only for the provider actually selected — an Azure-configured host is never stopped for a
-Gemini chat key it will not use. A stale top-level `Gemini` section fails the Agents host at
-startup rather than binding to nothing. Reasoning, and what the live probe measured before any of
-this was written: `manuals/adr-chat-provider-seam.md`.
+Gemini embeddings are for **development and demo data only**. Google's terms permit only paid
+services for users in the EEA, UK or Switzerland, and the free tier says not to submit personal
+information, so a deployment holding real people runs Azure — see
+`manuals/adr-embeddings-provider-seam.md` §5 and the DPIA.
+
+Two startup rules, deliberately different, and each provider key gets both: an **unknown** value
+throws in every environment (a typo is wrong everywhere), while a **missing credential** throws only
+in Production, and only for the provider actually selected — an Azure-configured host is never
+stopped for a Gemini key it will not use, and a development host degrades instead (the agents lose
+chat, semantic search falls back to keyword matching). A stale top-level `Gemini` section fails the
+Agents host at startup rather than binding to nothing. Reasoning, and what the live probes measured
+before any of this was written: `manuals/adr-chat-provider-seam.md` and
+`manuals/adr-embeddings-provider-seam.md`.
 
 Nothing else is required on a fresh clone. Every other dev secret (the session JWT signing key,
 the dev Keycloak client secrets) ships committed and pairs with the committed dev realm;
 Production refuses to boot on any placeholder and takes real values from the environment
-(`Auth__Jwt__SigningKey`, `McpAuth__<agent>__ClientSecret`, and the active chat provider's key —
-`GEMINI_API_KEY` or `AZURE_FOUNDRY_API_KEY`).
+(`Auth__Jwt__SigningKey`, `McpAuth__<agent>__ClientSecret`, and a key for each active provider —
+`AZURE_FOUNDRY_API_KEY` covers chat and embeddings on the shipped stack, `GEMINI_API_KEY` is its
+opposite number).
 
 Reasoning for all of the above — including why every port is pinned rather than discovered, and
 the tripwires that will silently do the wrong thing if you change it — is in
@@ -287,9 +311,11 @@ rather than a rewrite. Every agent call is metered against per-user token caps (
 50k/150k/500k daily/weekly/monthly), and each usage row records which provider served it.
 
 A content filter on either provider surfaces as one typed failure, so orchestration degrades a
-filtered stage without knowing whose filter it was. The Art. 15 recipient disclosure on the
-expert's privacy page names the **configured** provider — under Azure it names two recipients,
-Google for embeddings and Microsoft for chat, because embeddings never move.
+filtered stage without knowing whose filter it was. The Art. 15 recipient disclosure on the expert's
+privacy page names the **configured** providers, from both keys: one recipient where one company does
+both jobs (the shipped stack: Microsoft, with the embeddings noted as EU-confined), two where the
+keys differ, and a past-tense "formerly our embeddings provider" entry for anybody whose record
+predates a switch.
 
 #### The demo roster (optional)
 

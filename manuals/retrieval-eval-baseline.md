@@ -6,7 +6,17 @@ Measured retrieval quality of the semantic roster search against the frozen eval
 pipeline (`SearchIndexReconciler` → pgvector → `SemanticSearchService`).
 
 The committed regression floor lives in `tests/Mcp.Tests/Eval/EvalBaselines.cs` and is asserted
-by `RetrievalEvalLiveTests` (`dotnet test --filter "Category=live"` with `GEMINI_API_KEY` set).
+by `RetrievalEvalLiveTests` (`dotnet test --filter "Category=live"`).
+
+> **`MinSimilarity` is per provider, and so is the floor** (EXP-67). Each threshold below was
+> measured against one embedding model and is meaningless against another: **0.30** for
+> `text-embedding-3-small` (Azure OpenAI, the shipped default) and **0.55** for
+> `gemini-embedding-001`. Applying Gemini's 0.55 to Azure's vectors scores recall@5 **0.3030** — it
+> hides 70% of the correct matches — which is why there is no single global number any more and why
+> `EvalBaselines` holds one floor per provider, each quoted with the threshold it was taken at.
+> `RetrievalEvalLiveTests` runs once per provider and each run **skips on its own missing key**
+> (`AZURE_FOUNDRY_API_KEY`, `GEMINI_API_KEY`), so the set that actually runs is the set you have
+> keys for.
 
 ## Baseline at the production threshold (0.30)
 
@@ -124,3 +134,30 @@ same frozen 24-expert corpus and 39-query golden set:
 mid-plateau rule as the original 0.30 pick. Baseline at 0.55: recall@5 **1.0000**, MRR **1.0000**,
 negative-FP **0.0000**. Floors updated in `tests/Mcp.Tests/Eval/EvalBaselines.cs`; the live gate
 runs with `GEMINI_API_KEY` now.
+
+## Azure sweep at the default (2026-09-27, EXP-57)
+
+`text-embedding-3-small` re-measured through the real reconciler, pgvector and search service, on
+the same frozen 24-expert corpus and 39-query golden set, as the evidence for making Azure the
+default:
+
+| | Azure `text-embedding-3-small` | Gemini `gemini-embedding-001` |
+|---|---|---|
+| Plateau (recall 1.0, 0 false positives) | 0.285–0.350 | 0.540–0.575 |
+| Recall@5 / MRR on the plateau | 1.0000 / 0.9848 | 1.0000 / 1.0000 |
+| Recall@5 at 0.55 | **0.3030** | 1.0000 |
+
+**Verdict: `MinSimilarity` = 0.30 for Azure** — mid-plateau, the same rule the other two picks used.
+The Azure numbers are identical row for row to the 2026-07-11 baseline at the top of this document,
+which measured **the same model** through the since-retired GitHub Models endpoint: same model, same
+vectors, and the provider move changes who serves it rather than what it returns.
+
+The last row is the whole argument for a per-provider threshold. It is also why this document no
+longer has "the production threshold" in the singular.
+
+Re-measure either provider with:
+
+```bash
+dotnet run --project tools/RetrievalEval -- --provider AzureFoundry --threshold 0.30
+dotnet run --project tools/RetrievalEval -- --provider Gemini --threshold 0.55
+```

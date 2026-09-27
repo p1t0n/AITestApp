@@ -11,9 +11,13 @@ namespace ExpertToJob.Agents.Configuration;
 /// against and quietly miss. Nothing persists this type; the usage row stores
 /// <c>provider.ToString()</c> (EXP-19).</para>
 ///
-/// <para>Embeddings are not a provider decision and never appear here — they keep calling Google
-/// whatever chat does, which is why the discriminator is <c>Ai:Chat:Provider</c> and not
-/// <c>Ai:Provider</c> (ADR §2 decision 3).</para>
+/// <para>Embeddings never appear here, but no longer because they are fixed: they are their own
+/// provider decision, named by <c>Ai:Embeddings:Provider</c> and built by a separate seam in the MCP
+/// host (<c>manuals/adr-embeddings-provider-seam.md</c>). That is still why the discriminator is
+/// <c>Ai:Chat:Provider</c> and not <c>Ai:Provider</c> — one key would force the two to move together
+/// and turn "switch chat back to Gemini to compare" into "and re-embed the whole index". The chat
+/// ADR's §2 decision 3, which said embeddings keep calling Google whatever chat does, is superseded
+/// by that ADR's §8.</para>
 /// </summary>
 public enum ChatProvider
 {

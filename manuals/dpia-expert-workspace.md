@@ -65,10 +65,14 @@ population — so the 6(1)(f) population is excluded from the scan entirely. See
 
 1. **Collection.** Self-registration with a passkey and a control word, or a Service Manager entering
    a row. Either way a `ProcessingRecord` is written before the record is usable.
-2. **Indexing.** The career narrative is sent to **Google's Gemini** embedding model and stored as a
-   `vector(1536)` against the person's id. This leaves the company. Embeddings go to Google whatever
-   the chat provider is — the seam in
-   [`adr-chat-provider-seam.md`](adr-chat-provider-seam.md) does not touch them.
+2. **Indexing.** The career narrative is sent to **the configured embeddings provider** and stored
+   as a `vector(1536)` against the person's id. This leaves the company. `Ai:Embeddings:Provider`
+   names either **Microsoft (Azure OpenAI)** — the shipped default, `text-embedding-3-small`, on
+   EU-confined `DataZoneStandard` quota — or **Google (Gemini)**, one per deployment. The key is
+   **independent of `Ai:Chat:Provider`**: since
+   [`adr-embeddings-provider-seam.md`](adr-embeddings-provider-seam.md) the two move separately, so
+   a deployment can have one recipient doing both jobs or two doing one each.
+   **On the default stack, Google receives no career narrative.**
 3. **Scanning.** A job description is distilled into requirements; each scannable Expert's narrative
    is retrieved against them; the retrieved passages, skills and availability go to **the configured
    model provider** — `Ai:Chat:Provider` names either **Google (Gemini)** or **Microsoft (Azure
@@ -95,19 +99,38 @@ population — so the 6(1)(f) population is excluded from the scan entirely. See
 Service Managers of this organisation (the record in full); the **model provider or providers**,
 named to the person in the words the access view uses; clients (proposal and CV contents only).
 
-The provider entry is one or two categories depending on what `Ai:Chat:Provider` names, because an
-Azure deployment genuinely has two recipients — embeddings stay on Google whatever chat does:
+The provider entry is one or two categories depending on what **both** `Ai:Chat:Provider` and
+`Ai:Embeddings:Provider` name, because since the embeddings seam the two jobs can go to different
+companies in either direction. One provider doing both is one entry; two are two, named by the job
+each does:
 
-| `Ai:Chat:Provider` | Recipient categories disclosed | What it receives |
+| `Ai:Chat:Provider` · `Ai:Embeddings:Provider` | Recipient categories disclosed | What it receives |
 | --- | --- | --- |
-| `Gemini` | **Google (Gemini), as our AI model provider** | The career narrative, embedded; and the retrieved passages, skills and availability with job-description context, scored |
-| `AzureFoundry` | **Google (Gemini), as our embeddings provider** | The career narrative, embedded |
+| `AzureFoundry` · `AzureFoundry` **(shipped)** | **Microsoft (Azure OpenAI), as our AI model provider** | The career narrative, embedded **within the EU**; and the retrieved passages, skills and availability with job-description context, scored outside it |
+| `Gemini` · `Gemini` | **Google (Gemini), as our AI model provider** | The career narrative, embedded; and the retrieved passages, skills and availability with job-description context, scored |
+| `AzureFoundry` · `Gemini` | **Google (Gemini), as our embeddings provider** | The career narrative, embedded |
 | | **Microsoft (Azure OpenAI), as our AI model provider** | The retrieved passages, skills and availability with job-description context, scored |
+| `Gemini` · `AzureFoundry` | **Microsoft (Azure OpenAI), as our embeddings provider** | The career narrative, embedded within the EU |
+| | **Google (Gemini), as our AI model provider** | The retrieved passages, skills and availability with job-description context, scored |
+
+An unrecognised value on either key names **both** companies rather than neither: over-telling a
+data subject is survivable, naming the wrong recipient is not.
 
 The split is derived from configuration by `Art15Disclosure.RecipientsFor` rather than written twice
-(EXP-21), so the name an expert reads is the provider their deployment actually uses. Those bolded
-strings are the disclosure's own wording; an edit here that does not also move the code makes this
-document and the access view disagree, which is the divergence an auditor finds.
+(EXP-21, extended to both axes by EXP-62), so the name an expert reads is the provider their
+deployment actually uses. Those bolded strings are the disclosure's own wording; an edit here that
+does not also move the code makes this document and the access view disagree, which is the
+divergence an auditor finds — and since EXP-68 that divergence is a red test
+(`ComplianceDocumentAgreementTests`) rather than only this paragraph.
+
+**One recipient is about the past.** A deployment that ran Gemini embeddings and has since switched
+has *already* sent every narrative embedded before the switch to Google, and Art. 15(1)(c) covers
+recipients to whom data "have been or will be disclosed". `EmbeddingsProviderPeriods` — one row per
+interval a provider was active, holding no personal data — is what makes that answerable. Anybody
+whose record already existed when a Gemini period ended reads a fifth entry,
+**Google (Gemini), formerly our embeddings provider**, giving the date it ended and nothing about
+what Google retained, because retention is not a fact this service knows. Google's terms are in the transfers table below,
+where they belong.
 
 ### Retention
 
@@ -120,18 +143,31 @@ and does not move it.
 
 ### Transfers outside the EEA
 
-**Not assessed here, and it needs to be** — once per provider. The design names each recipient and
-discloses it to the person, which is the transparency duty. The Chapter V transfer question is a
-contracting question this team has not answered for either provider, and it is now two open
-questions rather than one:
+**Partly assessed, and the rest needs to be** — once per provider, and now once per *job*, because
+the two paths sit on different quota tiers. The design names each recipient and discloses it to the
+person, which is the transparency duty. The Chapter V transfer question is a contracting question,
+and it is answered for one of the three rows below:
 
-| Provider | Receives | What is known about region and entity | Still unanswered |
+| Provider · job | Receives | What is known about region and entity | Still unanswered |
 | --- | --- | --- | --- |
-| **Google (Gemini)** — embeddings on every deployment; also scoring where `Ai:Chat:Provider` is `Gemini` | The career narrative; and, on a Gemini deployment, the scoring context too | **Nothing.** No region, entity or transfer mechanism is recorded anywhere in this repo | Which Google entity, under what mechanism, with what supplementary measures |
-| **Microsoft (Azure OpenAI)** — scoring where `Ai:Chat:Provider` is `AzureFoundry` | The retrieved passages, skills and availability, with job-description context | The deployment is `GlobalStandard` in Sweden Central. **The region is not a residency measure**: `GlobalStandard` does not confine inference to the EU, and EU-confined `DataZoneStandard` capacity is not purchasable on this subscription — see [`adr-chat-provider-seam.md`](adr-chat-provider-seam.md) §7 | Which Microsoft entity, under what mechanism, with what supplementary measures |
+| **Microsoft (Azure OpenAI)** — embeddings, where `Ai:Embeddings:Provider` is `AzureFoundry` (**the shipped default**) | The career narrative | `text-embedding-3-small` on **`DataZoneStandard`** in Sweden Central, capacity 120 (EXP-56). **This one is EU-confined**: Data Zone quota keeps inference inside the EU, which is what the region alone never did. EU processing costs 10% more — about $0.001 per full roster embed — see [`adr-embeddings-provider-seam.md`](adr-embeddings-provider-seam.md) §7 | Which Microsoft entity, under what mechanism. Residency is settled; the contract is not |
+| **Microsoft (Azure OpenAI)** — scoring, where `Ai:Chat:Provider` is `AzureFoundry` (**the shipped default**) | The retrieved passages, skills and availability, with job-description context | `gpt-4.1-mini` on `GlobalStandard` in Sweden Central. **The region is not a residency measure**: `GlobalStandard` does not confine inference to the EU, and Data Zone capacity for this model is not purchasable on this subscription — see [`adr-chat-provider-seam.md`](adr-chat-provider-seam.md) §7 | Which Microsoft entity, under what mechanism, with what supplementary measures |
+| **Google (Gemini)** — embeddings and/or scoring, where either key names `Gemini`. **Not used with real data** (see the rule below) | The career narrative, the scoring context, or both, depending on which keys name it | Researched from Google's published terms, 2026-09-27 (EXP-63): on a **billed** project prompts and responses are logged **55 days** for abuse monitoring only, are not used for training, and authorised Google staff may read flagged content; processing is covered by Google's **Data Processing Addendum**; the contracting entity for an EEA customer outside FR/IT/PL is **Google Cloud EMEA** Limited (Ireland); transfers rely on the **EU–US Data Privacy Framework** with Google's SCCs as fallback. There is **no data-residency commitment** on the Gemini Developer API and no zero-retention option — Google's own docs point to Vertex AI for that. On the **unpaid** tier none of the above holds: content is used to improve Google's products, human reviewers may read it, no retention period is published, and the terms say not to submit personal information | Whether the DPA in fact binds an EEA operator's free-tier traffic (Google's service list names only Paid Services); whether a deletion request under DPA §6.1.2 would reach an `embedContent` call at all |
 
-Choosing an EU region therefore bought no residency and **improves nothing in this section**. Both
-rows are carried as residual risk R7.
+So the position is no longer one sentence. **Embeddings on the shipped stack are EU-confined**;
+**chat is not**, and choosing an EU region bought it no residency. Both Microsoft rows still lack an
+assessed entity and mechanism. The Google row is researched but is not a live transfer on any
+deployment this team runs.
+
+**Gemini is for development and demo data only.** This is a rule the code cannot enforce, so the
+DPIA carries it. Google's terms permit **only Paid Services** when making an API client available to
+users in the EEA, UK or Switzerland, and the unpaid terms say in as many words not to submit personal
+information. A deployment holding real people therefore runs Azure, or takes a **separate, recorded
+decision** to use a billed Gemini project — which is a new entry here, not a config change. Every
+deployment so far has held synthetic demo data and development data only, so **no real person's
+career narrative has been sent to Google**, and there is no retroactive notice owed to anybody.
+
+All three rows are carried as residual risk R7.
 
 ## 2. Necessity and proportionality — Art. 35(7)(b)
 
@@ -232,7 +268,7 @@ inputs to a DPO's assessment, not a substitute for it.
 | R4 | **Being ranked out by software with no human ever reading the record** | High | High *(inherent to the design)* | Automation conceded rather than denied; 22(2)(a) relied on with the necessity argument written down; all three 22(3) safeguards built on the decision row; **the score, band and rationale are shown to the person in full**, which is what makes contesting possible; LI population excluded entirely | Medium. Depends on contests actually being reviewed by somebody with authority to change the outcome — an operational fact, not a code property |
 | R5 | A model-written rationale — or a kept Roster Q&A answer — is wrong, unfair, or humiliating | Medium | Medium | The subject reads a rationale verbatim, which constrains what may be written; contest reopens it; no inference of protected characteristics; the model gets passages, skills and availability only. A conversation answer is **not** shown to its subject (existence only, R13), so that constraint does not reach it; every answer is forced to rest on a fresh tool call and ungrounded answers are marked | Medium |
 | R6 | Personal data survives a deletion request | High | **Low** | One erasure path; a declaration with a mandatory reason per store; a test walking the real EF model transitively through FKs; cascades in the database rather than in code; the embedding is destroyed with the text it derives from; Roster Q&A turns scrubbed by touched id **and** by full name, which the name-sweep test covers | Low. A typed nickname or misspelling in a conversation survives — the same gap proposal free text already has |
-| R7 | The career narrative leaves the company to a third-party model provider — one on a Gemini deployment, two on an Azure one | Medium | Certain | Each recipient named to the person by name and split by what it does (Google for embeddings, Microsoft (Azure OpenAI) for scoring), derived from configuration so the name cannot go stale; passages rather than the whole record at assessment time; no inference permitted | **Assessed for one provider, open for the other.** *Google:* unassessed, exactly as before. *Microsoft:* the deployment is `GlobalStandard` in Sweden Central, so **inference is not EU-confined** — the region bought no residency and **R7 is not improved by it** (ADR §7) — and the entity and mechanism are no more assessed than Google's. Assessed is not resolved. See §1 |
+| R7 | The career narrative leaves the company to a third-party model provider — one company on the shipped stack, two where the keys name different ones | Medium | Certain | Each recipient named to the person by name and split by the job it does, derived from **both** provider keys so a name cannot go stale in either direction; a **former** recipient named in the past tense to anybody whose record predates a switch, from `EmbeddingsProviderPeriods`; passages rather than the whole record at assessment time; no inference permitted | **Reduced, not closed.** *Google:* **closed on the default stack** — since EXP-67 embeddings ship on Azure, so Google receives nothing and no real person's data ever reached it. It reopens only on a deployment that names `Gemini` on either key, which the §1 rule confines to development and demo data. *Microsoft:* now **two transfers on different tiers**. Embeddings are EU-confined on `DataZoneStandard`, which is a real residency measure and the one improvement this effort bought. Chat stays `GlobalStandard`, so scoring is **not** EU-confined and the region still buys nothing (chat ADR §7). The Microsoft entity and mechanism remain unassessed for both. Assessed is not resolved. See §1 |
 | R8 | Somebody's record is read by a party who should not see it | High | Low | Passkeys only; default-deny endpoint classification with a test; ownership scope with reflective coverage; 404 not 403; `TokenVersion` |
 | R9 | Erasure is triggered by somebody who is not the person | High | Low | Control-word re-auth on erasure and objection; the same gate on both, because they are the same act | Low |
 | R10 | A person deletes when they meant to pause | Medium | Medium | Two separate controls, deliberately far apart on a long page; the page length **is** the mechanism, and a test asserts the ordering so "tidying" cannot undo it | Low–Medium. There is no email with which to undo a mistake |
@@ -249,7 +285,11 @@ managed risk, and it is a direct consequence of the decision never to send email
 should be re-taken with this cost in view rather than inherited: **both notice gaps close immediately
 if email is added.**
 
-R7 is not an engineering gap but a contracting one, and it sits outside what this team assessed.
+R7 is no longer one thing. Its **residency** half was an engineering question and has been answered
+for embeddings: Data Zone quota confines them to the EU, and the shipped stack sends Google nothing.
+Its **contracting** half — which Microsoft entity, under what mechanism — is not an engineering gap
+and sits outside what this team assessed, for both the chat and the embeddings path. Chat's
+residency half also stays open, because `GlobalStandard` is the only tier its model has here.
 
 R4 is inherent to the product rather than a defect in it. The design's answer is to concede it, argue
 necessity in writing, build all three safeguards, and show the person what was written about them.
@@ -262,7 +302,11 @@ R4 as high residual risk, it may be.
 
 Re-open this DPIA when any of the following happens, not on a calendar:
 
-- The model provider changes, or a second one is added.
+- **Either** provider key changes — chat or embeddings — or a third provider is added. The two move
+  independently now, so a switch on one is a review trigger on its own.
+- **A deployment is pointed at Gemini while holding real people's data.** That is the §1 rule being
+  broken, and it needs a billed project and an entry here before it happens, not after.
+- Azure chat gets Data Zone quota. Then both paths are EU-confined and R7's residency half closes.
 - Anything is scored for a purpose other than assessment against a Job — this is the case the
   necessity argument explicitly does **not** cover.
 - The LI population is brought into the scan for any reason.

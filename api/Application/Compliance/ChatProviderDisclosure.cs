@@ -11,10 +11,13 @@ namespace ExpertToJob.Application.Compliance;
 /// </summary>
 public enum DisclosedChatProvider
 {
-    /// <summary>Gemini serves chat, and — as always — embeddings too.</summary>
+    /// <summary>Gemini serves chat. Who serves embeddings is a separate question, answered by
+    /// <see cref="DisclosedEmbeddingsProvider"/>.</summary>
     Gemini,
 
-    /// <summary>An Azure OpenAI deployment serves chat; embeddings stay on Google.</summary>
+    /// <summary>An Azure OpenAI deployment serves chat. Likewise says nothing about embeddings —
+    /// the two keys move independently, and the recipient list is built from both
+    /// (<c>manuals/adr-embeddings-provider-seam.md</c> §2 decision 16).</summary>
     AzureFoundry,
 }
 

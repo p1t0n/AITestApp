@@ -11,8 +11,12 @@ no career narrative. Both construction branches exist, each provider carries its
 floor, breaker window and key, a 429 honours `retry-after-ms` then `Retry-After`, a Production MCP
 host refuses to boot without a key for its active provider while a development one degrades to
 keyword matching, the AppHost injects both provider names and both keys into all three hosts, and
-the eval and live gates run per provider on per-provider baselines. What is left is ticket 5
-(`EXP-68`): the compliance documents that still describe embeddings as Google's.
+the eval and live gates run per provider on per-provider baselines. Ticket 5 (`EXP-68`) has brought
+the compliance documents with it: the DPIA describes the four combinations, the former-recipient
+entry, the Data Zone position and Google's researched terms; the chat ADR carries a supersession
+note rather than a rewrite; and the agreement between the documents and the strings a data subject
+reads is now a test (`ComplianceDocumentAgreementTests`) rather than a paragraph asking for it.
+**All five tickets have landed.**
 
 ## The decision
 
@@ -168,7 +172,8 @@ use lets Google use content to improve its products, allows human review, states
 and says not to submit personal information. Paid use is covered by Google's data processing
 agreement and logged for 55 days for abuse monitoring. A deployment holding real people therefore uses
 Azure, or a **billed** Gemini project as a new, separate decision. The seam can't enforce this, so the
-DPIA records it.
+DPIA records it — `manuals/dpia-expert-workspace.md` §1, in the transfers table and as a review
+trigger, with the full terms alongside (EXP-68).
 
 ## 6. Why the reconciler re-embeds, not a migration job
 
@@ -216,7 +221,7 @@ the code tickets: it must not ship onto a mixed index or behind a wrong disclosu
 | 2 | Safe embeddings provider switches: provider/model vector tags, tag-filtered search, in-place re-embed, coverage note | `EXP-65` ✅ | 1 |
 | 3 | Art. 15 recipients follow both providers, with a former-recipient entry from the embeddings provider history | `EXP-66` ✅ | 1 |
 | 4 | Azure OpenAI embeddings, made the default: construction branch, per-provider retry and breaker, AppHost wiring, live gates | `EXP-67` ✅ | 1, 2, 3, `EXP-61` |
-| 5 | Compliance documents follow embeddings to Azure: DPIA, provider prose, README and CLAUDE.md | `EXP-68` | 4 |
+| 5 | Compliance documents follow embeddings to Azure: DPIA, provider prose, README and CLAUDE.md | `EXP-68` ✅ | 4 |
 
 `EXP-61` ("Privacy page names Google as the AI model provider while chat runs on Azure") is a live
 bug fixed separately. It does the chat half of decision 4, which ticket 4 extends.

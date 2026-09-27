@@ -23,8 +23,10 @@ namespace ExpertToJob.Agents.Configuration;
 /// so a guard cannot come to demand a key no branch would use.</para>
 ///
 /// <para>Embeddings are not covered here and must not become conditional on the chat provider: they
-/// call Google whatever chat does (ADR, "The decision"), and they are registered in the MCP host,
-/// not this one.</para>
+/// follow their own key and are registered in the MCP host, not this one. Their guard is
+/// <c>EmbeddingProviderStartupGuard</c>, which asks the same question of
+/// <c>Ai:Embeddings:Provider</c> — a Production host with an Azure chat key and no embeddings key
+/// for its active embeddings provider is refused by that one, not by this one.</para>
 /// </summary>
 public static class ChatProviderStartupGuard
 {

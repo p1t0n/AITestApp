@@ -76,13 +76,21 @@ and where an explicit-start resource is started. Every port above is pinned, so 
 literal (`vite.config.ts`, the `appsettings.json` files, the realm export) stays true —
 `manuals/adr-aspire-apphost.md` says why, and lists the tripwires that silently do the wrong thing.
 
-The agents' chat backend defaults to Azure OpenAI (EXP-41). Its key is the one optional secret, and
-only to stop the agents degrading:
-`dotnet user-secrets set Parameters:azure-foundry-api-key <key> --project api/AppHost`. Gemini still
-serves embeddings (semantic search in the MCP host reads `GEMINI_API_KEY`), so
-`Parameters:gemini-api-key` / `GEMINI_API_KEY` stays useful. The chat backend itself is
-configuration: `Ai:Chat:Provider` names the provider (`AzureFoundry` shipped, `Gemini` to switch
-back) and `Ai:AzureFoundry:*` / `Ai:Gemini:*` hold each provider's settings. A leftover top-level `Gemini` section throws at startup rather than binding to nothing —
+Both AI backends default to Azure OpenAI — chat since EXP-41, embeddings since EXP-67 — so
+`AZURE_FOUNDRY_API_KEY` now serves both, and it is the one secret worth setting:
+`dotnet user-secrets set Parameters:azure-foundry-api-key <key> --project api/AppHost`. Without it the
+agents degrade and semantic search falls back to keyword matching (in Production the hosts refuse to
+start instead). `Parameters:gemini-api-key` / `GEMINI_API_KEY` is only needed to run the **Gemini**
+fallback, which is development and demo only: Google's terms make its free tier unsuitable for real
+people (`manuals/adr-embeddings-provider-seam.md` §5).
+
+Both backends are configuration, and they move independently: `Ai:Chat:Provider` names the chat
+provider (read in Agents) and `Ai:Embeddings:Provider` the embedder (read in MCP), each
+`AzureFoundry` shipped or `Gemini` to switch back, with `Ai:AzureFoundry:*` / `Ai:Gemini:*` holding
+each provider's own settings — including its own `MinSimilarity`, which is measured per model and not
+interchangeable. The Web host reads **both** keys to name the right recipient on the privacy page,
+which is why all three hosts must agree on them (`ProviderConfigAgreementTests`). A leftover
+top-level `Gemini` section throws at startup rather than binding to nothing —
 `ConfigKeyMigrationTests` holds both halves of that rule.
 
 A solo `dotnet run` in one project still works — each keeps its own launch profile — but **no host

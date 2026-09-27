@@ -122,11 +122,17 @@ and Recital 47 treats the relationship between controller and subject as central
 What they would **not** reasonably expect:
 
 - That the record exists in a system they have never been told about.
-- That their career narrative was sent to **Google's Gemini** models to be embedded.
+- That their career narrative was sent to a third-party model provider to be embedded — **Microsoft's
+  Azure OpenAI** service on the shipped stack, Google's Gemini models on a deployment configured that
+  way.
 
-The second is disclosed to the person in the notice and on the access view — **but only if they ever
-reach it**, and by definition the members of this cohort have not. Disclosure that never arrives is
-not disclosure. This weighs against the processing and is not counted as a mitigation.
+The second is disclosed to the person **on the access view** — and only there. The transparency
+notice names no provider and does not mention embeddings at all (`TransparencyNotice.V20260901`, and
+the Art. 13(1)(e) gap recorded in
+[`transparency-and-export.md`](transparency-and-export.md)), so the access view is carrying that
+disclosure alone. Which means it reaches somebody **only if they ever reach the page**, and by
+definition the members of this cohort have not. Disclosure that never arrives is not disclosure.
+This weighs against the processing and is not counted as a mitigation.
 
 ### Nature of the data
 

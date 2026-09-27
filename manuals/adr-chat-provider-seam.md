@@ -6,6 +6,18 @@ evidence behind every claim here; the map itself is exported at
 sketched in `manuals/cloudflare-workers-ai-provider.md` (see §8). No code implements this yet — the
 build tickets are listed in §10.
 
+> **Superseded in part, 2026-09-27, by
+> [`adr-embeddings-provider-seam.md`](adr-embeddings-provider-seam.md).** Exactly one decision has
+> been overtaken: **§2 decision 3**, "embeddings are not part of this — they keep calling Google
+> whatever chat does", and the two restatements of it below ("The decision", §2). Embeddings now
+> follow their own key, `Ai:Embeddings:Provider`, and **Azure OpenAI is the shipped default for
+> them**, so a reader must not take any sentence in this document as saying where a career narrative
+> is embedded. The §10 out-of-scope item "a second embeddings provider" is the effort that did it.
+> **Everything else here still holds**, including the `Ai:<provider>:*` key shape (§2) and the chat
+> residency position (§7) — chat stays `GlobalStandard` and is not EU-confined, while embeddings are.
+> The rest of the document is deliberately left as written: a decision record that is edited to match
+> what happened later records nothing.
+
 ## The decision
 
 `api/Agents` gets **one seam**, `AddChatProvider(config)`, which reads `Ai:Chat:Provider` and builds
@@ -14,7 +26,8 @@ client construction — the keyed per-agent loop, `Instrument()`, `ResolveAgentC
 budget wrapper, the metering decorator — is already provider-neutral and does not change.
 
 One provider is active per deployment. There is no failover and no per-agent provider routing.
-Embeddings are **not** part of this: they keep calling Google whatever chat does.
+Embeddings are **not** part of this: they keep calling Google whatever chat does. *(Superseded — see the status
+note at the top.)*
 
 Authentication is an API key now, with the options shaped so an Entra credential can replace it
 later. The Azure side is `gpt-4.1-mini` on a plain `kind: OpenAI` resource in Sweden Central — **no
@@ -139,6 +152,9 @@ verbatim by `GET /api/me/access` and rendered on the expert's privacy page, whic
 server-driven — it is the only source of the provider name a data subject ever sees. Ship Azure with
 that literal in place and the service names the wrong recipient to a data subject, which is precisely
 the mitigation the DPIA cites for risk R7.
+
+*(The premise of this paragraph is superseded — see the status note at the top. It is left as
+written because it is what was decided.)*
 
 Because **embeddings stay on Google regardless of the chat provider**, the disclosure under
 `AzureFoundry` names *two* recipients, not one substituted for the other: Google for the embeddings
