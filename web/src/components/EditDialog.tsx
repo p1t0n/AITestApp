@@ -34,6 +34,12 @@ export interface EditDialogProps {
   dirty: boolean;
   /** A save already in flight — the button is spent until it lands. */
   saving?: boolean;
+  /**
+   * Whether the form is complete enough to send. Defaults to true, so a dialog whose every field is
+   * optional says nothing. A form with a required field it cannot default — a new skill's category —
+   * sets it false, because "dirty" only knows something was typed, not that it was enough.
+   */
+  canSave?: boolean;
   onClose: () => void;
   onSave: () => void;
   children: ReactNode;
@@ -43,6 +49,7 @@ export default function EditDialog({
   title,
   dirty,
   saving,
+  canSave = true,
   onClose,
   onSave,
   children,
@@ -83,7 +90,7 @@ export default function EditDialog({
       </DialogContent>
       <DialogActions>
         <Button onClick={tryClose}>Cancel</Button>
-        <Button variant="contained" onClick={onSave} disabled={!dirty || saving}>
+        <Button variant="contained" onClick={onSave} disabled={!dirty || saving || !canSave}>
           Save
         </Button>
       </DialogActions>

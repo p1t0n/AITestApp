@@ -1,20 +1,13 @@
 // The skill catalog: a category tree plus the skills hanging off it. Category and skill writes
 // invalidate each other because a skill row carries its category's name.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Category, CategoryNode, SkillDto } from "../types";
+import type { Category, SkillDto } from "../types";
 import { http } from "./http";
 
 export function useCategories() {
   return useQuery({
     queryKey: ["categories"],
     queryFn: async () => (await http.get<Category[]>("/catalog/categories")).data,
-  });
-}
-
-export function useCategoryTree() {
-  return useQuery({
-    queryKey: ["categories", "tree"],
-    queryFn: async () => (await http.get<CategoryNode[]>("/catalog/categories/tree")).data,
   });
 }
 
