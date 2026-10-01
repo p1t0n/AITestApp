@@ -4,6 +4,7 @@ using ExpertToJob.Agents.Configuration;
 using ExpertToJob.Agents.Staffing;
 using ExpertToJob.Agents.Tests.Fakes;
 using ExpertToJob.Agents.Usage;
+using ExpertToJob.Tests.Shared;
 using FluentAssertions;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -71,7 +72,8 @@ public class StaffingPipelineTests
         IUsageService? usage = null,
         IUsageMeter? meter = null,
         int maxConcurrentMatches = 2,
-        StaffingRetryPolicy? retry = null) => new(
+        StaffingRetryPolicy? retry = null,
+        TimeProvider? clock = null) => new(
         shortlist,
         match,
         chat,
@@ -80,8 +82,12 @@ public class StaffingPipelineTests
         new StaffingThrottle(maxConcurrentMatches),
         retry ?? new StaffingRetryPolicy(MaxAttempts: 3, _ => TimeSpan.Zero),
         new NullAgentIdentitySource(),
-        TimeProvider.System,
+        clock ?? TimeProvider.System,
         NullLogger<StaffingPipeline>.Instance);
+
+    /// <summary>The shipped match ladder, built on <paramref name="clock"/>. The one line that
+    /// knows how the ladder is constructed — the freeze test below reads only its behaviour.</summary>
+    private static StaffingRetryPolicy MatchLadder(TimeProvider clock) => StaffingRetryPolicy.Default;
 
     private static Task<StaffingRunOutcome> RunAsync(
         StaffingPipeline pipeline, int? matchTop = null, string jobDescription = "Platform engineer.") =>
@@ -386,6 +392,32 @@ public class StaffingPipelineTests
         match.Calls.Should().Be(3);
         outcome.Report!.Candidates[0].Match.Status.Value.Should().Be("failed");
         outcome.Report.Degraded.Should().BeTrue();
+    }
+
+    /// <summary>
+    /// The shipped ladder itself, frozen (EXP-87): three attempts per candidate, waiting 5s then
+    /// 10s. Measured on a fake clock, so the assertion is about the schedule, not about elapsed
+    /// wall-clock time, and the test costs milliseconds.
+    /// </summary>
+    [Fact]
+    public async Task The_shipped_match_ladder_waits_five_then_ten_seconds_over_three_attempts()
+    {
+        var clock = new LadderClock();
+        var match = new FakeMatchRunService((_, _) =>
+            throw new HttpRequestException("rate limited", null, HttpStatusCode.TooManyRequests));
+        var pipeline = Pipeline(
+            new FakeShortlistRunService(ShortlistOk(Candidate(1))),
+            match,
+            NarrativeChat(NarrativeJson(Id(1), Id(1))),
+            retry: MatchLadder(clock),
+            clock: clock);
+
+        var outcome = await RunAsync(pipeline, matchTop: 1);
+
+        match.Calls.Should().Be(3, "the budget is attempts, not retries-after-first");
+        clock.Waits.Should().Equal(
+            TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10));
+        outcome.Report!.Candidates[0].Match.Status.Value.Should().Be("failed");
     }
 
     [Fact]

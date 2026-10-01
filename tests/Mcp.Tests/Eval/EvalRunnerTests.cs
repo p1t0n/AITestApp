@@ -2,6 +2,7 @@ using ExpertToJob.Application.Abstractions;
 using ExpertToJob.Infrastructure.Persistence;
 using ExpertToJob.Infrastructure.Search;
 using ExpertToJob.RetrievalEval;
+using ExpertToJob.Tests.Shared;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
@@ -100,6 +101,34 @@ public sealed class EvalRunnerTests : IAsyncLifetime
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*fintech*");
     }
 
+    /// <summary>The shipped soft-error ladder, built on <paramref name="clock"/>. The one line
+    /// that knows how the ladder is constructed — the freeze test reads only its behaviour.</summary>
+    private static QueryRetryPolicy QueryLadder(TimeProvider clock) =>
+        QueryRetryPolicy.Default with { Clock = clock };
+
+    /// <summary>
+    /// The shipped ladder itself, frozen (EXP-87): five attempts, waiting 20s, 40s, 60s then 80s.
+    /// Measured on a fake clock, so the assertion is about the schedule rather than elapsed
+    /// wall-clock time — the real ladder would take over three minutes to spend.
+    /// </summary>
+    [Fact]
+    public async Task The_shipped_query_ladder_climbs_in_twenty_second_steps_over_five_attempts()
+    {
+        var corpus = new[] { Person("fiona-fintech", "Fiona", "Built fintech trading systems.") };
+        var goldenSet = new[] { new GoldenQuery("fintech", GoldenQueryCategory.Keyword, ["fiona-fintech"]) };
+        var clock = new LadderClock();
+
+        var act = () => EvalRunner.CaptureAsync(
+            NewDb, new QueryFailingEmbedder(new KeywordEmbedder(), "fintech"), corpus, goldenSet,
+            floorSimilarity: 0.15,
+            retry: QueryLadder(clock));
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*5 attempt(s)*");
+        clock.Waits.Should().Equal(
+            TimeSpan.FromSeconds(20), TimeSpan.FromSeconds(40),
+            TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(80));
+    }
+
     private AppDbContext NewDb()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
@@ -130,6 +159,18 @@ public sealed class EvalRunnerTests : IAsyncLifetime
 
         public Task<EmbeddingBatch> EmbedAsync(IReadOnlyList<string> inputs, CancellationToken ct = default)
             => ++_calls % 2 == 0
+                ? throw new HttpRequestException("429 simulated rate limit")
+                : inner.EmbedAsync(inputs, ct);
+    }
+
+    /// <summary>Indexes the corpus happily and rate-limits every query — the shape a provider shows
+    /// when the per-minute budget is spent mid-run, so the ladder is the only thing left to measure.</summary>
+    private sealed class QueryFailingEmbedder(IEmbedder inner, string query) : IEmbedder
+    {
+        public string Model => inner.Model;
+
+        public Task<EmbeddingBatch> EmbedAsync(IReadOnlyList<string> inputs, CancellationToken ct = default)
+            => inputs is [var only] && only == query
                 ? throw new HttpRequestException("429 simulated rate limit")
                 : inner.EmbedAsync(inputs, ct);
     }

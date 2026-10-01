@@ -19,7 +19,8 @@ public sealed record EvalRunResult(EvalMetrics Metrics, IReadOnlyList<EvalQueryT
 /// the 1-based count of failures so far) between them. <see cref="None"/> fails on the first error
 /// — the plumbing/live-test behavior — while <see cref="Default"/> rides out per-minute limits.
 /// </summary>
-public sealed record QueryRetryPolicy(int MaxAttempts, Func<int, TimeSpan> Delay)
+public sealed record QueryRetryPolicy(
+    int MaxAttempts, Func<int, TimeSpan> Delay, TimeProvider? Clock = null)
 {
     public static QueryRetryPolicy None { get; } = new(1, _ => TimeSpan.Zero);
 
@@ -115,7 +116,7 @@ public static class EvalRunner
                     $"Eval query '{query.Query}' failed to run after {failures} attempt(s): {result.Error}");
             }
 
-            await Task.Delay(retry.Delay(failures), ct);
+            await Task.Delay(retry.Delay(failures), retry.Clock ?? TimeProvider.System, ct);
         }
     }
 

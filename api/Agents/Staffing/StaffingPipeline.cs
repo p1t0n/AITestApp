@@ -533,7 +533,7 @@ public sealed class StaffingPipeline
                     StaffingRetryPolicy.IsRateLimit(ex) && failures < pipeline._retry.MaxAttempts)
                 {
                     onRetry();
-                    await Task.Delay(pipeline._retry.Delay(failures), ct);
+                    await Task.Delay(pipeline._retry.Delay(failures), pipeline._clock, ct);
                 }
             }
         }
