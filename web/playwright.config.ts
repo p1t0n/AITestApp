@@ -3,9 +3,22 @@ import { defineConfig, devices } from "@playwright/test";
 // The database and the Web API are started by `web/e2e/run.mjs` before Playwright runs — the API
 // cannot boot without a database, and Playwright's webServer has no way to express that order.
 // The SPA has no such dependency, so it is started here, on its own port against the e2e API.
-const SPA_PORT = 5174;
-const API_PORT = 5079;
-const baseURL = process.env.E2E_BASE_URL ?? `http://localhost:${SPA_PORT}`;
+//
+// Both ports are *decided* there too, in `PORTS`, and handed over as environment: that script is
+// the only thing that ever starts Playwright, so a literal here could only ever be a second copy
+// of a number it does not own. No fallback, for the same reason — a default would be that copy
+// with a `??` in front of it, right until the day the two disagree.
+const port = (name: string): number => {
+  const value = Number(process.env[name]);
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`${name} is not set: run the e2e suite through \`web/e2e/run.mjs\`.`);
+  }
+  return value;
+};
+
+const SPA_PORT = port("E2E_SPA_PORT");
+const API_PORT = port("E2E_API_PORT");
+const baseURL = process.env.E2E_BASE_URL || `http://localhost:${SPA_PORT}`;
 
 // The visual pass renders in the pinned Playwright container (`e2e/run.mjs` starts it, and says
 // why). Both variables come from there: without them the `visual` project is skipped, so the

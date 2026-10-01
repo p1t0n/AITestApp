@@ -11,6 +11,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 async function playwrightConfig() {
   vi.resetModules();
+  // The config takes its ports from the harness and refuses to guess (EXP-83), so stand in for it.
+  vi.stubEnv("E2E_SPA_PORT", "5174");
+  vi.stubEnv("E2E_API_PORT", "5079");
   return (await import("../playwright.config")).default;
 }
 

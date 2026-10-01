@@ -257,6 +257,10 @@ async function main() {
         env: {
           ...process.env,
           E2E_BASE_URL: `http://localhost:${PORTS.spa}`,
+          // `playwright.config.ts` starts the SPA and points its proxy at the API, so it needs
+          // both numbers; it reads them here rather than keeping its own copy.
+          E2E_SPA_PORT: String(PORTS.spa),
+          E2E_API_PORT: String(PORTS.api),
           E2E_CHAT_PROVIDER: CHAT_PROVIDER,
           E2E_EMBEDDINGS_PROVIDER: EMBEDDINGS_PROVIDER,
           // Read by `playwright.config.ts`. Only set for a visual or container-browser run, so the
