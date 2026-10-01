@@ -22,7 +22,7 @@ public class AchievementTools
          "\"dto\": {\"order\": 1, \"text\": \"Cut deploy time by 40%\"}}. Returns the " +
          "created bullet with its achievementId — the key style_exemplar_search takes."),
      Authorize(Policy = McpScopes.Write)]
-    public static Task<object> Add(
+    public static async Task<object> Add(
         IAchievementService achievements,
         [Description("Experience id (GUID) — the ROLE this bullet belongs to, not the expert id.")]
         Guid experienceId,
@@ -30,7 +30,7 @@ public class AchievementTools
                      "itself, taken verbatim from the source — never invented or embellished.")]
         SaveAchievementDto dto,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => achievements.AddAsync(experienceId, dto, ct));
+        => await achievements.AddAsync(experienceId, dto, ct);
 
     [McpServerTool(Name = "achievement_update", ReadOnly = false, Destructive = false),
      Description(
@@ -42,14 +42,14 @@ public class AchievementTools
          "\"2b2b2b2b-1111-2222-3333-444455556666\", \"dto\": {\"order\": 2, \"text\": " +
          "\"Cut deploy time by 40% across 12 services\"}}. Returns the updated bullet."),
      Authorize(Policy = McpScopes.Write)]
-    public static Task<object> Update(
+    public static async Task<object> Update(
         IAchievementService achievements,
         [Description("Achievement id (GUID) from cv_get / expert_get — not the experience id.")]
         Guid id,
         [Description("order and text AFTER the edit; both are replaced.")]
         SaveAchievementDto dto,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => achievements.UpdateAsync(id, dto, ct));
+        => await achievements.UpdateAsync(id, dto, ct);
 
     [McpServerTool(Name = "achievement_delete", ReadOnly = false, Destructive = true, Idempotent = true),
      Description(
@@ -59,9 +59,12 @@ public class AchievementTools
          "\"2b2b2b2b-1111-2222-3333-444455556666\"}. Requires the admin scope; idempotent. " +
          "Returns no data."),
      Authorize(Policy = McpScopes.Admin)]
-    public static Task<object> Delete(
+    public static async Task<object> Delete(
         IAchievementService achievements,
         [Description("Achievement id (GUID).")] Guid id,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => achievements.DeleteAsync(id, ct));
+    {
+        await achievements.DeleteAsync(id, ct);
+        return McpToolResults.Ok;
+    }
 }

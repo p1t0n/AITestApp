@@ -121,6 +121,9 @@ builder.Services
     // Per-tool grants on top of the capability scopes (P1T-149): a token carrying
     // mcp:tool:<name> scopes is advertised — and may call — only those tools.
     .AddToolGrantFilters()
+    // Domain exceptions become a structured tool error in one place, rather than in a wrapper
+    // around every tool body (EXP-86).
+    .AddToolErrorFilter()
     .WithTools<ExpertTools>(toolSerializerOptions)
     .WithTools<LanguageTools>(toolSerializerOptions)
     .WithTools<AvailabilityTools>(toolSerializerOptions)

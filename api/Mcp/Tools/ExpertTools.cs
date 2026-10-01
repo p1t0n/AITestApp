@@ -46,11 +46,11 @@ public class ExpertTools
          "not_found error, never an empty expert. Returns stored data only — no CV layout, no " +
          "PDF, no relevance scores."),
      Authorize(Policy = McpScopes.Read)]
-    public static Task<object> Get(
+    public static async Task<object> Get(
         IExpertService experts,
         [Description("Expert id (GUID).")] Guid id,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => experts.GetAsync(id, ct));
+        => await experts.GetAsync(id, ct);
 
     [McpServerTool(Name = "expert_create", ReadOnly = false, Destructive = false),
      Description(
@@ -68,13 +68,13 @@ public class ExpertTools
          "ACTIVE experts — a clash returns a conflict error, malformed fields a validation error " +
          "with per-field detail. Returns the created expert (with its new id) and NO children."),
      Authorize(Policy = McpScopes.Write)]
-    public static Task<object> Create(
+    public static async Task<object> Create(
         IExpertService experts,
         [Description("Root fields of the new expert. Required: firstName, lastName, title, " +
                      "email (unique). Optional: phone, location, summary, photoUrl.")]
         SaveExpertDto dto,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => experts.CreateAsync(dto, ct));
+        => await experts.CreateAsync(dto, ct);
 
     [McpServerTool(Name = "expert_create_draft", ReadOnly = false, Destructive = false),
      Description(
@@ -90,13 +90,13 @@ public class ExpertTools
          "duplicateWarning when a same-name expert already exists — surface that warning, do not " +
          "silently merge. Children are NOT created here; add them by id afterwards."),
      Authorize(Policy = McpScopes.Write)]
-    public static Task<object> CreateDraft(
+    public static async Task<object> CreateDraft(
         IExpertService experts,
         [Description("Root fields extracted from the source text. email may be an empty string " +
                      "when the resume has none — never fabricate one.")]
         SaveExpertDto dto,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => experts.CreateDraftAsync(dto, ct));
+        => await experts.CreateDraftAsync(dto, ct);
 
     [McpServerTool(Name = "expert_update", ReadOnly = false, Destructive = false),
      Description(
@@ -116,14 +116,14 @@ public class ExpertTools
          "or lastName cannot be blank. Returns the updated expert, children untouched; it never " +
          "promotes a draft."),
      Authorize(Policy = McpScopes.Write)]
-    public static Task<object> Update(
+    public static async Task<object> Update(
         IExpertService experts,
         [Description("Expert id (GUID).")] Guid id,
         [Description("Only the root field(s) to change — omitted or null fields keep their " +
                      "current value. Send an empty string to clear an optional field.")]
         UpdateExpertDto dto,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => experts.PatchAsync(id, dto, ct));
+        => await experts.PatchAsync(id, dto, ct);
 
     [McpServerTool(Name = "expert_delete", ReadOnly = false, Destructive = true, Idempotent = true),
      Description(
@@ -137,9 +137,12 @@ public class ExpertTools
          "\"7b2e8d3a-1111-2222-3333-444455556666\"}. Requires the admin scope; idempotent — " +
          "deleting an already-deleted id is not an error. Returns no expert data."),
      Authorize(Policy = McpScopes.Admin)]
-    public static Task<object> Delete(
+    public static async Task<object> Delete(
         IExpertService experts,
         [Description("Expert id (GUID).")] Guid id,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => experts.DeleteAsync(id, ct));
+    {
+        await experts.DeleteAsync(id, ct);
+        return McpToolResults.Ok;
+    }
 }

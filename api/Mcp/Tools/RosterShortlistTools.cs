@@ -28,7 +28,7 @@ public class RosterShortlistTools
          "similarity when matched; NOT full CVs (drill into cv_get) and no interview questions. " +
          "Returns an empty list when nothing is relevant."),
      Authorize(Policy = McpScopes.Read)]
-    public static Task<object> ShortlistSearch(
+    public static async Task<object> ShortlistSearch(
         IShortlistSearchService search,
         [Description("3-8 short capability requirements distilled from the job description, one " +
                      "phrase each, e.g. ['real-time payments', 'Kubernetes operations', 'team leadership'].")]
@@ -56,7 +56,6 @@ public class RosterShortlistTools
 
         // The service seam speaks the union; the tool contract is the flat { results, error }
         // shape agents already parse, so the edge — and only the edge — flattens it.
-        return McpToolExecutor.RunAsync(async () =>
-            ShortlistSearchResult.From(await search.SearchAsync(requirements, filters, topK, ct)));
+        return ShortlistSearchResult.From(await search.SearchAsync(requirements, filters, topK, ct));
     }
 }

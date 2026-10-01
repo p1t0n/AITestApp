@@ -20,14 +20,14 @@ public class LanguageTools
          "\"dto\": {\"language\": \"German\", \"level\": \"Professional\"}}. Returns the " +
          "created language row, not the expert."),
      Authorize(Policy = McpScopes.Write)]
-    public static Task<object> Add(
+    public static async Task<object> Add(
         ILanguageService languages,
         [Description("Expert id (GUID) — the person who speaks it.")] Guid expertId,
         [Description("language: free-text name, e.g. \"German\" (NOT a programming language); " +
                      "level: one of Basic, Conversational, Professional, Fluent, Native.")]
         SaveSpokenLanguageDto dto,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => languages.AddAsync(expertId, dto, ct));
+        => await languages.AddAsync(expertId, dto, ct);
 
     [McpServerTool(Name = "language_update", ReadOnly = false, Destructive = false),
      Description(
@@ -38,7 +38,7 @@ public class LanguageTools
          "replace); e.g. {\"id\": \"4d4d4d4d-1111-2222-3333-444455556666\", \"dto\": " +
          "{\"language\": \"German\", \"level\": \"Fluent\"}}. Returns the updated row."),
      Authorize(Policy = McpScopes.Write)]
-    public static Task<object> Update(
+    public static async Task<object> Update(
         ILanguageService languages,
         [Description("Spoken-language row id (GUID) from expert_get — not the expert id.")]
         Guid id,
@@ -46,7 +46,7 @@ public class LanguageTools
                      "Professional, Fluent, Native.")]
         SaveSpokenLanguageDto dto,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => languages.UpdateAsync(id, dto, ct));
+        => await languages.UpdateAsync(id, dto, ct);
 
     [McpServerTool(Name = "language_delete", ReadOnly = false, Destructive = true, Idempotent = true),
      Description(
@@ -56,9 +56,12 @@ public class LanguageTools
          "\"4d4d4d4d-1111-2222-3333-444455556666\"}. Requires the admin scope; idempotent. " +
          "Returns no data."),
      Authorize(Policy = McpScopes.Admin)]
-    public static Task<object> Delete(
+    public static async Task<object> Delete(
         ILanguageService languages,
         [Description("Spoken-language id (GUID).")] Guid id,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => languages.DeleteAsync(id, ct));
+    {
+        await languages.DeleteAsync(id, ct);
+        return McpToolResults.Ok;
+    }
 }

@@ -21,12 +21,12 @@ public class ExperienceSkillTools
          "\"8a8a8a8a-1111-2222-3333-444455556666\"}. An unknown id returns not_found, a repeat " +
          "link conflict. Returns the created link row with its own id."),
      Authorize(Policy = McpScopes.Write)]
-    public static Task<object> Add(
+    public static async Task<object> Add(
         IExperienceSkillService links,
         [Description("Experience id (GUID) — the role the skill was used in.")] Guid experienceId,
         [Description("EXISTING catalog skill id (GUID) from skill_list.")] Guid skillId,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => links.AddAsync(experienceId, skillId, ct));
+        => await links.AddAsync(experienceId, skillId, ct);
 
     [McpServerTool(Name = "experience_skill_delete", ReadOnly = false, Destructive = true, Idempotent = true),
      Description(
@@ -37,9 +37,12 @@ public class ExperienceSkillTools
          "\"1e1e1e1e-1111-2222-3333-444455556666\"}. Requires the admin scope; idempotent. " +
          "Returns no data."),
      Authorize(Policy = McpScopes.Admin)]
-    public static Task<object> Delete(
+    public static async Task<object> Delete(
         IExperienceSkillService links,
         [Description("Experience-skill link id (GUID).")] Guid id,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => links.DeleteAsync(id, ct));
+    {
+        await links.DeleteAsync(id, ct);
+        return McpToolResults.Ok;
+    }
 }

@@ -26,7 +26,7 @@ public class ExperienceTools
          "\"skillIds\": []}}. Returns the created experience with its own id (and its bullets' " +
          "ids) — the handle for achievement_add and experience_skill_add."),
      Authorize(Policy = McpScopes.Write)]
-    public static Task<object> Add(
+    public static async Task<object> Add(
         IExperienceService experiences,
         [Description("Expert id (GUID) whose job this is.")] Guid expertId,
         [Description("company, title required; startDate yyyy-MM-dd; endDate yyyy-MM-dd or null " +
@@ -35,7 +35,7 @@ public class ExperienceTools
                      "the source text gives none — never invent bullets or skills.")]
         SaveExperienceDto dto,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => experiences.AddAsync(expertId, dto, ct));
+        => await experiences.AddAsync(expertId, dto, ct);
 
     [McpServerTool(Name = "experience_update", ReadOnly = false, Destructive = false),
      Description(
@@ -51,7 +51,7 @@ public class ExperienceTools
          "\"endDate\": \"2026-06-30\", \"achievements\": [], \"skillIds\": []}}. Returns " +
          "the updated experience."),
      Authorize(Policy = McpScopes.Write)]
-    public static Task<object> Update(
+    public static async Task<object> Update(
         IExperienceService experiences,
         [Description("Experience id (GUID) from expert_get / cv_get — not the expert id.")]
         Guid id,
@@ -59,7 +59,7 @@ public class ExperienceTools
                      "become the complete sets, so include the ones that should survive.")]
         SaveExperienceDto dto,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => experiences.UpdateAsync(id, dto, ct));
+        => await experiences.UpdateAsync(id, dto, ct);
 
     [McpServerTool(Name = "experience_delete", ReadOnly = false, Destructive = true, Idempotent = true),
      Description(
@@ -70,9 +70,12 @@ public class ExperienceTools
          "id; e.g. {\"id\": \"5d5d5d5d-1111-2222-3333-444455556666\"}. Requires the admin " +
          "scope; idempotent. Returns no data."),
      Authorize(Policy = McpScopes.Admin)]
-    public static Task<object> Delete(
+    public static async Task<object> Delete(
         IExperienceService experiences,
         [Description("Experience id (GUID).")] Guid id,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => experiences.DeleteAsync(id, ct));
+    {
+        await experiences.DeleteAsync(id, ct);
+        return McpToolResults.Ok;
+    }
 }

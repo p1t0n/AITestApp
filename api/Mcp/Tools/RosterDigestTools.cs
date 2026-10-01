@@ -22,12 +22,12 @@ public class RosterDigestTools
          "Digests do NOT include availability, skill levels, languages, or contact data — only the " +
          "career narrative. Returns an empty items list past the last page."),
      Authorize(Policy = McpScopes.Read)]
-    public static Task<object> DigestList(
+    public static async Task<object> DigestList(
         IExpertDigestService digests,
         CancellationToken ct,
         [Description("1-based page number (default 1).")]
         int? page = null,
         [Description("Experts per page (default 50, capped at 100).")]
         int? pageSize = null)
-        => McpToolExecutor.RunAsync(() => digests.ListAsync(page ?? 1, pageSize, ct));
+        => await digests.ListAsync(page ?? 1, pageSize, ct);
 }
