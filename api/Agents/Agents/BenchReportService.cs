@@ -152,8 +152,9 @@ public sealed class BenchReportService(
     }
 
     /// <summary>Array-aware sibling of <see cref="ToolResultPayload"/>: expert_list returns a
-    /// JSON array, possibly wrapped in an MCP envelope or a text content block. Public — pure and
-    /// unit-tested directly, same convention as <c>GeminiCompatHandler.NormalizeFinishReasons</c>.</summary>
+    /// JSON array under <c>items</c>, possibly wrapped in an MCP envelope or a text content block.
+    /// Public — pure and unit-tested directly, same convention as
+    /// <c>GeminiCompatHandler.NormalizeFinishReasons</c>.</summary>
     public static IReadOnlyList<BenchExpert>? ExtractExperts(JsonNode? node, int depth)
     {
         if (node is null || depth > 3)
@@ -190,7 +191,9 @@ public sealed class BenchReportService(
             return null;
         }
 
-        foreach (var key in new[] { "structuredContent", "result", "text" })
+        // "items" since EXP-94: expert_list's result became {total, items} so a count question
+        // needs no row dump. bench-report wants the rows, and it reaches them by the same walk.
+        foreach (var key in new[] { "structuredContent", "result", "text", "items" })
         {
             if (obj[key] is { } inner && ExtractExperts(inner, depth + 1) is { } fromInner)
             {

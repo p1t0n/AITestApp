@@ -7,7 +7,7 @@
 > shown 4 of the 11 read tools. P1T-147: every agent run is bounded by a Runtime Budget (§3.2).
 > P1T-148: roster-qa's instructions and `roster_semantic_search`'s description point at the
 > Convergent Path, and a Convergence floor prices the whole reference run model-free (§6) —
-> **6,984**, inside the 8,000 target. Values
+> **7,338** (6,984 before EXP-94), inside the 8,000 target. Values
 > and how to re-measure them: `manuals/agent-eval-baselines.md` §4. P1T-150: resume-ingestion's
 > 157,252-token call is decomposed and its iteration ceiling fixed (§7). Measurements below are real —
 > taken from the `AgentUsages` ledger and from one live traced run of the roster-qa endpoint on
@@ -287,8 +287,8 @@ Sequential, each landing on its own:
    `ResolveAgentChatClient`. resume-ingestion is covered for free. Budgets are configuration
    (`AgentBudgets` in `api/Agents/appsettings.json`), not constants.
 5. ~~**Convergence**~~ (P1T-148) — **landed**, except the two live re-runs. Instructions and
-   descriptions now point at the Convergent Path, and §6's floor prices the whole run at **6,984**
-   (1,870 × 3 calls + 87 × 2 + 1,200), inside the 8,000 target. The real-token 8,000 Cost Floor is
+   descriptions now point at the Convergent Path, and §6's floor prices the whole run at **7,338**
+   (1,988 × 3 calls + 87 × 2 + 1,200), inside the 8,000 target. The real-token 8,000 Cost Floor is
    committed as a live ceiling (`RosterQaConvergenceLiveFloorTests`, `Category=live`) rather than a
    deterministic one, because a real-token number cannot be measured without a model. The
    Tool-Selection Eval re-baseline landed in P1T-178 — see `manuals/mcp-tool-descriptions.md`.
@@ -617,7 +617,10 @@ cost one user their whole day:
 
 1. **`expert_list` scales with the roster.** It has no paging by design, and the Cost Floor
    measured it at 2,805 estimated tokens on 45 experts. At 503 that is ~31,000 estimated tokens,
-   and on this GUID-dense payload real tokens run above the estimate.
+   and on this GUID-dense payload real tokens run above the estimate. **EXP-94 gave it filters**:
+   `location` narrows it to 187 tokens on the demo roster, and the result carries the match `total`
+   so a count needs no rows at all. The unfiltered sweep still scales with the roster — the filter
+   is a way to not ask for it, not a bound on it.
 2. **The instructions misdirected availability.** "Availability on a date → list/get tools" sent
    an availability question to the whole-roster tool, when `roster_semantic_search`'s
    `availableOn` filter was built for it.
@@ -643,3 +646,14 @@ what the model is shown, not what the tool returns.
 experts" and "list everyone's email" on every roster size to fix the one size where the result is
 too large. The ceiling refuses exactly that case. The instructions now route availability to
 `availableOn`, all within the unchanged 412-token Baseline Prompt Size ceiling.
+
+**EXP-94: a refusal is not a zero.** On the 505-expert roster the ceiling did its job and the model
+drew the wrong conclusion from it — asked "how many experts are based in Warsaw", it was shown the
+withholding notice and answered *"there are no experts located in Warsaw, Poland"* over 31 of them.
+Two changes, because the defect has two halves. The notice now says, in as many words, that the
+result was **not seen**, that this is **not an empty result and not a count of zero**, and that
+saying none were found is wrong — asserted verbatim in `ToolResultBudgetChatClientTests`, because a
+tidy-up that drops the denial is the regression. And `expert_list` now takes `location` and
+`status` filters and returns the match `total`, so the question has a cheap right answer to reach
+for instead of a dump to be refused: 187 tokens against 2,810 at demo size. The schema cost (+132
+per iteration, `expert_list` 241 → 373) is the same trade P1T-145 made for `skill_list`.

@@ -51,7 +51,14 @@ public static class CostFloors
             // 12.7% of the same run. No paging by design (the roster IS the answer), so the cost
             // is bounded by roster size; the Tool Allowlist (P1T-146) is what keeps it away from
             // agents with no business listing everyone — only roster-qa and bench-report see it.
-            ["expert_list"] = 2_805,
+            //
+            // 2,805 → 2,810 by EXP-94: the result became {total, items} so a count question can be
+            // answered by a number instead of a row dump. +5 tokens for the envelope, measured;
+            // this entry is still the UNFILTERED sweep, which is the expensive call and the one
+            // worth watching. The filtered call it buys — location "warsaw" over the demo roster —
+            // measures 187, and that is the call the bug was about:
+            // see ExpertListFilteredCeiling.
+            ["expert_list"] = 2_810,
 
             ["expert_get"] = 2_064,
             ["cv_get"] = 1_643,
@@ -81,6 +88,18 @@ public static class CostFloors
     /// against (35× the lookup, and the lookup is what Turn Amplification multiplies).</para>
     /// </summary>
     public const int SkillListUnfilteredPageCeiling = 3_100;
+
+    /// <summary>
+    /// Ceiling on <c>expert_list</c> narrowed to ONE location — the call EXP-94's filter exists to
+    /// make possible. Its unfiltered sibling is <see cref="ReadToolResultCeilings"/>'s
+    /// <c>expert_list</c> entry, and the two numbers together are the argument: at demo size the
+    /// filtered call is a fraction of the sweep, and at the 505-expert roster that produced the bug
+    /// the sweep is refused outright while the filtered one fits with room to spare.
+    ///
+    /// <para>187 over the seeded roster's three "Warsaw, Poland" experts, against 2,810 for the
+    /// whole 45. Measured, not projected — <c>ReadToolResultCostFloorTests</c> makes the call.</para>
+    /// </summary>
+    public const int ExpertListFilteredCeiling = 187;
 
     /// <summary>
     /// Read tools whose result cannot be measured without a model: they embed the query first, so
@@ -113,7 +132,15 @@ public static class CostFloors
             ["category_tree"] = 162,
             ["cv_get"] = 292,
             ["expert_get"] = 353,
-            ["expert_list"] = 241,
+            // RAISED 241 → 373 by EXP-94, the second deliberate re-baseline in this file and for
+            // the same reason as skill_list's below: two optional parameters and the sentence that
+            // teaches them. Roster Q&A answered "there are no experts located in Warsaw" over a
+            // roster holding 31 because its only way to ask was for all 505 rows, which the Tool
+            // Result Budget then refused — the model paid nothing for the schema and got a false
+            // fact. +132 per iteration against a result that drops from 2,810 to 187 whenever the
+            // question names a place, and that result is re-sent on every call after it. Down from
+            // here, never back up.
+            ["expert_list"] = 373,
             ["roster_digest_list"] = 299,
             // P1T-148 made its filters read as the primary path for a compound question and
             // paid for the words by cutting elaboration — a ratchet down, not a trade.
@@ -201,9 +228,11 @@ public static class CostFloors
     ///
     /// <para>3,861 → 3,993 with P1T-145's <c>skill_list</c> re-baseline above: the schema half is
     /// paid per iteration. P1T-146 takes what any one agent pays down by removing tools from its
-    /// allowlist, not by shortening the surface.</para>
+    /// allowlist, not by shortening the surface. 3,962 → 4,094 with EXP-94's <c>expert_list</c>
+    /// re-baseline, the same trade: +132 on the surface, bought by a filter that takes the result
+    /// it narrows from 2,810 tokens to under a hundred.</para>
     /// </summary>
-    public const int ReadToolSurfaceCeiling = 3_962;
+    public const int ReadToolSurfaceCeiling = 4_094;
 
     /// <summary>
     /// Each agent's <b>Tool Allowlist</b> (P1T-146), keyed by the agent's <c>McpAuth:&lt;agent&gt;</c>
@@ -292,7 +321,12 @@ public static class CostFloors
             // never used. P1T-146's allowlist shows it 4 tools instead; P1T-148 then rewrote the
             // instructions for Convergence (416 → 415) and trimmed roster_semantic_search's
             // schema (613 → 611), which is the last 3 tokens off it.
-            ["RosterQaAgent"] = 1_870,
+            //
+            // 1,870 → 1,988 by EXP-94: expert_list is one of its four tools, and that tool's
+            // schema grew by the two filters and the sentence teaching them. This agent is the
+            // reason they exist — it is the one that answered "there are no experts located in
+            // Warsaw" over 31 of them — so it is the one that pays for them.
+            ["RosterQaAgent"] = 1_988,
             ["CvTailoringAgent"] = 1_186,
             // +132 for P1T-145's skill_list schema, which this agent is also shown, then +140 for
             // P1T-155's Batching and lookup rules. The one baseline in this table that went UP:
@@ -364,8 +398,15 @@ public static class CostFloors
     /// <see cref="ReadToolResultCeilings"/> rather than pinned independently, it keeps tightening
     /// on its own as those ratchet — the remaining term worth moving is the baseline, which is
     /// re-sent on all three calls.</para>
+    ///
+    /// <para>6,984 → 7,338 by EXP-94, and the arithmetic is exactly the paragraph above working
+    /// the other way: the baseline went up 118 and it is re-sent on all three calls. The reference
+    /// question does not call <c>expert_list</c> at all — it pays 354 tokens for a schema it never
+    /// uses, because the tool is in its allowlist. That is the price of the agent being ABLE to
+    /// answer "how many experts are based in Warsaw" at all, against a wrong answer it gave for
+    /// free. Still inside the 8,000 target, with less room than before.</para>
     /// </summary>
-    public const int RosterQaConvergentRunCeiling = 6_984;
+    public const int RosterQaConvergentRunCeiling = 7_338;
 
     /// <summary>
     /// Prices one agent run along a declared tool path, model-free — Turn Amplification made

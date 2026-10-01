@@ -130,6 +130,33 @@ public class ToolResultBudgetChatClientTests
             .Which.Should().Contain("Tool Result Budget reached");
     }
 
+    /// <summary>
+    /// EXP-94: the withholding notice is the only thing the model sees in the result's place, so
+    /// it has to say the result was not seen AND that this is not a zero. Without the second half
+    /// roster-qa read "the result was withheld" as "nothing matched" and answered "there are no
+    /// experts located in Warsaw, Poland" over a roster holding 31 — a refusal laundered into a
+    /// false fact. The exact text is asserted, not paraphrased: a tidy-up that drops the denial is
+    /// the regression.
+    /// </summary>
+    [Fact]
+    public async Task The_withholding_notice_says_the_result_was_not_seen_and_is_not_a_zero()
+    {
+        var (client, inner) = Pipeline(5_000);
+
+        using var scope = MeteringScope.Begin();
+        await client.GetResponseAsync(Conversation("expert_list", new string('x', 40_000)));
+
+        ((string)ResultSent(inner).Result!).Should().Be(
+            "Tool Result Budget reached: expert_list returned ~10,000 estimated tokens, over this "
+            + "run's 5,000-token limit per tool result. The result was withheld: you have NOT seen "
+            + "it. This is NOT an empty result and NOT a count of zero — it says nothing about how "
+            + "many rows matched, so do not state or imply that none were found. Do not repeat "
+            + "this call; narrow it with the filters this tool or another one offers (e.g. a "
+            + "location filter, a filtered search) and answer from that instead. If you cannot "
+            + "narrow it, say the roster was too large to read rather than answering from "
+            + "nothing.");
+    }
+
     [Fact]
     public void The_notice_reads_the_same_number_whatever_culture_the_host_has()
     {

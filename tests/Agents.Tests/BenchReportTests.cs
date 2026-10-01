@@ -127,4 +127,25 @@ public class BenchReportTests
 
         BenchReportService.ExtractExperts(JsonNode.Parse("\"not experts\""), 0).Should().BeNull();
     }
+
+    /// <summary>
+    /// EXP-94 moved expert_list's result to {total, items} so a count question needs no row dump.
+    /// bench-report calls the same tool directly for its roster stats, and it wants the rows — a
+    /// walker that stopped at the envelope would have degraded every report to "roster stats
+    /// unavailable (unrecognized expert_list result shape)" with nothing failing.
+    /// </summary>
+    [Fact]
+    public void Extracts_expert_list_rows_from_the_total_and_items_envelope()
+    {
+        const string result =
+            """{"total":1,"items":[{"title":"Engineer","location":"Warsaw, Poland","currentCapacityPercent":80}]}""";
+
+        var plain = BenchReportService.ExtractExperts(JsonNode.Parse(result), 0);
+        plain.Should().ContainSingle().Which.Location.Should().Be("Warsaw, Poland");
+
+        var envelope = JsonNode.Parse(
+            $$"""{"content":[{"$type":"text","text":{{System.Text.Json.JsonSerializer.Serialize(result)}}}]}""");
+        BenchReportService.ExtractExperts(envelope, 0)
+            .Should().ContainSingle().Which.CurrentCapacityPercent.Should().Be(80);
+    }
 }

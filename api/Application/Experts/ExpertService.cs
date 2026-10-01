@@ -20,6 +20,10 @@ public interface IExpertService
 {
     /// <summary>Active experts only by default; drafts opt in (review surfaces).</summary>
     Task<IReadOnlyList<ExpertSummaryDto>> ListAsync(bool includeDrafts = false, CancellationToken ct = default);
+    /// <summary>The same bench listing, narrowed and counted (EXP-94): optional case-insensitive
+    /// substring filters on location and status, plus the total of the whole match. The filters are
+    /// here rather than in a shell so REST and MCP narrow identically.</summary>
+    Task<ExpertListResult> ListAsync(ExpertListQuery query, CancellationToken ct = default);
     /// <summary>One page of the whole Roster — Draft, Active and Paused — searched, sorted and
     /// counted in SQL (EXP-45). The staff roster's query; <see cref="ListAsync"/> stays the bench's.</summary>
     Task<RosterPage> SearchAsync(RosterQuery query, CancellationToken ct = default);
@@ -73,6 +77,9 @@ public class ExpertService : IExpertService
     private DateOnly Today => DateOnly.FromDateTime(_clock.GetUtcNow().UtcDateTime);
 
     public async Task<IReadOnlyList<ExpertSummaryDto>> ListAsync(bool includeDrafts = false, CancellationToken ct = default)
+        => (await ListAsync(new ExpertListQuery(IncludeDrafts: includeDrafts), ct)).Items;
+
+    public async Task<ExpertListResult> ListAsync(ExpertListQuery query, CancellationToken ct = default)
     {
         // Scoped too, though the roster endpoint itself is Administrator only: this is the one
         // call that would hand over the whole product, so it does not rely on a single [Authorize]
@@ -80,16 +87,55 @@ public class ExpertService : IExpertService
         var (unrestricted, owned) = await _scope.CurrentAsync(ct);
         // Two seams, two questions: the ownership scope says who is asking (P1T-182), the audience
         // says what the row permits (P1T-185). An agent is unrestricted on the first and still
-        // never sees a paused Expert here.
-        var experts = await _db.Experts
-            .AsNoTracking()
-            .ForAudience(_audience.Current, includeDrafts)
-            .Where(e => unrestricted || e.Id == owned)
+        // never sees a paused Expert here. The filters are applied AFTER both, so a count is a
+        // count of what the caller may see — a hidden Expert in Warsaw is not one of the 31.
+        var matches = WithListFilters(
+            _db.Experts
+                .AsNoTracking()
+                .ForAudience(_audience.Current, query.IncludeDrafts)
+                .Where(e => unrestricted || e.Id == owned),
+            query);
+
+        var total = await matches.CountAsync(ct);
+        var experts = await matches
             .Include(e => e.AvailabilityEntries)
             .OrderBy(e => e.LastName).ThenBy(e => e.FirstName)
             .ToListAsync(ct);
 
-        return experts.Select(e => e.ToSummary(Today)).ToList();
+        return new ExpertListResult(total, experts.Select(e => e.ToSummary(Today)).ToList());
+    }
+
+    /// <summary>
+    /// The bench listing's optional narrowing (EXP-94). Both filters are case-insensitive
+    /// substrings, because the caller is a person (or a model) typing "warsaw", not picking from a
+    /// facet list — the roster screen's exact-match <see cref="RosterQuery.Locations"/> is the
+    /// other question and keeps its own code.
+    /// </summary>
+    private static IQueryable<Expert> WithListFilters(IQueryable<Expert> experts, ExpertListQuery query)
+    {
+        if (!string.IsNullOrWhiteSpace(query.Location))
+        {
+            // ToLower rather than string.Contains(..., StringComparison), for the same reason the
+            // skill catalog's nameContains uses it (P1T-145): EF Core translates the former to SQL
+            // on Postgres and on the in-memory provider the unit tests run on.
+            var needle = query.Location.Trim().ToLower();
+            experts = experts.Where(e => e.Location != null && e.Location.ToLower().Contains(needle));
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Status))
+        {
+            // Resolved to enum values here rather than compared in SQL: the status is stored as a
+            // number, so there is no column to run a substring over. A needle that names no status
+            // leaves this empty, and an empty set matches nobody — a misspelled filter answers
+            // zero rather than silently answering "everyone".
+            var needle = query.Status.Trim().ToLowerInvariant();
+            var named = Enum.GetValues<ExpertStatus>()
+                .Where(s => s.ToString().ToLowerInvariant().Contains(needle))
+                .ToArray();
+            experts = experts.Where(e => named.Contains(e.Status));
+        }
+
+        return experts;
     }
 
     public async Task<RosterPage> SearchAsync(RosterQuery query, CancellationToken ct = default)

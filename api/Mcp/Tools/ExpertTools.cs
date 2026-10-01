@@ -10,21 +10,30 @@ public class ExpertTools
 {
     [McpServerTool(Name = "expert_list", ReadOnly = true, Destructive = false),
      Description(
-         "List every active expert as one flat roster row each — id, first/last name, " +
-         "title, location, email, current capacity percent and status. No paging, no filters, no " +
-         "narrative text. Use it when the roster itself is the answer: 'list everyone with their " +
-         "emails', 'how many experts do we have', 'show each person and their location'. Do NOT " +
+         "List active experts as one flat roster row each — id, first/last name, " +
+         "title, location, email, current capacity percent and status — under total, the count of " +
+         "the whole match. Pass location to narrow to a place (case-insensitive substring, so " +
+         "\"warsaw\" matches \"Warsaw, Poland\"); a COUNT question is answered by total alone. " +
+         "Use it when the roster itself is the answer: 'list everyone with their " +
+         "emails', 'how many experts are based in Warsaw', 'show each person and their location'. " +
+         "Do NOT " +
          "use it for capability questions ('who has built X') — roster_semantic_search ranks by " +
          "meaning; do NOT use it to rank people against a job description or its must-haves — " +
          "roster_shortlist_search returns coverage and per-requirement evidence; do NOT use it to " +
          "sweep career narratives in bulk — roster_digest_list pages compact digests; do NOT use " +
          "it for one person — expert_get returns their child records, cv_get the assembled CV. " +
-         "Input: none; e.g. {}. Rows carry NO skills, languages, qualifications, experiences, " +
-         "availability history or CV prose, and draft experts are excluded."),
+         "Input, all optional: location, status; e.g. {\"location\": \"Warsaw\"} to narrow, " +
+         "e.g. {} for the whole bench. Rows carry NO skills, languages, qualifications, " +
+         "experiences, availability history or CV prose, and draft experts are excluded."),
      Authorize(Policy = McpScopes.Read)]
-    public static async Task<IReadOnlyList<ExpertSummaryDto>> List(
-        IExpertService experts, CancellationToken ct)
-        => await experts.ListAsync(includeDrafts: false, ct);
+    public static async Task<ExpertListResult> List(
+        IExpertService experts,
+        CancellationToken ct,
+        [Description("Case-insensitive substring of the expert's location; omit for every place.")]
+        string? location = null,
+        [Description("Case-insensitive substring of the expert's status name; omit for any.")]
+        string? status = null)
+        => await experts.ListAsync(new ExpertListQuery(location, status), ct);
 
     [McpServerTool(Name = "expert_get", ReadOnly = true, Destructive = false),
      Description(
