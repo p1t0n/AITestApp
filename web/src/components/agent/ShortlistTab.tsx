@@ -26,7 +26,6 @@ import {
   useShortlist,
   type ShortlistCandidate,
   type ShortlistRequest,
-  type ShortlistResponse,
 } from "../../api";
 import { JdInput } from "./JdInput";
 import { JdFilters, useJdFilters } from "./JdFilters";
@@ -130,26 +129,22 @@ export function ShortlistPanel({
 
   const [jobDescription, setJobDescription] = useState("");
   const [topK, setTopK] = useState("");
-  const [result, setResult] = useState<{ data: ShortlistResponse; jobDescription: string } | null>(
-    null,
-  );
-  const [error, setError] = useState<string | null>(null);
+
+  // The run's result, the JD it ran against and its failure are all on the mutation already, and
+  // `mutate` clears them at the start of the next run — mirroring them into state here only added
+  // a second copy to keep in step. (BenchTab does mirror, on purpose: it keeps the previous report
+  // on screen while a re-run is in flight. This tab does not.)
+  const result = shortlist.data;
+  const error = shortlist.error ? apiErrorMessage(shortlist.error) : null;
 
   const canSubmit = jobDescription.trim().length > 0 && !shortlist.isPending;
 
-  async function submit() {
+  function submit() {
     if (!canSubmit) return;
-    setError(null);
-    setResult(null);
-    const jd = jobDescription.trim();
     // Only the filters the user actually set are sent; the server owns all defaults.
-    const req: ShortlistRequest = { jobDescription: jd, ...filters.toRequest() };
+    const req: ShortlistRequest = { jobDescription: jobDescription.trim(), ...filters.toRequest() };
     if (topK !== "") req.topK = Number(topK);
-    try {
-      setResult({ data: await shortlist.mutateAsync(req), jobDescription: jd });
-    } catch (err) {
-      setError(apiErrorMessage(err));
-    }
+    shortlist.mutate(req);
   }
 
   return (
@@ -179,7 +174,7 @@ export function ShortlistPanel({
           startIcon={
             shortlist.isPending ? <CircularProgress size={16} color="inherit" /> : <SmartToyIcon />
           }
-          onClick={() => void submit()}
+          onClick={submit}
         >
           {shortlist.isPending ? "Shortlisting…" : "Build shortlist"}
         </Button>
@@ -193,21 +188,21 @@ export function ShortlistPanel({
                 How the JD was read
               </Typography>
               <RequirementChips
-                requirements={result.data.requirements}
-                extraction={result.data.extraction}
+                requirements={result.requirements}
+                extraction={result.extraction}
               />
             </Box>
 
-            {result.data.candidates.length === 0 ? (
+            {result.candidates.length === 0 ? (
               <Typography variant="body2" sx={{ color: "text.secondary" }}>
                 No candidates matched this job description. Try loosening the filters.
               </Typography>
             ) : (
-              result.data.candidates.map((c) => (
+              result.candidates.map((c) => (
                 <ShortlistCandidateCard
                   key={c.expertId}
                   candidate={c}
-                  onRunMatch={(expertId) => onRunMatch(expertId, result.jobDescription)}
+                  onRunMatch={(expertId) => onRunMatch(expertId, shortlist.variables.jobDescription)}
                 />
               ))
             )}

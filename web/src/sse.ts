@@ -1,3 +1,4 @@
+import { bodyMessage } from "./api/http";
 import { expireSession, getToken } from "./auth/session";
 
 // Minimal SSE-over-POST client. The axios clients in api.ts buffer whole responses, so streaming
@@ -13,9 +14,9 @@ export interface SseMessage {
 }
 
 /** A pre-stream HTTP failure (400 validation, 401 auth, 429 cap): the response never became an
- * event stream. The message is extracted from the JSON body the way `apiErrorMessage` reads axios
- * errors (`error` ?? `detail` ?? `title`), so callers can surface it directly; the parsed body
- * rides along for anything structured (e.g. the 429 cap payload). */
+ * event stream. The message comes from `bodyMessage` (api/http.ts), the same reader `apiErrorMessage`
+ * uses on axios failures, so callers can surface it directly; the parsed body rides along for
+ * anything structured (e.g. the 429 cap payload). */
 export class SseHttpError extends Error {
   constructor(
     readonly status: number,
@@ -25,11 +26,6 @@ export class SseHttpError extends Error {
     super(message);
     this.name = "SseHttpError";
   }
-}
-
-function failureMessage(status: number, data: unknown): string {
-  const body = data as { error?: string; detail?: string; title?: string } | null;
-  return body?.error ?? body?.detail ?? body?.title ?? `Request failed with status code ${status}`;
 }
 
 /**
@@ -64,7 +60,11 @@ export async function postSse(
     } catch {
       // Not a JSON body; the generic message below covers it.
     }
-    throw new SseHttpError(response.status, data, failureMessage(response.status, data));
+    throw new SseHttpError(
+      response.status,
+      data,
+      bodyMessage(data) ?? `Request failed with status code ${response.status}`,
+    );
   }
   if (!response.body) {
     throw new Error("The response has no body to stream.");

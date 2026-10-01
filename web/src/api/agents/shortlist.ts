@@ -4,9 +4,7 @@
 //
 // The coverage and requirement-item shapes are re-used by the staffing report, which embeds a
 // shortlist slice per candidate — so they are exported from here rather than duplicated.
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { agentHttp } from "../http";
-import type { JdExtraction } from "./shared";
+import { agentPost, type JdExtraction } from "./shared";
 
 export interface ShortlistRequest {
   jobDescription: string;
@@ -44,11 +42,4 @@ export interface ShortlistResponse {
   extraction?: JdExtraction | null;
 }
 
-export function useShortlist() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (req: ShortlistRequest) =>
-      (await agentHttp.post<ShortlistResponse>("/shortlist", req)).data,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["usage"] }),
-  });
-}
+export const useShortlist = agentPost<ShortlistRequest, ShortlistResponse>("/shortlist");

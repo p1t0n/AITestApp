@@ -30,14 +30,23 @@ for (const client of [http, agentHttp]) {
 }
 
 /**
- * Reads a human-readable message out of any failure. Server faults arrive as either our own
- * `{ error }` envelope or an RFC-7807 problem (`detail` / `title`); everything else falls back to
- * the thrown error's own message. `SseHttpError` (src/sse.ts) reads a body the same way.
+ * The message a server fault body carries, or null when it carries none. Faults arrive as either
+ * our own `{ error }` envelope or an RFC-7807 problem (`detail` / `title`). Returning null rather
+ * than a fallback of its own is what lets each caller keep the fallback it has: the axios error's
+ * message here, the status line in `SseHttpError` (src/sse.ts), which reads a body the same way.
+ */
+export function bodyMessage(data: unknown): string | null {
+  const body = data as { error?: string; detail?: string; title?: string } | null | undefined;
+  return body?.error ?? body?.detail ?? body?.title ?? null;
+}
+
+/**
+ * Reads a human-readable message out of any failure: the fault body when there is one, otherwise
+ * the thrown error's own message.
  */
 export function apiErrorMessage(err: unknown): string {
   if (axios.isAxiosError(err)) {
-    const data = err.response?.data as { error?: string; detail?: string; title?: string } | undefined;
-    return data?.error ?? data?.detail ?? data?.title ?? err.message;
+    return bodyMessage(err.response?.data) ?? err.message;
   }
   return err instanceof Error ? err.message : "Unknown error";
 }

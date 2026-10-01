@@ -1,8 +1,7 @@
 // Bench & capability-gap report (P1T-104). Every number in `stats` is server-composed (a direct MCP
 // roster call plus the proposals ledger); the markdown `answer` is model prose over those numbers —
 // or a deterministic fallback summary when the model degraded, which `notes` says so.
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { agentHttp } from "../http";
+import { agentPost } from "./shared";
 
 export interface BenchNameCount {
   name: string;
@@ -35,10 +34,4 @@ export interface BenchReportResponse {
   notes: string[];
 }
 
-export function useBenchReport() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async () => (await agentHttp.post<BenchReportResponse>("/bench-report", {})).data,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["usage"] }),
-  });
-}
+export const useBenchReport = agentPost<void, BenchReportResponse>("/bench-report");
