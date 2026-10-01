@@ -70,9 +70,16 @@ public class EndpointClassificationTests(WebApiFactory factory)
         // always was: an orchestrator has no session token, and a probe that 401s makes a healthy
         // service look dead. They carry no personal data and say nothing but "Healthy" — the only
         // check registered is a liveness "self".
+        //
+        // The OpenAPI document (EXP-74) is anonymous because the Swagger UI fetches it from the
+        // browser with no bearer, and the fallback policy is Administrator. It is also mapped in
+        // Development only, so the surface it describes is never published by a Production host —
+        // which this fixture, being a Development host, cannot show; Web.Tests/OpenApiDocumentTests
+        // builds a Production one and asserts the 404.
         anonymous.Should().OnlyContain(route =>
             route.StartsWith("api/auth/") || route == "api/notice" || route == "api/notice/{version}"
-            || route == "/health" || route == "/alive");
+            || route == "/health" || route == "/alive"
+            || route == "/openapi/{documentName}.json");
     }
 
     /// <summary>

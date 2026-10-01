@@ -58,12 +58,11 @@
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="11.0.0-rc.1.26425.128" />
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="11.0.0-rc.1.26425.128" />
     <!--
-      10.2.1 rather than 10.2.0 for CVE-2026-49451 (P1T-220): Swashbuckle.AspNetCore.Swagger 10.2.0
-      pins Microsoft.OpenApi 2.4.1, whose reader stack-overflows on a circular schema reference. The
-      patch bump moves that transitive pin to 2.7.5, so no direct reference to a package nothing
-      here names is needed.
+      The UI package alone (EXP-74). The CVE-2026-49451 note that stood here was about
+      Swashbuckle.AspNetCore.Swagger's transitive Microsoft.OpenApi pin, and the generator it
+      belonged to is gone — SwaggerUI is static assets and a middleware, and reads no document.
     -->
-    <PackageVersion Include="Swashbuckle.AspNetCore" Version="10.2.3" />
+    <PackageVersion Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.2.3" />
   </ItemGroup>
 
   <!-- Application layer -->

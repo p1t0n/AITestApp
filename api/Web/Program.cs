@@ -97,8 +97,10 @@ builder.Services.AddPasskeyAuth(builder.Configuration);
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+// The OpenAPI document comes from ASP.NET Core's own generator (EXP-74), not Swashbuckle's:
+// Microsoft.AspNetCore.OpenApi was already referenced and never called, and the built-in generator
+// emits OpenAPI 3.2. Only the UI is still Swashbuckle's, and only in Development.
+builder.Services.AddOpenApi();
 
 builder.Services.AddCors(options => options.AddPolicy(SpaCors, policy => policy
     .WithOrigins("http://localhost:5173", "https://localhost:5173")
@@ -115,8 +117,11 @@ app.UseExceptionHandler();
 // `tools/SeedDemoRoster` is the only path that loads it now.
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    // AllowAnonymous because the app-wide fallback policy is Administrator, and the UI fetches the
+    // document from the browser with no bearer — without it the page renders over an empty 401.
+    // Development-only, so nothing is published that a Production host would not already refuse.
+    app.MapOpenApi().AllowAnonymous();
+    app.UseSwaggerUI(ui => ui.SwaggerEndpoint("/openapi/v1.json", "ExpertToJob API"));
 }
 
 // The first Administrator (P1T-181). Runs in every environment: signup only makes Users, so

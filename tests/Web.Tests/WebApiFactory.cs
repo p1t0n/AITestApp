@@ -106,19 +106,29 @@ public sealed class WebApiFactory : WebApplicationFactory<Program>, IAsyncLifeti
     /// <summary>A client for an account that already exists — used after its token version moves.</summary>
     public HttpClient ClientForAccount(User account)
     {
-        var config = Services.GetRequiredService<IConfiguration>();
+        var client = CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", SessionTokenFor(Services, account));
+        return client;
+    }
+
+    /// <summary>
+    /// A session bearer for an account, minted from <em>a given host's</em> own Auth:Jwt config
+    /// rather than this fixture's. Taking the provider as an argument is what lets a test reach a
+    /// second host built with <c>WithWebHostBuilder</c> — a Production one signs with a different
+    /// key, so a token minted here would not pass over there (EXP-74).
+    /// </summary>
+    public static string SessionTokenFor(IServiceProvider host, User account)
+    {
+        var config = host.GetRequiredService<IConfiguration>();
         var key = config["Auth:Jwt:SigningKey"]
             ?? throw new InvalidOperationException("Auth:Jwt:SigningKey missing from test host config.");
 
-        var client = CreateClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-            "Bearer",
-            MintHs256(
-                key,
-                config["Auth:Jwt:Issuer"] ?? "experttojob",
-                config["Auth:Jwt:Audience"] ?? "experttojob-app",
-                account));
-        return client;
+        return MintHs256(
+            key,
+            config["Auth:Jwt:Issuer"] ?? "experttojob",
+            config["Auth:Jwt:Audience"] ?? "experttojob-app",
+            account);
     }
 
     /// <summary>Inserts an account in the given role. Passkey-less: no ceremony is run here.</summary>
