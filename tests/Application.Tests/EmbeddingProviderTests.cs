@@ -1,3 +1,4 @@
+using System.Reflection;
 using ExpertToJob.Application.Abstractions;
 using ExpertToJob.Infrastructure.Embeddings;
 using ExpertToJob.Infrastructure.Search;
@@ -295,6 +296,37 @@ public class EmbeddingProviderTests
     public void The_bare_search_options_floor_at_the_incumbents_value()
         => new SemanticSearchOptions().MinSimilarity
             .Should().Be(EmbeddingOptions.Defaults(EmbeddingsProvider.Gemini).MinSimilarity);
+
+    /// <summary>
+    /// The one embedding setting that is <b>not</b> a setting. Every other value on
+    /// <see cref="EmbeddingOptions"/> is a per-provider default a configuration block may override;
+    /// the output dimensionality cannot be, because the database fixes it — the
+    /// <c>ExpertSearchChunk.Embedding</c> column is <c>vector(1536)</c>, and Postgres rejects a
+    /// vector of any other width on INSERT. A settable property is a binding target, so
+    /// <c>Ai:AzureFoundry:Dimensions</c> would have been accepted in silence and then failed one
+    /// layer down, per row, at write time. Held as a constant instead: unreachable from
+    /// configuration by construction rather than by nobody having tried it.
+    ///
+    /// <para>Asserted reflectively because the point is the <em>shape</em> of the member — a
+    /// literal field, not a property — which is exactly what a plain read could not tell apart.
+    /// Changing the width is a schema migration (ADR §9), and it edits this test.</para>
+    /// </summary>
+    [Fact]
+    public void The_embedding_dimensionality_is_a_constant_no_configuration_can_reach()
+    {
+        const int VectorColumnWidth = 1536;
+
+        typeof(EmbeddingOptions).GetProperty("Dimensions").Should().BeNull(
+            "a settable property binds from configuration; the column width is not negotiable");
+
+        var constant = typeof(EmbeddingOptions)
+            .GetField("Dimensions", BindingFlags.Public | BindingFlags.Static);
+
+        constant.Should().NotBeNull("EmbeddingOptions.Dimensions is the one place the width is written");
+        constant!.IsLiteral.Should().BeTrue("a const is what keeps the binder away from it");
+        constant.GetRawConstantValue().Should().Be(VectorColumnWidth,
+            "the ExpertSearchChunk.Embedding column is vector(1536)");
+    }
 
     private static IConfiguration Config(params (string Key, string? Value)[] entries)
         => new ConfigurationBuilder()
