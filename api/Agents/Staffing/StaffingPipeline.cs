@@ -92,7 +92,8 @@ public sealed class StaffingPipeline
 
     private sealed record PreparedStage(StaffingPipelineRequest Request, ShortlistAgentRequest Shortlist, int MatchTop);
 
-    private sealed record ShortlistStage(PreparedStage Prepared, ShortlistRunOutcome? Run, string? Fault);
+    private sealed record ShortlistStage(
+        PreparedStage Prepared, ShortlistRunOutcome? Run, string? Fault, string? FaultTitle = null);
 
     private sealed record CandidateMatch(ShortlistCandidateItem Candidate, StaffingMatchDetail Detail);
 
@@ -109,8 +110,9 @@ public sealed class StaffingPipeline
         bool Degraded);
 
     /// <summary>Why there is no report: the shortlist step — the one stage nothing downstream can
-    /// degrade around — failed.</summary>
-    private sealed record ShortlistFault(string Message);
+    /// degrade around — failed. <paramref name="Title"/> carries a headline of its own for a fault
+    /// that is not upstream (EXP-93); null leaves the terminal event's usual one.</summary>
+    private sealed record ShortlistFault(string Message, string? Title = null);
 
     /// <summary>
     /// The pipeline's single output: a report, or the shortlist fault that made one impossible.
@@ -171,7 +173,7 @@ public sealed class StaffingPipeline
             return outcome switch
             {
                 StaffingReport report => new StaffingRunOutcome(report, null, _events, package),
-                ShortlistFault fault => new StaffingRunOutcome(null, fault.Message, _events, package),
+                ShortlistFault fault => new StaffingRunOutcome(null, fault.Message, _events, package, fault.Title),
             };
         }
 
@@ -400,6 +402,11 @@ public sealed class StaffingPipeline
                 // MCP server unreachable, Keycloak token failure, or model endpoint error. Without
                 // a shortlist there is nothing to report, so this is the pipeline's one error
                 // outcome — surfaced as data for the endpoint to map, never thrown.
+                //
+                // A host with no chat credential arrives here too (EXP-93) — the first model call
+                // of the run is this step's extraction — and keeps the degrade path, because the
+                // run has already started streaming and a thrown exception would lose its type
+                // crossing the workflow boundary. What it carries instead is its own title.
                 pipeline._logger.LogError(ex, "Staffing shortlist step failed.");
                 AddSlice(Slice(
                     "shortlist", "shortlist", reply: null, startedAt, new StageSliceStatus.Failed(),
@@ -407,7 +414,9 @@ public sealed class StaffingPipeline
                 AddDegradation("shortlist", "The entire staffing report", ex.Message);
                 Emit("shortlist", "Shortlist step failed (upstream dependency).",
                     status: new StaffingStepStatus.Failed(), error: ex.Message);
-                return new ShortlistStage(prepared, Run: null, ex.Message);
+                return new ShortlistStage(
+                    prepared, Run: null, ex.Message,
+                    (ex as Configuration.ChatCredentialMissingException)?.Title);
             }
         }
 
@@ -761,7 +770,7 @@ public sealed class StaffingPipeline
             if (match.Shortlist.Fault is { } fault)
             {
                 Emit("report", "No report: the shortlist step failed.");
-                ReportResult faulted = new ShortlistFault(fault);
+                ReportResult faulted = new ShortlistFault(fault, match.Shortlist.FaultTitle);
                 await context.YieldOutputAsync(faulted, ct);
                 return;
             }

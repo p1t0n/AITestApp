@@ -175,9 +175,15 @@ public closed record StaffingStepStatus : IClosedStatus<StaffingStepStatus>
 /// <see cref="ShortlistFault"/> is non-null: everything downstream of a successful shortlist
 /// degrades into the report (never throws), but without a shortlist there is nothing to report,
 /// so that one failure surfaces as data for the endpoint to map (502).
+///
+/// <para><see cref="FaultTitle"/> is set only when the fault is not an upstream one and so needs a
+/// different headline — today a host with no chat credential (EXP-93), which is a configuration
+/// mistake the terminal event names rather than blaming a dependency nothing reached. Null means
+/// the usual upstream-fault title.</para>
 /// </summary>
 public sealed record StaffingRunOutcome(
     StaffingReport? Report,
     string? ShortlistFault,
     IReadOnlyList<StaffingProgressEvent> Events,
-    Handoff.HandoffPackage Package);
+    Handoff.HandoffPackage Package,
+    string? FaultTitle = null);

@@ -110,6 +110,25 @@ provider's key (`ChatProviderStartupGuard`, called from `api/Agents/Program.cs`)
 are different mistakes: a typo'd provider name is wrong everywhere; a missing key is a normal
 condition in dev.
 
+**6b. A host with no credential builds its clients anyway, and answers 503.** `EXP-93`
+Decision 6 keeps a missing key a normal dev condition, but the seam had no way of *saying* so: the
+key was read inside the `OpenAIClient` factory, where an empty one became
+`ArgumentException: Value cannot be an empty string. (Parameter 'key')`. Because every agent is a
+registration that resolves its chat client, that threw during endpoint parameter binding — outside
+any handler's `try` — and the documented "the agents degrade" was a 500 with an SDK stack trace.
+The credential is now a resolved value (`ChatCredential`, both lookups in one place, the same two
+decision 4 names), so the seam can ask whether one exists *before* building a client. Without one
+it registers `UnavailableChatClient`, which builds and throws `ChatCredentialMissingException` when
+a call is made — inside the shell that maps faults — and one middleware in `api/Agents/Program.cs`
+turns that into a **503** whose title names both the environment variable and the
+`Ai:<Provider>:ApiKey` path. 503 and not the 502 an upstream fault gets: nothing was asked of
+anything, and retrying changes nothing until someone sets a key. Staffing has already started
+streaming by then, so it carries the same title through its terminal `error` event instead.
+Deliberately not a client that returns empty text: an agent that "answers" without a model has its
+reply composed, metered and persisted like any other, and the first sign of the misconfiguration
+would be a roster answer nobody can source. For the same reason the bench report — which degrades a
+*faulting* model to its deterministic summary — lets this one fault through.
+
 **7. Do not attach the ServiceDefaults resilience handler — on either provider.** `EXP-8`
 It becomes attachable on Azure, and it is a foot-gun: `AddStandardResilienceHandler` defaults to a
 **10 s per-attempt timeout**, which cancels healthy tool-calling completions, and its retries stack

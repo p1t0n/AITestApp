@@ -18,7 +18,9 @@ public sealed record BenchReportOutcome(BenchReportResponse Response, AgentReply
 /// ledger — then a tool-less chat call writes the narrative over those aggregates. The model
 /// receives numbers, never produces them. Every input failure degrades to leaner stats + a note;
 /// a model failure degrades to the deterministic fallback summary. The run never throws for
-/// anything short of a programming error.
+/// anything short of a programming error — or a host with no chat credential, which is a
+/// misconfiguration every call would hit identically and the one fault this run lets through
+/// (EXP-93).
 /// </summary>
 public sealed class BenchReportService(
     IMcpToolSource toolSource,
@@ -137,7 +139,11 @@ public sealed class BenchReportService(
                 ? (BenchStatsComposer.FallbackAnswer(stats), reply)
                 : (response.Text, reply);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        // A credential nobody set is not a model that faulted (EXP-93): every call will fail the
+        // same way, so the fallback summary would read as a normal report on a host that cannot
+        // reach a model at all. It propagates to the 503 the shell maps.
+        catch (Exception ex) when (ex is not OperationCanceledException
+                                   and not Configuration.ChatCredentialMissingException)
         {
             logger.LogWarning(ex, "Bench report narrative call failed; shipping the deterministic fallback.");
             notes.Add("Narrative unavailable (model call failed); this is the deterministic summary.");

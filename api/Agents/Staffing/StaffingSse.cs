@@ -84,8 +84,12 @@ public static class StaffingSse
             var outcome = await run;
             if (outcome.ShortlistFault is { } fault)
             {
+                // The title the run reported, when it had one of its own: a host with no chat
+                // credential names the setting to set (EXP-93) rather than blaming an upstream
+                // nothing asked anything of. Everything else is the upstream-fault title.
                 await WriteFrameAsync(response, ErrorEvent, new ErrorPayload(
-                    "Upstream dependency failed (staffing shortlist step).", fault), json, ct);
+                    outcome.FaultTitle ?? "Upstream dependency failed (staffing shortlist step).",
+                    fault), json, ct);
             }
             else
             {
