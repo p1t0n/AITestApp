@@ -109,7 +109,7 @@ Console.Error.WriteLine(string.Create(CultureInfo.InvariantCulture,
     $"Seeding {corpus.Count} experts, indexing, and running {goldenSet.Count} queries " +
     $"once at floor {floor:F3} (provider: {provider}, model: {embedder.Model})..."));
 var cached = await EvalRunner.CaptureAsync(
-    NewDb, embedder, corpus, goldenSet, floor, QueryRetryPolicy.Default);
+    NewDb, embedder, corpus, goldenSet, floor, QueryRetry.Default(TimeProvider.System));
 
 var results = SweepEvaluator.Sweep(cached, thresholds).ToList();
 

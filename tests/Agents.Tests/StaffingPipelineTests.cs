@@ -8,6 +8,7 @@ using ExpertToJob.Tests.Shared;
 using FluentAssertions;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging.Abstractions;
+using Polly;
 
 namespace ExpertToJob.Agents.Tests;
 
@@ -72,7 +73,7 @@ public class StaffingPipelineTests
         IUsageService? usage = null,
         IUsageMeter? meter = null,
         int maxConcurrentMatches = 2,
-        StaffingRetryPolicy? retry = null,
+        ResiliencePipeline? retry = null,
         TimeProvider? clock = null) => new(
         shortlist,
         match,
@@ -80,14 +81,15 @@ public class StaffingPipelineTests
         usage ?? new FakeUsageService(),
         meter ?? new RecordingUsageMeter(),
         new StaffingThrottle(maxConcurrentMatches),
-        retry ?? new StaffingRetryPolicy(MaxAttempts: 3, _ => TimeSpan.Zero),
+        retry ?? RateLimitRetry.Linear(maxAttempts: 3, TimeSpan.Zero, TimeProvider.System),
         new NullAgentIdentitySource(),
         clock ?? TimeProvider.System,
         NullLogger<StaffingPipeline>.Instance);
 
     /// <summary>The shipped match ladder, built on <paramref name="clock"/>. The one line that
     /// knows how the ladder is constructed — the freeze test below reads only its behaviour.</summary>
-    private static StaffingRetryPolicy MatchLadder(TimeProvider clock) => StaffingRetryPolicy.Default;
+    private static ResiliencePipeline MatchLadder(TimeProvider clock) =>
+        RateLimitRetry.Linear(maxAttempts: 3, step: TimeSpan.FromSeconds(5), clock);
 
     private static Task<StaffingRunOutcome> RunAsync(
         StaffingPipeline pipeline, int? matchTop = null, string jobDescription = "Platform engineer.") =>
@@ -367,7 +369,7 @@ public class StaffingPipelineTests
             new FakeShortlistRunService(ShortlistOk(Candidate(1))),
             match,
             NarrativeChat(NarrativeJson(Id(1), Id(1))),
-            retry: new StaffingRetryPolicy(MaxAttempts: 3, _ => TimeSpan.Zero));
+            retry: RateLimitRetry.Linear(maxAttempts: 3, TimeSpan.Zero, TimeProvider.System));
 
         var outcome = await RunAsync(pipeline, matchTop: 1);
 
@@ -385,7 +387,7 @@ public class StaffingPipelineTests
             new FakeShortlistRunService(ShortlistOk(Candidate(1))),
             match,
             NarrativeChat(NarrativeJson(Id(1), Id(1))),
-            retry: new StaffingRetryPolicy(MaxAttempts: 3, _ => TimeSpan.Zero));
+            retry: RateLimitRetry.Linear(maxAttempts: 3, TimeSpan.Zero, TimeProvider.System));
 
         var outcome = await RunAsync(pipeline, matchTop: 1);
 

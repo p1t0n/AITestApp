@@ -77,8 +77,8 @@ public sealed class ChatContentFilteredException : Exception
 /// where a provider migration most needs it.</para>
 ///
 /// <para><b>No retry, and none invited.</b> This decorator adds none, and the failure it raises is
-/// not 429-shaped, so <see cref="Staffing.StaffingRetryPolicy"/> does not adopt it either. A prompt
-/// filtered once is filtered twice; a retry spends the budget again for the same refusal.</para>
+/// not 429-shaped, so <see cref="RateLimitRetry"/> does not adopt it either. A prompt filtered once
+/// is filtered twice; a retry spends the budget again for the same refusal.</para>
 ///
 /// <para><b>The streaming path is deliberately left as pass-through.</b> Nothing in this repo
 /// streams chat, so the shapes filtering takes there have never been measured — and this repo's

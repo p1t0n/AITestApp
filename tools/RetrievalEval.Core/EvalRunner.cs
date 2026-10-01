@@ -4,6 +4,8 @@ using ExpertToJob.Infrastructure.Persistence;
 using ExpertToJob.Infrastructure.Search;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Polly;
+using Polly.Retry;
 
 namespace ExpertToJob.RetrievalEval;
 
@@ -14,19 +16,41 @@ public sealed record EvalQueryTrace(GoldenQuery Query, IReadOnlyList<string> Ret
 public sealed record EvalRunResult(EvalMetrics Metrics, IReadOnlyList<EvalQueryTrace> Traces);
 
 /// <summary>
-/// How query capture handles a soft search error (typically the embedding provider rate-limiting):
-/// up to <paramref name="MaxAttempts"/> tries per query, waiting <paramref name="Delay"/> (keyed by
-/// the 1-based count of failures so far) between them. <see cref="None"/> fails on the first error
-/// — the plumbing/live-test behavior — while <see cref="Default"/> rides out per-minute limits.
+/// How query capture handles a soft search error — typically the embedding provider rate-limiting.
+/// Unlike the agents' 429 ladders this one retries on a <em>result</em>: the search service answers
+/// a soft failure as <see cref="SemanticSearchResult.Error"/> rather than by throwing, so the
+/// predicate reads the outcome, not an exception type, and the two cannot share a builder.
+/// <see cref="None"/> fails on the first error — the plumbing/live-test behavior — while
+/// <see cref="Default"/> rides out per-minute limits.
 /// </summary>
-public sealed record QueryRetryPolicy(
-    int MaxAttempts, Func<int, TimeSpan> Delay, TimeProvider? Clock = null)
+public static class QueryRetry
 {
-    public static QueryRetryPolicy None { get; } = new(1, _ => TimeSpan.Zero);
+    /// <summary>No ladder at all: the first soft error is the answer.</summary>
+    public static ResiliencePipeline<SemanticSearchResult> None { get; } =
+        ResiliencePipeline<SemanticSearchResult>.Empty;
 
-    public static QueryRetryPolicy Default { get; } = new(
-        MaxAttempts: 5,
-        Delay: failures => TimeSpan.FromSeconds(20 * failures));
+    /// <summary>The shipped ladder: five attempts, waiting 20s, 40s, 60s then 80s.</summary>
+    public static ResiliencePipeline<SemanticSearchResult> Default(TimeProvider clock) =>
+        Ladder(maxAttempts: 5, step: TimeSpan.FromSeconds(20), clock);
+
+    /// <summary>A linear ladder of <paramref name="maxAttempts"/> tries, the n-th wait being
+    /// n × <paramref name="step"/>.</summary>
+    public static ResiliencePipeline<SemanticSearchResult> Ladder(
+        int maxAttempts, TimeSpan step, TimeProvider clock) =>
+        maxAttempts <= 1
+            ? None
+            : new ResiliencePipelineBuilder<SemanticSearchResult> { TimeProvider = clock }
+                .AddRetry(new RetryStrategyOptions<SemanticSearchResult>
+                {
+                    // Polly counts retries; the budget here is attempts, the first one included.
+                    MaxRetryAttempts = maxAttempts - 1,
+                    BackoffType = DelayBackoffType.Linear,
+                    Delay = step,
+                    UseJitter = false,
+                    ShouldHandle = new PredicateBuilder<SemanticSearchResult>()
+                        .HandleResult(result => result.Error is not null),
+                })
+                .Build();
 }
 
 /// <summary>
@@ -58,7 +82,7 @@ public static class EvalRunner
         CancellationToken ct = default)
     {
         var cached = await CaptureAsync(
-            dbFactory, embedder, corpus, goldenSet, threshold, QueryRetryPolicy.Default, ct);
+            dbFactory, embedder, corpus, goldenSet, threshold, QueryRetry.Default(TimeProvider.System), ct);
         return ToRunResult(cached, threshold);
     }
 
@@ -73,10 +97,10 @@ public static class EvalRunner
         IReadOnlyList<EvalExpert> corpus,
         IReadOnlyList<GoldenQuery> goldenSet,
         double floorSimilarity,
-        QueryRetryPolicy? retry = null,
+        ResiliencePipeline<SemanticSearchResult>? retry = null,
         CancellationToken ct = default)
     {
-        retry ??= QueryRetryPolicy.None;
+        retry ??= QueryRetry.None;
         var keysById = await SeedAndIndexAsync(dbFactory, embedder, corpus, ct);
 
         await using var db = dbFactory();
@@ -98,26 +122,26 @@ public static class EvalRunner
         return cached;
     }
 
-    /// <summary>One query through the search, riding out soft errors per the retry policy.</summary>
+    /// <summary>One query through the search, riding out soft errors on the given ladder. The
+    /// ladder hands back the last bad result once the budget is spent; turning that into a hard
+    /// failure, named and counted, is this method's share of the work.</summary>
     private static async Task<SemanticSearchResult> SearchWithRetryAsync(
-        SemanticSearchService search, GoldenQuery query, QueryRetryPolicy retry, CancellationToken ct)
+        SemanticSearchService search, GoldenQuery query,
+        ResiliencePipeline<SemanticSearchResult> retry, CancellationToken ct)
     {
-        for (var failures = 1; ; failures++)
-        {
-            var result = await search.SearchAsync(query.Query, topK: TopK, ct: ct);
-            if (result.Error is null)
+        var attempts = 0;
+        var result = await retry.ExecuteAsync(
+            async token =>
             {
-                return result;
-            }
+                attempts++;
+                return await search.SearchAsync(query.Query, topK: TopK, ct: token);
+            },
+            ct);
 
-            if (failures >= retry.MaxAttempts)
-            {
-                throw new InvalidOperationException(
-                    $"Eval query '{query.Query}' failed to run after {failures} attempt(s): {result.Error}");
-            }
-
-            await Task.Delay(retry.Delay(failures), retry.Clock ?? TimeProvider.System, ct);
-        }
+        return result.Error is null
+            ? result
+            : throw new InvalidOperationException(
+                $"Eval query '{query.Query}' failed to run after {attempts} attempt(s): {result.Error}");
     }
 
     /// <summary>Score a capture at one threshold in the classic single-run shape.</summary>

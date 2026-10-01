@@ -2,9 +2,11 @@ using ExpertToJob.Application.Abstractions;
 using ExpertToJob.Infrastructure.Persistence;
 using ExpertToJob.Infrastructure.Search;
 using ExpertToJob.RetrievalEval;
+using ExpertToJob.Application.Search;
 using ExpertToJob.Tests.Shared;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Polly;
 using Testcontainers.PostgreSql;
 
 namespace ExpertToJob.Mcp.Tests.Eval;
@@ -81,7 +83,7 @@ public sealed class EvalRunnerTests : IAsyncLifetime
 
         var cached = await EvalRunner.CaptureAsync(
             NewDb, flaky, corpus, goldenSet, floorSimilarity: 0.15,
-            retry: new QueryRetryPolicy(MaxAttempts: 2, Delay: _ => TimeSpan.Zero));
+            retry: QueryRetry.Ladder(maxAttempts: 2, TimeSpan.Zero, TimeProvider.System));
 
         cached.Should().HaveCount(2);
         cached[0].Hits.Select(h => h.Key).Should().Equal("fiona-fintech");
@@ -96,15 +98,15 @@ public sealed class EvalRunnerTests : IAsyncLifetime
 
         var act = () => EvalRunner.CaptureAsync(
             NewDb, new FlakyEmbedder(new KeywordEmbedder()), corpus, goldenSet, floorSimilarity: 0.15,
-            retry: new QueryRetryPolicy(MaxAttempts: 1, Delay: _ => TimeSpan.Zero));
+            retry: QueryRetry.Ladder(maxAttempts: 1, TimeSpan.Zero, TimeProvider.System));
 
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*fintech*");
     }
 
     /// <summary>The shipped soft-error ladder, built on <paramref name="clock"/>. The one line
     /// that knows how the ladder is constructed — the freeze test reads only its behaviour.</summary>
-    private static QueryRetryPolicy QueryLadder(TimeProvider clock) =>
-        QueryRetryPolicy.Default with { Clock = clock };
+    private static ResiliencePipeline<SemanticSearchResult> QueryLadder(TimeProvider clock) =>
+        QueryRetry.Default(clock);
 
     /// <summary>
     /// The shipped ladder itself, frozen (EXP-87): five attempts, waiting 20s, 40s, 60s then 80s.
