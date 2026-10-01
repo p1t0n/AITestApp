@@ -106,3 +106,39 @@ public record UpdateExpertDto(
     string? Location,
     string? Summary,
     string? PhotoUrl);
+
+// ---- Bench listing (EXP-94) ----
+
+/// <summary>
+/// What a caller wants out of the bench listing (EXP-94): an optional case-insensitive
+/// <em>substring</em> of the location, an optional case-insensitive substring of the status name,
+/// and whether drafts are in. Beside <see cref="RosterQuery"/> rather than folded into it — that
+/// one is the staff roster's paged, faceted screen and its <c>Locations</c> are exact matches
+/// chosen from a facet list; this one is the flat bench list an agent asks "how many in Warsaw"
+/// of, and a person typing "warsaw" has no facet list in front of them.
+///
+/// <para>Every field is optional, so a caller that asks for nothing gets exactly what
+/// <c>expert_list</c> has always returned. The filters live here, in the Application layer, so
+/// REST and MCP narrow identically rather than only whichever shell happened to implement
+/// it.</para>
+/// </summary>
+/// <param name="Location">Case-insensitive <em>contains</em> over the expert's location. A row
+/// with no location never matches a non-empty needle.</param>
+/// <param name="Status">Case-insensitive <em>contains</em> over the status name
+/// (<see cref="ExpertStatus"/>). A needle matching no status name matches nobody — a misspelling
+/// is answered with zero rows rather than with the whole bench.</param>
+/// <param name="IncludeDrafts">Drafts opt in (review surfaces), as in the unfiltered listing.</param>
+public sealed record ExpertListQuery(
+    string? Location = null,
+    string? Status = null,
+    bool IncludeDrafts = false);
+
+/// <summary>
+/// The bench listing's result: the matching rows, and how many there are.
+///
+/// <para><c>Total</c> is counted in SQL over the same filtered, visibility-scoped query the rows
+/// come from, so "how many experts are in Warsaw" is answered by a number the caller can read
+/// without counting a list — which is the whole point when the reader is a model with a tool-result
+/// budget and a 500-row dump is refused before it ever sees it (EXP-94).</para>
+/// </summary>
+public sealed record ExpertListResult(int Total, IReadOnlyList<ExpertSummaryDto> Items);

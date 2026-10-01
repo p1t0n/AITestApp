@@ -76,10 +76,18 @@ public sealed class ToolResultBudgetChatClient(
         MeteringScope.ReportDegradation(reason);
         logger?.LogWarning("Agent {AgentKey}: {Reason} Result withheld from the model.", agentKey, reason);
 
+        // The second sentence is load-bearing (EXP-94). "The result was withheld" alone read, to a
+        // model, like an empty result: asked how many experts are based in Warsaw it answered
+        // "there are no experts located in Warsaw" over a roster holding 31 of them — a refusal
+        // turned into a false fact. Say what the withholding is NOT before saying what to do next.
         return new FunctionResultContent(
             result.CallId,
-            reason + " The result was withheld. Do not repeat this call; narrow it with the " +
-            "filters another tool offers (e.g. a filtered search) and answer from that instead.");
+            reason + " The result was withheld: you have NOT seen it. This is NOT an empty " +
+            "result and NOT a count of zero — it says nothing about how many rows matched, so do " +
+            "not state or imply that none were found. Do not repeat this call; narrow it with the " +
+            "filters this tool or another one offers (e.g. a location filter, a filtered search) " +
+            "and answer from that instead. If you cannot narrow it, say the roster was too large " +
+            "to read rather than answering from nothing.");
     }
 
     private static long Estimate(object? result)

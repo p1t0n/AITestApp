@@ -1,0 +1,130 @@
+using ExpertToJob.Application.Auth;
+using ExpertToJob.Application.Experts;
+using ExpertToJob.Application.Visibility;
+using ExpertToJob.Domain.Enums;
+using ExpertToJob.Infrastructure.Persistence;
+using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+
+namespace ExpertToJob.Application.Tests;
+
+/// <summary>
+/// The bench listing's filters (EXP-94). Roster Q&amp;A answered "there are no experts located in
+/// Warsaw" over a roster holding 31 of them, because <c>expert_list</c> could only return all 505
+/// rows and the Tool Result Budget refused them. The filters are the fix, and they live here — in
+/// the Application layer, the single behaviour seam — so REST and MCP narrow identically.
+/// </summary>
+public class ExpertListFilterTests
+{
+    private static AppDbContext NewDb() =>
+        new(new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase($"list-filter-{Guid.NewGuid()}")
+            .Options);
+
+    private static ExpertService NewService(AppDbContext db, IRosterAudienceProvider? audience = null) =>
+        new(db, new SaveExpertValidator(), new UpdateExpertValidator(), new RosterQueryValidator(),
+            new UnrestrictedOwnershipScopeProvider(), audience ?? new AdministrationAudienceProvider(),
+            TimeProvider.System);
+
+    private static SaveExpertDto Dto(string last, string? location, string email) =>
+        new("Ada", last, "Senior Engineer", email, null, location, null, null);
+
+    private static async Task<ExpertService> SeededAsync(AppDbContext db)
+    {
+        var svc = NewService(db);
+        await svc.CreateAsync(Dto("Kowalski", "Warsaw, Poland", "k@example.com"));
+        await svc.CreateAsync(Dto("Nowak", "warsaw, poland", "n@example.com"));
+        await svc.CreateAsync(Dto("Schmidt", "Berlin, Germany", "s@example.com"));
+        await svc.CreateAsync(Dto("Nowhere", null, "x@example.com"));
+        return svc;
+    }
+
+    [Fact]
+    public async Task A_location_filter_matches_a_case_insensitive_substring_and_counts_the_match()
+    {
+        await using var db = NewDb();
+        var svc = await SeededAsync(db);
+
+        var result = await svc.ListAsync(new ExpertListQuery(Location: "WARSAW"));
+
+        result.Total.Should().Be(2);
+        result.Items.Select(e => e.LastName).Should().BeEquivalentTo("Kowalski", "Nowak");
+    }
+
+    [Fact]
+    public async Task An_expert_with_no_location_never_matches_a_location_filter()
+    {
+        await using var db = NewDb();
+        var svc = await SeededAsync(db);
+
+        var result = await svc.ListAsync(new ExpertListQuery(Location: "a"));
+
+        result.Items.Should().NotContain(e => e.LastName == "Nowhere");
+    }
+
+    [Fact]
+    public async Task No_filter_is_the_whole_bench_and_its_total()
+    {
+        await using var db = NewDb();
+        var svc = await SeededAsync(db);
+
+        var result = await svc.ListAsync(new ExpertListQuery());
+
+        result.Total.Should().Be(4);
+        result.Items.Should().HaveCount(4);
+    }
+
+    /// <summary>A needle naming no status matches nobody. The alternative — ignoring an
+    /// unrecognised filter — answers a narrowed question with the whole bench, which is the same
+    /// class of wrong answer EXP-94 is about.</summary>
+    [Fact]
+    public async Task A_status_filter_matches_the_status_name_and_an_unknown_one_matches_nobody()
+    {
+        await using var db = NewDb();
+        var svc = await SeededAsync(db);
+        await svc.CreateDraftAsync(Dto("Draftsman", "Warsaw, Poland", ""));
+
+        (await svc.ListAsync(new ExpertListQuery(Status: "ACTIVE"))).Total.Should().Be(4);
+        (await svc.ListAsync(new ExpertListQuery(Status: "draft", IncludeDrafts: true)))
+            .Items.Should().ContainSingle(e => e.Status == ExpertStatus.Draft);
+        (await svc.ListAsync(new ExpertListQuery(Status: "retired"))).Total.Should().Be(0);
+    }
+
+    /// <summary>
+    /// RosterVisibility is applied exactly as it was, and before the filters — so a paused expert
+    /// in Warsaw is neither listed nor counted. A total that included them would leak the one fact
+    /// the pause exists to withhold.
+    /// </summary>
+    [Fact]
+    public async Task A_paused_expert_is_neither_listed_nor_counted_for_the_bench_audience()
+    {
+        await using var db = NewDb();
+        var seeded = await SeededAsync(db);
+        var paused = await db.Experts.SingleAsync(e => e.LastName == "Kowalski");
+        paused.HiddenAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync();
+
+        var bench = NewService(db, new BenchAudienceProvider());
+        var benchResult = await bench.ListAsync(new ExpertListQuery(Location: "warsaw"));
+
+        benchResult.Total.Should().Be(1, "the paused Warsaw expert is not on the bench");
+        benchResult.Items.Should().OnlyContain(e => e.LastName == "Nowak");
+
+        // The administration audience still sees them — the pause hides a row from the bench, not
+        // from the people accountable for it.
+        (await seeded.ListAsync(new ExpertListQuery(Location: "warsaw"))).Total.Should().Be(2);
+    }
+
+    /// <summary>The unfiltered overload is what the REST bench list and every existing caller
+    /// use; it must keep returning exactly the rows it always did.</summary>
+    [Fact]
+    public async Task The_bare_list_overload_still_returns_the_same_rows()
+    {
+        await using var db = NewDb();
+        var svc = await SeededAsync(db);
+
+        var rows = await svc.ListAsync();
+
+        rows.Select(e => e.LastName).Should().Equal("Kowalski", "Nowak", "Nowhere", "Schmidt");
+    }
+}

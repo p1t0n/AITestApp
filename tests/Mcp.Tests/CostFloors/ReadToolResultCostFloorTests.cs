@@ -126,6 +126,35 @@ public sealed class ReadToolResultCostFloorTests(ITestOutputHelper output) : IAs
                 "the default page must still hold the whole catalog");
     }
 
+    /// <summary>
+    /// The other half of EXP-94's trade, measured rather than asserted. The unfiltered sweep above
+    /// is what the Tool Result Budget refuses; this is the call the filter makes possible, and the
+    /// gap between the two numbers is the whole argument for paying +132 tokens of schema on every
+    /// iteration of every agent shown this tool.
+    /// </summary>
+    [Fact]
+    public async Task Expert_list_filtered_by_location_is_a_fraction_of_the_whole_bench()
+    {
+        await using var client = await McpTestHost.ConnectAsync(_factory, McpTestHost.MintToken(McpTestHost.ReadScope));
+
+        // "Warsaw, Poland" is the seeded roster's own data — the same place the bug was reported
+        // against, three of the 45 rather than 31 of the 505.
+        var result = await client.CallToolAsync(
+            "expert_list", new Dictionary<string, object?> { ["location"] = "warsaw" });
+        var text = McpTestHost.Text(result);
+        var tokens = TokenEstimate.Of(text);
+        output.WriteLine($"expert_list (location=warsaw) {tokens,6} tokens");
+
+        tokens.Should().BeLessThanOrEqualTo(
+            ExpertToJob.CostFloors.CostFloors.ExpertListFilteredCeiling,
+            "the filtered call is the one a count question should make");
+
+        // And it is a real answer, not an empty one that happens to be cheap.
+        var page = JsonDocument.Parse(text).RootElement;
+        page.GetProperty("total").GetInt32().Should().Be(3);
+        page.GetProperty("items").GetArrayLength().Should().Be(3);
+    }
+
     [Fact]
     public async Task Every_read_tool_is_either_ratcheted_or_declared_model_backed()
     {
