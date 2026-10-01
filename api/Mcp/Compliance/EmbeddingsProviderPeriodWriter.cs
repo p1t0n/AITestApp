@@ -30,7 +30,7 @@ public sealed class EmbeddingsProviderPeriodWriter(
         try
         {
             using var scope = scopeFactory.CreateScope();
-            var history = scope.ServiceProvider.GetRequiredService<IEmbeddingsProviderHistory>();
+            var history = scope.ServiceProvider.GetRequiredService<EmbeddingsProviderHistory>();
             await history.RecordActiveProviderAsync(provider.ToString(), cancellationToken);
         }
         catch (Exception ex)

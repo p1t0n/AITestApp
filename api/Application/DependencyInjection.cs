@@ -54,7 +54,7 @@ public static class DependencyInjection
 
         // Reads the provider history the MCP host writes. Scoped because it reads through the
         // DbContext; the access view is the only caller.
-        services.AddScoped<Compliance.IEmbeddingsProviderHistory, Compliance.EmbeddingsProviderHistory>();
+        services.AddScoped<Compliance.EmbeddingsProviderHistory>();
 
         // Every host that composes the Application layer needs a clock now that lawful-basis
         // records are timestamped, and only two of the three registered one. TryAdd so a host that

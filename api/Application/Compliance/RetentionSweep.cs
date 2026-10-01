@@ -17,13 +17,8 @@ public sealed record RetentionSweepResult(int Examined, int Expired);
 /// in one place, and a parallel implementation would drift from it. It is only a question of
 /// when.</para>
 /// </summary>
-public interface IRetentionSweep
-{
-    Task<RetentionSweepResult> RunOnceAsync(CancellationToken ct = default);
-}
-
 public class RetentionSweep(
-    IAppDbContext db, IRetentionErasure erasure, TimeProvider clock) : IRetentionSweep
+    IAppDbContext db, IRetentionErasure erasure, TimeProvider clock)
 {
     public async Task<RetentionSweepResult> RunOnceAsync(CancellationToken ct = default)
     {

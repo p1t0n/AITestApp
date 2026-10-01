@@ -218,8 +218,6 @@ builder.Services.AddScoped<ExpertToJob.Application.Search.IExpertFilterService,
     ExpertToJob.Application.Search.ExpertFilterService>();
 builder.Services.AddScoped<ExpertToJob.Agents.RosterScan.RosterScanRunner>();
 builder.Services.AddSingleton<ExpertToJob.Agents.RosterScan.RosterScanQueue>();
-builder.Services.AddSingleton<ExpertToJob.Agents.RosterScan.IRosterScanQueue>(sp =>
-    sp.GetRequiredService<ExpertToJob.Agents.RosterScan.RosterScanQueue>());
 builder.Services.AddHostedService<ExpertToJob.Agents.RosterScan.RosterScanWorker>();
 // JD-only match (P1T-103): shortlist retrieval + per-candidate match fan-out, no narrative.
 builder.Services.AddSingleton(sp => new JdMatchRunService(
@@ -892,7 +890,7 @@ app.MapPost("/agents/staffing/proposals/{id:guid}/decision", async (
 app.MapPost("/agents/roster-scan", async (
     ExpertToJob.Agents.RosterScan.RosterScanRequest request,
     ExpertToJob.Agents.RosterScan.ScoringJobStore scanStore,
-    ExpertToJob.Agents.RosterScan.IRosterScanQueue scanQueue,
+    ExpertToJob.Agents.RosterScan.RosterScanQueue scanQueue,
     ExpertToJob.Agents.RosterScan.IRosterDigestSource digestSource,
     ExpertToJob.Application.Search.IExpertFilterService expertFilters,
     ExpertToJob.Agents.RosterScan.RosterScanOptions scanOptions,

@@ -20,7 +20,7 @@ public static class McpAuthServiceCollectionExtensions
         services.AddOptions<McpClientAuthOptions>(agentKey)
             .Bind(config.GetSection($"{McpClientAuthOptions.Section}:{agentKey}"));
 
-        services.AddKeyedSingleton<IAccessTokenProvider>(agentKey, (sp, key) =>
+        services.AddKeyedSingleton<ClientCredentialsTokenProvider>(agentKey, (sp, key) =>
         {
             var options = sp.GetRequiredService<IOptionsMonitor<McpClientAuthOptions>>().Get((string)key!);
             return new ClientCredentialsTokenProvider(
@@ -33,7 +33,7 @@ public static class McpAuthServiceCollectionExtensions
             return new McpToolSource(
                 (string)key!,
                 sp.GetRequiredService<IOptions<McpServerOptions>>(),
-                sp.GetRequiredKeyedService<IAccessTokenProvider>(key),
+                sp.GetRequiredKeyedService<ClientCredentialsTokenProvider>(key),
                 new AgentToolAllowlist(options.Tools),
                 sp.GetRequiredService<ILoggerFactory>());
         });

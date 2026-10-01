@@ -143,7 +143,7 @@ public class AccessAndExportService(
     IProcessingRecordService records,
     ChatProviderDisclosure chatProvider,
     EmbeddingsProviderDisclosure embeddingsProvider,
-    IEmbeddingsProviderHistory embeddingsHistory,
+    EmbeddingsProviderHistory embeddingsHistory,
     TimeProvider clock) : IAccessAndExportService
 {
     public async Task<AccessViewDto> AccessAsync(Guid expertId, CancellationToken ct = default)

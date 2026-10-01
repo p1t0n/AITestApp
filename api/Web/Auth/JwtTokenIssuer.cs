@@ -14,10 +14,11 @@ namespace ExpertToJob.Web.Auth;
 /// what every authorization policy reads, and "tv" pins the session to a generation of the account
 /// so bumping <c>User.TokenVersion</c> refuses every token already out there.
 /// </summary>
-public sealed class JwtTokenIssuer(IOptions<AuthOptions> options, TimeProvider clock) : IJwtTokenIssuer
+public sealed class JwtTokenIssuer(IOptions<AuthOptions> options, TimeProvider clock)
 {
     private readonly JwtOptions _jwt = options.Value.Jwt;
 
+    /// <summary>Mints a signed session token for the user. Returns the token and its expiry.</summary>
     public (string Token, DateTimeOffset ExpiresAt) Issue(User user)
     {
         var now = clock.GetUtcNow();

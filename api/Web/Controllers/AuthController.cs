@@ -24,9 +24,9 @@ namespace ExpertToJob.Web.Controllers;
 [Route("api/auth")]
 public class AuthController(
     IFido2 fido2,
-    IChallengeStore challenges,
+    DistributedCacheChallengeStore challenges,
     IControlWordHasher controlWords,
-    IJwtTokenIssuer tokens,
+    JwtTokenIssuer tokens,
     IAppDbContext db,
     IClaimService claims,
     TimeProvider clock) : ControllerBase

@@ -3,15 +3,10 @@ using ExpertToJob.Domain.Entities;
 
 namespace ExpertToJob.Agents.RosterScan;
 
-/// <summary>The submit endpoint's hand-off to the background runner: enqueue and return.</summary>
-public interface IRosterScanQueue
-{
-    void Enqueue(Guid jobId);
-}
-
-/// <summary>Unbounded in-process channel (the Microsoft queue-service pattern): submissions never
-/// block, the worker drains one job at a time — the RPM limiter paces the model calls anyway.</summary>
-public sealed class RosterScanQueue : IRosterScanQueue
+/// <summary>The submit endpoint's hand-off to the background runner: enqueue and return. An
+/// unbounded in-process channel (the Microsoft queue-service pattern): submissions never block,
+/// the worker drains one job at a time — the RPM limiter paces the model calls anyway.</summary>
+public sealed class RosterScanQueue
 {
     private readonly Channel<Guid> _channel = Channel.CreateUnbounded<Guid>();
 

@@ -258,11 +258,11 @@ the agent surfaces on the old rule, and the Web suite stays green while it does.
 ## Ceremony challenge handling
 
 WebAuthn ceremonies are two round-trips (options → authenticator → verify). The pending options
-(which carry the server challenge) are stashed in a single-use, TTL'd `IChallengeStore`
-(`DistributedCacheChallengeStore`, in-memory by default — swap for Redis when multi-instance). The
+(which carry the server challenge) are stashed in a single-use, TTL'd
+`DistributedCacheChallengeStore` (in-memory by default — swap for Redis when multi-instance). The
 client gets a ceremony id and posts it back to complete the ceremony.
 
 ## Built here (P1T-17) vs later
 
-- **Here:** Fido2 registration, `IJwtTokenIssuer`, `IChallengeStore`, shared JWT validation in both services, `UseAuthentication/UseAuthorization` wired.
-- **Later:** signup (P1T-18), signin (P1T-19), recovery (P1T-20) endpoints + UI drive the ceremonies via `IFido2` + `IChallengeStore` + `IJwtTokenIssuer`. The app-wide `[Authorize]` gate is P1T-22.
+- **Here:** Fido2 registration, `JwtTokenIssuer`, `DistributedCacheChallengeStore`, shared JWT validation in both services, `UseAuthentication/UseAuthorization` wired.
+- **Later:** signup (P1T-18), signin (P1T-19), recovery (P1T-20) endpoints + UI drive the ceremonies via `IFido2` + `DistributedCacheChallengeStore` + `JwtTokenIssuer`. The app-wide `[Authorize]` gate is P1T-22.

@@ -5,7 +5,7 @@ using Microsoft.Extensions.Options;
 namespace ExpertToJob.Mcp.Search;
 
 /// <summary>
-/// Background scheduler for semantic roster search: runs one <see cref="ISearchIndexReconciler"/>
+/// Background scheduler for semantic roster search: runs one <see cref="SearchIndexReconciler"/>
 /// pass every <see cref="SearchIndexOptions.IntervalSeconds"/>. A failed pass is logged and retried
 /// on the next tick (dirty chunks stay dirty until embedded), so the index self-heals. The
 /// reconciler holds all the logic; this is only the loop + a per-pass DI scope.
@@ -44,7 +44,7 @@ public sealed class ReconcileWorker : BackgroundService
             try
             {
                 using var scope = _scopeFactory.CreateScope();
-                var reconciler = scope.ServiceProvider.GetRequiredService<ISearchIndexReconciler>();
+                var reconciler = scope.ServiceProvider.GetRequiredService<SearchIndexReconciler>();
                 await reconciler.RunOnceAsync(stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)

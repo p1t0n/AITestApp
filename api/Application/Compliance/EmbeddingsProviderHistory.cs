@@ -9,23 +9,9 @@ namespace ExpertToJob.Application.Compliance;
 /// actually runs the embedder (EXP-66, <c>manuals/adr-embeddings-provider-seam.md</c> §2
 /// decision 17).
 /// </summary>
-public interface IEmbeddingsProviderHistory
+public sealed class EmbeddingsProviderHistory(IAppDbContext db, TimeProvider clock)
 {
     /// <summary>Every period this deployment has had, oldest first.</summary>
-    Task<IReadOnlyList<EmbeddingsProviderPeriod>> PeriodsAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Records that <paramref name="provider"/> is the provider running now. Closes the open period
-    /// and opens a new one when that is a change, and writes nothing at all when it is not — which
-    /// is every ordinary restart.
-    /// </summary>
-    Task RecordActiveProviderAsync(string provider, CancellationToken ct = default);
-}
-
-/// <inheritdoc />
-public sealed class EmbeddingsProviderHistory(IAppDbContext db, TimeProvider clock)
-    : IEmbeddingsProviderHistory
-{
     public async Task<IReadOnlyList<EmbeddingsProviderPeriod>> PeriodsAsync(
         CancellationToken ct = default)
     {
@@ -37,6 +23,11 @@ public sealed class EmbeddingsProviderHistory(IAppDbContext db, TimeProvider clo
         return [.. periods.OrderBy(p => p.StartedAt ?? DateTimeOffset.MinValue)];
     }
 
+    /// <summary>
+    /// Records that <paramref name="provider"/> is the provider running now. Closes the open period
+    /// and opens a new one when that is a change, and writes nothing at all when it is not — which
+    /// is every ordinary restart.
+    /// </summary>
     public async Task RecordActiveProviderAsync(string provider, CancellationToken ct = default)
     {
         var periods = await db.EmbeddingsProviderPeriods.ToListAsync(ct);

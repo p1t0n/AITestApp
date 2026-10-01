@@ -39,7 +39,7 @@ public static class SearchIndexingServiceCollectionExtensions
         services.AddSingleton(sp => new SearchIndexMetrics(sp.GetService<IMeterFactory>()));
 
         // Scoped: share the request/scope AppDbContext; the worker opens a scope per pass.
-        services.AddScoped<ISearchIndexReconciler, SearchIndexReconciler>();
+        services.AddScoped<SearchIndexReconciler>();
         services.AddScoped<ISemanticSearchService, SemanticSearchService>();
         services.AddScoped<IShortlistSearchService, SemanticSearchService>();
         services.AddScoped<IExemplarSearchService, ExemplarSearchService>();
