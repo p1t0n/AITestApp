@@ -122,12 +122,14 @@ Merging stays human; this step only records what a human already merged.
    * `npm` — yes. `npm test`, `npm run typecheck`, `npm run lint`.
    * `docker` — yes, including Testcontainers: the Postgres and Keycloak suites really do start
      containers here.
-   * `dotnet` — **yes**, 10.0.400. `dotnet restore`, `build`, `test` and `run` all work; the full
-     backend suite passes in about two minutes. The SDK is not part of the base image — it was
-     copied in from the host (P1T-226) because the egress allowlist permits `api.nuget.org` but
-     returns 403 for every SDK download host. If `dotnet: command not found` ever greets you, the
-     sandbox was created without the saved template; say so in the ticket rather than working
-     around it, and fall back to CI.
+   * `dotnet` — **yes**, two SDKs side by side: 10.0.401 and 11.0.100-rc.1.26425.128 (EXP-70).
+     The repo's `global.json` picks between them, so `dotnet --version` in the repo root is the
+     one that counts. `dotnet restore`, `build`, `test` and `run` all work; the full backend suite
+     passes in about two minutes. The SDKs are not part of the base image — they were copied in
+     from the host (P1T-226, EXP-70) because the egress allowlist permits `api.nuget.org` but
+     returns 403 for every SDK download host. If `dotnet: command not found` or "A compatible .NET
+     SDK was not found" ever greets you, the sandbox was created without the current saved
+     template; say so in the ticket rather than working around it, and fall back to CI.
    * `npm run test:e2e:container` — **yes** (EXP-38). Plain `npm run test:e2e` still fails on
      every spec with `browserType.launch: Executable doesn't exist`, because the allowlist blocks
      Playwright's browser download. The `:container` variant runs the same suite against the
