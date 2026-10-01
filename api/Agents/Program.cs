@@ -262,6 +262,32 @@ builder.Services.AddScoped(sp => new StaffingPipeline(
 
 var app = builder.Build();
 
+// The one mapping for "this host has no chat credential" (EXP-93). A missing key is a
+// configuration fault, not an upstream one: nothing was asked of anything, and retrying changes
+// nothing until someone sets it — so 503 with a title naming both places it is read from, rather
+// than the 502 an unreachable MCP server or a faulting model endpoint gets, and rather than the
+// 500 with an SDK stack trace this used to be.
+//
+// Here rather than in each handler's catch because it is true of every endpoint that calls a
+// model, including the ones whose own ladder degrades a model failure into a 200 (bench report):
+// a report that reads as normal is how a credential-less host stays invisible. Staffing is the
+// exception and handles its own, because its answer is a stream that has already started.
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next(context);
+    }
+    catch (ChatCredentialMissingException ex) when (!context.Response.HasStarted)
+    {
+        await Results.Problem(
+                title: ex.Title,
+                detail: ex.Message,
+                statusCode: StatusCodes.Status503ServiceUnavailable)
+            .ExecuteAsync(context);
+    }
+});
+
 app.UseAuthentication();
 app.UseAuthorization();
 

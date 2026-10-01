@@ -101,15 +101,27 @@ public static class ChatProviderServiceCollectionExtensions
                     .UseOpenTelemetry(sp.GetService<ILoggerFactory>())
                     .Build());
 
+        // The model client for one model id — or, on a host with no credential for the active
+        // provider, one that builds and refuses (EXP-93). Constructing has to succeed either way:
+        // every agent is a registration that resolves its chat client, so a client that threw
+        // while being built threw during endpoint parameter binding, outside the handler's try,
+        // and a missing key became a 500 with an SDK stack trace instead of a mapped response.
+        static IChatClient ClientFor(IServiceProvider sp, string model)
+        {
+            var credential = sp.GetRequiredService<ChatCredential>();
+            return credential.IsMissing
+                ? new UnavailableChatClient(credential, model)
+                : sp.GetRequiredService<OpenAIClient>().GetChatClient(model).AsIChatClient();
+        }
+
         // Default chat client: the model everyone uses unless overridden.
-        services.AddSingleton<IChatClient>(sp => Instrument(
-            sp, sp.GetRequiredService<OpenAIClient>().GetChatClient(models.Default).AsIChatClient()));
+        services.AddSingleton<IChatClient>(sp => Instrument(sp, ClientFor(sp, models.Default)));
 
         // One keyed client per agent that overrides the model.
         foreach (var (agentKey, model) in models.Agents)
         {
-            services.AddKeyedSingleton<IChatClient>(agentKey, (sp, _) => Instrument(
-                sp, sp.GetRequiredService<OpenAIClient>().GetChatClient(model).AsIChatClient()));
+            services.AddKeyedSingleton<IChatClient>(
+                agentKey, (sp, _) => Instrument(sp, ClientFor(sp, model)));
         }
 
         return services;
@@ -169,12 +181,15 @@ public static class ChatProviderServiceCollectionExtensions
     /// <summary>The credential for one provider, from that provider's own environment variable
     /// first and its own <c>ApiKey</c> config path second — and from nowhere else. The env-var read
     /// is by name on purpose rather than a bound configuration path: a credential is a name read
-    /// deliberately, not a path the options system happens to fill (ADR §2 decision 4).</summary>
-    private static string ResolveApiKey(ChatProvider provider, ChatProviderOptions cfg)
-        => Environment.GetEnvironmentVariable(ChatProviderOptions.ApiKeyVariableFor(provider))
-            is { Length: > 0 } fromEnvironment
-            ? fromEnvironment
-            : cfg.ApiKey;
+    /// deliberately, not a path the options system happens to fill (ADR §2 decision 4).
+    ///
+    /// <para>Registered as a singleton rather than captured in the client's closure (EXP-93), so
+    /// the provider-neutral half below can ask whether a key exists <b>before</b> building a client
+    /// that would throw without one — and so a test can substitute "this host has no credential"
+    /// without touching the process environment every other test shares.</para></summary>
+    private static void AddCredential(
+        IServiceCollection services, ChatProvider provider, ChatProviderOptions cfg)
+        => services.AddSingleton(_ => ChatCredential.Resolve(provider, cfg));
 
     /// <summary>
     /// The Gemini construction branch: one OpenAI-compatible client (endpoint + key) shared by every
@@ -189,10 +204,11 @@ public static class ChatProviderServiceCollectionExtensions
     private static ChatModels AddGeminiClient(IServiceCollection services, IConfiguration config)
     {
         var cfg = Bind(config, ChatProvider.Gemini);
+        AddCredential(services, ChatProvider.Gemini, cfg);
 
-        services.AddSingleton(_ =>
+        services.AddSingleton(sp =>
         {
-            var apiKey = ResolveApiKey(ChatProvider.Gemini, cfg);
+            var apiKey = sp.GetRequiredService<ChatCredential>().Key;
             var options = new OpenAIClientOptions
             {
                 Endpoint = new Uri(cfg.Endpoint),
@@ -229,10 +245,11 @@ public static class ChatProviderServiceCollectionExtensions
     private static ChatModels AddAzureFoundryClient(IServiceCollection services, IConfiguration config)
     {
         var cfg = Bind(config, ChatProvider.AzureFoundry);
+        AddCredential(services, ChatProvider.AzureFoundry, cfg);
 
-        services.AddSingleton(_ =>
+        services.AddSingleton(sp =>
         {
-            var apiKey = ResolveApiKey(ChatProvider.AzureFoundry, cfg);
+            var apiKey = sp.GetRequiredService<ChatCredential>().Key;
             return new OpenAIClient(
                 new ApiKeyCredential(apiKey),
                 new OpenAIClientOptions { Endpoint = new Uri(cfg.Endpoint) });
