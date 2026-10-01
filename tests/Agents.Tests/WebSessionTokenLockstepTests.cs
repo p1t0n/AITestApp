@@ -1,5 +1,5 @@
 using System.Net;
-using System.Text.Json;
+using ExpertToJob.Application.Auth;
 using ExpertToJob.Infrastructure.Persistence;
 using FluentAssertions;
 using FluentAssertions.Execution;
@@ -18,15 +18,24 @@ namespace ExpertToJob.Agents.Tests;
 /// and not the other silently 401s every agent call — the app still starts, still serves the SPA,
 /// and only the agent surface goes dark.
 ///
-/// <para>Hence three copies of one fact on purpose: the shipped Web config, the shipped Agents
-/// config, and the names pinned below. Two of them drifting is what this catches, and the third is
-/// what stops both drifting together into a name nobody chose.</para>
+/// <para>Since EXP-89 the two hosts no longer each ship a copy of the names: both fall back to
+/// <see cref="SessionIdentity"/>, in the layer both reference. So what this asserts is what the two
+/// hosts <em>resolve</em> — configuration first, shared constant second, exactly as each host reads
+/// it — rather than what two JSON files happen to spell. A deployment that overrides the names in
+/// one host's configuration and not the other's is still the drift, and still caught here.</para>
 ///
-/// <para>Deterministic: the Web config is JSON on disk (copied beside the test binary), and the
-/// Agents side is the real host's own configuration and its real JWT middleware.</para>
+/// <para>Hence three copies of one fact on purpose: what Web resolves, what Agents resolves, and the
+/// names pinned below. Two of them drifting is what this catches, and the third is what stops both
+/// drifting together into a name nobody chose.</para>
+///
+/// <para>Deterministic: the Web side is the shipped config on disk (copied beside the test binary)
+/// read the way the Web host binds it, and the Agents side is the real host's own configuration and
+/// its real JWT middleware.</para>
 /// </summary>
 public class WebSessionTokenLockstepTests
 {
+    // Pinned as literals, never as SessionIdentity.Issuer: the constant and the hosts agreeing is
+    // exactly what would hide a rename that moved all three together.
     private const string ExpectedIssuer = "experttojob";
     private const string ExpectedAudience = "experttojob-app";
 
@@ -34,11 +43,20 @@ public class WebSessionTokenLockstepTests
     /// 404 for an unknown id, unauthenticated it is a 401. The difference is the whole assertion.</summary>
     private const string AuthorizedProbe = "/agents/staffing/proposals/";
 
-    private static readonly JsonDocument WebSettings = JsonDocument.Parse(
-        File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "web-appsettings.json")));
+    private static readonly IConfigurationRoot WebSettings = new ConfigurationBuilder()
+        .AddJsonFile(Path.Combine(AppContext.BaseDirectory, "web-appsettings.json"))
+        .Build();
 
-    private static string WebJwt(string key) =>
-        WebSettings.RootElement.GetProperty("Auth").GetProperty("Jwt").GetProperty(key).GetString()!;
+    /// <summary>What the Web host resolves for a <c>Auth:Jwt</c> name: its shipped configuration if
+    /// it carries one, otherwise the shared constant its options class defaults to. The same two
+    /// steps <c>ExpertToJob.Web.Auth.JwtOptions</c> takes — Agents does not reference the Web
+    /// project, and that separation is precisely what can drift.</summary>
+    private static string WebJwt(string key) => WebSettings[$"Auth:Jwt:{key}"] ?? key switch
+    {
+        "Issuer" => SessionIdentity.Issuer,
+        "Audience" => SessionIdentity.Audience,
+        _ => throw new ArgumentOutOfRangeException(nameof(key), key, "No session-identity default."),
+    };
 
     private static WebApplicationFactory<Program> AgentsHost()
     {
@@ -65,8 +83,10 @@ public class WebSessionTokenLockstepTests
         using var _ = new AssertionScope();
         WebJwt("Issuer").Should().Be(ExpectedIssuer);
         WebJwt("Audience").Should().Be(ExpectedAudience);
-        agents["Auth:Jwt:Issuer"].Should().Be(ExpectedIssuer, "the Agents host validates what Web mints");
-        agents["Auth:Jwt:Audience"].Should().Be(ExpectedAudience, "the Agents host validates what Web mints");
+        (agents["Auth:Jwt:Issuer"] ?? SessionIdentity.Issuer).Should().Be(
+            ExpectedIssuer, "the Agents host validates what Web mints");
+        (agents["Auth:Jwt:Audience"] ?? SessionIdentity.Audience).Should().Be(
+            ExpectedAudience, "the Agents host validates what Web mints");
     }
 
     [Fact]

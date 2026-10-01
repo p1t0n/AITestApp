@@ -26,8 +26,11 @@ public static class SessionAuthExtensions
     {
         var signingKey = config["Auth:Jwt:SigningKey"]
             ?? throw new InvalidOperationException("Auth:Jwt:SigningKey is not configured.");
-        var issuer = config["Auth:Jwt:Issuer"] ?? "experttojob";
-        var audience = config["Auth:Jwt:Audience"] ?? "experttojob-app";
+        // The same two constants the Web host mints with, from the layer both hosts reference —
+        // not a literal here and a JSON line there (EXP-89). A deployment that overrides them has
+        // to override them in both hosts, which is the agreement P1T-176 was about.
+        var issuer = config["Auth:Jwt:Issuer"] ?? SessionIdentity.Issuer;
+        var audience = config["Auth:Jwt:Audience"] ?? SessionIdentity.Audience;
 
         services
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

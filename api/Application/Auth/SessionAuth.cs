@@ -23,6 +23,32 @@ public static class SessionClaims
 }
 
 /// <summary>
+/// Who the session JWT says it is from, and who it is for. The Web host mints with these and
+/// <b>both</b> hosts validate against them, from separate processes that share no configuration
+/// file — so the values live once, here, in the layer both reference.
+///
+/// <para>Code constants rather than shipped <c>Auth:Jwt</c> JSON lines (EXP-89). These are not an
+/// operator knob: they are the name of this product's session, pinned by
+/// <c>Agents.Tests/WebSessionTokenLockstepTests</c> so that neither host can drift and neither can
+/// both hosts drift together into a name nobody chose. A deployment that really does need a
+/// different issuer still sets <c>Auth:Jwt:Issuer</c> — in both hosts, which is the point: two
+/// copies of a JSON line are what made P1T-176, where a rename landing in one
+/// <c>appsettings.json</c> and not the other 401s every agent call while the app still starts and
+/// still serves the SPA.</para>
+///
+/// <para>The signing key is deliberately not here. It is a secret, it differs per environment, and
+/// it has no default worth shipping.</para>
+/// </summary>
+public static class SessionIdentity
+{
+    /// <summary>The <c>iss</c> every session token carries.</summary>
+    public const string Issuer = "experttojob";
+
+    /// <summary>The <c>aud</c> every session token carries.</summary>
+    public const string Audience = "experttojob-app";
+}
+
+/// <summary>
 /// Authorization policy names. A policy, not a bare role string, so an endpoint's declaration reads
 /// as an audience ("this is staff") and the requirements behind it can grow.
 /// </summary>
