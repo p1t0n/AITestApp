@@ -74,7 +74,7 @@ export const NAV: NavPlace[] = [
  *
  * <p>My CV first, because it is the landing and what they came to do.</p>
  */
-export const USER_NAV: NavPlace[] = [
+const USER_NAV: NavPlace[] = [
   { label: "My CV", to: "/me/cv", icon: <BadgeOutlinedIcon /> },
   { label: "Privacy & data", to: "/me/privacy", icon: <ShieldOutlinedIcon /> },
 ];

@@ -24,7 +24,7 @@ export const EXPIRY_HINT_DAYS = 14;
 /** How long after its last turn a conversation is still "the one you were in" — the same 30
  * minutes the in-memory thread store used to expire on, kept as a *resume* rule now that nothing
  * expires (ADR §4). Past it, opening the dock starts fresh rather than re-opening yesterday. */
-export const RESUME_WINDOW_MS = 30 * 60 * 1000;
+const RESUME_WINDOW_MS = 30 * 60 * 1000;
 
 export type HistoryGroup = "Today" | "This week" | "Older";
 

@@ -101,7 +101,7 @@ export function useThemeMode(): ThemeMode {
  */
 export type ThemeModeChoice = ThemeMode | "system";
 
-export function getModeChoice(): ThemeModeChoice {
+function getModeChoice(): ThemeModeChoice {
   return getModeOverride() ?? "system";
 }
 

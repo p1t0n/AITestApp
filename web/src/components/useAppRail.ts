@@ -31,7 +31,7 @@ export const RAIL_COLLAPSED_WIDTH = 64;
 export const RAIL_CONTENT_FLOOR = 720;
 
 /** Below `md` the rail has no room to sit beside the app, so it becomes a temporary drawer. */
-export const RAIL_NARROW_QUERY = "(max-width:899.95px)";
+const RAIL_NARROW_QUERY = "(max-width:899.95px)";
 
 /**
  * How much horizontal space the rail is currently covering, published on the document root by

@@ -13,7 +13,7 @@ import path from "node:path";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
-export const PORTS = { db: 55433, api: 5079, spa: 5174, browser: 5175 };
+const PORTS = { db: 55433, api: 5079, spa: 5174, browser: 5175 };
 const CONTAINER = "experttojob-e2e-db";
 /** The migrator and the API have to name the same database; one copy is how they keep agreeing. */
 const DB_CONNECTION =

@@ -26,7 +26,7 @@ export function emittedCss(): string {
 }
 
 /** The `@media print{…}` blocks of the emitted CSS, brace-matched so nested rules stay whole. */
-export function printBlocks(): string[] {
+function printBlocks(): string[] {
   const css = emittedCss();
   const blocks: string[] = [];
   const opener = /@mediaprint\{/g;

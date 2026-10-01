@@ -57,5 +57,3 @@ export function TransparencyNoticeText() {
     </Box>
   );
 }
-
-export default TransparencyNoticeText;
