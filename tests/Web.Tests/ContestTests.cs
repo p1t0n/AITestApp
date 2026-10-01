@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using ExpertToJob.Application.Compliance;
 using ExpertToJob.Domain.Entities;
 using ExpertToJob.Domain.Enums;
@@ -107,6 +108,39 @@ public class ContestTests(WebApiFactory factory)
 
         (await (await staff.GetAsync("/api/contests")).ReadOkAsync<List<ContestQueueItemDto>>())
             .Should().Contain(c => c.ScoringCandidateId == world.CandidateId);
+    }
+
+    /// <summary>
+    /// The outcome's wire and stored spelling, frozen as literals (EXP-76). The review body a
+    /// Service Manager posts, the JSON that comes back, and the column the audit reads are all the
+    /// same two strings, and no refactor of the type behind them gets to change that.
+    /// </summary>
+    [Theory]
+    [InlineData("upheld")]
+    [InlineData("overturned")]
+    public async Task A_recorded_outcome_is_that_literal_string_on_the_wire_and_in_the_column(string outcome)
+    {
+        var world = await GivenAScoredPersonAsync();
+        var staff = factory.CreateAuthenticatedClient();
+
+        await world.Client.PostAsJsonAsync(
+            "/api/contests", new { scoringCandidateId = world.CandidateId, view = "Please look." });
+
+        var response = await staff.PostAsJsonAsync(
+            $"/api/contests/{world.CandidateId}/review", new { outcome, response = "Noted." });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("outcome").GetString().Should().Be(outcome);
+
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var stored = await db.Database
+            .SqlQueryRaw<string?>(
+                """SELECT "ContestOutcome" AS "Value" FROM "ScoringJobCandidates" WHERE "Id" = {0}""",
+                world.CandidateId)
+            .ToListAsync();
+        stored.Single().Should().Be(outcome);
     }
 
     // ---- The boundaries ----------------------------------------------------------------------------
