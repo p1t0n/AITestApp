@@ -105,7 +105,7 @@ just an OpenAI-compatible endpoint + key + model id
 
 What blocks a second provider today: there is exactly **one** `OpenAIClient` singleton, and a
 per-agent override changes the *model id only*
-(`api/Agents/Configuration/AgentsOptions.cs` → `GeminiOptions.Agents`). Cloudflare needs its own
+(`api/Agents/Configuration/AgentsOptions.cs` → `ChatProviderOptions.Agents`). Cloudflare needs its own
 endpoint (account-id in the path) and its own key, so the config shape has to widen from
 `agent → model` to `agent → { endpoint, apiKey, model }`, with the current Gemini block as the
 default profile. `MeteringChatClient` and the OpenTelemetry wrapper are per-client and unaffected.

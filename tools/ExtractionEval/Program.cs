@@ -42,7 +42,7 @@ if (string.IsNullOrWhiteSpace(apiKey))
 }
 
 // The production wiring (endpoint, compat handler, thought-signature policy, pinned model).
-var cfg = new GeminiOptions();
+var cfg = ChatProviderOptions.Defaults(ChatProvider.Gemini);
 var options = new OpenAIClientOptions
 {
     Endpoint = new Uri(cfg.Endpoint),

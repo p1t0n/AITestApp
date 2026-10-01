@@ -183,7 +183,7 @@ public class CloudflareWorkersAiGateTests(ITestOutputHelper output)
     /// policy, pinned model) without metering/OTel — the control measures the wire, not decorators.</summary>
     private static IChatClient BuildGeminiChatClient()
     {
-        var cfg = new GeminiOptions();
+        var cfg = ChatProviderOptions.Defaults(ChatProvider.Gemini);
         var options = new OpenAIClientOptions
         {
             Endpoint = new Uri(cfg.Endpoint),

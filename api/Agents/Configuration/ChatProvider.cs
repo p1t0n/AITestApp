@@ -22,11 +22,12 @@ namespace ExpertToJob.Agents.Configuration;
 public enum ChatProvider
 {
     /// <summary>The incumbent: the Gemini free tier through its OpenAI-compatible endpoint, with
-    /// the two shims this repo carries for it. Bound from <see cref="GeminiOptions"/>.</summary>
+    /// the two shims this repo carries for it. Bound from
+    /// <see cref="ChatProviderOptions.SectionFor"/>'s <c>Ai:Gemini</c> block.</summary>
     Gemini,
 
     /// <summary>An Azure OpenAI deployment reached through the plain OpenAI SDK against the
-    /// resource's <c>/openai/v1/</c> endpoint. Bound from <see cref="AzureFoundryOptions"/>, whose
+    /// resource's <c>/openai/v1/</c> endpoint. Bound from the <c>Ai:AzureFoundry</c> block, whose
     /// <c>Model</c> carries a <b>deployment name</b> rather than a model id, and built by a branch
     /// that deliberately attaches neither Gemini shim (EXP-17, ADR §3).</summary>
     AzureFoundry,

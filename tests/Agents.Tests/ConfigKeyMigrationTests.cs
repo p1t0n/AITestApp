@@ -27,6 +27,9 @@ public class ConfigKeyMigrationTests
     /// <summary>The legacy prefix, never written as one literal — see the class remarks.</summary>
     private const string LegacyPrefix = "Gemini" + ":";
 
+    /// <summary>The section Gemini's chat and embedding keys actually live under today.</summary>
+    private static readonly string GeminiSection = ChatProviderOptions.SectionFor(ChatProvider.Gemini);
+
     /// <summary>The needle. The lookbehinds are load-bearing rather than cosmetic.
     ///
     /// <para><c>Ai:</c> + the old prefix is what every migrated site now spells, so a plain
@@ -64,7 +67,7 @@ public class ConfigKeyMigrationTests
     [InlineData("config[\"" + LegacyPrefix + "ApiKey\"]", true)]
     [InlineData("[\"Ai:" + LegacyPrefix + "Model\"] = \"x\"", false)]
     [InlineData("case EmbeddingsProvider.Gemini:", false)]
-    [InlineData("GeminiOptions.Section", false)]
+    [InlineData("ChatProviderOptions.SectionFor(ChatProvider.Gemini)", false)]
     public void The_needle_matches_a_leftover_key_and_nothing_else(string line, bool isOffender)
         => LegacyKey.IsMatch(line).Should().Be(isOffender);
 
@@ -171,17 +174,17 @@ public class ConfigKeyMigrationTests
             .AddJsonFile(Path.Combine(RepoRoot(), settingsFile))
             .Build();
 
-        config[$"{GeminiOptions.Section}:{key}"].Should().Be(expected,
-            $"'{settingsFile}' has to spell the path the options class reads ('{GeminiOptions.Section}'); "
+        config[$"{GeminiSection}:{key}"].Should().Be(expected,
+            $"'{settingsFile}' has to spell the path the options class reads ('{GeminiSection}'); "
             + "a mismatch binds to nothing and falls back to the property default in silence");
     }
 
     /// <summary>
     /// The shipped default chat backend is Azure OpenAI (EXP-41): Gemini's free tier is 500 model
     /// calls a day for the whole project, and EXP-40 measured one roster-qa question costing a user
-    /// their whole day. Literals, not property defaults — <see cref="AzureFoundryOptions"/>
-    /// defaults to empty strings, so an unbound block would look exactly like an unset one.
-    /// <see cref="AzureFoundryOptions.Model"/> is a DEPLOYMENT name (gpt-4.1-mini sits behind it).
+    /// their whole day. Literals, not property defaults — <see cref="ChatProviderOptions.Defaults"/>
+    /// are empty strings for Azure, so an unbound block would look exactly like an unset one.
+    /// <see cref="ChatProviderOptions.Model"/> is a DEPLOYMENT name (gpt-4.1-mini sits behind it).
     /// </summary>
     [Fact]
     public void The_shipped_agents_settings_select_the_azure_deployment()
@@ -191,7 +194,9 @@ public class ConfigKeyMigrationTests
             .Build();
 
         config["Ai:Chat:Provider"].Should().Be("AzureFoundry");
-        var azure = config.GetSection(AzureFoundryOptions.Section).Get<AzureFoundryOptions>()!;
+        var azure = config
+            .GetSection(ChatProviderOptions.SectionFor(ChatProvider.AzureFoundry))
+            .Get<ChatProviderOptions>()!;
         azure.Endpoint.Should().Be("https://experttojob-openai-swc.openai.azure.com/openai/v1/");
         azure.Model.Should().Be("gpt-4-1-mini");
         azure.ApiKey.Should().BeEmpty("the key comes from AZURE_FOUNDRY_API_KEY, never a tracked file");
@@ -207,8 +212,8 @@ public class ConfigKeyMigrationTests
     {
         Infrastructure.Embeddings.EmbeddingOptions
             .SectionFor(Infrastructure.Embeddings.EmbeddingsProvider.Gemini)
-            .Should().Be(GeminiOptions.Section);
-        GeminiOptions.Section.Should().Be("Ai:" + LegacyPrefix.TrimEnd(':'));
+            .Should().Be(GeminiSection);
+        GeminiSection.Should().Be("Ai:" + LegacyPrefix.TrimEnd(':'));
     }
 
     private static IEnumerable<(string Absolute, string Relative)> SourceFiles()

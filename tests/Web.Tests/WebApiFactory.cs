@@ -126,8 +126,8 @@ public sealed class WebApiFactory : WebApplicationFactory<Program>, IAsyncLifeti
 
         return MintHs256(
             key,
-            config["Auth:Jwt:Issuer"] ?? "experttojob",
-            config["Auth:Jwt:Audience"] ?? "experttojob-app",
+            config["Auth:Jwt:Issuer"] ?? SessionIdentity.Issuer,
+            config["Auth:Jwt:Audience"] ?? SessionIdentity.Audience,
             account);
     }
 

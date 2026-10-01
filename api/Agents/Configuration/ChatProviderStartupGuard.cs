@@ -19,8 +19,8 @@ namespace ExpertToJob.Agents.Configuration;
 /// halves of that rule are reachable by a test. It is not a second place a provider is chosen: it
 /// asks the seam which one is active and looks up that provider's credential, and the variable
 /// names it requires are the same constants the construction branches read
-/// (<see cref="GeminiOptions.ApiKeyVariable"/>, <see cref="AzureFoundryOptions.ApiKeyVariable"/>),
-/// so a guard cannot come to demand a key no branch would use.</para>
+/// (<see cref="ChatProviderOptions.ApiKeyVariableFor"/>), so a guard cannot come to demand a key no
+/// branch would use.</para>
 ///
 /// <para>Embeddings are not covered here and must not become conditional on the chat provider: they
 /// follow their own key and are registered in the MCP host, not this one. Their guard is
@@ -71,19 +71,11 @@ public static class ChatProviderStartupGuard
             + "See manuals/adr-chat-provider-seam.md.");
     }
 
-    /// <summary>Where the active provider's credential comes from. A new
-    /// <see cref="ChatProvider"/> member needs an entry here as well as a construction branch —
-    /// the throw says so rather than letting a provider boot Production unguarded.</summary>
+    /// <summary>Where the active provider's credential comes from — the same two lookups the
+    /// construction branch reads, so a new <see cref="ChatProvider"/> member that reaches here
+    /// without an entry in <see cref="ChatProviderOptions"/> throws there rather than booting
+    /// Production unguarded.</summary>
     private static (string Variable, string ConfigPath) CredentialFor(ChatProvider provider) =>
-        provider switch
-        {
-            ChatProvider.Gemini =>
-                (GeminiOptions.ApiKeyVariable, $"{GeminiOptions.Section}:ApiKey"),
-            ChatProvider.AzureFoundry =>
-                (AzureFoundryOptions.ApiKeyVariable, $"{AzureFoundryOptions.Section}:ApiKey"),
-            var unguarded => throw new InvalidOperationException(
-                $"'{ChatProviderServiceCollectionExtensions.ProviderKey}' bound to {unguarded}, "
-                + $"whose credential this guard does not know. A new {nameof(ChatProvider)} member "
-                + "needs an entry here."),
-        };
+        (ChatProviderOptions.ApiKeyVariableFor(provider),
+            $"{ChatProviderOptions.SectionFor(provider)}:ApiKey");
 }

@@ -45,8 +45,8 @@ internal static class AuthTestExtensions
         var config = factory.Services.GetRequiredService<IConfiguration>();
         var key = config["Auth:Jwt:SigningKey"]
             ?? throw new InvalidOperationException("Auth:Jwt:SigningKey missing from test host config.");
-        var issuer = config["Auth:Jwt:Issuer"] ?? "experttojob";
-        var audience = config["Auth:Jwt:Audience"] ?? "experttojob-app";
+        var issuer = config["Auth:Jwt:Issuer"] ?? SessionIdentity.Issuer;
+        var audience = config["Auth:Jwt:Audience"] ?? SessionIdentity.Audience;
 
         var client = factory.CreateClient();
         client.DefaultRequestHeaders.Authorization =
@@ -136,8 +136,8 @@ internal static class AuthTestExtensions
                 "Bearer",
                 MintHs256(
                     key,
-                    config["Auth:Jwt:Issuer"] ?? "experttojob",
-                    config["Auth:Jwt:Audience"] ?? "experttojob-app",
+                    config["Auth:Jwt:Issuer"] ?? SessionIdentity.Issuer,
+                    config["Auth:Jwt:Audience"] ?? SessionIdentity.Audience,
                     userId,
                     claims));
         return client;

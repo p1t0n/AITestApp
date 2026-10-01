@@ -51,8 +51,9 @@ public static class ChatProviderServiceCollectionExtensions
         {
             throw new InvalidOperationException(
                 $"Configuration still carries a top-level '{LegacySection}' section. These keys moved "
-                + $"to '{GeminiOptions.Section}' (e.g. '{GeminiOptions.Section}:Model', "
-                + $"'{GeminiOptions.Section}:ApiKey'), with the chat provider named by "
+                + $"to '{ChatProviderOptions.SectionFor(ChatProvider.Gemini)}' (e.g. "
+                + $"'{ChatProviderOptions.SectionFor(ChatProvider.Gemini)}:Model', "
+                + $"'{ChatProviderOptions.SectionFor(ChatProvider.Gemini)}:ApiKey'), with the chat provider named by "
                 + $"'{ProviderKey}'. The GEMINI_API_KEY environment variable is unchanged. "
                 + "See manuals/adr-chat-provider-seam.md.");
         }
@@ -155,6 +156,26 @@ public static class ChatProviderServiceCollectionExtensions
             : Enum.Parse<ChatProvider>(named);
     }
 
+    /// <summary>One provider's settings: its code defaults with its own configuration block bound
+    /// over them. The one place a chat provider's section is read, so the mapping lives only in
+    /// <see cref="ChatProviderOptions.SectionFor"/>.</summary>
+    private static ChatProviderOptions Bind(IConfiguration config, ChatProvider provider)
+    {
+        var options = ChatProviderOptions.Defaults(provider);
+        config.GetSection(ChatProviderOptions.SectionFor(provider)).Bind(options);
+        return options;
+    }
+
+    /// <summary>The credential for one provider, from that provider's own environment variable
+    /// first and its own <c>ApiKey</c> config path second — and from nowhere else. The env-var read
+    /// is by name on purpose rather than a bound configuration path: a credential is a name read
+    /// deliberately, not a path the options system happens to fill (ADR §2 decision 4).</summary>
+    private static string ResolveApiKey(ChatProvider provider, ChatProviderOptions cfg)
+        => Environment.GetEnvironmentVariable(ChatProviderOptions.ApiKeyVariableFor(provider))
+            is { Length: > 0 } fromEnvironment
+            ? fromEnvironment
+            : cfg.ApiKey;
+
     /// <summary>
     /// The Gemini construction branch: one OpenAI-compatible client (endpoint + key) shared by every
     /// model, carrying the two shims this endpoint needs. Per-agent clients differ only in the model
@@ -167,13 +188,11 @@ public static class ChatProviderServiceCollectionExtensions
     /// </summary>
     private static ChatModels AddGeminiClient(IServiceCollection services, IConfiguration config)
     {
-        var cfg = config.GetSection(GeminiOptions.Section).Get<GeminiOptions>() ?? new GeminiOptions();
+        var cfg = Bind(config, ChatProvider.Gemini);
 
         services.AddSingleton(_ =>
         {
-            var apiKey = Environment.GetEnvironmentVariable(GeminiOptions.ApiKeyVariable) is { Length: > 0 } envToken
-                ? envToken
-                : cfg.ApiKey;
+            var apiKey = ResolveApiKey(ChatProvider.Gemini, cfg);
             var options = new OpenAIClientOptions
             {
                 Endpoint = new Uri(cfg.Endpoint),
@@ -209,17 +228,11 @@ public static class ChatProviderServiceCollectionExtensions
     /// </summary>
     private static ChatModels AddAzureFoundryClient(IServiceCollection services, IConfiguration config)
     {
-        var cfg = config.GetSection(AzureFoundryOptions.Section).Get<AzureFoundryOptions>()
-                  ?? new AzureFoundryOptions();
+        var cfg = Bind(config, ChatProvider.AzureFoundry);
 
         services.AddSingleton(_ =>
         {
-            // Env var first, config second — the same explicit read the Gemini branch does for
-            // GEMINI_API_KEY, and for the same reason: a credential is a name read on purpose, not
-            // a configuration path bound by the options system (ADR §2 decision 4).
-            var apiKey = Environment.GetEnvironmentVariable(AzureFoundryOptions.ApiKeyVariable) is { Length: > 0 } envToken
-                ? envToken
-                : cfg.ApiKey;
+            var apiKey = ResolveApiKey(ChatProvider.AzureFoundry, cfg);
             return new OpenAIClient(
                 new ApiKeyCredential(apiKey),
                 new OpenAIClientOptions { Endpoint = new Uri(cfg.Endpoint) });

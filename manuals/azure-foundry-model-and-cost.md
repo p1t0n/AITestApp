@@ -399,7 +399,7 @@ Three things the spec must say out loud:
 1. **`model` carries the *deployment name*, not the model id.** *"Azure OpenAI always requires
    deployment name, even when using the model parameter"*
    ([create-resource](https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/create-resource)).
-   Our per-agent override (`AgentsOptions.cs` → `GeminiOptions.Agents`, `agent → model`) maps onto
+   Our per-agent override (`AgentsOptions.cs` → `ChatProviderOptions.Agents`, `agent → model`) maps onto
    `agent → deployment` unchanged, which is why per-agent routing falls out free.
 2. **No `GeminiCompatHandler`, no `GeminiThoughtSignaturePolicy`.** P1T-241 constraint 8 is
    satisfied by simply not attaching them — the Azure factory builds a bare `OpenAIClient`.
