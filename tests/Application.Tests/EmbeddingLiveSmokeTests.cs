@@ -52,7 +52,7 @@ public class EmbeddingLiveSmokeTests
         var batch = await embedder.EmbedAsync(["a senior backend engineer who led a payments rewrite"]);
 
         batch.Vectors.Should().ContainSingle();
-        batch.Vectors[0].Should().HaveCount(options.Dimensions);
+        batch.Vectors[0].Should().HaveCount(EmbeddingOptions.Dimensions);
         // The tag, not just the model: it is what every vector is stamped with and what all three
         // search paths compare within (EXP-65), so a live run is the one place it can be shown to
         // be the tag a real provider's real embedder produces.

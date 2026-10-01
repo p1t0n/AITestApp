@@ -1,4 +1,5 @@
 using System.Net;
+using ExpertToJob.Application.Auth;
 using ExpertToJob.Domain.Enums;
 using ExpertToJob.Infrastructure.Persistence;
 using FluentAssertions;
@@ -130,6 +131,53 @@ public class SessionRevocationTests
         var response = await client.GetAsync($"{AuthorizedProbe}{Guid.NewGuid()}");
 
         response.StatusCode.Should().BeOneOf(HttpStatusCode.Forbidden, HttpStatusCode.Unauthorized);
+    }
+
+    /// <summary>
+    /// "Who is this request from" is answered in exactly one place, and it is the same place the
+    /// revocation check above reads: <see cref="SessionRevocation.UserId"/> in the Application
+    /// layer. The Agents host carried a second copy of that parse (<c>Agents.Usage.UserClaims</c>,
+    /// EXP-88) — same two claim types, same <c>Guid.TryParse</c>, nineteen call sites — which is
+    /// the shape of duplication that costs nothing until the day one copy learns about a third
+    /// claim and the other does not. Then the surface this file guards accepts a principal the
+    /// revocation check cannot find an account for, or the reverse.
+    ///
+    /// <para>Swept over the host's own sources rather than asserted by reflection: a private
+    /// re-parse is just as capable of drifting as a public one, and only the source shows it.</para>
+    /// </summary>
+    [Fact]
+    public void The_agents_host_keeps_no_second_reader_of_the_session_subject()
+    {
+        var root = RepoRoot();
+        var agents = Path.Combine(root, "api", "Agents");
+        var separator = Path.DirectorySeparatorChar;
+
+        var offenders = Directory
+            .EnumerateFiles(agents, "*.cs", SearchOption.AllDirectories)
+            .Where(path => !path.Contains($"{separator}bin{separator}", StringComparison.Ordinal)
+                           && !path.Contains($"{separator}obj{separator}", StringComparison.Ordinal))
+            .Where(path => File.ReadAllText(path)
+                .Contains("ClaimTypes.NameIdentifier", StringComparison.Ordinal))
+            .Select(path => Path.GetRelativePath(root, path).Replace(separator, '/'))
+            .ToList();
+
+        offenders.Should().BeEmpty(
+            "the subject claim is read through SessionRevocation.UserId, which both hosts share; "
+            + "found a local parse in: " + string.Join(", ", offenders));
+    }
+
+    /// <summary>Walks up from the test binary until the solution file appears.</summary>
+    private static string RepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "ExpertToJob.slnx")))
+        {
+            dir = dir.Parent;
+        }
+
+        return dir?.FullName
+               ?? throw new InvalidOperationException(
+                   "Could not find ExpertToJob.slnx above the test binary; the source sweep cannot run.");
     }
 
     /// <summary>Liveness stays anonymous: an orchestrator has no session token.</summary>

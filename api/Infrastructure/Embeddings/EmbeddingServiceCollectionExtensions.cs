@@ -79,7 +79,7 @@ public static class EmbeddingServiceCollectionExtensions
             sp.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>(),
             provider,
             cfg.EmbeddingModel,
-            cfg.Dimensions,
+            EmbeddingOptions.Dimensions,
             sp.GetRequiredService<ILogger<OpenAICompatibleEmbedder>>(),
             clock: sp.GetService<TimeProvider>() ?? TimeProvider.System,
             quotaBreakerWindow: TimeSpan.FromSeconds(Math.Max(1, cfg.QuotaBreakerSeconds))));

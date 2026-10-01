@@ -10,6 +10,7 @@ using ExpertToJob.Agents.Handoff;
 using ExpertToJob.Agents.Mcp;
 using ExpertToJob.Agents.Staffing;
 using ExpertToJob.Agents.Usage;
+using ExpertToJob.Application.Auth;
 using ExpertToJob.Infrastructure;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
@@ -277,7 +278,7 @@ static IResult CapReached(WindowUsage w) => Results.Json(
 // GET /agents/usage -> the current user's usage across all windows + per-agent breakdown.
 app.MapGet("/agents/usage", async (ClaimsPrincipal user, IUsageService usage, CancellationToken ct) =>
 {
-    if (user.GetUserId() is not { } userId)
+    if (SessionRevocation.UserId(user) is not { } userId)
     {
         return Results.Unauthorized();
     }
@@ -314,7 +315,7 @@ app.MapPost("/agents/roster-qa", async (
         return Results.BadRequest(new { error = "question is required." });
     }
 
-    var userId = user.GetUserId();
+    var userId = SessionRevocation.UserId(user);
     if (userId is { } pre && await usage.FindExceededAsync(pre, ct) is { } exceeded)
     {
         return CapReached(exceeded);
@@ -357,7 +358,7 @@ app.MapGet("/agents/roster-qa/conversations", async (
     ClaimsPrincipal user,
     CancellationToken ct) =>
 {
-    if (user.GetUserId() is not { } userId)
+    if (SessionRevocation.UserId(user) is not { } userId)
     {
         return Results.Unauthorized();
     }
@@ -376,7 +377,7 @@ app.MapGet("/agents/roster-qa/conversations/{id:guid}", async (
     ClaimsPrincipal user,
     CancellationToken ct) =>
 {
-    if (user.GetUserId() is not { } userId)
+    if (SessionRevocation.UserId(user) is not { } userId)
     {
         return Results.Unauthorized();
     }
@@ -396,7 +397,7 @@ app.MapDelete("/agents/roster-qa/conversations/{id:guid}", async (
     ClaimsPrincipal user,
     CancellationToken ct) =>
 {
-    if (user.GetUserId() is not { } userId)
+    if (SessionRevocation.UserId(user) is not { } userId)
     {
         return Results.Unauthorized();
     }
@@ -413,7 +414,7 @@ app.MapDelete("/agents/roster-qa/conversations", async (
     ClaimsPrincipal user,
     CancellationToken ct) =>
 {
-    if (user.GetUserId() is not { } userId)
+    if (SessionRevocation.UserId(user) is not { } userId)
     {
         return Results.Unauthorized();
     }
@@ -445,7 +446,7 @@ app.MapPost("/agents/cv-tailoring", async (
         return Results.BadRequest(new { error = "jobDescription is required." });
     }
 
-    var userId = user.GetUserId();
+    var userId = SessionRevocation.UserId(user);
     if (userId is { } pre && await usage.FindExceededAsync(pre, ct) is { } exceeded)
     {
         return CapReached(exceeded);
@@ -497,7 +498,7 @@ app.MapPost("/agents/interview-kit", async (
         return Results.BadRequest(new { error = "jobDescription is required." });
     }
 
-    var userId = user.GetUserId();
+    var userId = SessionRevocation.UserId(user);
     if (userId is { } pre && await usage.FindExceededAsync(pre, ct) is { } exceeded)
     {
         return CapReached(exceeded);
@@ -562,7 +563,7 @@ app.MapPost("/agents/match", async (
         return Results.BadRequest(new { error = "jobDescription is required." });
     }
 
-    var userId = user.GetUserId();
+    var userId = SessionRevocation.UserId(user);
     if (userId is { } pre && await usage.FindExceededAsync(pre, ct) is { } exceeded)
     {
         return CapReached(exceeded);
@@ -635,7 +636,7 @@ app.MapPost("/agents/shortlist", async (
         return Results.BadRequest(new { error = "jobDescription is required." });
     }
 
-    var userId = user.GetUserId();
+    var userId = SessionRevocation.UserId(user);
     if (userId is { } pre && await usage.FindExceededAsync(pre, ct) is { } exceeded)
     {
         return CapReached(exceeded);
@@ -704,7 +705,7 @@ app.MapPost("/agents/resume-ingestion", async (
         return Results.BadRequest(new { error = "resumeText is required." });
     }
 
-    var userId = user.GetUserId();
+    var userId = SessionRevocation.UserId(user);
     if (userId is { } pre && await usage.FindExceededAsync(pre, ct) is { } exceeded)
     {
         return CapReached(exceeded);
@@ -764,7 +765,7 @@ app.MapPost("/agents/staffing", async (
         return Results.BadRequest(new { error = "jobDescription is required." });
     }
 
-    var userId = user.GetUserId();
+    var userId = SessionRevocation.UserId(user);
     if (userId is { } pre && await usage.FindExceededAsync(pre, http.RequestAborted) is { } exceeded)
     {
         return CapReached(exceeded);
@@ -801,7 +802,7 @@ app.MapPost("/agents/bench-report", async (
     IUsageService usage,
     CancellationToken ct) =>
 {
-    var userId = user.GetUserId();
+    var userId = SessionRevocation.UserId(user);
     if (userId is { } pre && await usage.FindExceededAsync(pre, ct) is { } exceeded)
     {
         return CapReached(exceeded);
@@ -838,7 +839,7 @@ app.MapGet("/agents/staffing/proposals/{id:guid}", async (
     CancellationToken ct) =>
 {
     // Identified users only — the same rule as the decision endpoint: approvers act by identity.
-    if (user.GetUserId() is null)
+    if (SessionRevocation.UserId(user) is null)
     {
         return Results.Forbid();
     }
@@ -864,7 +865,7 @@ app.MapPost("/agents/staffing/proposals/{id:guid}/decision", async (
     ClaimsPrincipal user,
     CancellationToken ct) =>
 {
-    if (user.GetUserId() is not { } decidedBy)
+    if (SessionRevocation.UserId(user) is not { } decidedBy)
     {
         return Results.Forbid();
     }
@@ -948,7 +949,7 @@ app.MapPost("/agents/roster-scan", async (
         : System.Text.Json.JsonSerializer.Serialize(
             scanFilters, System.Text.Json.JsonSerializerOptions.Web);
     var job = await scanStore.CreateAsync(
-        user.GetUserId(), request.JobDescription.Trim(), null, filtersJson, scanOptions.ChunkSize, [], ct);
+        SessionRevocation.UserId(user), request.JobDescription.Trim(), null, filtersJson, scanOptions.ChunkSize, [], ct);
     scanQueue.Enqueue(job.Id);
 
     var calls = (int)Math.Ceiling(candidates / (double)scanOptions.ChunkSize);
@@ -968,7 +969,7 @@ app.MapGet("/agents/roster-scan/{id:guid}", async (
     CancellationToken ct) =>
 {
     var job = await scanStore.GetAsync(id, ct);
-    return job is null || job.RequestedByUserId != user.GetUserId()
+    return job is null || job.RequestedByUserId != SessionRevocation.UserId(user)
         ? Results.NotFound()
         : Results.Ok(ExpertToJob.Agents.RosterScan.RosterScanJobView.Of(job));
 }).RequireAuthorization();
@@ -979,7 +980,7 @@ app.MapGet("/agents/roster-scan", async (
     ClaimsPrincipal user,
     CancellationToken ct) =>
 {
-    var jobs = await scanStore.ListAsync(user.GetUserId(), ct);
+    var jobs = await scanStore.ListAsync(SessionRevocation.UserId(user), ct);
     var progress = await scanStore.GetProgressAsync(jobs.Select(j => j.Id).ToList(), ct);
     return Results.Ok(jobs.Select(j => new ExpertToJob.Agents.RosterScan.RosterScanJobSummary(
         j.Id, j.State, j.PauseReason, j.ResumeAt, j.CreatedAt, j.JobDescription,

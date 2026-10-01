@@ -25,8 +25,13 @@ public sealed class EmbeddingOptions
 
     /// <summary>Requested output dimensionality. Shared across providers because it is the database
     /// that fixes it: the <c>ExpertSearchChunk</c> column is <c>vector(1536)</c>, so the request has
-    /// to pin 1536 whoever serves it. Changing it is a schema migration (ADR §9).</summary>
-    public int Dimensions { get; set; } = 1536;
+    /// to pin 1536 whoever serves it. Changing it is a schema migration (ADR §9).
+    ///
+    /// <para>A constant rather than a setting (EXP-88), because it was never one: no configuration
+    /// file set it, and one that did would have been bound in silence and then rejected by Postgres
+    /// per row, at write time. The column is the authority, so this is written once and cannot be
+    /// reached from a configuration block.</para></summary>
+    public const int Dimensions = 1536;
 
     /// <summary>API key. Prefer the provider's environment variable over config in real use.</summary>
     public string ApiKey { get; set; } = "";
@@ -75,7 +80,6 @@ public sealed class EmbeddingOptions
         {
             Endpoint = "https://generativelanguage.googleapis.com/v1beta/openai",
             EmbeddingModel = "gemini-embedding-001",
-            Dimensions = 1536,
             QuotaBreakerSeconds = 1800,
             // Measured 2026-08-01 over the frozen 24-expert corpus: plateau 0.540–0.575, recall@5
             // 1.0 with no false positives. See manuals/retrieval-eval-baseline.md.
@@ -88,7 +92,6 @@ public sealed class EmbeddingOptions
             // name, which happens to equal the model behind it here.
             Endpoint = "https://experttojob-openai-swc.openai.azure.com/openai/v1/",
             EmbeddingModel = "text-embedding-3-small",
-            Dimensions = 1536,
             // A minute, not Gemini's half hour: Azure's cap is tokens per minute
             // (x-ratelimit-limit-tokens), not a daily request allowance, so a breaker that stayed
             // open for 1800s would keep search on the lexical fallback long after the throttle

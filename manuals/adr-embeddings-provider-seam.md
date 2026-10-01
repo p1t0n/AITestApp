@@ -57,12 +57,18 @@ re-embeds whatever doesn't match. The privacy page names the provider actually i
    | Key | `Ai:Gemini` | `Ai:AzureFoundry` |
    |---|---|---|
    | `EmbeddingModel` | `gemini-embedding-001` | `text-embedding-3-small` (a **deployment name**) |
-   | `Dimensions` | 1536 | 1536 |
    | `MinSimilarity` | **0.55** | **0.30** |
    | `QuotaBreakerSeconds` | 1800 | **60** |
 
    The global `SemanticSearch:MinSimilarity` is **removed**, and a leftover one **throws at startup**
    naming the new keys.
+
+   **`Dimensions` is not on this list, and never was in practice.** It appeared here as a per-provider
+   key at 1536 on both sides, which is the giveaway: the number is not the provider's to choose. The
+   `ExpertSearchChunk.Embedding` column is `vector(1536)`, so a block setting anything else would have
+   bound in silence and then been rejected by Postgres on every write. Since `EXP-88` it is
+   `EmbeddingOptions.Dimensions`, a `const int`, unreachable from configuration. Changing the width is
+   a schema migration (§9), not a setting.
 3. **Each provider reads only its own key**: Azure `AZURE_FOUNDRY_API_KEY`, then
    `Ai:AzureFoundry:ApiKey`; Gemini `GEMINI_API_KEY`, then `Ai:Gemini:ApiKey`. Today's code reads
    `GEMINI_API_KEY` first whatever the endpoint, so a request aimed at Azure would carry the Google key

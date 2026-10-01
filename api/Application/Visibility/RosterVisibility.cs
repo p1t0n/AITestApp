@@ -101,10 +101,4 @@ public static class RosterVisibility
     //
     // which EF translates to a subquery, so hidden rows drop out in SQL while their chunks and
     // their embeddings stay in the table untouched. The predicate is still written only here.
-
-    /// <summary>In-memory counterpart, for a row already loaded — the badge on a Service Manager's
-    /// screen, not a filter. Staff see paused people and see that they are paused: a bench that
-    /// silently loses somebody is a bench nobody can explain.</summary>
-    public static bool IsOnTheBench(this Expert expert) =>
-        expert.Status == ExpertStatus.Active && expert.HiddenAt is null;
 }
