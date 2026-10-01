@@ -1,17 +1,13 @@
 import { useState } from "react";
 import {
   Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
   Stack,
   TextField,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import type { SaveExpert } from "../types";
 import { apiErrorMessage } from "../api";
+import ConfirmDialog from "../components/ConfirmDialog";
 import EditDialog from "../components/EditDialog";
 import { ErrorNotice } from "../components/ErrorNotice";
 import { SPECIAL_CATEGORY_GUIDANCE } from "./cvGuidance";
@@ -174,9 +170,16 @@ function ExpertForm({
         <TextField label="Photo URL" value={form.photoUrl ?? ""} onChange={field("photoUrl")} fullWidth />
       </EditDialog>
 
+      {/* Asked before a person is removed, in a dialog this app drew. The roster used to ask it with
+          `window.confirm` from an icon on the row (EXP-50) — unstyleable, unreadable to the e2e
+          suite, and one mis-aimed click away at all times. It sits on top of the edit dialog rather
+          than replacing it, the same way `UsersPage` asks about a demotion, so backing out returns
+          to the form with the typing still in it. */}
       {confirmingDelete && (
-        <ConfirmDeleteDialog
-          subject={deleteSubject ?? `${form.firstName} ${form.lastName}`.trim()}
+        <ConfirmDialog
+          title={`Delete ${deleteSubject ?? `${form.firstName} ${form.lastName}`.trim()}?`}
+          body="This removes the record, its CV and everything on it. It cannot be undone."
+          confirmLabel="Delete expert"
           busy={deleting}
           onClose={() => setConfirmingDelete(false)}
           onConfirm={handleDelete}
@@ -186,39 +189,3 @@ function ExpertForm({
   );
 }
 
-/**
- * The question asked before a person is removed, in a dialog this app drew.
- *
- * The roster used to ask it with `window.confirm` from an icon on the row (EXP-50) — unstyleable,
- * unreadable to the e2e suite, and one mis-aimed click away at all times. It sits on top of the
- * edit dialog rather than replacing it, the same way `UsersPage` asks about a demotion, so backing
- * out returns to the form with the typing still in it.
- */
-function ConfirmDeleteDialog({
-  subject,
-  busy,
-  onClose,
-  onConfirm,
-}: {
-  subject: string;
-  busy: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <Dialog open onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>Delete {subject}?</DialogTitle>
-      <DialogContent>
-        <DialogContentText>
-          This removes the record, its CV and everything on it. It cannot be undone.
-        </DialogContentText>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button color="error" variant="contained" onClick={onConfirm} disabled={busy}>
-          Delete expert
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-}

@@ -358,7 +358,6 @@ export default function ExpertRecordSections({
 
       {languageEdit && (
         <LanguageFormDialog
-          open
           title={languageEdit.id ? "Edit language" : "Add language"}
           initial={languageEdit.initial}
           onClose={() => setLanguageEdit(null)}
@@ -372,7 +371,6 @@ export default function ExpertRecordSections({
 
       {qualificationEdit && (
         <QualificationFormDialog
-          open
           title={qualificationEdit.id ? "Edit qualification" : "Add qualification"}
           initial={qualificationEdit.initial}
           onClose={() => setQualificationEdit(null)}
@@ -386,7 +384,6 @@ export default function ExpertRecordSections({
 
       {availabilityEdit && (
         <AvailabilityFormDialog
-          open
           title={availabilityEdit.id ? "Edit availability" : "Add availability"}
           initial={availabilityEdit.initial}
           onClose={() => setAvailabilityEdit(null)}
@@ -400,7 +397,6 @@ export default function ExpertRecordSections({
 
       {skillEdit && (
         <ExpertSkillFormDialog
-          open
           title={skillEdit.id ? "Edit skill" : "Add skill"}
           initial={skillEdit.initial}
           lockedSkillName={skillEdit.skillName}
@@ -415,7 +411,6 @@ export default function ExpertRecordSections({
 
       {experienceEdit && (
         <ExperienceFormDialog
-          open
           title={experienceEdit.id ? "Edit experience" : "Add experience"}
           initial={experienceEdit.initial}
           onClose={() => setExperienceEdit(null)}

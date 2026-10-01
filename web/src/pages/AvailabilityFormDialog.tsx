@@ -1,19 +1,9 @@
 import { useState } from "react";
-import {
-  Alert,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Stack,
-  TextField,
-} from "@mui/material";
+import { TextField } from "@mui/material";
 import type { SaveAvailabilityEntry } from "../types";
-import { apiErrorMessage } from "../api";
+import FormDialog, { useSaveAndClose } from "../components/FormDialog";
 
 interface Props {
-  open: boolean;
   title: string;
   initial?: Partial<SaveAvailabilityEntry>;
   onClose: () => void;
@@ -31,62 +21,38 @@ const empty: SaveAvailabilityEntry = { effectiveFrom: "", capacityPercent: 100 }
  * it fails `DateOnly` model binding, and a binding failure answers in a shape `apiErrorMessage`
  * cannot read back into a sentence. The inline row this replaced guarded the same way.
  */
-export default function AvailabilityFormDialog({ open, title, initial, onClose, onSave }: Props) {
+export default function AvailabilityFormDialog({ title, initial, onClose, onSave }: Props) {
   const [form, setForm] = useState<SaveAvailabilityEntry>({ ...empty, ...initial });
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  async function handleSave() {
-    setSaving(true);
-    setError(null);
-    try {
-      await onSave(form);
-      onClose();
-    } catch (err) {
-      // The dialog stays open with the input intact so the message is actionable.
-      setError(apiErrorMessage(err));
-    } finally {
-      setSaving(false);
-    }
-  }
+  const { save, saving, error } = useSaveAndClose(onSave, onClose);
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
-      <DialogTitle>{title}</DialogTitle>
-      <DialogContent>
-        <Stack spacing={2} sx={{ mt: 1 }}>
-          {error && <Alert severity="error">{error}</Alert>}
-          <TextField
-            type="date"
-            label="Effective from"
-            value={form.effectiveFrom}
-            onChange={(e) => setForm((f) => ({ ...f, effectiveFrom: e.target.value }))}
-            fullWidth
-            slotProps={{
-              inputLabel: { shrink: true }
-            }}
-          />
-          <TextField
-            type="number"
-            label="Capacity %"
-            value={form.capacityPercent}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, capacityPercent: Number(e.target.value) }))
-            }
-            fullWidth
-          />
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button
-          variant="contained"
-          onClick={handleSave}
-          disabled={saving || !form.effectiveFrom}
-        >
-          Save
-        </Button>
-      </DialogActions>
-    </Dialog>
+    <FormDialog
+      title={title}
+      error={error}
+      saving={saving}
+      canSave={form.effectiveFrom !== ""}
+      onClose={onClose}
+      onSave={() => save(form)}
+    >
+      <TextField
+        type="date"
+        label="Effective from"
+        value={form.effectiveFrom}
+        onChange={(e) => setForm((f) => ({ ...f, effectiveFrom: e.target.value }))}
+        fullWidth
+        slotProps={{
+          inputLabel: { shrink: true }
+        }}
+      />
+      <TextField
+        type="number"
+        label="Capacity %"
+        value={form.capacityPercent}
+        onChange={(e) =>
+          setForm((f) => ({ ...f, capacityPercent: Number(e.target.value) }))
+        }
+        fullWidth
+      />
+    </FormDialog>
   );
 }
