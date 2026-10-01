@@ -14,6 +14,7 @@ async function playwrightConfig() {
   // The config takes its ports from the harness and refuses to guess (EXP-83), so stand in for it.
   vi.stubEnv("E2E_SPA_PORT", "5174");
   vi.stubEnv("E2E_API_PORT", "5079");
+  vi.stubEnv("E2E_AGENTS_PORT", "5299");
   return (await import("../playwright.config")).default;
 }
 

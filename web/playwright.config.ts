@@ -18,6 +18,7 @@ const port = (name: string): number => {
 
 const SPA_PORT = port("E2E_SPA_PORT");
 const API_PORT = port("E2E_API_PORT");
+const AGENTS_PORT = port("E2E_AGENTS_PORT");
 const baseURL = process.env.E2E_BASE_URL || `http://localhost:${SPA_PORT}`;
 
 // The visual pass renders in the pinned Playwright container (`e2e/run.mjs` starts it, and says
@@ -102,6 +103,12 @@ export default defineConfig({
     env: {
       VITE_PORT: String(SPA_PORT),
       VITE_API_TARGET: `http://localhost:${API_PORT}`,
+      // Both proxy targets, for the same reason — and the agents one is not optional (EXP-91).
+      // Leaving it unset let `vite.config.ts` fall back to `:5200`, the dev Agents host, which
+      // answers 401 to a token minted against the e2e database; `src/api/http.ts` ends the session
+      // on any 401, so every signed-in spec failed on a developer's machine and nowhere else. The
+      // suite starts no Agents host, so this points at a port `run.mjs` owns and nothing binds.
+      VITE_AGENTS_TARGET: `http://localhost:${AGENTS_PORT}`,
     },
   },
 });

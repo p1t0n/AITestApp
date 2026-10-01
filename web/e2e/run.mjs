@@ -7,13 +7,23 @@
 //
 // Nothing here touches the dev stack: its own ports, its own container, its own database.
 import { spawn, spawnSync } from "node:child_process";
+import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
-const PORTS = { db: 55433, api: 5079, spa: 5174, browser: 5175 };
+// `agents` is deliberately a port **nothing in this repo ever listens on** (EXP-91). The suite
+// starts no Agents host, so the SPA's `/agents` proxy has to fail by connection-refused — which is
+// what CI does, where no dev stack exists. Leaving it unset instead made the proxy fall back to
+// `vite.config.ts`'s `:5200` default, i.e. the *developer's* Agents host: that one answers 401 to a
+// session minted against the e2e database, and `src/api/http.ts` ends the session on any 401, so 20
+// specs failed for anybody who ran the suite with their own stack up.
+const PORTS = { db: 55433, api: 5079, spa: 5174, browser: 5175, agents: 5299 };
+
+/** The dev Agents port the proxy used to leak to. Only ever bound by the EXP-91 repro stub below. */
+const DEV_AGENTS_PORT = 5200;
 const CONTAINER = "experttojob-e2e-db";
 /** The migrator and the API have to name the same database; one copy is how they keep agreeing. */
 const DB_CONNECTION =
@@ -90,6 +100,23 @@ const FORWARD_TO_HOST =
   `net.createServer(c=>{const u=net.connect(${PORTS.spa},'${HOST_FROM_CONTAINER}');` +
   "c.pipe(u);u.pipe(c);u.on('error',()=>c.destroy());c.on('error',()=>u.destroy());})" +
   `.listen(${PORTS.spa},'127.0.0.1');`;
+
+/**
+ * The EXP-91 regression, made runnable: `E2E_STUB_DEV_AGENTS=1` puts a server on the dev Agents
+ * port that answers 401 to everything — exactly what a developer's own Agents host does when the
+ * SPA hands it a token minted against the e2e database. With the proxy leaking there the suite goes
+ * red; with `VITE_AGENTS_TARGET` pinned to our own dead port it stays green, and that difference is
+ * the whole point of keeping the stub rather than describing it.
+ */
+function startDevAgentsStub() {
+  const stub = createServer((_request, response) => {
+    response.writeHead(401, { "content-type": "application/json" });
+    response.end('{"error":"stub: the dev Agents host does not know this session"}');
+  });
+  stub.listen(DEV_AGENTS_PORT, "127.0.0.1");
+  console.log(`[e2e] EXP-91 repro: answering 401 on 127.0.0.1:${DEV_AGENTS_PORT}`);
+  return stub;
+}
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, { encoding: "utf8", ...options });
@@ -235,8 +262,10 @@ async function startApi() {
 
 async function main() {
   let api;
+  const devAgentsStub = process.env.E2E_STUB_DEV_AGENTS === "1" ? startDevAgentsStub() : undefined;
   const shutdown = () => {
     api?.kill("SIGTERM");
+    devAgentsStub?.close();
     removeContainer();
     removeBrowserContainer();
   };
@@ -261,6 +290,7 @@ async function main() {
           // both numbers; it reads them here rather than keeping its own copy.
           E2E_SPA_PORT: String(PORTS.spa),
           E2E_API_PORT: String(PORTS.api),
+          E2E_AGENTS_PORT: String(PORTS.agents),
           E2E_CHAT_PROVIDER: CHAT_PROVIDER,
           E2E_EMBEDDINGS_PROVIDER: EMBEDDINGS_PROVIDER,
           // Read by `playwright.config.ts`. Only set for a visual or container-browser run, so the
