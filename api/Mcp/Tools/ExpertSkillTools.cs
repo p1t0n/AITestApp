@@ -25,14 +25,14 @@ public class ExpertSkillTools
          "already has returns conflict — both are self-correctable. Returns the created " +
          "expert-skill row, not the expert."),
      Authorize(Policy = McpScopes.Write)]
-    public static Task<object> Add(
+    public static async Task<object> Add(
         IExpertSkillService skills,
         [Description("Expert id (GUID) — the person gaining the skill.")] Guid expertId,
         [Description("skillId: an EXISTING catalog skill id (GUID) from skill_list; level: one of " +
                      "Beginner, Intermediate, Advanced, Expert; yearsExperience: decimal years.")]
         SaveExpertSkillDto dto,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => skills.AddAsync(expertId, dto, ct));
+        => await skills.AddAsync(expertId, dto, ct);
 
     [McpServerTool(Name = "expert_skill_update", ReadOnly = false, Destructive = false),
      Description(
@@ -47,7 +47,7 @@ public class ExpertSkillTools
          "\"8a8a8a8a-1111-2222-3333-444455556666\", \"level\": \"Expert\", " +
          "\"yearsExperience\": 7}}. Returns the updated row only."),
      Authorize(Policy = McpScopes.Write)]
-    public static Task<object> Update(
+    public static async Task<object> Update(
         IExpertSkillService skills,
         [Description("Expert-skill id (GUID) — the person's skill ROW, from expert_get; not " +
                      "the expert id and not the catalog skill id.")]
@@ -56,7 +56,7 @@ public class ExpertSkillTools
                      "decimal years; skillId: the catalog skill this row points at.")]
         SaveExpertSkillDto dto,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => skills.UpdateAsync(id, dto, ct));
+        => await skills.UpdateAsync(id, dto, ct);
 
     [McpServerTool(Name = "expert_skill_delete", ReadOnly = false, Destructive = true, Idempotent = true),
      Description(
@@ -67,9 +67,12 @@ public class ExpertSkillTools
          "\"3c3c3c3c-1111-2222-3333-444455556666\"}. Requires the admin scope; idempotent. " +
          "Returns no data."),
      Authorize(Policy = McpScopes.Admin)]
-    public static Task<object> Delete(
+    public static async Task<object> Delete(
         IExpertSkillService skills,
         [Description("Expert-skill id (GUID).")] Guid id,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => skills.DeleteAsync(id, ct));
+    {
+        await skills.DeleteAsync(id, ct);
+        return McpToolResults.Ok;
+    }
 }

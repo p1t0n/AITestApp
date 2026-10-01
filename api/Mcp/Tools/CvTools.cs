@@ -24,9 +24,9 @@ public class CvTools
          "{\"expertId\": \"7b2e8d3a-1111-2222-3333-444455556666\"}. Returns DATA, not a PDF " +
          "or HTML, and no relevance scores, ranking or match commentary."),
      Authorize(Policy = McpScopes.Read)]
-    public static Task<object> Get(
+    public static async Task<object> Get(
         ICvService cv,
         [Description("Expert id (GUID).")] Guid expertId,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => cv.BuildAsync(expertId, ct));
+        => await cv.BuildAsync(expertId, ct);
 }

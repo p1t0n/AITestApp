@@ -37,7 +37,7 @@ public class RosterStyleTools
          "with similarity only — no expert identities and no rewritten bullet (the caller does " +
          "the rewriting)."),
      Authorize(Policy = McpScopes.Read)]
-    public static Task<object> StyleExemplarSearch(
+    public static async Task<object> StyleExemplarSearch(
         IExemplarSearchService search,
         CancellationToken ct,
         [Description("Achievement ids (GUIDs from cv_get) of the bullets being rewritten. " +
@@ -49,5 +49,5 @@ public class RosterStyleTools
         string? theme = null,
         [Description("Optional: exemplars per bullet, or per theme in theme mode (default 2, capped at 5).")]
         int? topKPerBullet = null)
-        => McpToolExecutor.RunAsync(() => search.SearchAsync(achievementIds, theme, topKPerBullet, ct));
+        => await search.SearchAsync(achievementIds, theme, topKPerBullet, ct);
 }

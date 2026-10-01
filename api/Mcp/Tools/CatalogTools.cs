@@ -51,13 +51,13 @@ public class CatalogTools
          "\"9c9c9c9c-1111-2222-3333-444455556666\"}}. The name must be unique within its parent " +
          "— a repeat returns conflict. Returns the new category, which contains no skills yet."),
      Authorize(Policy = McpScopes.Write)]
-    public static Task<object> CreateCategory(
+    public static async Task<object> CreateCategory(
         ISkillCatalogService catalog,
         [Description("name: the category name; parentId: an existing category id (GUID) to nest " +
                      "under, or null/omitted for a root category.")]
         SaveCategoryDto dto,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => catalog.CreateCategoryAsync(dto, ct));
+        => await catalog.CreateCategoryAsync(dto, ct);
 
     [McpServerTool(Name = "category_update", ReadOnly = false, Destructive = false),
      Description(
@@ -69,14 +69,14 @@ public class CatalogTools
          "\"parentId\": null}}. A parentId that would make a cycle (its own descendant) is " +
          "rejected as a validation error. Returns the updated category."),
      Authorize(Policy = McpScopes.Write)]
-    public static Task<object> UpdateCategory(
+    public static async Task<object> UpdateCategory(
         ISkillCatalogService catalog,
         [Description("Category id (GUID).")] Guid id,
         [Description("name and parentId AFTER the edit; null parentId makes it a root. A parentId " +
                      "inside its own subtree is rejected.")]
         SaveCategoryDto dto,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => catalog.UpdateCategoryAsync(id, dto, ct));
+        => await catalog.UpdateCategoryAsync(id, dto, ct);
 
     [McpServerTool(Name = "category_delete", ReadOnly = false, Destructive = true, Idempotent = true),
      Description(
@@ -88,11 +88,14 @@ public class CatalogTools
          "\"9c9c9c9c-1111-2222-3333-444455556666\"}. Requires the admin scope; idempotent. " +
          "Returns no data."),
      Authorize(Policy = McpScopes.Admin)]
-    public static Task<object> DeleteCategory(
+    public static async Task<object> DeleteCategory(
         ISkillCatalogService catalog,
         [Description("Category id (GUID).")] Guid id,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => catalog.DeleteCategoryAsync(id, ct));
+    {
+        await catalog.DeleteCategoryAsync(id, ct);
+        return McpToolResults.Ok;
+    }
 
     // ---- Skills ----
 
@@ -109,7 +112,7 @@ public class CatalogTools
          "for the catalog. Carries total, so no match reads differently from a page past the end. " +
          "Returns the catalog only: no expert data, no proficiency levels."),
      Authorize(Policy = McpScopes.Read)]
-    public static Task<object> ListSkills(
+    public static async Task<object> ListSkills(
         ISkillCatalogService catalog,
         CancellationToken ct,
         [Description("Case-insensitive substring of the skill name; omit for the whole catalog.")]
@@ -118,8 +121,7 @@ public class CatalogTools
         int? page = null,
         [Description("Skills per page (default 100, max 200).")]
         int? pageSize = null)
-        => McpToolExecutor.RunAsync(
-            () => catalog.SearchSkillsAsync(new SkillQuery(nameContains, page, pageSize), ct));
+        => await catalog.SearchSkillsAsync(new SkillQuery(nameContains, page, pageSize), ct);
 
     [McpServerTool(Name = "skill_create", ReadOnly = false, Destructive = false),
      Description(
@@ -135,13 +137,13 @@ public class CatalogTools
          "within that category — a repeat returns conflict, an unknown categoryId not_found. " +
          "Returns the new catalog skill; nobody has it yet."),
      Authorize(Policy = McpScopes.Write)]
-    public static Task<object> CreateSkill(
+    public static async Task<object> CreateSkill(
         ISkillCatalogService catalog,
         [Description("name: the skill as the catalog should list it; categoryId: an EXISTING " +
                      "category id (GUID) from category_list or category_tree.")]
         SaveSkillDto dto,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => catalog.CreateSkillAsync(dto, ct));
+        => await catalog.CreateSkillAsync(dto, ct);
 
     [McpServerTool(Name = "skill_update", ReadOnly = false, Destructive = false),
      Description(
@@ -155,14 +157,14 @@ public class CatalogTools
          "\"categoryId\": \"9c9c9c9c-1111-2222-3333-444455556666\"}}. Returns the updated " +
          "catalog skill; no expert data."),
      Authorize(Policy = McpScopes.Write)]
-    public static Task<object> UpdateSkill(
+    public static async Task<object> UpdateSkill(
         ISkillCatalogService catalog,
         [Description("Catalog skill id (GUID) from skill_list — not an expert-skill row id.")]
         Guid id,
         [Description("name and categoryId AFTER the edit; both are replaced.")]
         SaveSkillDto dto,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => catalog.UpdateSkillAsync(id, dto, ct));
+        => await catalog.UpdateSkillAsync(id, dto, ct);
 
     [McpServerTool(Name = "skill_delete", ReadOnly = false, Destructive = true, Idempotent = true),
      Description(
@@ -173,9 +175,12 @@ public class CatalogTools
          "catalog skill GUID); e.g. {\"id\": \"8a8a8a8a-1111-2222-3333-444455556666\"}. " +
          "Requires the admin scope; idempotent. Returns no data."),
      Authorize(Policy = McpScopes.Admin)]
-    public static Task<object> DeleteSkill(
+    public static async Task<object> DeleteSkill(
         ISkillCatalogService catalog,
         [Description("Skill id (GUID).")] Guid id,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => catalog.DeleteSkillAsync(id, ct));
+    {
+        await catalog.DeleteSkillAsync(id, ct);
+        return McpToolResults.Ok;
+    }
 }

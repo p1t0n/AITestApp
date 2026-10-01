@@ -42,14 +42,14 @@ public class AvailabilityTools
          "{\"effectiveFrom\": \"2026-10-01\", \"capacityPercent\": 50}}. A second entry on " +
          "the same date returns conflict. Returns the created entry."),
      Authorize(Policy = McpScopes.Write)]
-    public static Task<object> Add(
+    public static async Task<object> Add(
         IAvailabilityService availability,
         [Description("Expert id (GUID) whose capacity changes.")] Guid expertId,
         [Description("effectiveFrom: the date the new capacity starts, yyyy-MM-dd; " +
                      "capacityPercent: integer 0-100 (0 = fully booked, 100 = fully available).")]
         SaveAvailabilityEntryDto dto,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => availability.AddAsync(expertId, dto, ct));
+        => await availability.AddAsync(expertId, dto, ct);
 
     [McpServerTool(Name = "availability_update", ReadOnly = false, Destructive = false),
      Description(
@@ -62,14 +62,14 @@ public class AvailabilityTools
          "\"6f6f6f6f-1111-2222-3333-444455556666\", \"dto\": {\"effectiveFrom\": " +
          "\"2026-10-15\", \"capacityPercent\": 50}}. Returns the updated entry."),
      Authorize(Policy = McpScopes.Write)]
-    public static Task<object> Update(
+    public static async Task<object> Update(
         IAvailabilityService availability,
         [Description("Availability entry id (GUID) from availability_list — not the expert id.")]
         Guid id,
         [Description("effectiveFrom (yyyy-MM-dd) and capacityPercent (0-100) AFTER the correction.")]
         SaveAvailabilityEntryDto dto,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => availability.UpdateAsync(id, dto, ct));
+        => await availability.UpdateAsync(id, dto, ct);
 
     [McpServerTool(Name = "availability_delete", ReadOnly = false, Destructive = true, Idempotent = true),
      Description(
@@ -82,9 +82,12 @@ public class AvailabilityTools
          "e.g. {\"id\": \"6f6f6f6f-1111-2222-3333-444455556666\"}. Requires the admin scope; " +
          "idempotent. Returns no data."),
      Authorize(Policy = McpScopes.Admin)]
-    public static Task<object> Delete(
+    public static async Task<object> Delete(
         IAvailabilityService availability,
         [Description("Availability entry id (GUID).")] Guid id,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => availability.DeleteAsync(id, ct));
+    {
+        await availability.DeleteAsync(id, ct);
+        return McpToolResults.Ok;
+    }
 }

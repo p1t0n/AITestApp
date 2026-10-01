@@ -23,7 +23,7 @@ public class QualificationTools
          "\"issuer\": \"Amazon\"}}. Leave fields the source does not state as null — never " +
          "invent an issuer, credential id or date. Returns the created qualification."),
      Authorize(Policy = McpScopes.Write)]
-    public static Task<object> Add(
+    public static async Task<object> Add(
         IQualificationService qualifications,
         [Description("Expert id (GUID) holding the qualification.")] Guid expertId,
         [Description("type: Degree or Certification; name required. Degrees use institution / " +
@@ -31,7 +31,7 @@ public class QualificationTools
                      "issueDate / expiryDate. All dates yyyy-MM-dd; unknown fields stay null.")]
         SaveQualificationDto dto,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => qualifications.AddAsync(expertId, dto, ct));
+        => await qualifications.AddAsync(expertId, dto, ct);
 
     [McpServerTool(Name = "qualification_update", ReadOnly = false, Destructive = false),
      Description(
@@ -45,14 +45,14 @@ public class QualificationTools
          "\"Certification\", \"name\": \"AWS Solutions Architect\", \"issuer\": " +
          "\"Amazon\", \"expiryDate\": \"2027-05-01\"}}. Returns the updated qualification."),
      Authorize(Policy = McpScopes.Write)]
-    public static Task<object> Update(
+    public static async Task<object> Update(
         IQualificationService qualifications,
         [Description("Qualification id (GUID) from expert_get / cv_get — not the expert id.")]
         Guid id,
         [Description("The qualification AFTER the edit — full replace, dates yyyy-MM-dd.")]
         SaveQualificationDto dto,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => qualifications.UpdateAsync(id, dto, ct));
+        => await qualifications.UpdateAsync(id, dto, ct);
 
     [McpServerTool(Name = "qualification_delete", ReadOnly = false, Destructive = true, Idempotent = true),
      Description(
@@ -62,9 +62,12 @@ public class QualificationTools
          "\"7a7a7a7a-1111-2222-3333-444455556666\"}. Requires the admin scope; idempotent. " +
          "Returns no data."),
      Authorize(Policy = McpScopes.Admin)]
-    public static Task<object> Delete(
+    public static async Task<object> Delete(
         IQualificationService qualifications,
         [Description("Qualification id (GUID).")] Guid id,
         CancellationToken ct)
-        => McpToolExecutor.RunAsync(() => qualifications.DeleteAsync(id, ct));
+    {
+        await qualifications.DeleteAsync(id, ct);
+        return McpToolResults.Ok;
+    }
 }

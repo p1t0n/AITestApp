@@ -29,7 +29,7 @@ public class RosterSearchTools
          "snippets that matched — NOT full CVs (drill into cv_get) and NOT per-requirement " +
          "coverage. Returns an empty list when nothing is relevant."),
      Authorize(Policy = McpScopes.Read)]
-    public static Task<object> SemanticSearch(
+    public static async Task<object> SemanticSearch(
         ISemanticSearchService search,
         [Description("Natural-language description of the capability or experience sought, " +
                      "e.g. 'led a real-time payments platform migration'.")]
@@ -55,6 +55,6 @@ public class RosterSearchTools
             ? new SemanticSearchFilters(availableOn, skillIds, location, minYears)
             : null;
 
-        return McpToolExecutor.RunAsync(() => search.SearchAsync(query, filters, topK, ct));
+        return await search.SearchAsync(query, filters, topK, ct);
     }
 }
