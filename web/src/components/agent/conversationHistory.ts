@@ -63,23 +63,6 @@ export function isExpiringSoon(expiresAt: string, now: number = Date.now()): boo
 }
 
 /**
- * How long ago, in the coarsest unit that still says something. Falls back to a plain local date
- * past a month, because "63 d ago" is arithmetic the reader has to undo.
- */
-export function relativeTime(at: string, now: number = Date.now()): string {
-  const when = new Date(at).getTime();
-  const minutes = Math.round((now - when) / 60_000);
-  // Also the future: a clock a few seconds ahead of the server's is not worth a negative number.
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes} min ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours} h ago`;
-  const days = Math.round(hours / 24);
-  if (days < 30) return `${days} d ago`;
-  return new Date(at).toLocaleDateString();
-}
-
-/**
  * The conversation the surface should re-open on load, or `null` for a fresh one. The list arrives
  * most-recently-active first, so this is the head of it and only while it is still inside the
  * resume window.

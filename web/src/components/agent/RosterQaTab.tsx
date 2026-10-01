@@ -15,7 +15,8 @@ import {
 } from "../../api";
 import { AgentMarkdown } from "./AgentMarkdown";
 import { ConversationHistoryDrawer } from "./ConversationHistoryDrawer";
-import { HIDDEN_TEXT, REMOVED_TEXT, conversationToResume, relativeTime } from "./conversationHistory";
+import { relativeTime } from "../relativeTime";
+import { HIDDEN_TEXT, REMOVED_TEXT, conversationToResume } from "./conversationHistory";
 
 type Role = "user" | "assistant" | "error" | "masked";
 interface Message {
@@ -24,7 +25,7 @@ interface Message {
   /** The model the provider said wrote this turn (EXP-31). Only ever set on an assistant turn:
    * a question has no author but the person asking, and an error has none at all. */
   modelId?: string | null;
-  /** When the turn was written, ISO-8601. Absent on a live question — "just now" is what the
+  /** When the turn was written, ISO-8601. Absent on a live question — "now" is what the
    * person is looking at, not something worth captioning. */
   at?: string;
   /** Off the run's capture scope, never parsed out of the answer (ADR §3). Absent on a live turn:

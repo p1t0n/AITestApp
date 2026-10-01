@@ -33,13 +33,13 @@ import {
   useDeleteRosterQaConversation,
   useRosterQaConversations,
 } from "../../api";
+import { relativeTime } from "../relativeTime";
 import {
   HISTORY_GROUPS,
   RETENTION_NOTE,
   daysUntil,
   groupOf,
   isExpiringSoon,
-  relativeTime,
 } from "./conversationHistory";
 
 /** The class the row's delete control is reached by, so the reveal is one rule on the row rather

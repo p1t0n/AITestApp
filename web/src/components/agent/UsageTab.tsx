@@ -1,16 +1,7 @@
 import { Box, CircularProgress, LinearProgress, Stack, Typography } from "@mui/material";
 import { apiErrorMessage, useUsage, type WindowUsage } from "../../api";
 import { ErrorNotice } from "../ErrorNotice";
-
-/** "in 5h" / "in 3d" until the window resets. */
-function formatReset(iso: string): string {
-  const ms = new Date(iso).getTime() - Date.now();
-  if (ms <= 0) return "now";
-  const hours = Math.floor(ms / 3_600_000);
-  if (hours < 1) return `in ${Math.max(1, Math.floor(ms / 60_000))}m`;
-  if (hours < 48) return `in ${hours}h`;
-  return `in ${Math.floor(hours / 24)}d`;
-}
+import { relativeTime } from "../relativeTime";
 
 function UsageBar({ w }: { w: WindowUsage }) {
   const pct = w.cap > 0 ? Math.min(100, (w.used / w.cap) * 100) : 0;
@@ -24,7 +15,7 @@ function UsageBar({ w }: { w: WindowUsage }) {
           {w.window}
         </Typography>
         <Typography variant="caption" sx={{ color: "text.secondary" }}>
-          {w.used.toLocaleString()} / {w.cap.toLocaleString()} · resets {formatReset(w.resetAt)}
+          {w.used.toLocaleString()} / {w.cap.toLocaleString()} · resets {relativeTime(w.resetAt)}
         </Typography>
       </Stack>
       <LinearProgress
