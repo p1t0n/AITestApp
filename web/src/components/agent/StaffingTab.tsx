@@ -1,14 +1,11 @@
 // One JD in, a streamed pipeline out (SSE): a live stepper follows the shortlist → match →
 // narrative stages, then the terminal report renders recommendation-first with ranked candidate
 // cards that drill into the Match and Tailor CV tabs.
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  Autocomplete,
   Box,
   Button,
-  Chip,
   CircularProgress,
-  Collapse,
   MenuItem,
   Paper,
   Stack,
@@ -16,18 +13,15 @@ import {
   Typography,
 } from "@mui/material";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
-import FilterListIcon from "@mui/icons-material/FilterList";
 import {
   apiErrorMessage,
   decideStaffingProposal,
   runStaffing,
-  useSkills,
   type StaffingReport,
   type StaffingRequest,
 } from "../../api";
-import { PRESET_JDS } from "./presets";
+import { JdInput } from "./JdInput";
+import { JdFilters, useJdFilters } from "./JdFilters";
 import {
   STAFFING_IDLE,
   reduceStaffingStep,
@@ -115,14 +109,9 @@ export function StaffingPanel({
   onOpenInMatch: (expertId: string, jobDescription: string) => void;
   onTailorCv: (expertId: string, jobDescription: string) => void;
 }) {
-  const skills = useSkills();
+  const filters = useJdFilters();
 
   const [jobDescription, setJobDescription] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
-  const [availableOn, setAvailableOn] = useState("");
-  const [skillIds, setSkillIds] = useState<string[]>([]);
-  const [location, setLocation] = useState("");
-  const [minYears, setMinYears] = useState("");
   const [matchTop, setMatchTop] = useState("3");
 
   const [phase, setPhase] = useState<"idle" | "running" | "done" | "failed">("idle");
@@ -135,12 +124,6 @@ export function StaffingPanel({
   // The in-flight stream; aborted on resubmit and on unmount (tab switch / widget close).
   const abortRef = useRef<AbortController | null>(null);
   useEffect(() => () => abortRef.current?.abort(), []);
-
-  const skillOptions = useMemo(
-    () => (skills.data ?? []).map((s) => ({ id: s.id, label: s.name })),
-    [skills.data],
-  );
-  const selectedSkills = skillOptions.filter((o) => skillIds.includes(o.id));
 
   const canSubmit = jobDescription.trim().length > 0 && phase !== "running";
 
@@ -159,11 +142,11 @@ export function StaffingPanel({
 
     // Only the filters the user actually set are sent; matchTop always is (the selector always
     // shows a concrete value). The server owns all other defaults.
-    const req: StaffingRequest = { jobDescription: jd, matchTop: Number(matchTop) };
-    if (availableOn) req.availableOn = availableOn;
-    if (skillIds.length > 0) req.skillIds = skillIds;
-    if (location.trim()) req.location = location.trim();
-    if (minYears !== "") req.minYears = Number(minYears);
+    const req: StaffingRequest = {
+      jobDescription: jd,
+      matchTop: Number(matchTop),
+      ...filters.toRequest(),
+    };
 
     let terminal = false;
     try {
@@ -207,83 +190,9 @@ export function StaffingPanel({
             handoff packages — nothing here re-runs the pipeline. */}
         <ProposalInbox onOpenInMatch={onOpenInMatch} onTailorCv={onTailorCv} />
 
-        <Box>
-          <Typography variant="caption" sx={{ color: "text.secondary" }}>
-            Job description
-          </Typography>
-          <Stack
-            direction="row"
-            spacing={0.5}
-            useFlexGap
-            sx={{ flexWrap: "wrap", mb: 0.5 }}>
-            {PRESET_JDS.map((p) => (
-              <Chip
-                key={p.label}
-                label={p.label}
-                variant="outlined"
-                onClick={() => setJobDescription(p.text)}
-              />
-            ))}
-          </Stack>
-          <TextField
-            fullWidth
-            multiline
-            minRows={3}
-            maxRows={8}
-            placeholder="Paste a job description, or pick a preset above…"
-            value={jobDescription}
-            onChange={(e) => setJobDescription(e.target.value)}
-          />
-        </Box>
+        <JdInput value={jobDescription} onChange={setJobDescription} />
 
-        <Box>
-          <Button
-            startIcon={<FilterListIcon />}
-            endIcon={showFilters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-            onClick={() => setShowFilters((v) => !v)}
-          >
-            Filters (optional)
-          </Button>
-          <Collapse in={showFilters} unmountOnExit>
-            <Stack spacing={1.5} sx={{ mt: 1 }}>
-              <TextField
-                type="date"
-                label="Available on"
-                value={availableOn}
-                onChange={(e) => setAvailableOn(e.target.value)}
-                slotProps={{
-                  inputLabel: { shrink: true }
-                }}
-              />
-              <Autocomplete
-                multiple
-                options={skillOptions}
-                value={selectedSkills}
-                onChange={(_, v) => setSkillIds(v.map((o) => o.id))}
-                loading={skills.isLoading}
-                isOptionEqualToValue={(o, v) => o.id === v.id}
-                renderInput={(params) => (
-                  <TextField {...params} label="Skills" placeholder="Any skill" />
-                )}
-              />
-              <TextField
-                label="Location"
-                placeholder="Any location"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-              />
-              <TextField
-                type="number"
-                label="Min years"
-                value={minYears}
-                onChange={(e) => setMinYears(e.target.value)}
-                slotProps={{
-                  htmlInput: { min: 0 }
-                }}
-              />
-            </Stack>
-          </Collapse>
-        </Box>
+        <JdFilters filters={filters} />
 
         <TextField
           select

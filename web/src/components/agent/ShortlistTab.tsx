@@ -1,9 +1,8 @@
 // Structured results (requirements + ranked candidate cards with evidence), not the markdown pane:
 // the endpoint returns a pinned JSON contract composed from the retrieval tool's output.
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link as RouterLink } from "react-router";
 import {
-  Autocomplete,
   Box,
   Button,
   Chip,
@@ -19,19 +18,18 @@ import {
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
-import FilterListIcon from "@mui/icons-material/FilterList";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlined";
 import HighlightOffIcon from "@mui/icons-material/HighlightOff";
 import RequirementChips from "./RequirementChips";
 import {
   apiErrorMessage,
   useShortlist,
-  useSkills,
   type ShortlistCandidate,
   type ShortlistRequest,
   type ShortlistResponse,
 } from "../../api";
-import { PRESET_JDS } from "./presets";
+import { JdInput } from "./JdInput";
+import { JdFilters, useJdFilters } from "./JdFilters";
 import { ErrorNotice } from "../ErrorNotice";
 
 function ShortlistCandidateCard({
@@ -128,25 +126,14 @@ export function ShortlistPanel({
   onRunMatch: (expertId: string, jobDescription: string) => void;
 }) {
   const shortlist = useShortlist();
-  const skills = useSkills();
+  const filters = useJdFilters();
 
   const [jobDescription, setJobDescription] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
-  const [availableOn, setAvailableOn] = useState("");
-  const [skillIds, setSkillIds] = useState<string[]>([]);
-  const [location, setLocation] = useState("");
-  const [minYears, setMinYears] = useState("");
   const [topK, setTopK] = useState("");
   const [result, setResult] = useState<{ data: ShortlistResponse; jobDescription: string } | null>(
     null,
   );
   const [error, setError] = useState<string | null>(null);
-
-  const skillOptions = useMemo(
-    () => (skills.data ?? []).map((s) => ({ id: s.id, label: s.name })),
-    [skills.data],
-  );
-  const selectedSkills = skillOptions.filter((o) => skillIds.includes(o.id));
 
   const canSubmit = jobDescription.trim().length > 0 && !shortlist.isPending;
 
@@ -156,11 +143,7 @@ export function ShortlistPanel({
     setResult(null);
     const jd = jobDescription.trim();
     // Only the filters the user actually set are sent; the server owns all defaults.
-    const req: ShortlistRequest = { jobDescription: jd };
-    if (availableOn) req.availableOn = availableOn;
-    if (skillIds.length > 0) req.skillIds = skillIds;
-    if (location.trim()) req.location = location.trim();
-    if (minYears !== "") req.minYears = Number(minYears);
+    const req: ShortlistRequest = { jobDescription: jd, ...filters.toRequest() };
     if (topK !== "") req.topK = Number(topK);
     try {
       setResult({ data: await shortlist.mutateAsync(req), jobDescription: jd });
@@ -172,95 +155,23 @@ export function ShortlistPanel({
   return (
     <Box sx={{ flex: 1, overflowY: "auto", p: 1.5 }}>
       <Stack spacing={1.5}>
-        <Box>
-          <Typography variant="caption" sx={{ color: "text.secondary" }}>
-            Job description
-          </Typography>
-          <Stack
-            direction="row"
-            spacing={0.5}
-            useFlexGap
-            sx={{ flexWrap: "wrap", mb: 0.5 }}>
-            {PRESET_JDS.map((p) => (
-              <Chip
-                key={p.label}
-                label={p.label}
-                variant="outlined"
-                onClick={() => setJobDescription(p.text)}
-              />
-            ))}
-          </Stack>
-          <TextField
-            fullWidth
-            multiline
-            minRows={3}
-            maxRows={8}
-            placeholder="Paste a job description, or pick a preset above…"
-            value={jobDescription}
-            onChange={(e) => setJobDescription(e.target.value)}
-          />
-        </Box>
+        <JdInput value={jobDescription} onChange={setJobDescription} />
 
-        <Box>
-          <Button
-            startIcon={<FilterListIcon />}
-            endIcon={showFilters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-            onClick={() => setShowFilters((v) => !v)}
-          >
-            Filters (optional)
-          </Button>
-          <Collapse in={showFilters} unmountOnExit>
-            <Stack spacing={1.5} sx={{ mt: 1 }}>
-              <TextField
-                type="date"
-                label="Available on"
-                value={availableOn}
-                onChange={(e) => setAvailableOn(e.target.value)}
-                slotProps={{
-                  inputLabel: { shrink: true }
-                }}
-              />
-              <Autocomplete
-                multiple
-                options={skillOptions}
-                value={selectedSkills}
-                onChange={(_, v) => setSkillIds(v.map((o) => o.id))}
-                loading={skills.isLoading}
-                isOptionEqualToValue={(o, v) => o.id === v.id}
-                renderInput={(params) => (
-                  <TextField {...params} label="Skills" placeholder="Any skill" />
-                )}
-              />
-              <TextField
-                label="Location"
-                placeholder="Any location"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-              />
-              <Stack direction="row" spacing={1.5}>
-                <TextField
-                  type="number"
-                  label="Min years"
-                  value={minYears}
-                  onChange={(e) => setMinYears(e.target.value)}
-                  slotProps={{
-                    htmlInput: { min: 0 }
-                  }}
-                />
-                <TextField
-                  type="number"
-                  label="Top K"
-                  placeholder="Server default"
-                  value={topK}
-                  onChange={(e) => setTopK(e.target.value)}
-                  slotProps={{
-                    htmlInput: { min: 1 }
-                  }}
-                />
-              </Stack>
-            </Stack>
-          </Collapse>
-        </Box>
+        <JdFilters
+          filters={filters}
+          trailing={
+            <TextField
+              type="number"
+              label="Top K"
+              placeholder="Server default"
+              value={topK}
+              onChange={(e) => setTopK(e.target.value)}
+              slotProps={{
+                htmlInput: { min: 1 }
+              }}
+            />
+          }
+        />
 
         <Button
           variant="contained"

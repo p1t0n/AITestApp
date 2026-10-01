@@ -30,7 +30,7 @@ import {
   type TailoringRewrite,
 } from "../../api";
 import { AgentMarkdown } from "./AgentMarkdown";
-import { PRESET_JDS } from "./presets";
+import { JdInput } from "./JdInput";
 import { ErrorNotice } from "../ErrorNotice";
 
 interface FormResult {
@@ -241,34 +241,7 @@ export function AgentJobForm({
           )}
         />
 
-        <Box>
-          <Typography variant="caption" sx={{ color: "text.secondary" }}>
-            Job description
-          </Typography>
-          <Stack
-            direction="row"
-            spacing={0.5}
-            useFlexGap
-            sx={{ flexWrap: "wrap", mb: 0.5 }}>
-            {PRESET_JDS.map((p) => (
-              <Chip
-                key={p.label}
-                label={p.label}
-                variant="outlined"
-                onClick={() => setJobDescription(p.text)}
-              />
-            ))}
-          </Stack>
-          <TextField
-            fullWidth
-            multiline
-            minRows={3}
-            maxRows={8}
-            placeholder="Paste a job description, or pick a preset above…"
-            value={jobDescription}
-            onChange={(e) => setJobDescription(e.target.value)}
-          />
-        </Box>
+        <JdInput value={jobDescription} onChange={setJobDescription} />
 
         <Button
           variant="contained"
