@@ -50,4 +50,9 @@ jq -Rr --unbuffered '
       + (if $e.total_cost_usd then " | $\(($e.total_cost_usd * 100 | round) / 100)" else "" end)
       + esc(0)
     else empty end
+  # `sbx run` holds the terminal in raw mode, where a bare \n moves down without returning to
+  # column 0, so every line staircases. End each line, including line breaks inside the
+  # agent text, with \r\n; a cooked terminal ignores the extra \r. (No apostrophes in this
+  # program: it sits inside a single-quoted shell string.)
+  | gsub("\n"; "\r\n") + "\r"
 '
