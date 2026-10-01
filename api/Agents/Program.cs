@@ -937,7 +937,7 @@ app.MapPost("/agents/roster-scan", async (
     var filtersJson = scanFilters is null
         ? null
         : System.Text.Json.JsonSerializer.Serialize(
-            scanFilters, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
+            scanFilters, System.Text.Json.JsonSerializerOptions.Web);
     var job = await scanStore.CreateAsync(
         user.GetUserId(), request.JobDescription.Trim(), null, filtersJson, scanOptions.ChunkSize, [], ct);
     scanQueue.Enqueue(job.Id);

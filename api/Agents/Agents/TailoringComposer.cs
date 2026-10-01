@@ -26,11 +26,6 @@ public sealed record TailoringResponse(string Answer, IReadOnlyList<TailoringRew
 /// </summary>
 public static class TailoringComposer
 {
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
-    {
-        PropertyNameCaseInsensitive = true,
-    };
-
     public static TailoringResponse Compose(TailoringAgentOutcome outcome, ILogger logger)
     {
         return new TailoringResponse(outcome.Reply.Text, ComposeRewrites(outcome, logger));
@@ -132,7 +127,7 @@ public static class TailoringComposer
     {
         try
         {
-            return JsonSerializer.Deserialize<List<RewriteEntry?>>(text, Json);
+            return JsonSerializer.Deserialize<List<RewriteEntry?>>(text, JsonSerializerOptions.Web);
         }
         catch (JsonException)
         {

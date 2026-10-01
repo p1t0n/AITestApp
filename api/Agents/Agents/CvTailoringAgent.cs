@@ -122,11 +122,6 @@ public sealed class CvTailoringAgent
 
     public string Name => "cv-tailoring";
 
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
-    {
-        PropertyNameCaseInsensitive = true,
-    };
-
     public async Task<TailoringAgentOutcome> TailorAsync(
         Guid expertId, string jobDescription, CancellationToken ct = default)
     {
@@ -151,7 +146,7 @@ public sealed class CvTailoringAgent
             Cv = ToolResultPayload.Extract<TailoringCvPayload>(
                 cvResult,
                 obj => obj.ContainsKey("experiences") || obj.ContainsKey("Experiences"),
-                Json),
+                JsonSerializerOptions.Web),
         };
         var runTools = tools
             .Where(t => t.Name == ExemplarTool)
@@ -223,7 +218,7 @@ public sealed class CvTailoringAgent
         null => "(the tool returned no result)",
         string text => text,
         Microsoft.Extensions.AI.TextContent content => content.Text,
-        _ => JsonSerializer.Serialize(result, Json),
+        _ => JsonSerializer.Serialize(result, JsonSerializerOptions.Web),
     };
 
     private async Task<IReadOnlyList<AITool>> GetToolsAsync(CancellationToken ct)
@@ -268,11 +263,6 @@ internal sealed class TailoringCapture
 internal sealed class CapturingExemplarFunction(AIFunction inner, TailoringCapture capture)
     : DelegatingAIFunction(inner)
 {
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
-    {
-        PropertyNameCaseInsensitive = true,
-    };
-
     protected override async ValueTask<object?> InvokeCoreAsync(
         AIFunctionArguments arguments, CancellationToken cancellationToken)
     {
@@ -281,7 +271,7 @@ internal sealed class CapturingExemplarFunction(AIFunction inner, TailoringCaptu
         capture.Exemplars = ToolResultPayload.Extract<TailoringExemplarPayload>(
             result,
             obj => obj.ContainsKey("results") || obj.ContainsKey("Results"),
-            Json) ?? capture.Exemplars;
+            JsonSerializerOptions.Web) ?? capture.Exemplars;
         return result;
     }
 
@@ -301,7 +291,7 @@ internal sealed class CapturingExemplarFunction(AIFunction inner, TailoringCaptu
 
         try
         {
-            if (JsonSerializer.SerializeToNode(raw, Json) is not JsonArray array)
+            if (JsonSerializer.SerializeToNode(raw, JsonSerializerOptions.Web) is not JsonArray array)
             {
                 return null;
             }

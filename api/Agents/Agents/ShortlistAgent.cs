@@ -67,8 +67,6 @@ public sealed class ShortlistAgent
         experience, or facts the evidence does not contain.
         """;
 
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
-
     private readonly IChatClient _chatClient;
 
     public ShortlistAgent(IChatClient chatClient) => _chatClient = chatClient;
@@ -84,7 +82,7 @@ public sealed class ShortlistAgent
         prompt.AppendLine(jobDescription);
         prompt.AppendLine();
         prompt.AppendLine("Candidates with per-requirement evidence:");
-        prompt.AppendLine(JsonSerializer.Serialize(payload.Results, Json));
+        prompt.AppendLine(JsonSerializer.Serialize(payload.Results, JsonSerializerOptions.Web));
 
         var options = new ChatOptions
         {

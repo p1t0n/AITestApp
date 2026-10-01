@@ -817,11 +817,6 @@ public sealed class StaffingPipeline
     private sealed record NarrativePayload(
         List<NarrativeRationale?>? Rationales, NarrativeRecommendation? Recommendation)
     {
-        private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
-        {
-            PropertyNameCaseInsensitive = true,
-        };
-
         public static NarrativePayload? TryParse(string modelText)
         {
             if (TryDeserialize(modelText) is { } direct)
@@ -838,7 +833,7 @@ public sealed class StaffingPipeline
         {
             try
             {
-                return JsonSerializer.Deserialize<NarrativePayload>(text, Json);
+                return JsonSerializer.Deserialize<NarrativePayload>(text, JsonSerializerOptions.Web);
             }
             catch (JsonException)
             {

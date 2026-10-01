@@ -91,8 +91,6 @@ public sealed class QueuedSyncScoringTransport : IScoringTransport
         4. rationale is one or two sentences grounded in the digest.
         """;
 
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
-
     private readonly IChatClient _chat;
     private readonly RateLimiter _limiter;
     private readonly RosterScanOptions _options;
@@ -175,7 +173,7 @@ public sealed class QueuedSyncScoringTransport : IScoringTransport
 
         prompt.AppendLine();
         prompt.AppendLine("Candidate digests:");
-        prompt.AppendLine(JsonSerializer.Serialize(chunk, Json));
+        prompt.AppendLine(JsonSerializer.Serialize(chunk, JsonSerializerOptions.Web));
         return prompt.ToString();
     }
 
@@ -220,7 +218,7 @@ public sealed class QueuedSyncScoringTransport : IScoringTransport
     {
         try
         {
-            return JsonSerializer.Deserialize<ChunkAssessments>(text.Trim(), Json);
+            return JsonSerializer.Deserialize<ChunkAssessments>(text.Trim(), JsonSerializerOptions.Web);
         }
         catch (JsonException)
         {

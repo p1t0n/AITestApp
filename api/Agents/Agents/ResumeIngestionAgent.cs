@@ -212,11 +212,6 @@ internal sealed record IngestionDraftExpert(Guid Id);
 internal sealed class CapturingIngestionFunction(AIFunction inner, IngestionCapture capture)
     : DelegatingAIFunction(inner)
 {
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
-    {
-        PropertyNameCaseInsensitive = true,
-    };
-
     protected override async ValueTask<object?> InvokeCoreAsync(
         AIFunctionArguments arguments, CancellationToken cancellationToken)
     {
@@ -228,7 +223,7 @@ internal sealed class CapturingIngestionFunction(AIFunction inner, IngestionCapt
     private void Record(object? result)
     {
         var error = ToolResultPayload.Extract<IngestionErrorPayload>(
-            result, obj => obj.ContainsKey("code") && obj.ContainsKey("message"), Json);
+            result, obj => obj.ContainsKey("code") && obj.ContainsKey("message"), JsonSerializerOptions.Web);
 
         capture.Calls.Add(new IngestionToolCall(
             Name, error is null, error is null ? null : $"{error.Code}: {error.Message}"));
@@ -236,7 +231,7 @@ internal sealed class CapturingIngestionFunction(AIFunction inner, IngestionCapt
         if (error is null && Name == "expert_create_draft")
         {
             var draft = ToolResultPayload.Extract<IngestionDraftPayload>(
-                result, obj => obj.ContainsKey("expert") || obj.ContainsKey("Expert"), Json);
+                result, obj => obj.ContainsKey("expert") || obj.ContainsKey("Expert"), JsonSerializerOptions.Web);
             if (draft is { Expert.Id: var id } && id != Guid.Empty)
             {
                 capture.ExpertId = id;

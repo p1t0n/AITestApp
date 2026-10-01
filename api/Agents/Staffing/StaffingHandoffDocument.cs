@@ -17,14 +17,12 @@ public sealed record StaffingHandoffDocument(
     IReadOnlyList<StageSlice> Slices,
     IReadOnlyList<DegradationEntry> Degradations)
 {
-    /// <summary>camelCase like the wire report, so the persisted document and the SSE payload
-    /// spell fields identically.</summary>
-    public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
-
     public static StaffingHandoffDocument From(HandoffPackage package, StaffingReport report) =>
         new(package.Inputs, report, package.Provenance, package.Slices, package.Degradations);
 
-    public string Serialize() => JsonSerializer.Serialize(this, Json);
+    /// <summary>The Web defaults, so the persisted document and the SSE payload spell fields
+    /// identically — both camelCase.</summary>
+    public string Serialize() => JsonSerializer.Serialize(this, JsonSerializerOptions.Web);
 
     /// <summary>Null for a null/legacy/corrupt column — readers degrade to the snapshot columns,
     /// they never throw over a stored document.</summary>
@@ -37,7 +35,7 @@ public sealed record StaffingHandoffDocument(
 
         try
         {
-            return JsonSerializer.Deserialize<StaffingHandoffDocument>(json, Json);
+            return JsonSerializer.Deserialize<StaffingHandoffDocument>(json, JsonSerializerOptions.Web);
         }
         catch (JsonException)
         {
