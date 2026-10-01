@@ -44,16 +44,15 @@ public sealed class ShortlistSearchServiceTests : IAsyncLifetime
     [Fact]
     public async Task Ranks_broad_coverage_above_single_requirement_matches()
     {
-        var result = await Service().SearchAsync(["fintech", "gaming"]);
+        var results = Matched(await Service().SearchAsync(["fintech", "gaming"]));
 
-        result.Error.Should().BeNull();
         // Bella matches both requirements; Fiona and Gary each match one.
-        result.Results.Select(r => r.Name)
+        results.Select(r => r.Name)
             .Should().HaveCount(3).And.StartWith("Bella Both");
-        var bella = result.Results[0];
+        var bella = results[0];
         bella.MatchedCount.Should().Be(2);
         bella.TotalRequirements.Should().Be(2);
-        bella.Score.Should().BeGreaterThan(result.Results[1].Score);
+        bella.Score.Should().BeGreaterThan(results[1].Score);
         bella.Evidence.Should().OnlyContain(e => e.Matched && e.Snippet != null && e.Similarity >= 0.30);
     }
 
@@ -64,24 +63,24 @@ public sealed class ShortlistSearchServiceTests : IAsyncLifetime
         // requirement must come back unmatched rather than scored against a foreign embedding
         // space — shortlist ranking is coverage-first, so a bogus match here promotes a candidate
         // straight to the top of a list a human reads as a recommendation.
-        var control = await Service().SearchAsync(["fintech", "gaming"]);
-        control.Results.Should().NotBeEmpty("this is the control — the tag filter is the only difference");
+        var control = Matched(await Service().SearchAsync(["fintech", "gaming"]));
+        control.Should().NotBeEmpty("this is the control — the tag filter is the only difference");
 
         var afterASwitch = await Service(new CountingKeywordEmbedder("AzureFoundry/text-embedding-3-small"))
             .SearchAsync(["fintech", "gaming"]);
 
-        afterASwitch.Results.Should().BeEmpty();
-        afterASwitch.Error.Should().BeNull("a mid-switch index is incomplete, not broken");
+        // Matched(), not a fault arm: a mid-switch index is incomplete, not broken.
+        Matched(afterASwitch).Should().BeEmpty();
     }
 
     [Fact]
     public async Task Skill_pre_filter_excludes_an_otherwise_matching_candidate()
     {
         // Bella matches "fintech" topically but lacks React; only Fiona survives the pre-filter.
-        var result = await Service().SearchAsync(["fintech"],
-            new SemanticSearchFilters(SkillIds: [_reactSkillId]));
+        var results = Matched(await Service().SearchAsync(["fintech"],
+            new SemanticSearchFilters(SkillIds: [_reactSkillId])));
 
-        result.Results.Should().ContainSingle().Which.Name.Should().Be("Fiona Fintech");
+        results.Should().ContainSingle().Which.Name.Should().Be("Fiona Fintech");
     }
 
     [Fact]
@@ -90,19 +89,19 @@ public sealed class ShortlistSearchServiceTests : IAsyncLifetime
         // Larry's only "logistics" mention lives in an achievement bullet; the shortlist search
         // must not match the requirement through it (bullet chunks are reserved for the exemplar
         // retrieval path).
-        var result = await Service().SearchAsync(["logistics"]);
+        var results = Matched(await Service().SearchAsync(["logistics"]));
 
-        result.Results.Should().BeEmpty();
+        results.Should().BeEmpty();
     }
 
     [Fact]
     public async Task Sub_threshold_requirement_counts_as_missed_with_no_snippet()
     {
         // Nobody's narrative is about logistics, so that requirement is below MinSimilarity for all.
-        var result = await Service().SearchAsync(["fintech", "logistics"]);
+        var results = Matched(await Service().SearchAsync(["fintech", "logistics"]));
 
-        result.Results.Should().NotBeEmpty();
-        var fiona = result.Results.Single(r => r.Name == "Fiona Fintech");
+        results.Should().NotBeEmpty();
+        var fiona = results.Single(r => r.Name == "Fiona Fintech");
         fiona.MatchedCount.Should().Be(1);
         var missed = fiona.Evidence.Single(e => e.Requirement == "logistics");
         missed.Matched.Should().BeFalse();
@@ -127,8 +126,7 @@ public sealed class ShortlistSearchServiceTests : IAsyncLifetime
 
         var result = await Service(embedder).SearchAsync(["", "   "]);
 
-        result.Results.Should().BeEmpty();
-        result.Error.Should().BeNull();
+        Matched(result).Should().BeEmpty();
         embedder.Calls.Should().Be(0);
     }
 
@@ -137,9 +135,26 @@ public sealed class ShortlistSearchServiceTests : IAsyncLifetime
     {
         var result = await Service(new ThrowingEmbedder()).SearchAsync(["fintech", "gaming"]);
 
-        result.Results.Should().BeEmpty();
-        result.Error.Should().NotBeNullOrWhiteSpace();
+        Faulted(result).Should().NotBeNullOrWhiteSpace();
     }
+
+    /// <summary>Asserts the matches case of the union and hands back the candidates. The arms are
+    /// exhaustive, so a fault here fails as a fault rather than as a null-reference two lines
+    /// later — which is the whole point of the union.</summary>
+    private static IReadOnlyList<ShortlistCandidate> Matched(ShortlistSearchOutcome outcome) => outcome switch
+    {
+        ShortlistMatches matches => matches.Results,
+        ShortlistSearchFault fault => throw new InvalidOperationException(
+            $"Expected candidates; the search faulted with: {fault.Error}"),
+    };
+
+    /// <summary>The mirror of <see cref="Matched"/> for the soft-error path.</summary>
+    private static string Faulted(ShortlistSearchOutcome outcome) => outcome switch
+    {
+        ShortlistMatches matches => throw new InvalidOperationException(
+            $"Expected a fault; the search returned {matches.Results.Count} candidate(s)."),
+        ShortlistSearchFault fault => fault.Error,
+    };
 
     private IShortlistSearchService Service(IEmbedder? embedder = null) => new SemanticSearchService(
         NewDb(), embedder ?? new CountingKeywordEmbedder(),

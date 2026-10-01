@@ -54,6 +54,9 @@ public class RosterShortlistTools
             ? new SemanticSearchFilters(availableOn, skillIds, location, minYears)
             : null;
 
-        return McpToolExecutor.RunAsync(() => search.SearchAsync(requirements, filters, topK, ct));
+        // The service seam speaks the union; the tool contract is the flat { results, error }
+        // shape agents already parse, so the edge — and only the edge — flattens it.
+        return McpToolExecutor.RunAsync(async () =>
+            ShortlistSearchResult.From(await search.SearchAsync(requirements, filters, topK, ct)));
     }
 }
