@@ -9,7 +9,13 @@ input=$(printf '%s\r\n' \
   '{"type":"user","message":{"content":[{"type":"tool_result","is_error":false,"content":"fine"},{"type":"tool_result","is_error":true,"content":"Exit code 1\ncd: web: No such file"}]}}' \
   $'plain sbx line\e[?25h\e\\')
 
-got=$(printf '%s' "$input" | ./format.sh | sed $'s/\e\\[[0-9;]*m//g')
+raw=$(printf '%s' "$input" | ./format.sh)
+# Raw-mode terminal: every line must end in \r, or the output staircases.
+if printf '%s\n' "$raw" | grep -qv $'\r$'; then
+  echo "format.sh emitted a line without \\r" >&2
+  exit 1
+fi
+got=$(printf '%s' "$raw" | tr -d '\r' | sed $'s/\e\\[[0-9;]*m//g')
 want=$(cat <<'EOF'
 > session abcdef12 | m | 2 tools
 
