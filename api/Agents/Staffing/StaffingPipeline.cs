@@ -107,7 +107,16 @@ public sealed class StaffingPipeline
         IReadOnlyList<string> Notes,
         bool Degraded);
 
-    private sealed record ReportResult(StaffingReport? Report, string? ShortlistFault);
+    /// <summary>Why there is no report: the shortlist step — the one stage nothing downstream can
+    /// degrade around — failed.</summary>
+    private sealed record ShortlistFault(string Message);
+
+    /// <summary>
+    /// The pipeline's single output: a report, or the shortlist fault that made one impossible.
+    /// A C# 15 union rather than a pair of nullables, so the sink below cannot hand back a result
+    /// with both halves null and the runner cannot read the half that was not set.
+    /// </summary>
+    private union ReportResult(StaffingReport, ShortlistFault);
 
     // ----- Per-run state ----------------------------------------------------------------------
 
@@ -131,11 +140,19 @@ public sealed class StaffingPipeline
             await using var run = await InProcessExecution.RunAsync(workflow, request, cancellationToken: ct);
             var events = run.NewEvents.ToList();
 
-            var result = events
-                .OfType<WorkflowOutputEvent>()
-                .Select(e => e.As<ReportResult>())
-                .FirstOrDefault(r => r is not null);
-            if (result is null)
+            // Is<T>(out …) rather than As<T>(): the union is a value type, so a failed As would
+            // hand back default(ReportResult) — a value matching neither case — instead of null.
+            ReportResult? result = null;
+            foreach (var output in events.OfType<WorkflowOutputEvent>())
+            {
+                if (output.Is<ReportResult>(out var yielded))
+                {
+                    result = yielded;
+                    break;
+                }
+            }
+
+            if (result is not { } outcome)
             {
                 // Executors catch their own faults; reaching this means a pipeline bug, so surface
                 // whatever the workflow recorded rather than degrading silently.
@@ -150,7 +167,11 @@ public sealed class StaffingPipeline
                 package = new HandoffPackage(_inputs, _provenance, [.. _slices], [.. _degradations]);
             }
 
-            return new StaffingRunOutcome(result.Report, result.ShortlistFault, _events, package);
+            return outcome switch
+            {
+                StaffingReport report => new StaffingRunOutcome(report, null, _events, package),
+                ShortlistFault fault => new StaffingRunOutcome(null, fault.Message, _events, package),
+            };
         }
 
         /// <summary>The explicit workflow spine. Executors are per-run instances (they close over
@@ -737,7 +758,8 @@ public sealed class StaffingPipeline
             if (match.Shortlist.Fault is { } fault)
             {
                 Emit("report", "No report: the shortlist step failed.");
-                await context.YieldOutputAsync(new ReportResult(Report: null, fault), ct);
+                ReportResult faulted = new ShortlistFault(fault);
+                await context.YieldOutputAsync(faulted, ct);
                 return;
             }
 
@@ -764,7 +786,8 @@ public sealed class StaffingPipeline
                 degraded,
                 [.. match.Notes, .. stage.Notes],
                 Extraction: match.Shortlist.Run.Response.Extraction);
-            await context.YieldOutputAsync(new ReportResult(report, ShortlistFault: null), ct);
+            ReportResult completed = report;
+            await context.YieldOutputAsync(completed, ct);
         }
 
         /// <summary>The deterministic rationale used whenever the narrative can't supply one:
