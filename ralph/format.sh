@@ -3,42 +3,51 @@
 #
 # sbx hands us the agent's raw event stream on stdout; unformatted that is a wall of
 # single-line JSON. This renders it. Non-JSON lines (sbx's own chatter, docker noise)
-# pass through untouched, so nothing is silently swallowed.
+# pass through, minus the terminal-control sequences sbx emits (window title, clear
+# screen), so nothing is silently swallowed and the scrollback is not wiped.
+#
+# One line per tool call, naming what it acts on; a tool result prints only when it
+# failed, with its first line. Successful results are implied by the next call.
 #
 # Usage:  sbx run ... | ./ralph/format.sh
 
-DIM='[2m'
-CYAN='[36m'
-RED='[31m'
-BOLD='[1m'
-OFF='[0m'
+jq -Rr --unbuffered '
+  def esc(c): "\u001b[\(c)m";
+  def clip(n): if length > n then .[0:n] + "…" else . end;
+  def oneline: split("\n") | map(select(length > 0)) | first // "";
+  def subject:
+    if .name == "Bash" then (.input.description // (.input.command | oneline))
+    elif (.input.file_path? // null) then .input.file_path
+    elif (.input.pattern? // null) then .input.pattern
+    elif (.input.id? // .input.issueId? // null) then (.input.id // .input.issueId)
+    elif (.input.query? // null) then .input.query
+    elif (.input.team? // null) then [.input.team, .input.state] | map(select(.)) | join(" / ")
+    else "" end
+    | tostring | oneline | clip(100);
 
-jq -Rr --unbuffered \
-  --arg dim "$DIM" --arg cyan "$CYAN" --arg red "$RED" --arg bold "$BOLD" --arg off "$OFF" '
-  . as $line
-  | (try fromjson catch null) as $e
+  # sbx wraps the stream in terminal control (OSC window title, clear screen, cursor show)
+  # and the pty adds \r. Strip all of it; the only colour on screen is the colour added here.
+  gsub("\u001b\\][^\u0007\u001b]*(\u0007|\u001b\\\\)|\u001b\\[[0-9;?]*[A-Za-z]|\u001b\\\\|\r"; "") as $line
+  | ($line | try (sub("^[^{]*(?=\\{\"type\")"; "") | fromjson) catch null) as $e
   | if $e == null then
-      $line
+      ($line | select(length > 0))
     elif $e.type == "system" and $e.subtype == "init" then
-      "\($dim)> session \($e.session_id[0:8]) | \($e.model // "?") | \($e.tools | length) tools\($off)"
+      "\(esc(2))> session \($e.session_id[0:8]) | \($e.model // "?") | \($e.tools | length) tools\(esc(0))"
     elif $e.type == "assistant" then
       ( $e.message.content[]?
         | if .type == "text" then
-            (.text | select(length > 0))
+            (.text | select(length > 0) | "\n" + .)
           elif .type == "tool_use" then
-            "\($cyan)  * \(.name)\($off)"
+            "\(esc(36))  * \(.name | sub("^mcp__[^_]+(__|_)"; ""))\(esc(0))\(esc(2)) \(subject)\(esc(0))"
           else empty end )
     elif $e.type == "user" then
       ( $e.message.content[]?
-        | select(.type == "tool_result")
-        | if (.is_error // false)
-          then "\($red)  <- error\($off)"
-          else "\($dim)  <- ok\($off)" end )
+        | select(.type == "tool_result" and (.is_error // false))
+        | (.content | if type == "array" then map(.text? // "") | join("\n") else tostring end) as $c
+        | "\(esc(31))    <- \($c | split("\n") | map(select(length > 0 and (startswith("Exit code") | not))) | first // $c | clip(160))\(esc(0))" )
     elif $e.type == "result" then
-      "\($bold)# \($e.subtype) | \($e.num_turns // 0) turns | \((($e.duration_ms // 0) / 1000) | floor)s"
-      + (if $e.total_cost_usd
-         then " | $\(($e.total_cost_usd * 100 | round) / 100)"
-         else "" end)
-      + "\($off)"
+      "\n\(esc(1))# \($e.subtype) | \($e.num_turns // 0) turns | \((($e.duration_ms // 0) / 1000) | floor)s"
+      + (if $e.total_cost_usd then " | $\(($e.total_cost_usd * 100 | round) / 100)" else "" end)
+      + esc(0)
     else empty end
-' | while IFS= read -r l; do printf '%b\n' "$l"; done
+'
