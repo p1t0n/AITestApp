@@ -6,6 +6,7 @@ using ExpertToJob.Domain.Entities;
 using ExpertToJob.Agents.Tests.Fakes;
 using FluentAssertions;
 using Microsoft.Extensions.AI;
+using ExpertToJob.Tests.Shared;
 using Microsoft.Extensions.Time.Testing;
 
 namespace ExpertToJob.Agents.Tests;
@@ -68,10 +69,11 @@ public class QueuedSyncScoringTransportTests
         JdSeniority.Senior, null, []);
 
     private static QueuedSyncScoringTransport Transport(
-        FakeChatClient chat, CountingRateLimiter? limiter = null, RosterScanOptions? options = null) =>
+        FakeChatClient chat, CountingRateLimiter? limiter = null, RosterScanOptions? options = null,
+        TimeProvider? clock = null) =>
         new(chat, limiter ?? new CountingRateLimiter(),
             options ?? new RosterScanOptions { RetryBaseSeconds = 0 },
-            new FakeTimeProvider());
+            clock ?? new FakeTimeProvider());
 
     private static ChatResponse Reply(string text) =>
         new(new ChatMessage(ChatRole.Assistant, text))
@@ -193,6 +195,30 @@ public class QueuedSyncScoringTransportTests
 
         await act.Should().ThrowAsync<ScoringQuotaExceededException>();
         chat.CallCount.Should().Be(3, "the budget is attempts, not retries-after-first");
+    }
+
+    /// <summary>
+    /// The options-driven ladder itself, frozen (EXP-87): the wait doubles each time, from
+    /// <see cref="RosterScanOptions.RetryBaseSeconds"/>. Measured on a fake clock, so the
+    /// assertion is about the schedule and the test costs milliseconds.
+    /// </summary>
+    [Fact]
+    public async Task The_retry_ladder_doubles_the_wait_from_the_configured_base()
+    {
+        var clock = new LadderClock();
+        var chat = new FakeChatClient(
+            () => throw new HttpRequestException("rate limited", null, System.Net.HttpStatusCode.TooManyRequests));
+        var transport = Transport(
+            chat,
+            options: new RosterScanOptions { MaxRetryAttempts = 4, RetryBaseSeconds = 2 },
+            clock: clock);
+
+        var act = () => transport.ScoreChunkAsync("JD", null, Chunk);
+
+        await act.Should().ThrowAsync<ScoringQuotaExceededException>();
+        chat.CallCount.Should().Be(4, "the budget is attempts, not retries-after-first");
+        clock.Waits.Should().Equal(
+            TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(4), TimeSpan.FromSeconds(8));
     }
 
     [Fact]

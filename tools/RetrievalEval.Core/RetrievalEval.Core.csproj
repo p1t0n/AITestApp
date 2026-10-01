@@ -15,6 +15,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The query capture's soft-error ladder (EXP-87). Nothing else here reaches Polly, so unlike
+         the agents this project pulls it in directly rather than transitively. -->
+    <PackageReference Include="Polly.Core" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\api\Infrastructure\ExpertToJob.Infrastructure.csproj" />
   </ItemGroup>
 

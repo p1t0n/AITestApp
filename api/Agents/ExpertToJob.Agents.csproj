@@ -22,6 +22,8 @@
     <PackageReference Include="Microsoft.Extensions.AI.OpenAI" />
     <PackageReference Include="ModelContextProtocol" />
     <PackageReference Include="OpenAI" />
+    <!-- The 429 ladders in RateLimitRetry; see the note in Directory.Packages.props. -->
+    <PackageReference Include="Polly.Core" />
   </ItemGroup>
 
   <ItemGroup>

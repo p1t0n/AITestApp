@@ -9,6 +9,7 @@ using FluentAssertions;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
+using Polly;
 
 namespace ExpertToJob.Agents.Tests;
 
@@ -74,14 +75,14 @@ public class StaffingHandoffPackageTests
         IChatClient chat,
         IUsageService? usage = null,
         int maxConcurrentMatches = 1,
-        StaffingRetryPolicy? retry = null) => new(
+        ResiliencePipeline? retry = null) => new(
         shortlist,
         match,
         chat,
         usage ?? new FakeUsageService(),
         new RecordingUsageMeter(),
         new StaffingThrottle(maxConcurrentMatches),
-        retry ?? new StaffingRetryPolicy(MaxAttempts: 3, _ => TimeSpan.Zero),
+        retry ?? RateLimitRetry.Linear(maxAttempts: 3, TimeSpan.Zero, TimeProvider.System),
         new MapIdentitySource(),
         TimeProvider.System,
         NullLogger<StaffingPipeline>.Instance);
@@ -223,7 +224,7 @@ public class StaffingHandoffPackageTests
             new FakeShortlistRunService(ShortlistOk(Candidate(1))),
             match,
             NarrativeChat(Id(1), Id(1)),
-            retry: new StaffingRetryPolicy(MaxAttempts: 3, _ => TimeSpan.Zero));
+            retry: RateLimitRetry.Linear(maxAttempts: 3, TimeSpan.Zero, TimeProvider.System));
 
         var outcome = await RunAsync(pipeline, UserId);
 

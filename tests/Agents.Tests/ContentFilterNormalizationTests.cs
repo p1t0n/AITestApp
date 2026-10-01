@@ -165,7 +165,7 @@ public class ContentFilterNormalizationTests
                 .Should().ThrowAsync<ChatContentFilteredException>();
 
             inner.Calls.Should().Be(1, "the filter decision is final; a second call buys the same answer");
-            Staffing.StaffingRetryPolicy.IsRateLimit(thrown.Which).Should().BeFalse(
+            RateLimitRetry.IsRateLimit(thrown.Which).Should().BeFalse(
                 "a content filter is not a rate limit, and the staffing retry must not treat it as one");
         }
     }

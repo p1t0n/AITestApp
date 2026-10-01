@@ -123,6 +123,13 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.19.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.19.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.19.0" />
+    <!--
+      The retry ladders the agents and the retrieval eval ride out a provider 429 with (EXP-87).
+      Http.Resilience already carries exactly this version in, so this entry pins nothing new — it
+      lets the two projects that build a pipeline by hand say so, instead of reaching through a
+      transitive edge they do not own.
+    -->
+    <PackageVersion Include="Polly.Core" Version="8.4.2" />
   </ItemGroup>
 
   <!-- Documents -->

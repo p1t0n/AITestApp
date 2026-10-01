@@ -23,6 +23,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Reads a Polly retry ladder without spending it; shared with the other project that
+         freezes a 429 ladder (EXP-87). -->
+    <Compile Include="..\Shared\LadderClock.cs" Link="Fakes\LadderClock.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
 

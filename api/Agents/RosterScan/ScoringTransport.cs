@@ -3,10 +3,10 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using ExpertToJob.Agents.Agents;
-using ExpertToJob.Agents.Staffing;
 using ExpertToJob.Application.Search;
 using ExpertToJob.Domain.Entities;
 using Microsoft.Extensions.AI;
+using Polly;
 
 namespace ExpertToJob.Agents.RosterScan;
 
@@ -93,16 +93,15 @@ public sealed class QueuedSyncScoringTransport : IScoringTransport
 
     private readonly IChatClient _chat;
     private readonly RateLimiter _limiter;
-    private readonly RosterScanOptions _options;
-    private readonly TimeProvider _clock;
+    private readonly ResiliencePipeline _retry;
 
     public QueuedSyncScoringTransport(
         IChatClient chat, RateLimiter limiter, RosterScanOptions options, TimeProvider clock)
     {
         _chat = chat;
         _limiter = limiter;
-        _options = options;
-        _clock = clock;
+        _retry = RateLimitRetry.Exponential(
+            options.MaxRetryAttempts, TimeSpan.FromSeconds(options.RetryBaseSeconds), clock);
     }
 
     public async Task<ScoredChunk> ScoreChunkAsync(
@@ -123,39 +122,37 @@ public sealed class QueuedSyncScoringTransport : IScoringTransport
         return new ScoredChunk(MapResults(chunk, call.Response.Text), reply);
     }
 
+    /// <summary>One chunk's model call on the shipped 429 ladder (budget and backoff in
+    /// <see cref="RateLimitRetry"/>). Every attempt takes its own permit from the shared pacer, and
+    /// a 429 that outlives the budget becomes the typed quota exception the runner parks on.</summary>
     private async Task<(ChatResponse Response, string? ModelId, long LatencyMs, int Iterations, string? ToolSequence)> CallWithPacingAndRetryAsync(
         string prompt, ChatOptions options, CancellationToken ct)
     {
-        for (var attempt = 1; ; attempt++)
+        var attempts = 0;
+        try
         {
-            using var lease = await _limiter.AcquireAsync(1, ct);
-            try
-            {
-                using var metering = Usage.MeteringScope.Begin();
-                var clock = System.Diagnostics.Stopwatch.StartNew();
-                var response = await _chat.GetResponseAsync(
-                    [new ChatMessage(ChatRole.System, Instructions), new ChatMessage(ChatRole.User, prompt)],
-                    options,
-                    ct);
-                var run = metering.Snapshot();
-                return (response, run.ModelId,
-                    run.LatencyMs > 0 ? run.LatencyMs : clock.ElapsedMilliseconds,
-                    run.Iterations, run.ToolSequence);
-            }
-            catch (Exception ex) when (StaffingRetryPolicy.IsRateLimit(ex))
-            {
-                if (attempt >= _options.MaxRetryAttempts)
+            return await _retry.ExecuteAsync(
+                async token =>
                 {
-                    throw new ScoringQuotaExceededException(
-                        $"The model quota is exhausted ({attempt} attempts hit 429).", ex);
-                }
-
-                var delay = TimeSpan.FromSeconds(_options.RetryBaseSeconds * Math.Pow(2, attempt - 1));
-                if (delay > TimeSpan.Zero)
-                {
-                    await Task.Delay(delay, _clock, ct);
-                }
-            }
+                    attempts++;
+                    using var lease = await _limiter.AcquireAsync(1, token);
+                    using var metering = Usage.MeteringScope.Begin();
+                    var clock = System.Diagnostics.Stopwatch.StartNew();
+                    var response = await _chat.GetResponseAsync(
+                        [new ChatMessage(ChatRole.System, Instructions), new ChatMessage(ChatRole.User, prompt)],
+                        options,
+                        token);
+                    var run = metering.Snapshot();
+                    return (response, run.ModelId,
+                        run.LatencyMs > 0 ? run.LatencyMs : clock.ElapsedMilliseconds,
+                        run.Iterations, run.ToolSequence);
+                },
+                ct);
+        }
+        catch (Exception ex) when (RateLimitRetry.IsRateLimit(ex))
+        {
+            throw new ScoringQuotaExceededException(
+                $"The model quota is exhausted ({attempts} attempts hit 429).", ex);
         }
     }
 

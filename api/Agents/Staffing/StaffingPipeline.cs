@@ -8,6 +8,7 @@ using ExpertToJob.Agents.Handoff;
 using ExpertToJob.Agents.Usage;
 using Microsoft.Agents.AI.Workflows;
 using Microsoft.Extensions.AI;
+using Polly;
 
 namespace ExpertToJob.Agents.Staffing;
 
@@ -41,7 +42,7 @@ public sealed class StaffingPipeline
     private readonly IUsageService _usage;
     private readonly IUsageMeter _meter;
     private readonly StaffingThrottle _throttle;
-    private readonly StaffingRetryPolicy _retry;
+    private readonly ResiliencePipeline _retry;
     private readonly IAgentIdentitySource _identities;
     private readonly TimeProvider _clock;
     private readonly ILogger<StaffingPipeline> _logger;
@@ -53,7 +54,7 @@ public sealed class StaffingPipeline
         IUsageService usage,
         IUsageMeter meter,
         StaffingThrottle throttle,
-        StaffingRetryPolicy retry,
+        ResiliencePipeline retry,
         IAgentIdentitySource identities,
         TimeProvider clock,
         ILogger<StaffingPipeline> logger)
@@ -519,23 +520,25 @@ public sealed class StaffingPipeline
             }
         }
 
+        /// <summary>One candidate's match run on the shipped 429 ladder. The ladder's budget and
+        /// backoff live in <see cref="RateLimitRetry"/>; all this adds is the retry tally the slice
+        /// records, counted from the attempts the pipeline actually made.</summary>
         private async Task<MatchRunOutcome> RunWithRateLimitRetryAsync(
             Guid expertId, string jobDescription, Agents.JdRequirements? extraction,
             Action onRetry, CancellationToken ct)
         {
-            for (var failures = 1; ; failures++)
-            {
-                try
+            var attempts = 0;
+            return await pipeline._retry.ExecuteAsync(
+                async token =>
                 {
-                    return await pipeline._match.RunAsync(expertId, jobDescription, extraction, ct);
-                }
-                catch (Exception ex) when (
-                    StaffingRetryPolicy.IsRateLimit(ex) && failures < pipeline._retry.MaxAttempts)
-                {
-                    onRetry();
-                    await Task.Delay(pipeline._retry.Delay(failures), ct);
-                }
-            }
+                    if (attempts++ > 0)
+                    {
+                        onRetry();
+                    }
+
+                    return await pipeline._match.RunAsync(expertId, jobDescription, extraction, token);
+                },
+                ct);
         }
 
         // ----- Aggregate -------------------------------------------------------------------------
