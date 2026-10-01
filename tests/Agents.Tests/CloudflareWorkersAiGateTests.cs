@@ -122,7 +122,7 @@ public class CloudflareWorkersAiGateTests(ITestOutputHelper output)
         var scored = await Transport(chat).ScoreChunkAsync(
             RosterScanGateChunk.JobDescription, RosterScanGateChunk.Extraction(), digests);
 
-        var adhered = scored.Results.Count(r => r.Status == ScoringCandidateStatus.Scored);
+        var adhered = scored.Results.Count(r => r.Status is ScoringCandidateStatus.Scored);
         var rate = (double)adhered / digests.Count;
         var reply = scored.Reply;
 
@@ -143,13 +143,13 @@ public class CloudflareWorkersAiGateTests(ITestOutputHelper output)
 
         // The rationales are where a schema-shaped-but-useless reply shows itself: a provider can
         // fill every required field with nothing. Print one so a passing gate is still readable.
-        var sample = scored.Results.FirstOrDefault(r => r.Status == ScoringCandidateStatus.Scored);
+        var sample = scored.Results.FirstOrDefault(r => r.Status is ScoringCandidateStatus.Scored);
         if (sample is not null)
         {
             output.WriteLine($"  sample: score={sample.Score} band={sample.Band} scorable={sample.Scorable} — {sample.Rationale}");
         }
 
-        foreach (var failed in scored.Results.Where(r => r.Status != ScoringCandidateStatus.Scored))
+        foreach (var failed in scored.Results.Where(r => r.Status is not ScoringCandidateStatus.Scored))
         {
             output.WriteLine($"  MISS {failed.ExpertId}: {failed.Error}");
         }

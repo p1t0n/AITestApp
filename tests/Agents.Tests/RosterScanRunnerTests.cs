@@ -92,7 +92,7 @@ public class RosterScanRunnerTests
 
     private static ScoredChunk AllScored(IReadOnlyList<ExpertDigest> chunk) => new(
         chunk.Select(c => new ScoringCandidateResult(
-            c.ExpertId, ScoringCandidateStatus.Scored, 75, "Strong", "fit", true, null)).ToList(),
+            c.ExpertId, new ScoringCandidateStatus.Scored(), 75, "Strong", "fit", true, null)).ToList(),
         new AgentReply("{}", 200, 50, 250));
 
     private static (RosterScanRunner Runner, ScoringJobStore Store, FakeExtractor Extractor,
@@ -141,7 +141,7 @@ public class RosterScanRunnerTests
         var settled = await store.GetAsync(job.Id);
         settled!.State.Should().Be(ScoringJobState.Completed);
         settled.ExtractionJson.Should().NotBeNullOrEmpty("the intake extraction persists on the job");
-        settled.Candidates.Should().HaveCount(3).And.OnlyContain(c => c.Status == ScoringCandidateStatus.Scored);
+        settled.Candidates.Should().HaveCount(3).And.OnlyContain(c => c.Status is ScoringCandidateStatus.Scored);
         settled.Candidates.Should().OnlyContain(c => c.Digest.StartsWith("Digest of"));
     }
 
@@ -174,7 +174,7 @@ public class RosterScanRunnerTests
         paused.ResumeAt.Should().Be(RosterScanRunner.NextQuotaReset(Clock.GetUtcNow()));
         // 2026-08-16 12:00 UTC = 05:00 Pacific (PDT, UTC-7) → next midnight Pacific = 07:00 UTC next day.
         paused.ResumeAt.Should().Be(new DateTimeOffset(2026, 8, 17, 7, 0, 0, TimeSpan.Zero));
-        paused.Candidates.Should().OnlyContain(c => c.Status == ScoringCandidateStatus.Pending,
+        paused.Candidates.Should().OnlyContain(c => c.Status is ScoringCandidateStatus.Pending,
             "nothing settled before the quota hit");
     }
 
@@ -217,7 +217,7 @@ public class RosterScanRunnerTests
         secondPass.Extractor.Calls.Should().Be(0, "the persisted extraction is reused");
         secondPass.Transport.Calls.Should().Be(1, "only the remaining pending chunk scores");
         var done = await secondPass.Store.GetAsync(job.Id);
-        done!.Candidates.Should().OnlyContain(c => c.Status == ScoringCandidateStatus.Scored);
+        done!.Candidates.Should().OnlyContain(c => c.Status is ScoringCandidateStatus.Scored);
     }
 
     [Fact]
@@ -245,8 +245,8 @@ public class RosterScanRunnerTests
         await using var db = NewDb();
         var transport = new FakeTransport(chunk => new ScoredChunk(
             chunk.Select((c, i) => i == 0
-                ? new ScoringCandidateResult(c.ExpertId, ScoringCandidateStatus.Failed, null, null, null, null, "boom")
-                : new ScoringCandidateResult(c.ExpertId, ScoringCandidateStatus.Scored, 60, "Moderate", "ok", true, null))
+                ? new ScoringCandidateResult(c.ExpertId, new ScoringCandidateStatus.Failed(), null, null, null, null, "boom")
+                : new ScoringCandidateResult(c.ExpertId, new ScoringCandidateStatus.Scored(), 60, "Moderate", "ok", true, null))
                 .ToList(),
             new AgentReply("{}", 10, 5, 15)));
         var (runner, store, _, _, _) = Build(db, transport);
@@ -257,8 +257,8 @@ public class RosterScanRunnerTests
         result.Should().Be(RosterScanRunResult.Completed);
         var done = await store.GetAsync(job.Id);
         done!.State.Should().Be(ScoringJobState.Completed);
-        done.Candidates.Should().Contain(c => c.Status == ScoringCandidateStatus.Failed)
-            .And.Contain(c => c.Status == ScoringCandidateStatus.Scored);
+        done.Candidates.Should().Contain(c => c.Status is ScoringCandidateStatus.Failed)
+            .And.Contain(c => c.Status is ScoringCandidateStatus.Scored);
     }
 
     [Fact]

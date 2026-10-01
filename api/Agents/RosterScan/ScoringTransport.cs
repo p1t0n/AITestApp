@@ -195,7 +195,7 @@ public sealed class QueuedSyncScoringTransport : IScoringTransport
             if (assessment is null)
             {
                 results.Add(new ScoringCandidateResult(
-                    candidate.ExpertId, ScoringCandidateStatus.Failed,
+                    candidate.ExpertId, new ScoringCandidateStatus.Failed(),
                     null, null, null, null,
                     assessments is null
                         ? "The chunk reply did not parse as the scoring schema."
@@ -205,7 +205,7 @@ public sealed class QueuedSyncScoringTransport : IScoringTransport
 
             results.Add(new ScoringCandidateResult(
                 candidate.ExpertId,
-                ScoringCandidateStatus.Scored,
+                new ScoringCandidateStatus.Scored(),
                 assessment.Score is >= 0 and <= 100 ? assessment.Score : null,
                 assessment.Band?.ToDisplay(),
                 assessment.Rationale,

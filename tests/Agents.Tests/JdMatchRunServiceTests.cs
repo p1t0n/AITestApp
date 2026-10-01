@@ -53,7 +53,7 @@ public class JdMatchRunServiceTests
         outcome.Results.Select(r => r.ExpertId).Should().Equal(Grace, Ada);
         outcome.Results[0].Score.Should().Be(85);
         outcome.Results[0].Band.Should().Be("Strong");
-        outcome.Results[0].Status.Should().Be(StaffingMatchStatus.Completed);
+        outcome.Results[0].Status.Should().Be(new StaffingMatchStatus.Completed());
         outcome.Results[0].Answer.Should().Contain("Analysis for");
         // Every reply that spent tokens is handed back for metering, step-tagged.
         outcome.Metered.Select(m => m.Step).Should().Equal("jd-shortlist", "jd-match", "jd-match");
@@ -74,7 +74,7 @@ public class JdMatchRunServiceTests
         outcome.Results[0].ExpertId.Should().Be(Grace);
         var failed = outcome.Results[1];
         failed.ExpertId.Should().Be(Ada);
-        failed.Status.Should().Be(StaffingMatchStatus.Failed);
+        failed.Status.Should().Be(new StaffingMatchStatus.Failed());
         failed.Error.Should().Be("model down");
         failed.Answer.Should().BeNull();
         // Only the successful match metered a jd-match reply.

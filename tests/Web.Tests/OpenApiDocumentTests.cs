@@ -23,6 +23,30 @@ public class OpenApiDocumentTests(WebApiFactory factory)
     /// anywhere, so the assertion is about the document rather than about this week's endpoints.</summary>
     private const string StableRoute = "/api/experts";
 
+    /// <summary>
+    /// A closed status (EXP-76) is still described as the string it serializes as. The exporter
+    /// cannot see through a <c>JsonConverter</c>, so without the schema transformer the review
+    /// response's <c>outcome</c> would be published as an empty schema where this document has
+    /// always said <c>string</c> — a silent regression in the contract, not in the payload.
+    /// </summary>
+    [Fact]
+    public async Task A_closed_status_is_still_described_as_a_string()
+    {
+        var response = await factory.CreateClient().GetAsync("/openapi/v1.json");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var outcome = document.RootElement
+            .GetProperty("components").GetProperty("schemas")
+            .GetProperty("ContestReviewDto").GetProperty("properties").GetProperty("outcome");
+
+        var schema = outcome.TryGetProperty("$ref", out var reference)
+            ? document.RootElement.GetProperty("components").GetProperty("schemas")
+                .GetProperty(reference.GetString()!.Split('/')[^1])
+            : outcome;
+        schema.GetProperty("type").GetString().Should().Be("string");
+    }
+
     [Fact]
     public async Task Development_serves_the_document()
     {

@@ -51,8 +51,8 @@ public class RosterScanEndpointTests
             CancellationToken ct = default) =>
             Task.FromResult(new ScoredChunk(
                 chunk.Select((c, i) => i == 0
-                    ? new ScoringCandidateResult(c.ExpertId, ScoringCandidateStatus.Scored, 82, "Strong", "fit", true, null)
-                    : new ScoringCandidateResult(c.ExpertId, ScoringCandidateStatus.Scored, null, "Insufficient evidence", null, false, null))
+                    ? new ScoringCandidateResult(c.ExpertId, new ScoringCandidateStatus.Scored(), 82, "Strong", "fit", true, null)
+                    : new ScoringCandidateResult(c.ExpertId, new ScoringCandidateStatus.Scored(), null, "Insufficient evidence", null, false, null))
                     .ToList(),
                 new AgentReply("{}", 20, 10, 30)));
     }

@@ -113,7 +113,7 @@ public class StaffingPipelineTests
         first.Shortlist.Score.Should().BeApproximately(0.85, 0.0001);
         first.Shortlist.Coverage.Should().Be(new ShortlistCoverage(2, 3));
         first.Shortlist.Requirements.Should().HaveCount(3);
-        first.Match.Status.Should().Be("completed");
+        first.Match.Status.Value.Should().Be("completed");
         first.Match.Score.Should().Be(78);
         first.Match.Band.Should().Be("Strong");
         first.Match.Answer.Should().Contain("Gap analysis for");
@@ -215,7 +215,7 @@ public class StaffingPipelineTests
 
         outcome.Events
             .Where(e => e.Status is not null)
-            .Select(e => (e.Stage, e.Status, e.CandidateName, e.CompletedCount, e.TotalCount))
+            .Select(e => (e.Stage, e.Status!.Value, e.CandidateName, e.CompletedCount, e.TotalCount))
             .Should().Equal(
                 ("shortlist", "started", null, null, null),
                 ("shortlist", "completed", null, null, null),
@@ -241,7 +241,7 @@ public class StaffingPipelineTests
         var outcome = await RunAsync(pipeline, matchTop: 1);
 
         var failed = outcome.Events.Should()
-            .ContainSingle(e => e.Stage == "match" && e.Status == "failed").Subject;
+            .ContainSingle(e => e.Stage == "match" && e.Status is StaffingStepStatus.Failed).Subject;
         failed.CandidateName.Should().Be("Person 1");
         failed.Error.Should().Contain("cv_get exploded");
         failed.CompletedCount.Should().Be(1, "a failed run still advances the k/N progress counter");
@@ -366,7 +366,7 @@ public class StaffingPipelineTests
         var outcome = await RunAsync(pipeline, matchTop: 1);
 
         match.Calls.Should().Be(3);
-        outcome.Report!.Candidates[0].Match.Status.Should().Be("completed");
+        outcome.Report!.Candidates[0].Match.Status.Value.Should().Be("completed");
         outcome.Report.Degraded.Should().BeFalse();
     }
 
@@ -384,7 +384,7 @@ public class StaffingPipelineTests
         var outcome = await RunAsync(pipeline, matchTop: 1);
 
         match.Calls.Should().Be(3);
-        outcome.Report!.Candidates[0].Match.Status.Should().Be("failed");
+        outcome.Report!.Candidates[0].Match.Status.Value.Should().Be("failed");
         outcome.Report.Degraded.Should().BeTrue();
     }
 
@@ -400,7 +400,7 @@ public class StaffingPipelineTests
         var outcome = await RunAsync(pipeline, matchTop: 1);
 
         match.Calls.Should().Be(1);
-        outcome.Report!.Candidates[0].Match.Status.Should().Be("failed");
+        outcome.Report!.Candidates[0].Match.Status.Value.Should().Be("failed");
         outcome.Report.Candidates[0].Match.Error.Should().Contain("boom");
     }
 
@@ -454,9 +454,9 @@ public class StaffingPipelineTests
         var outcome = await RunAsync(pipeline);
 
         var report = outcome.Report!;
-        report.Candidates[0].Match.Status.Should().Be("completed");
+        report.Candidates[0].Match.Status.Value.Should().Be("completed");
         var failed = report.Candidates[1].Match;
-        failed.Status.Should().Be("failed");
+        failed.Status.Value.Should().Be("failed");
         failed.Error.Should().Contain("cv_get exploded");
         failed.Answer.Should().BeNull();
         failed.Score.Should().BeNull();
@@ -479,7 +479,7 @@ public class StaffingPipelineTests
 
         var report = outcome.Report!;
         report.Candidates.Should().HaveCount(2);
-        report.Candidates.Should().OnlyContain(c => c.Match.Status == "failed");
+        report.Candidates.Should().OnlyContain(c => c.Match.Status.Value == "failed");
         report.Candidates.Should().OnlyContain(c => c.Shortlist.Coverage.Total == 3);
         report.Degraded.Should().BeTrue();
     }
@@ -495,7 +495,7 @@ public class StaffingPipelineTests
 
         var report = outcome.Report!;
         report.Candidates.Should().OnlyContain(c => c.Rationale.Contains("Matched 2/3"));
-        report.Candidates.Should().OnlyContain(c => c.Match.Status == "completed");
+        report.Candidates.Should().OnlyContain(c => c.Match.Status.Value == "completed");
         report.Recommendation.Should().BeNull();
         report.Degraded.Should().BeTrue();
         report.Notes.Should().Contain(n => n.Contains("narrative", StringComparison.OrdinalIgnoreCase));
@@ -585,7 +585,7 @@ public class StaffingPipelineTests
         match.Calls.Should().Be(0);
         chat.CallCount.Should().Be(0);
         var report = outcome.Report!;
-        report.Candidates.Should().OnlyContain(c => c.Match.Status == "skipped");
+        report.Candidates.Should().OnlyContain(c => c.Match.Status.Value == "skipped");
         report.Candidates.Should().OnlyContain(c => c.Rationale.Contains("Matched 2/3"));
         report.Recommendation.Should().BeNull();
         report.Degraded.Should().BeTrue();
@@ -606,7 +606,7 @@ public class StaffingPipelineTests
         match.Calls.Should().Be(2);
         chat.CallCount.Should().Be(0);
         var report = outcome.Report!;
-        report.Candidates.Should().OnlyContain(c => c.Match.Status == "completed");
+        report.Candidates.Should().OnlyContain(c => c.Match.Status.Value == "completed");
         report.Recommendation.Should().BeNull();
         report.Degraded.Should().BeTrue();
         report.Notes.Should().Contain(n => n.Contains("cap", StringComparison.OrdinalIgnoreCase));

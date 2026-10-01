@@ -1,3 +1,7 @@
+using System.Diagnostics.CodeAnalysis;
+using System.Text.Json.Serialization;
+using ExpertToJob.Domain.Status;
+
 namespace ExpertToJob.Domain.Entities;
 
 /// <summary>
@@ -65,8 +69,7 @@ public class ScoringJobCandidate
     /// resumed job scores exactly what the original sweep saw, without re-fetching.</summary>
     public string Digest { get; set; } = string.Empty;
 
-    /// <summary>One of <see cref="ScoringCandidateStatus"/>.</summary>
-    public string Status { get; set; } = ScoringCandidateStatus.Pending;
+    public ScoringCandidateStatus Status { get; set; } = new ScoringCandidateStatus.Pending();
 
     public int? Score { get; set; }
 
@@ -102,8 +105,8 @@ public class ScoringJobCandidate
     /// somebody looked survives them.</summary>
     public Guid? ContestReviewedByUserId { get; set; }
 
-    /// <summary>One of <see cref="ContestOutcome"/> — what the human concluded.</summary>
-    public string? ContestOutcome { get; set; }
+    /// <summary>What the human concluded. Null until one has.</summary>
+    public ContestOutcome? ContestOutcome { get; set; }
 
     /// <summary>The reviewer's own words back to the person. Not a template: the point of the
     /// safeguard is that somebody engaged with what they said.</summary>
@@ -113,15 +116,49 @@ public class ScoringJobCandidate
 /// <summary>
 /// What a human concluded about a contested score (P1T-189). Deliberately short: this is a record
 /// that somebody looked and what they decided, not an appeals workflow with states of its own.
+///
+/// <para>Closed (EXP-76), so the two conclusions really are the only two and every <c>switch</c>
+/// over them is checked. The stored spelling is unchanged and frozen.</para>
 /// </summary>
-public static class ContestOutcome
+[JsonConverter(typeof(ClosedStatusJsonConverter<ContestOutcome>))]
+public closed record ContestOutcome : IClosedStatus<ContestOutcome>
 {
     /// <summary>The human read it and let the score stand.</summary>
-    public const string Upheld = "upheld";
+    public sealed record Upheld : ContestOutcome;
 
     /// <summary>The human disagreed with the score. The scan row is a working artefact, so nothing
     /// is rewritten — what changes is that a person now decides this candidate by hand.</summary>
-    public const string Overturned = "overturned";
+    public sealed record Overturned : ContestOutcome;
+
+    /// <inheritdoc/>
+    public string Value => this switch
+    {
+        Upheld => "upheld",
+        Overturned => "overturned",
+    };
+
+    /// <inheritdoc/>
+    public static bool TryParse(string? value, [NotNullWhen(true)] out ContestOutcome? status)
+    {
+        status = value switch
+        {
+            "upheld" => new Upheld(),
+            "overturned" => new Overturned(),
+            // The one discard arm the closed set keeps: this switches over a string read back
+            // from a column or a payload, not over the hierarchy, so "none of them" is a real
+            // case and the caller decides whether it degrades or throws.
+            _ => null,
+        };
+        return status is not null;
+    }
+
+    /// <inheritdoc/>
+    public static ContestOutcome Parse(string value) =>
+        TryParse(value, out var status)
+            ? status
+            : throw new FormatException($"'{value}' is not a contest outcome.");
+
+    public sealed override string ToString() => Value;
 }
 
 /// <summary>The pinned job states. Terminal: completed, failed.</summary>
@@ -142,10 +179,48 @@ public static class ScoringJobPauseReason
 }
 
 /// <summary>The pinned candidate statuses. Failed counts as settled — progress always ends at
-/// total/total, mirroring the staffing stepper's rule.</summary>
-public static class ScoringCandidateStatus
+/// total/total, mirroring the staffing stepper's rule.
+///
+/// <para>Closed (EXP-76): the progress arithmetic above reads every case, and the compiler is now
+/// the thing that notices when a fourth one appears.</para></summary>
+[JsonConverter(typeof(ClosedStatusJsonConverter<ScoringCandidateStatus>))]
+public closed record ScoringCandidateStatus : IClosedStatus<ScoringCandidateStatus>
 {
-    public const string Pending = "pending";
-    public const string Scored = "scored";
-    public const string Failed = "failed";
+    public sealed record Pending : ScoringCandidateStatus;
+
+    public sealed record Scored : ScoringCandidateStatus;
+
+    public sealed record Failed : ScoringCandidateStatus;
+
+    /// <inheritdoc/>
+    public string Value => this switch
+    {
+        Pending => "pending",
+        Scored => "scored",
+        Failed => "failed",
+    };
+
+    /// <inheritdoc/>
+    public static bool TryParse(string? value, [NotNullWhen(true)] out ScoringCandidateStatus? status)
+    {
+        status = value switch
+        {
+            "pending" => new Pending(),
+            "scored" => new Scored(),
+            "failed" => new Failed(),
+            // The one discard arm the closed set keeps: this switches over a string read back
+            // from a column or a payload, not over the hierarchy, so "none of them" is a real
+            // case and the caller decides whether it degrades or throws.
+            _ => null,
+        };
+        return status is not null;
+    }
+
+    /// <inheritdoc/>
+    public static ScoringCandidateStatus Parse(string value) =>
+        TryParse(value, out var status)
+            ? status
+            : throw new FormatException($"'{value}' is not a scan candidate status.");
+
+    public sealed override string ToString() => Value;
 }

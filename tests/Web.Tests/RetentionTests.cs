@@ -274,14 +274,14 @@ public class RetentionTests(WebApiFactory factory)
         job.Candidates.Add(new ScoringJobCandidate
         {
             Id = Guid.NewGuid(), ExpertId = expertId, Name = "Retained Person", Title = "Engineer",
-            Digest = "A digest", Status = ScoringCandidateStatus.Scored, Score = 60,
+            Digest = "A digest", Status = new ScoringCandidateStatus.Scored(), Score = 60,
         });
         db.ScoringJobs.Add(job);
 
         var proposalId = Guid.NewGuid();
         var proposal = new StaffingProposal
         {
-            Id = proposalId, JobDescription = "A job", Status = StaffingProposalStatus.Approved,
+            Id = proposalId, JobDescription = "A job", Status = new StaffingProposalStatus.Approved(),
             RecommendedExpertId = expertId, CreatedAt = DateTimeOffset.UtcNow,
             // Concatenated rather than a raw string: the document ends in a run of closing braces
             // that a raw interpolated literal reads as its own.
@@ -348,7 +348,7 @@ public class RetentionTests(WebApiFactory factory)
         job.Candidates.Add(new ScoringJobCandidate
         {
             Id = Guid.NewGuid(), ExpertId = expertId, Name = "Scored", Title = "Engineer",
-            Digest = "A digest", Status = ScoringCandidateStatus.Scored, Score = 80,
+            Digest = "A digest", Status = new ScoringCandidateStatus.Scored(), Score = 80,
         });
         db.ScoringJobs.Add(job);
         await db.SaveChangesAsync();

@@ -24,7 +24,7 @@ public sealed record RosterScanCandidateView(
     Guid ExpertId,
     string Name,
     string Title,
-    string Status,
+    ScoringCandidateStatus Status,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? Score,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Band,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Rationale,

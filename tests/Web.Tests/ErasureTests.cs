@@ -587,7 +587,7 @@ public class ErasureTests(WebApiFactory factory)
             job.Candidates.Add(new ScoringJobCandidate
             {
                 Id = Guid.NewGuid(), ExpertId = expert.Id, Name = fingerprint, Title = "Engineer",
-                Digest = $"Career digest for {fingerprint}", Status = ScoringCandidateStatus.Scored,
+                Digest = $"Career digest for {fingerprint}", Status = new ScoringCandidateStatus.Scored(),
                 Score = 70, Rationale = $"{fingerprint} is plausible.",
             });
             db.ScoringJobs.Add(job);
@@ -596,7 +596,7 @@ public class ErasureTests(WebApiFactory factory)
             {
                 Id = proposalId,
                 JobDescription = "A job",
-                Status = StaffingProposalStatus.Approved,
+                Status = new StaffingProposalStatus.Approved(),
                 RecommendedExpertId = expert.Id,
                 CreatedAt = DateTimeOffset.UtcNow,
                 PackageJson = PackageJsonFor(expert.Id, fingerprint),

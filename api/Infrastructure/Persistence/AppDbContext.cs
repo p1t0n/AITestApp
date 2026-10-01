@@ -284,7 +284,13 @@ public class AppDbContext : DbContext, IAppDbContext
         b.Entity<StaffingProposal>(e =>
         {
             e.Property(x => x.JobDescription).IsRequired();
-            e.Property(x => x.Status).HasMaxLength(20).IsRequired();
+            // Closed hierarchy in, the same string out (EXP-76). The column keeps its type, length
+            // and every row already in it; what changes is that nothing but one of the three cases
+            // can reach it. Reading back a string outside the set throws rather than materialising
+            // a status nobody wrote — StatusStorageFreezeTests pins both halves.
+            e.Property(x => x.Status)
+                .HasConversion(v => v.Value, v => StaffingProposalStatus.Parse(v))
+                .HasMaxLength(20).IsRequired();
             e.Property(x => x.DecisionNote).HasMaxLength(2000);
             if (isNpgsql)
             {
@@ -342,7 +348,13 @@ public class AppDbContext : DbContext, IAppDbContext
         {
             e.Property(x => x.Name).HasMaxLength(200).IsRequired();
             e.Property(x => x.Title).HasMaxLength(200);
-            e.Property(x => x.Status).HasMaxLength(20).IsRequired();
+            // See StaffingProposal.Status above: closed hierarchy in, the stored string out.
+            e.Property(x => x.Status)
+                .HasConversion(v => v.Value, v => ScoringCandidateStatus.Parse(v))
+                .HasMaxLength(20).IsRequired();
+            // Nullable, so the converter only ever sees a value: EF keeps null as null.
+            e.Property(x => x.ContestOutcome)
+                .HasConversion(v => v!.Value, v => ContestOutcome.Parse(v));
             e.Property(x => x.Band).HasMaxLength(50);
             e.Property(x => x.Error).HasMaxLength(2000);
             // Progress counts group by status within a job; chunk writes look rows up per job.

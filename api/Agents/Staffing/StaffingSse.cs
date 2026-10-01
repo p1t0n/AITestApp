@@ -43,7 +43,7 @@ public static class StaffingSse
 
     private sealed record StepPayload(
         string Stage,
-        string Status,
+        StaffingStepStatus Status,
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] StepCandidate? Candidate,
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? CompletedCount,
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? TotalCount,
@@ -195,7 +195,7 @@ public static class StaffingSse
             return null;
         }
 
-        if (evt.Status == StaffingStepStatus.Failed && evt.Stage == "shortlist")
+        if (evt.Status is StaffingStepStatus.Failed && evt.Stage == "shortlist")
         {
             return null;
         }
@@ -205,7 +205,7 @@ public static class StaffingSse
             : null;
         var payload = new StepPayload(
             evt.Stage, evt.Status, candidate, evt.CompletedCount, evt.TotalCount, evt.Error);
-        return (evt.Status == StaffingStepStatus.Failed ? StepFailedEvent : StepEvent, payload);
+        return (evt.Status is StaffingStepStatus.Failed ? StepFailedEvent : StepEvent, payload);
     }
 
     private static async Task WriteFrameAsync<T>(

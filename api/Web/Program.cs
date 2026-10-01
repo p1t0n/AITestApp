@@ -1,3 +1,5 @@
+using ExpertToJob.Domain.Status;
+using Microsoft.OpenApi;
 using System.Text.Json.Serialization;
 using ExpertToJob.Application;
 using ExpertToJob.Application.Users;
@@ -100,7 +102,20 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 // The OpenAPI document comes from ASP.NET Core's own generator (EXP-74), not Swashbuckle's:
 // Microsoft.AspNetCore.OpenApi was already referenced and never called, and the built-in generator
 // emits OpenAPI 3.2. Only the UI is still Swashbuckle's, and only in Development.
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options => options.AddSchemaTransformer(
+    (schema, context, _) =>
+    {
+        // A closed status (EXP-76) serializes as one bare string through its own JsonConverter, and
+        // the exporter cannot see through a converter — left alone it describes the property as an
+        // empty schema where the document used to say "string". Saying so again keeps the published
+        // contract what it was; the values themselves are frozen by the status tests, not here.
+        if (typeof(IClosedStatus).IsAssignableFrom(context.JsonTypeInfo.Type))
+        {
+            schema.Type = JsonSchemaType.String;
+        }
+
+        return Task.CompletedTask;
+    }));
 
 builder.Services.AddCors(options => options.AddPolicy(SpaCors, policy => policy
     .WithOrigins("http://localhost:5173", "https://localhost:5173")

@@ -144,7 +144,7 @@ public class HandoffPackageScrubTests
                         0.82,
                         new ShortlistCoverage(2, 2),
                         [new ShortlistRequirementItem("React", true, "Zarquon rebuilt the console.")]),
-                    new StaffingMatchDetail(StaffingMatchStatus.Completed, 88, "strong",
+                    new StaffingMatchDetail(new StaffingMatchStatus.Completed(), 88, "strong",
                         "Zarquon has the experience.", null),
                     "Zarquon matched well."),
                 new StaffingCandidate(
@@ -155,7 +155,7 @@ public class HandoffPackageScrubTests
                         0.71,
                         new ShortlistCoverage(1, 2),
                         [new ShortlistRequirementItem("React", true, "Wren ran the platform.")]),
-                    new StaffingMatchDetail(StaffingMatchStatus.Completed, 71, "fair",
+                    new StaffingMatchDetail(new StaffingMatchStatus.Completed(), 71, "fair",
                         "Wren scores 71.", null),
                     "Wren has shipped this twice."),
             ],

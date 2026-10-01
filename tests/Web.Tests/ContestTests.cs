@@ -51,14 +51,14 @@ public class ContestTests(WebApiFactory factory)
 
         var review = await (await staff.PostAsJsonAsync(
                 $"/api/contests/{world.CandidateId}/review",
-                new { outcome = ContestOutcome.Overturned, response = "Agreed — shortlisting you by hand." }))
+                new { outcome = "overturned", response = "Agreed — shortlisting you by hand." }))
             .ReadOkAsync<ContestReviewDto>();
 
-        review.Outcome.Should().Be(ContestOutcome.Overturned);
+        review.Outcome.Should().Be(new ContestOutcome.Overturned());
         review.ReviewedByUserId.Should().NotBeNull("a person, named, is the point of the safeguard");
 
         var row = await CandidateAsync(world.CandidateId);
-        row.ContestOutcome.Should().Be(ContestOutcome.Overturned);
+        row.ContestOutcome.Should().Be(new ContestOutcome.Overturned());
         row.ContestReviewedAt.Should().NotBeNull();
         row.ContestResponse.Should().Contain("shortlisting you by hand");
 
@@ -97,7 +97,7 @@ public class ContestTests(WebApiFactory factory)
             "/api/contests", new { scoringCandidateId = world.CandidateId, view = "First time." });
         await staff.PostAsJsonAsync(
             $"/api/contests/{world.CandidateId}/review",
-            new { outcome = ContestOutcome.Upheld, response = "The score stands." });
+            new { outcome = "upheld", response = "The score stands." });
 
         await world.Client.PostAsJsonAsync(
             "/api/contests", new { scoringCandidateId = world.CandidateId, view = "Still wrong, and here is why." });
@@ -171,7 +171,7 @@ public class ContestTests(WebApiFactory factory)
             .Should().Be(HttpStatusCode.Forbidden);
         (await world.Client.PostAsJsonAsync(
                 $"/api/contests/{world.CandidateId}/review",
-                new { outcome = ContestOutcome.Upheld, response = "Mine now." }))
+                new { outcome = "upheld", response = "Mine now." }))
             .StatusCode.Should().Be(HttpStatusCode.Forbidden,
                 "the person cannot be the human who reviews their own score");
     }
@@ -199,7 +199,7 @@ public class ContestTests(WebApiFactory factory)
 
         (await staff.PostAsJsonAsync(
                 $"/api/contests/{world.CandidateId}/review",
-                new { outcome = ContestOutcome.Upheld, response = (string?)null }))
+                new { outcome = "upheld", response = (string?)null }))
             .StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 
@@ -260,7 +260,7 @@ public class ContestTests(WebApiFactory factory)
                 Name = "Quill Lovelace",
                 Title = "Engineer",
                 Digest = "Payments, platforms.",
-                Status = ScoringCandidateStatus.Scored,
+                Status = new ScoringCandidateStatus.Scored(),
                 Score = 41,
                 Band = "weak",
                 Rationale = "Looks like a user of payment platforms rather than a builder of them.",

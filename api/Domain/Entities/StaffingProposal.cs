@@ -1,3 +1,7 @@
+using System.Diagnostics.CodeAnalysis;
+using System.Text.Json.Serialization;
+using ExpertToJob.Domain.Status;
+
 namespace ExpertToJob.Domain.Entities;
 
 /// <summary>
@@ -23,8 +27,7 @@ public class StaffingProposal
     /// evidence accordingly.</summary>
     public bool ReportDegraded { get; set; }
 
-    /// <summary>One of <see cref="StaffingProposalStatus"/>.</summary>
-    public string Status { get; set; } = StaffingProposalStatus.Pending;
+    public StaffingProposalStatus Status { get; set; } = new StaffingProposalStatus.Pending();
 
     public DateTimeOffset CreatedAt { get; set; }
 
@@ -68,10 +71,48 @@ public class StaffingProposalCandidate
     public string Rationale { get; set; } = string.Empty;
 }
 
-/// <summary>The pinned proposal statuses. Only a human decision moves a proposal off Pending.</summary>
-public static class StaffingProposalStatus
+/// <summary>The pinned proposal statuses. Only a human decision moves a proposal off Pending.
+///
+/// <para>Closed (EXP-76). The stored spelling is unchanged — the approval inbox indexes on this
+/// column and the rows in it predate the type.</para></summary>
+[JsonConverter(typeof(ClosedStatusJsonConverter<StaffingProposalStatus>))]
+public closed record StaffingProposalStatus : IClosedStatus<StaffingProposalStatus>
 {
-    public const string Pending = "pending";
-    public const string Approved = "approved";
-    public const string Rejected = "rejected";
+    public sealed record Pending : StaffingProposalStatus;
+
+    public sealed record Approved : StaffingProposalStatus;
+
+    public sealed record Rejected : StaffingProposalStatus;
+
+    /// <inheritdoc/>
+    public string Value => this switch
+    {
+        Pending => "pending",
+        Approved => "approved",
+        Rejected => "rejected",
+    };
+
+    /// <inheritdoc/>
+    public static bool TryParse(string? value, [NotNullWhen(true)] out StaffingProposalStatus? status)
+    {
+        status = value switch
+        {
+            "pending" => new Pending(),
+            "approved" => new Approved(),
+            "rejected" => new Rejected(),
+            // The one discard arm the closed set keeps: this switches over a string read back
+            // from a column or a payload, not over the hierarchy, so "none of them" is a real
+            // case and the caller decides whether it degrades or throws.
+            _ => null,
+        };
+        return status is not null;
+    }
+
+    /// <inheritdoc/>
+    public static StaffingProposalStatus Parse(string value) =>
+        TryParse(value, out var status)
+            ? status
+            : throw new FormatException($"'{value}' is not a proposal status.");
+
+    public sealed override string ToString() => Value;
 }

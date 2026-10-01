@@ -15,7 +15,7 @@ public class BenchReportTests
     private static BenchExpert Emp(int capacity, string title = "Engineer", string? location = "London")
         => new(title, location, capacity);
 
-    private static StaffingProposal Proposal(string status, string jd = "Backend engineer role", params string[] candidates) => new()
+    private static StaffingProposal Proposal(StaffingProposalStatus status, string jd = "Backend engineer role", params string[] candidates) => new()
     {
         Id = Guid.NewGuid(),
         JobDescription = jd,
@@ -56,9 +56,9 @@ public class BenchReportTests
         var stats = BenchStatsComposer.Compose(
             [Emp(100)],
             [
-                Proposal(StaffingProposalStatus.Approved, "Kafka platform engineer with leadership", "Ada", "Grace"),
-                Proposal(StaffingProposalStatus.Pending, "React frontend lead", "Ada"),
-                Proposal(StaffingProposalStatus.Rejected, "Data engineer", "Ada", "Lin"),
+                Proposal(new StaffingProposalStatus.Approved(), "Kafka platform engineer with leadership", "Ada", "Grace"),
+                Proposal(new StaffingProposalStatus.Pending(), "React frontend lead", "Ada"),
+                Proposal(new StaffingProposalStatus.Rejected(), "Data engineer", "Ada", "Lin"),
             ]);
 
         var p = stats.Proposals!;
@@ -102,7 +102,7 @@ public class BenchReportTests
     {
         var stats = BenchStatsComposer.Compose(
             [Emp(100), Emp(0)],
-            [Proposal(StaffingProposalStatus.Pending)]);
+            [Proposal(new StaffingProposalStatus.Pending())]);
 
         var fallback = BenchStatsComposer.FallbackAnswer(stats);
 

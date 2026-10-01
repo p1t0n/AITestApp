@@ -103,7 +103,7 @@ public class StaffingHandoffPackageTests
 
         var package = outcome.Package;
         package.Slices.Select(s => s.Stage).Should().Equal("shortlist", "match", "match", "narrative");
-        package.Slices.Should().OnlyContain(s => s.Status == StageSliceStatus.Completed);
+        package.Slices.Should().OnlyContain(s => s.Status is StageSliceStatus.Completed);
         package.Degradations.Should().BeEmpty();
 
         var shortlist = package.Slices[0];
@@ -151,7 +151,7 @@ public class StaffingHandoffPackageTests
 
         var extraction = run.Package.Slices.Should()
             .ContainSingle(s => s.Stage == "jd-extraction").Subject;
-        extraction.Status.Should().Be(StageSliceStatus.Completed);
+        extraction.Status.Should().Be(new StageSliceStatus.Completed());
         extraction.AgentClientId.Should().BeNull();
         extraction.Scopes.Should().BeEmpty();
         extraction.InputTokens.Should().Be(40);
@@ -228,7 +228,7 @@ public class StaffingHandoffPackageTests
         var outcome = await RunAsync(pipeline, UserId);
 
         var slice = outcome.Package.Slices.Should().ContainSingle(s => s.Stage == "match").Subject;
-        slice.Status.Should().Be(StageSliceStatus.Failed);
+        slice.Status.Should().Be(new StageSliceStatus.Failed());
         slice.RetryCount.Should().Be(2, "three attempts mean two retries were performed");
         slice.DegradeReason.Should().Contain("rate limited");
         slice.InputTokens.Should().Be(0);
@@ -255,7 +255,7 @@ public class StaffingHandoffPackageTests
         var outcome = await RunAsync(pipeline, UserId);
 
         var slice = outcome.Package.Slices.Should().ContainSingle(s => s.Stage == "match").Subject;
-        slice.Status.Should().Be(StageSliceStatus.Completed);
+        slice.Status.Should().Be(new StageSliceStatus.Completed());
         slice.RetryCount.Should().Be(2);
     }
 
@@ -271,7 +271,7 @@ public class StaffingHandoffPackageTests
 
         var outcome = await RunAsync(pipeline, UserId);
 
-        var skipped = outcome.Package.Slices.Where(s => s.Status == StageSliceStatus.Skipped).ToList();
+        var skipped = outcome.Package.Slices.Where(s => s.Status is StageSliceStatus.Skipped).ToList();
         skipped.Select(s => s.Stage).Should().Equal("match", "match", "narrative");
         skipped.Should().OnlyContain(s => s.InputTokens == 0 && s.OutputTokens == 0);
         skipped.Should().OnlyContain(s => s.DegradeReason!.Contains("cap"));
@@ -298,7 +298,7 @@ public class StaffingHandoffPackageTests
         outcome.Report.Should().BeNull();
         var slice = outcome.Package.Slices.Should().ContainSingle().Subject;
         slice.Stage.Should().Be("shortlist");
-        slice.Status.Should().Be(StageSliceStatus.Failed);
+        slice.Status.Should().Be(new StageSliceStatus.Failed());
         slice.InputTokens.Should().Be(100, "the fault still spent tokens and the slice reports them");
         slice.DegradeReason.Should().Contain("semantic search backend");
         outcome.Package.Degradations.Should().ContainSingle().Which.Stage.Should().Be("shortlist");
@@ -316,7 +316,7 @@ public class StaffingHandoffPackageTests
         var outcome = await RunAsync(pipeline, UserId);
 
         var slice = outcome.Package.Slices.Should().ContainSingle(s => s.Stage == "narrative").Subject;
-        slice.Status.Should().Be(StageSliceStatus.Failed);
+        slice.Status.Should().Be(new StageSliceStatus.Failed());
         slice.DegradeReason.Should().Contain("model endpoint unreachable");
         outcome.Package.Degradations.Should()
             .ContainSingle(d => d.Stage == "narrative")

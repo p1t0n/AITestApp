@@ -1,3 +1,7 @@
+using System.Diagnostics.CodeAnalysis;
+using System.Text.Json.Serialization;
+using ExpertToJob.Domain.Status;
+
 namespace ExpertToJob.Agents.Handoff;
 
 /// <summary>
@@ -43,16 +47,52 @@ public sealed record StageSlice(
     long OutputTokens,
     DateTimeOffset StartedAt,
     DateTimeOffset CompletedAt,
-    string Status,
+    StageSliceStatus Status,
     string? DegradeReason = null,
     int? RetryCount = null);
 
-/// <summary>The pinned <see cref="StageSlice.Status"/> values.</summary>
-public static class StageSliceStatus
+/// <summary>The pinned <see cref="StageSlice.Status"/> values. Closed since EXP-76; the strings
+/// are in every stored handoff document and are not the refactor's to choose.</summary>
+[JsonConverter(typeof(ClosedStatusJsonConverter<StageSliceStatus>))]
+public closed record StageSliceStatus : IClosedStatus<StageSliceStatus>
 {
-    public const string Completed = "completed";
-    public const string Failed = "failed";
-    public const string Skipped = "skipped";
+    public sealed record Completed : StageSliceStatus;
+
+    public sealed record Failed : StageSliceStatus;
+
+    public sealed record Skipped : StageSliceStatus;
+
+    /// <inheritdoc/>
+    public string Value => this switch
+    {
+        Completed => "completed",
+        Failed => "failed",
+        Skipped => "skipped",
+    };
+
+    /// <inheritdoc/>
+    public static bool TryParse(string? value, [NotNullWhen(true)] out StageSliceStatus? status)
+    {
+        status = value switch
+        {
+            "completed" => new Completed(),
+            "failed" => new Failed(),
+            "skipped" => new Skipped(),
+            // The one discard arm the closed set keeps: this switches over a string read back
+            // from a column or a payload, not over the hierarchy, so "none of them" is a real
+            // case and the caller decides whether it degrades or throws.
+            _ => null,
+        };
+        return status is not null;
+    }
+
+    /// <inheritdoc/>
+    public static StageSliceStatus Parse(string value) =>
+        TryParse(value, out var status)
+            ? status
+            : throw new FormatException($"'{value}' is not a stage slice status.");
+
+    public sealed override string ToString() => Value;
 }
 
 /// <summary>What a degradation cost the consumer, in their terms — the package-side mirror of the

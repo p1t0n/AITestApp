@@ -23,7 +23,7 @@ public sealed record ContestQueueItemDto(
 /// <summary>What a human concluded, and what they said back.</summary>
 public sealed record ContestReviewDto(
     Guid ScoringCandidateId,
-    string Outcome,
+    ContestOutcome Outcome,
     string? Response,
     DateTimeOffset ReviewedAt,
     Guid? ReviewedByUserId);
@@ -113,7 +113,10 @@ public class ContestService(
         Guid scoringCandidateId, string outcome, string? response, Guid reviewedByUserId,
         CancellationToken ct = default)
     {
-        if (outcome is not (ContestOutcome.Upheld or ContestOutcome.Overturned))
+        // The request body still arrives as a string, so this is where it becomes one of the two
+        // conclusions — or the same 409 it has always been. Parsing here rather than at the model
+        // binder keeps the rejection's status code and wording exactly what clients already get.
+        if (!ContestOutcome.TryParse(outcome, out var concluded))
         {
             throw new ConflictException(
                 $"'{outcome}' is not an outcome. A review either lets the score stand or does not.");
@@ -130,13 +133,13 @@ public class ContestService(
 
         candidate.ContestReviewedAt = clock.GetUtcNow();
         candidate.ContestReviewedByUserId = reviewedByUserId;
-        candidate.ContestOutcome = outcome;
+        candidate.ContestOutcome = concluded;
         candidate.ContestResponse = string.IsNullOrWhiteSpace(response) ? null : response.Trim();
 
         await db.SaveChangesAsync(ct);
 
         return new ContestReviewDto(
-            candidate.Id, outcome, candidate.ContestResponse,
+            candidate.Id, concluded, candidate.ContestResponse,
             candidate.ContestReviewedAt!.Value, reviewedByUserId);
     }
 

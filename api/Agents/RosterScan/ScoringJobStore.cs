@@ -10,7 +10,7 @@ public sealed record ScoringCandidateSeed(Guid ExpertId, string Name, string Tit
 /// <summary>One candidate's settled result from a scoring chunk.</summary>
 public sealed record ScoringCandidateResult(
     Guid ExpertId,
-    string Status,
+    ScoringCandidateStatus Status,
     int? Score,
     string? Band,
     string? Rationale,
@@ -28,9 +28,14 @@ public sealed record ScoringJobProgress(int Scored, int Failed, int Pending, int
         int scored = 0, failed = 0, pending = 0;
         foreach (var candidate in candidates)
         {
-            if (candidate.Status == ScoringCandidateStatus.Scored) scored++;
-            else if (candidate.Status == ScoringCandidateStatus.Failed) failed++;
-            else pending++;
+            // Three arms and no default: the status is closed (EXP-76), so "anything else" is not
+            // a case this has to invent a bucket for any more.
+            switch (candidate.Status)
+            {
+                case ScoringCandidateStatus.Scored: scored++; break;
+                case ScoringCandidateStatus.Failed: failed++; break;
+                case ScoringCandidateStatus.Pending: pending++; break;
+            }
         }
 
         return new ScoringJobProgress(scored, failed, pending, scored + failed + pending);
@@ -56,6 +61,15 @@ public sealed class ScoringJobStore(IAppDbContext db, TimeProvider clock)
         [ScoringJobState.Completed] = [],
         [ScoringJobState.Failed] = [],
     };
+
+    /// <summary>The three candidate statuses this store compares against, held once. A
+    /// closed-hierarchy case is a record — equality is by value, so a fresh instance per call site
+    /// would be correct and would still read like three different things.</summary>
+    private static readonly ScoringCandidateStatus Pending = new ScoringCandidateStatus.Pending();
+
+    private static readonly ScoringCandidateStatus Scored = new ScoringCandidateStatus.Scored();
+
+    private static readonly ScoringCandidateStatus Failed = new ScoringCandidateStatus.Failed();
 
     /// <summary>Creates a queued job with its pending candidate rows. Unlike proposal creation
     /// this is not best-effort: the submit endpoint returns the job id, so a persistence fault
@@ -129,7 +143,7 @@ public sealed class ScoringJobStore(IAppDbContext db, TimeProvider clock)
     public async Task<List<ScoringJobCandidate>> GetPendingCandidatesAsync(
         Guid jobId, int take, CancellationToken ct = default)
         => await db.ScoringJobCandidates.AsNoTracking()
-            .Where(c => c.JobId == jobId && c.Status == ScoringCandidateStatus.Pending)
+            .Where(c => c.JobId == jobId && c.Status == Pending)
             .OrderBy(c => c.ExpertId)
             .Take(take)
             .ToListAsync(ct);
@@ -141,7 +155,7 @@ public sealed class ScoringJobStore(IAppDbContext db, TimeProvider clock)
         Name = seed.Name,
         Title = seed.Title,
         Digest = seed.Digest,
-        Status = ScoringCandidateStatus.Pending,
+        Status = Pending,
     };
 
     /// <summary>Attempts a guarded state transition. Returns false (and changes nothing) when the
@@ -251,7 +265,7 @@ public sealed class ScoringJobStore(IAppDbContext db, TimeProvider clock)
         {
             ScoringCandidateStatus.Scored => 0,
             ScoringCandidateStatus.Failed => 1,
-            _ => 2,
+            ScoringCandidateStatus.Pending => 2,
         };
     }
 
@@ -278,10 +292,11 @@ public sealed class ScoringJobStore(IAppDbContext db, TimeProvider clock)
                 g => g.Key,
                 g =>
                 {
-                    int Of(string status) => g.Where(x => x.Status == status).Sum(x => x.Count);
-                    var scored = Of(ScoringCandidateStatus.Scored);
-                    var failed = Of(ScoringCandidateStatus.Failed);
-                    var pending = Of(ScoringCandidateStatus.Pending);
+                    int Of(ScoringCandidateStatus status) =>
+                        g.Where(x => x.Status == status).Sum(x => x.Count);
+                    var scored = Of(Scored);
+                    var failed = Of(Failed);
+                    var pending = Of(Pending);
                     return new ScoringJobProgress(scored, failed, pending, scored + failed + pending);
                 });
     }

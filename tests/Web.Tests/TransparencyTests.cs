@@ -505,7 +505,7 @@ public class TransparencyTests(WebApiFactory factory)
             job.Candidates.Add(new ScoringJobCandidate
             {
                 Id = Guid.NewGuid(), ExpertId = expert.Id, Name = fingerprint, Title = "Engineer",
-                Digest = digest, Status = ScoringCandidateStatus.Scored, Score = 70, Band = "fair",
+                Digest = digest, Status = new ScoringCandidateStatus.Scored(), Score = 70, Band = "fair",
                 Rationale = rationale,
             });
             db.ScoringJobs.Add(job);
@@ -514,7 +514,7 @@ public class TransparencyTests(WebApiFactory factory)
             var proposal = new StaffingProposal
             {
                 Id = proposalId, JobDescription = "Payments platform",
-                Status = StaffingProposalStatus.Approved, RecommendedExpertId = expert.Id,
+                Status = new StaffingProposalStatus.Approved(), RecommendedExpertId = expert.Id,
                 CreatedAt = DateTimeOffset.UtcNow,
                 PackageJson = $$"""
                 {
