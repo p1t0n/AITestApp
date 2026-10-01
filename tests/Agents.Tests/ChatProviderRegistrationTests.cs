@@ -258,6 +258,66 @@ public class ChatProviderRegistrationTests
         (PipelineTransport)typeof(ClientPipeline).GetField("_transport", Any)!
             .GetValue(PipelineOf(client))!;
 
+    /// <summary>
+    /// The per-provider lookups that replaced the two options classes (EXP-89). One class now holds
+    /// the shape, and three <c>switch</c>es hold everything that differs — so the property worth
+    /// asserting is that every <see cref="ChatProvider"/> member has an entry in all three, and that
+    /// no two members share a credential. A member added with a construction branch but no mapping
+    /// would otherwise bind an empty block and chat against nothing, or — worse — reach for another
+    /// provider's key.
+    /// </summary>
+    [Fact]
+    public void Every_provider_has_its_own_section_key_variable_and_defaults()
+    {
+        var providers = Enum.GetValues<ChatProvider>();
+
+        using var _ = new FluentAssertions.Execution.AssertionScope();
+        foreach (var provider in providers)
+        {
+            ChatProviderOptions.SectionFor(provider).Should().NotBeNullOrWhiteSpace();
+            ChatProviderOptions.ApiKeyVariableFor(provider).Should().NotBeNullOrWhiteSpace();
+            ChatProviderOptions.Defaults(provider).Should().NotBeNull();
+        }
+
+        providers.Select(ChatProviderOptions.SectionFor).Should().OnlyHaveUniqueItems(
+            "a shared section would make one provider's block configure the other");
+        providers.Select(ChatProviderOptions.ApiKeyVariableFor).Should().OnlyHaveUniqueItems(
+            "a shared variable is how a request aimed at Azure comes to carry the Google key (EXP-53)");
+    }
+
+    /// <summary>The two mappings, pinned to their literals. The sections are the shipped key
+    /// spellings and the variables are what every operator has exported, so neither may drift on a
+    /// refactor: a renamed section binds to nothing in silence, and a renamed variable turns a
+    /// configured host into a credential-less one.</summary>
+    [Theory]
+    [InlineData(ChatProvider.Gemini, "Ai:Gemini", "GEMINI_API_KEY")]
+    [InlineData(ChatProvider.AzureFoundry, "Ai:AzureFoundry", "AZURE_FOUNDRY_API_KEY")]
+    public void The_provider_lookups_name_the_shipped_keys(
+        ChatProvider provider, string section, string apiKeyVariable)
+    {
+        ChatProviderOptions.SectionFor(provider).Should().Be(section);
+        ChatProviderOptions.ApiKeyVariableFor(provider).Should().Be(apiKeyVariable);
+    }
+
+    /// <summary>The incumbent's code defaults survived the merge: the tools and live probes that
+    /// build Gemini's production wiring without a host read them, so an empty default would send
+    /// them at nothing. Azure's stay empty on purpose — the shipped <c>Ai:AzureFoundry</c> block
+    /// carries those two strings, and a code default would be the same values written twice.</summary>
+    [Fact]
+    public void The_defaults_carry_geminis_wiring_and_leave_azures_to_configuration()
+    {
+        var gemini = ChatProviderOptions.Defaults(ChatProvider.Gemini);
+        gemini.Endpoint.Should().Be("https://generativelanguage.googleapis.com/v1beta/openai");
+        gemini.Model.Should().Be("gemini-3.5-flash-lite");
+
+        var azure = ChatProviderOptions.Defaults(ChatProvider.AzureFoundry);
+        azure.Endpoint.Should().BeEmpty();
+        azure.Model.Should().BeEmpty();
+
+        gemini.ApiKey.Should().BeEmpty("no credential is ever a code default");
+        azure.ApiKey.Should().BeEmpty("no credential is ever a code default");
+    }
+
     /// <summary>The transport's <see cref="HttpMessageHandler"/> chain, outermost first.</summary>
     private static IEnumerable<Type> HandlerTypesOf(OpenAIClient client)
     {

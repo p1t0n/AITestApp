@@ -22,7 +22,7 @@ public class JdRequirementExtractorLiveSmokeTests
         var apiKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY");
         Skip.If(string.IsNullOrWhiteSpace(apiKey), "Live smoke needs GEMINI_API_KEY.");
 
-        var cfg = new GeminiOptions();
+        var cfg = ChatProviderOptions.Defaults(ChatProvider.Gemini);
         var options = new OpenAIClientOptions
         {
             Endpoint = new Uri(cfg.Endpoint),

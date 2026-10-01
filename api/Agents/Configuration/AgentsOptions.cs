@@ -1,77 +1,94 @@
 namespace ExpertToJob.Agents.Configuration;
 
 /// <summary>
-/// Chat model wiring. The code is provider-agnostic (<c>IChatClient</c>); this binds the
-/// default backend — the Gemini free tier via its OpenAI-compatible endpoint.
-/// The token is read from <see cref="ApiKey"/> (config) or the <c>GEMINI_API_KEY</c> environment
-/// variable; never commit a real token.
-/// </summary>
-public sealed class GeminiOptions
-{
-    public const string Section = "Ai:Gemini";
-
-    /// <summary>The environment variable the credential is read from, ahead of <see cref="ApiKey"/>.
-    /// Named once and shared by the construction branch that reads it and the Production guard that
-    /// requires it (EXP-18), so a guard cannot come to demand a variable no branch reads.</summary>
-    public const string ApiKeyVariable = "GEMINI_API_KEY";
-
-    /// <summary>OpenAI-compatible inference endpoint.</summary>
-    public string Endpoint { get; set; } = "https://generativelanguage.googleapis.com/v1beta/openai";
-
-    /// <summary>Default model id. Pinned to an explicit generation: free-tier quotas differ
-    /// per model row (3.5-flash-lite: RPD 500 vs every Flash-proper row: RPD 20), and a
-    /// <c>-latest</c> alias may silently drift onto a low-quota row (P1T-114/P1T-115).
-    /// Used by any agent without a per-agent override in <see cref="Agents"/>.</summary>
-    public string Model { get; set; } = "gemini-3.5-flash-lite";
-
-    /// <summary>Gemini API key. Prefer the GEMINI_API_KEY env var over config in real use.</summary>
-    public string ApiKey { get; set; } = "";
-
-    /// <summary>Optional per-agent model overrides, keyed by agent name (e.g. <c>cv-tailoring</c>).
-    /// An agent listed here gets its own chat client on the named model; everyone else uses
-    /// <see cref="Model"/>. Bound from <c>Ai:Gemini:Agents:&lt;agent&gt;</c>.</summary>
-    public Dictionary<string, string> Agents { get; set; } = new();
-}
-
-/// <summary>
-/// The second chat backend the seam can build: an Azure OpenAI deployment reached through the
-/// plain OpenAI SDK against the resource's <c>/openai/v1/</c> endpoint
-/// (<c>manuals/adr-chat-provider-seam.md</c> §2 decision 1). Declared here so the key shape is
-/// settled before the seam is written; nothing consumes it yet.
+/// One chat provider's settings. Each provider's chat keys live in that provider's own
+/// configuration block — <see cref="SectionFor"/> is the one place that mapping is written, and it
+/// is deliberately the same block the embeddings seam reads, because the endpoint and the
+/// credential really are shared (<c>manuals/adr-embeddings-provider-seam.md</c> §2 decision 2).
 ///
-/// <para><b>No base class shared with <see cref="GeminiOptions"/>, on purpose.</b> A base would
-/// assert the two providers must stay shaped alike, which is the coupling the seam exists to
-/// avoid — the Gemini block carries embedding and quota-breaker keys that mean nothing here, and
-/// this one will grow an Entra credential that means nothing there.</para>
+/// <para><b>One class with a per-provider <see cref="Defaults"/> lookup, not two classes and not a
+/// base class</b> (EXP-89). The shape this replaces was two independent types whose stated reason
+/// was that a <em>base</em> would assert the providers must stay shaped alike. That reason holds
+/// against inheritance and not against this: the values that differ between providers are the
+/// <see cref="Defaults"/> entries, which are free to disagree about every property —
+/// <see cref="Endpoint"/> and <see cref="Model"/> already do — and a provider that grows a key the
+/// other has no meaning for gets a property the other's defaults never set. It is the shape
+/// <see cref="Infrastructure.Embeddings.EmbeddingOptions"/> has carried since EXP-64, where
+/// <c>MinSimilarity</c> is calibrated per model and the two providers' numbers are an order apart.</para>
+///
+/// <para>The credential is never bound from here in practice: <see cref="ApiKey"/> is the fallback
+/// path, and the provider's own environment variable (<see cref="ApiKeyVariableFor"/>) is read
+/// first. Never commit a real token.</para>
 /// </summary>
-public sealed class AzureFoundryOptions
+public sealed class ChatProviderOptions
 {
-    public const string Section = "Ai:AzureFoundry";
-
-    /// <summary>The environment variable the credential is read from, ahead of <see cref="ApiKey"/>.
-    /// Shared with the Production guard for the same reason as
-    /// <see cref="GeminiOptions.ApiKeyVariable"/> (EXP-18).</summary>
-    public const string ApiKeyVariable = "AZURE_FOUNDRY_API_KEY";
-
-    /// <summary>The resource's OpenAI-compatible v1 endpoint, e.g.
-    /// <c>https://&lt;resource&gt;.openai.azure.com/openai/v1/</c>.</summary>
+    /// <summary>OpenAI-compatible inference endpoint.</summary>
     public string Endpoint { get; set; } = "";
 
-    /// <summary><b>A deployment name, not a model id</b> — the spelling is shared with
-    /// <see cref="GeminiOptions.Model"/>, the meaning is not. A deployment name is an
-    /// operator-chosen string that is meaningless outside its own resource (ADR §2 decision 3).
-    /// Documenting that is deliberately cheaper than forking the override dictionary into two
-    /// shapes.</summary>
+    /// <summary>The default model every agent runs on unless it has an entry in
+    /// <see cref="Agents"/>. <b>A deployment name on Azure, a model id on Gemini</b> — the spelling
+    /// is shared, the meaning is not. A deployment name is an operator-chosen string that is
+    /// meaningless outside its own resource (ADR §2 decision 3); documenting that is deliberately
+    /// cheaper than forking the override dictionary into two shapes.</summary>
     public string Model { get; set; } = "";
 
-    /// <summary>API key. Prefer the AZURE_FOUNDRY_API_KEY env var over config in real use.
-    /// An Entra credential replaces this later (ADR §4); it is not a rejected option.</summary>
+    /// <summary>API key. Prefer the provider's environment variable over config in real use.
+    /// On Azure an Entra credential replaces this later (ADR §4); it is not a rejected option.</summary>
     public string ApiKey { get; set; } = "";
 
-    /// <summary>Optional per-agent deployment overrides, keyed by agent name. Bound from
-    /// <c>Ai:AzureFoundry:Agents:&lt;agent&gt;</c> — per-agent overrides live inside the active
-    /// provider's own block, never in a shared one (ADR §2 decision 10).</summary>
+    /// <summary>Optional per-agent <see cref="Model"/> overrides, keyed by agent name (e.g.
+    /// <c>cv-tailoring</c>). An agent listed here gets its own chat client on the named model;
+    /// everyone else uses <see cref="Model"/>. Bound from the active provider's own section —
+    /// <c>Ai:Gemini:Agents:&lt;agent&gt;</c> or <c>Ai:AzureFoundry:Agents:&lt;agent&gt;</c> — because
+    /// per-agent overrides live inside that block and never in a shared one (ADR §2 decision 10).</summary>
     public Dictionary<string, string> Agents { get; set; } = new();
+
+    /// <summary>The configuration section a provider's chat settings are bound from.</summary>
+    public static string SectionFor(ChatProvider provider) => provider switch
+    {
+        ChatProvider.Gemini => "Ai:Gemini",
+        ChatProvider.AzureFoundry => "Ai:AzureFoundry",
+        var unmapped => throw new InvalidOperationException(
+            $"No configuration section is mapped for chat provider {unmapped}. A new "
+            + $"{nameof(ChatProvider)} member needs an entry here."),
+    };
+
+    /// <summary>The environment variable a provider's credential is read from, <b>and only that
+    /// provider's</b>. Named once and shared by the construction branch that reads it and the
+    /// Production guard that requires it (EXP-18), so a guard cannot come to demand a variable no
+    /// branch reads — and so a request aimed at Azure can never carry the Google key.</summary>
+    public static string ApiKeyVariableFor(ChatProvider provider) => provider switch
+    {
+        ChatProvider.Gemini => "GEMINI_API_KEY",
+        ChatProvider.AzureFoundry => "AZURE_FOUNDRY_API_KEY",
+        var unmapped => throw new InvalidOperationException(
+            $"No API key variable is mapped for chat provider {unmapped}. A new "
+            + $"{nameof(ChatProvider)} member needs an entry here."),
+    };
+
+    /// <summary>A provider's code defaults, before its configuration block is bound over them. A
+    /// member added without an entry fails here, rather than binding an empty block and chatting
+    /// against nothing.</summary>
+    public static ChatProviderOptions Defaults(ChatProvider provider) => provider switch
+    {
+        ChatProvider.Gemini => new ChatProviderOptions
+        {
+            Endpoint = "https://generativelanguage.googleapis.com/v1beta/openai",
+            // Pinned to an explicit generation: free-tier quotas differ per model row
+            // (3.5-flash-lite: RPD 500 vs every Flash-proper row: RPD 20), and a `-latest` alias may
+            // silently drift onto a low-quota row (P1T-114/P1T-115).
+            Model = "gemini-3.5-flash-lite",
+        },
+        // Deliberately empty: the shipped `Ai:AzureFoundry` block carries the endpoint and the
+        // deployment name, and a code default here would be the same two strings written twice.
+        // An unconfigured Azure host fails on an empty endpoint rather than on a resource nobody
+        // named.
+        ChatProvider.AzureFoundry => new ChatProviderOptions(),
+        var unbuilt => throw new InvalidOperationException(
+            $"'{ChatProviderServiceCollectionExtensions.ProviderKey}' is '{unbuilt}', which has no "
+            + $"code defaults. A new {nameof(ChatProvider)} member needs an entry here as well as a "
+            + "construction branch. See manuals/adr-chat-provider-seam.md."),
+    };
 }
 
 /// <summary>
