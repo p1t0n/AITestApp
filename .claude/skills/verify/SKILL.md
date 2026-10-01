@@ -24,8 +24,11 @@ There is **no stale-realm step**. Keycloak gets a fresh container and a fresh re
 start (it has no data volume, deliberately), so an edit to `keycloak/realm-export.json` takes effect
 on the next start and cannot be stale.
 
-Health probes: Web `GET /swagger/index.html` = 200; Mcp `/` = 401; Agents `/` = 404 (both mean
-"alive"). The dashboard shows the same thing per resource, which is usually faster than curling.
+Health probes: Web `GET /openapi/v1.json` = 200 (the one Web route that is explicitly anonymous);
+Mcp `/` = 401; Agents `/` = 401 — both 401s mean "alive", since the authenticate-everything fallback
+policy (P1T-181, `api/Agents/Auth/SessionAuthExtensions.cs`) answers an unauthenticated request
+before any route is matched. The dashboard shows the same thing per resource, which is usually
+faster than curling.
 
 ## Traces & metrics
 
@@ -51,9 +54,14 @@ Don't stop polling at the first `n/n` — the worker may not have projected the 
 ## Driving the UI (passkey auth!)
 
 For the standard journeys there is now a suite instead of a scratch script — `cd web && npm run
-test:e2e` starts its own database, API and SPA (ports 55433 / 5079 / 5174, dev stack untouched) and
-drives sign-up, sign-in and the roster in Chromium. See `manuals/playwright-e2e.md`. Reach for the
-manual route below when you need to drive something the suite does not cover.
+test:e2e` starts its own database, API and SPA (ports 55433 / 5079 / 5174) and drives sign-up,
+sign-in and the roster in Chromium. See `manuals/playwright-e2e.md`. Reach for the manual route
+below when you need to drive something the suite does not cover.
+
+**The suite is not yet isolated from the dev stack.** Its SPA proxies `/agents` to whatever is
+listening on `:5200`, so running it while `dotnet run --project api/AppHost` is up points its
+agent calls at the dev Agents host and ~20 specs fail. Stop the dev stack before `npm run test:e2e`
+until EXP-91 lands.
 
 The whole SPA is passkey-gated. Playwright (devDep in `web/`) + a CDP **virtual authenticator**
 handles signup headlessly:
