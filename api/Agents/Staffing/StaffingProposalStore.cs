@@ -47,7 +47,7 @@ public sealed class StaffingProposalStore(
                 JobDescription = jobDescription,
                 RecommendedExpertId = report.Recommendation?.ExpertId,
                 ReportDegraded = report.Degraded,
-                Status = StaffingProposalStatus.Pending,
+                Status = new StaffingProposalStatus.Pending(),
                 CreatedAt = clock.GetUtcNow(),
                 PackageJson = document.Serialize(),
                 Candidates = report.Candidates.Select((c, i) => new StaffingProposalCandidate
@@ -91,8 +91,14 @@ public sealed class StaffingProposalStore(
         var query = db.StaffingProposals.AsNoTracking().Include(p => p.Candidates).AsQueryable();
         if (!string.IsNullOrWhiteSpace(status))
         {
-            var normalized = status.Trim().ToLowerInvariant();
-            query = query.Where(p => p.Status == normalized);
+            // A filter string nobody can parse matches nothing — the same answer the old column
+            // compare gave, now reached without sending the query.
+            if (!StaffingProposalStatus.TryParse(status.Trim().ToLowerInvariant(), out var wanted))
+            {
+                return [];
+            }
+
+            query = query.Where(p => p.Status == wanted);
         }
 
         var proposals = await query.OrderByDescending(p => p.CreatedAt).ToListAsync(ct);
@@ -143,12 +149,14 @@ public sealed class StaffingProposalStore(
             return (ProposalDecisionResult.NotFound, null);
         }
 
-        if (proposal.Status != StaffingProposalStatus.Pending)
+        if (proposal.Status is not StaffingProposalStatus.Pending)
         {
             return (ProposalDecisionResult.AlreadyDecided, proposal);
         }
 
-        proposal.Status = approve ? StaffingProposalStatus.Approved : StaffingProposalStatus.Rejected;
+        proposal.Status = approve
+            ? new StaffingProposalStatus.Approved()
+            : new StaffingProposalStatus.Rejected();
         proposal.DecidedByUserId = decidedBy;
         proposal.DecidedAt = clock.GetUtcNow();
         proposal.DecisionNote = string.IsNullOrWhiteSpace(note) ? null : note.Trim();

@@ -12,7 +12,7 @@ public sealed record JdMatchCandidateResult(
     string Name,
     string Title,
     double RetrievalScore,
-    string Status,
+    StaffingMatchStatus Status,
     int? Score,
     string? Band,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Answer,
@@ -86,14 +86,14 @@ public sealed class JdMatchRunService(
 
                 results[index] = new JdMatchCandidateResult(
                     candidate.ExpertId, candidate.Name, candidate.Title, candidate.Score,
-                    StaffingMatchStatus.Completed, run.Score, run.Band, run.Answer, Error: null);
+                    new StaffingMatchStatus.Completed(), run.Score, run.Band, run.Answer, Error: null);
             }
             catch (HttpRequestException ex)
             {
                 // One candidate's model/MCP fault degrades that entry; the others still ship.
                 results[index] = new JdMatchCandidateResult(
                     candidate.ExpertId, candidate.Name, candidate.Title, candidate.Score,
-                    StaffingMatchStatus.Failed, Score: null, Band: null, Answer: null, Error: ex.Message);
+                    new StaffingMatchStatus.Failed(), Score: null, Band: null, Answer: null, Error: ex.Message);
             }
             finally
             {
@@ -104,7 +104,7 @@ public sealed class JdMatchRunService(
         // Retrieval order in, score order out: completed entries sort by match score (desc,
         // unreadable scores last), failed entries trail in retrieval order.
         var ranked = results
-            .OrderBy(r => r.Status == StaffingMatchStatus.Failed ? 1 : 0)
+            .OrderBy(r => r.Status is StaffingMatchStatus.Failed ? 1 : 0)
             .ThenByDescending(r => r.Score ?? -1)
             .ThenByDescending(r => r.RetrievalScore)
             .ToList();

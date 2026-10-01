@@ -1,3 +1,6 @@
+using System.Diagnostics.CodeAnalysis;
+using System.Text.Json.Serialization;
+using ExpertToJob.Domain.Status;
 using ExpertToJob.Agents.Agents;
 
 namespace ExpertToJob.Agents.Staffing;
@@ -22,18 +25,54 @@ public sealed record StaffingShortlistDetail(
 /// <see cref="StaffingMatchStatus"/>; score/band are parsed from the answer markdown (null when
 /// unreadable — the markdown ships regardless); <see cref="Error"/> is set only on failure.</summary>
 public sealed record StaffingMatchDetail(
-    string Status,
+    StaffingMatchStatus Status,
     int? Score,
     string? Band,
     string? Answer,
     string? Error);
 
-/// <summary>The pinned match step statuses (P1T-71).</summary>
-public static class StaffingMatchStatus
+/// <summary>The pinned match step statuses (P1T-71). Closed since EXP-76: the report's own
+/// aggregation reads every case, and the strings are the ones already in stored packages.</summary>
+[JsonConverter(typeof(ClosedStatusJsonConverter<StaffingMatchStatus>))]
+public closed record StaffingMatchStatus : IClosedStatus<StaffingMatchStatus>
 {
-    public const string Completed = "completed";
-    public const string Failed = "failed";
-    public const string Skipped = "skipped";
+    public sealed record Completed : StaffingMatchStatus;
+
+    public sealed record Failed : StaffingMatchStatus;
+
+    public sealed record Skipped : StaffingMatchStatus;
+
+    /// <inheritdoc/>
+    public string Value => this switch
+    {
+        Completed => "completed",
+        Failed => "failed",
+        Skipped => "skipped",
+    };
+
+    /// <inheritdoc/>
+    public static bool TryParse(string? value, [NotNullWhen(true)] out StaffingMatchStatus? status)
+    {
+        status = value switch
+        {
+            "completed" => new Completed(),
+            "failed" => new Failed(),
+            "skipped" => new Skipped(),
+            // The one discard arm the closed set keeps: this switches over a string read back
+            // from a column or a payload, not over the hierarchy, so "none of them" is a real
+            // case and the caller decides whether it degrades or throws.
+            _ => null,
+        };
+        return status is not null;
+    }
+
+    /// <inheritdoc/>
+    public static StaffingMatchStatus Parse(string value) =>
+        TryParse(value, out var status)
+            ? status
+            : throw new FormatException($"'{value}' is not a match status.");
+
+    public sealed override string ToString() => Value;
 }
 
 /// <summary>One candidate in the staffing report: identity and shortlist facts are deterministic
@@ -81,18 +120,54 @@ public sealed record StaffingProgressEvent(
     string Stage,
     string Message,
     Guid? ExpertId = null,
-    string? Status = null,
+    StaffingStepStatus? Status = null,
     string? CandidateName = null,
     int? CompletedCount = null,
     int? TotalCount = null,
     string? Error = null);
 
-/// <summary>The pinned <see cref="StaffingProgressEvent.Status"/> values.</summary>
-public static class StaffingStepStatus
+/// <summary>The pinned <see cref="StaffingProgressEvent.Status"/> values. Closed since EXP-76 —
+/// the SSE mapper switches over them, and the SPA's stepper parses these exact strings.</summary>
+[JsonConverter(typeof(ClosedStatusJsonConverter<StaffingStepStatus>))]
+public closed record StaffingStepStatus : IClosedStatus<StaffingStepStatus>
 {
-    public const string Started = "started";
-    public const string Completed = "completed";
-    public const string Failed = "failed";
+    public sealed record Started : StaffingStepStatus;
+
+    public sealed record Completed : StaffingStepStatus;
+
+    public sealed record Failed : StaffingStepStatus;
+
+    /// <inheritdoc/>
+    public string Value => this switch
+    {
+        Started => "started",
+        Completed => "completed",
+        Failed => "failed",
+    };
+
+    /// <inheritdoc/>
+    public static bool TryParse(string? value, [NotNullWhen(true)] out StaffingStepStatus? status)
+    {
+        status = value switch
+        {
+            "started" => new Started(),
+            "completed" => new Completed(),
+            "failed" => new Failed(),
+            // The one discard arm the closed set keeps: this switches over a string read back
+            // from a column or a payload, not over the hierarchy, so "none of them" is a real
+            // case and the caller decides whether it degrades or throws.
+            _ => null,
+        };
+        return status is not null;
+    }
+
+    /// <inheritdoc/>
+    public static StaffingStepStatus Parse(string value) =>
+        TryParse(value, out var status)
+            ? status
+            : throw new FormatException($"'{value}' is not a step status.");
+
+    public sealed override string ToString() => Value;
 }
 
 /// <summary>

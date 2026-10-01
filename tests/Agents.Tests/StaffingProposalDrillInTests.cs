@@ -182,7 +182,7 @@ public class StaffingProposalDrillInTests
             {
                 Id = id,
                 JobDescription = "Legacy JD",
-                Status = ExpertToJob.Domain.Entities.StaffingProposalStatus.Pending,
+                Status = new ExpertToJob.Domain.Entities.StaffingProposalStatus.Pending(),
                 CreatedAt = DateTimeOffset.UtcNow,
                 PackageJson = null,
             });

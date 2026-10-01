@@ -33,12 +33,12 @@ public class StaffingProposalStoreTests
             new StaffingCandidate(
                 Ada, "Ada Lovelace", "Platform Lead",
                 new StaffingShortlistDetail(0.91, new(2, 3), []),
-                new StaffingMatchDetail(StaffingMatchStatus.Completed, 78, "Strong", "answer", null),
+                new StaffingMatchDetail(new StaffingMatchStatus.Completed(), 78, "Strong", "answer", null),
                 "Best coverage."),
             new StaffingCandidate(
                 Grace, "Grace Hopper", "Engineer",
                 new StaffingShortlistDetail(0.85, new(1, 3), []),
-                new StaffingMatchDetail(StaffingMatchStatus.Failed, null, null, null, "model error"),
+                new StaffingMatchDetail(new StaffingMatchStatus.Failed(), null, null, null, "model error"),
                 "Solid depth."),
         ],
         new StaffingRecommendation(Ada, "Ada is the strongest fit."),
@@ -57,12 +57,12 @@ public class StaffingProposalStoreTests
             new StageSlice(
                 "shortlist", "agent-shortlist", ["mcp:read", "mcp:search"], "gemini-3.5-flash-lite",
                 100, 20, DateTimeOffset.Parse("2026-08-16T12:00:01Z"), DateTimeOffset.Parse("2026-08-16T12:00:03Z"),
-                StageSliceStatus.Completed),
+                new StageSliceStatus.Completed()),
             new StageSlice(
                 "match", "agent-match", ["mcp:read"], null,
                 degraded ? 0 : 200, degraded ? 0 : 50,
                 DateTimeOffset.Parse("2026-08-16T12:00:03Z"), DateTimeOffset.Parse("2026-08-16T12:00:06Z"),
-                degraded ? StageSliceStatus.Failed : StageSliceStatus.Completed,
+                degraded ? new StageSliceStatus.Failed() : new StageSliceStatus.Completed(),
                 degraded ? "model error" : null, RetryCount: degraded ? 2 : 0),
         ],
         degraded ? [new DegradationEntry("match", "The match assessment for Grace Hopper", "model error")] : []);
@@ -78,7 +78,7 @@ public class StaffingProposalStoreTests
         id.Should().NotBeNull();
         var proposal = await db.StaffingProposals.Include(p => p.Candidates).SingleAsync();
         proposal.Id.Should().Be(id!.Value);
-        proposal.Status.Should().Be(StaffingProposalStatus.Pending);
+        proposal.Status.Should().Be(new StaffingProposalStatus.Pending());
         proposal.RequestedByUserId.Should().Be(requester);
         proposal.JobDescription.Should().Be("Platform engineer.");
         proposal.RecommendedExpertId.Should().Be(Ada);
@@ -114,14 +114,14 @@ public class StaffingProposalStoreTests
         var (result, proposal) = await store.DecideAsync(id, approver, approve: true, note: "  go ahead  ");
 
         result.Should().Be(ProposalDecisionResult.Decided);
-        proposal!.Status.Should().Be(StaffingProposalStatus.Approved);
+        proposal!.Status.Should().Be(new StaffingProposalStatus.Approved());
         proposal.DecidedByUserId.Should().Be(approver);
         proposal.DecidedAt.Should().NotBeNull();
         proposal.DecisionNote.Should().Be("go ahead");
 
         var (second, unchanged) = await store.DecideAsync(id, Guid.NewGuid(), approve: false, note: null);
         second.Should().Be(ProposalDecisionResult.AlreadyDecided);
-        unchanged!.Status.Should().Be(StaffingProposalStatus.Approved, "the first decision stands");
+        unchanged!.Status.Should().Be(new StaffingProposalStatus.Approved(), "the first decision stands");
     }
 
     [Fact]
@@ -136,7 +136,7 @@ public class StaffingProposalStoreTests
 
         var (result, proposal) = await store.DecideAsync(id, Guid.NewGuid(), approve: false, note: null);
         result.Should().Be(ProposalDecisionResult.Decided);
-        proposal!.Status.Should().Be(StaffingProposalStatus.Rejected);
+        proposal!.Status.Should().Be(new StaffingProposalStatus.Rejected());
         proposal.DecisionNote.Should().BeNull();
     }
 
@@ -149,7 +149,7 @@ public class StaffingProposalStoreTests
         var second = (await store.CreateAsync(null, "JD two", Report(), Package()))!.Value;
         await store.DecideAsync(first, Guid.NewGuid(), approve: true, note: null);
 
-        var pending = await store.ListAsync(StaffingProposalStatus.Pending);
+        var pending = await store.ListAsync("pending");
         pending.Should().ContainSingle().Which.Id.Should().Be(second);
         pending[0].Candidates.Select(c => c.Rank).Should().BeInAscendingOrder();
 
@@ -224,7 +224,7 @@ public class StaffingProposalStoreTests
         document.Report.Notes.Should().NotBeEmpty();
         document.Degradations.Should().NotBeEmpty(
             "degradation entries travel whenever the report carries notes");
-        var failed = document.Slices.Should().ContainSingle(s => s.Status == StageSliceStatus.Failed).Subject;
+        var failed = document.Slices.Should().ContainSingle(s => s.Status is StageSliceStatus.Failed).Subject;
         failed.RetryCount.Should().Be(2);
         failed.DegradeReason.Should().Be("model error");
     }

@@ -101,9 +101,9 @@ public static class BenchStatsComposer
 
         return new ProposalStats(
             proposals.Count,
-            proposals.Count(p => p.Status == StaffingProposalStatus.Pending),
-            proposals.Count(p => p.Status == StaffingProposalStatus.Approved),
-            proposals.Count(p => p.Status == StaffingProposalStatus.Rejected),
+            proposals.Count(p => p.Status is StaffingProposalStatus.Pending),
+            proposals.Count(p => p.Status is StaffingProposalStatus.Approved),
+            proposals.Count(p => p.Status is StaffingProposalStatus.Rejected),
             recent,
             frequent);
     }

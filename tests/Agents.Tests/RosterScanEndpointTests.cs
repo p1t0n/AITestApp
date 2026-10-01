@@ -51,8 +51,8 @@ public class RosterScanEndpointTests
             CancellationToken ct = default) =>
             Task.FromResult(new ScoredChunk(
                 chunk.Select((c, i) => i == 0
-                    ? new ScoringCandidateResult(c.ExpertId, ScoringCandidateStatus.Scored, 82, "Strong", "fit", true, null)
-                    : new ScoringCandidateResult(c.ExpertId, ScoringCandidateStatus.Scored, null, "Insufficient evidence", null, false, null))
+                    ? new ScoringCandidateResult(c.ExpertId, new ScoringCandidateStatus.Scored(), 82, "Strong", "fit", true, null)
+                    : new ScoringCandidateResult(c.ExpertId, new ScoringCandidateStatus.Scored(), null, "Insufficient evidence", null, false, null))
                     .ToList(),
                 new AgentReply("{}", 20, 10, 30)));
     }
@@ -170,6 +170,11 @@ public class RosterScanEndpointTests
         candidates[0].GetProperty("band").GetString().Should().Be("Strong");
         candidates[1].GetProperty("scorable").GetBoolean().Should().BeFalse("honest absence rides the wire");
         candidates[1].TryGetProperty("score", out _).Should().BeFalse("null score is omitted, not zeroed");
+
+        // Frozen as a literal (EXP-76): the polling client reads this string, and whatever CLR type
+        // carries the status behind it has to keep spelling it exactly this way.
+        candidates[0].GetProperty("status").GetString().Should().Be("scored");
+        candidates[1].GetProperty("status").GetString().Should().Be("scored");
     }
 
     [Fact]

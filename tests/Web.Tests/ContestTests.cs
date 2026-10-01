@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using ExpertToJob.Application.Compliance;
 using ExpertToJob.Domain.Entities;
 using ExpertToJob.Domain.Enums;
@@ -50,14 +51,14 @@ public class ContestTests(WebApiFactory factory)
 
         var review = await (await staff.PostAsJsonAsync(
                 $"/api/contests/{world.CandidateId}/review",
-                new { outcome = ContestOutcome.Overturned, response = "Agreed — shortlisting you by hand." }))
+                new { outcome = "overturned", response = "Agreed — shortlisting you by hand." }))
             .ReadOkAsync<ContestReviewDto>();
 
-        review.Outcome.Should().Be(ContestOutcome.Overturned);
+        review.Outcome.Should().Be(new ContestOutcome.Overturned());
         review.ReviewedByUserId.Should().NotBeNull("a person, named, is the point of the safeguard");
 
         var row = await CandidateAsync(world.CandidateId);
-        row.ContestOutcome.Should().Be(ContestOutcome.Overturned);
+        row.ContestOutcome.Should().Be(new ContestOutcome.Overturned());
         row.ContestReviewedAt.Should().NotBeNull();
         row.ContestResponse.Should().Contain("shortlisting you by hand");
 
@@ -96,7 +97,7 @@ public class ContestTests(WebApiFactory factory)
             "/api/contests", new { scoringCandidateId = world.CandidateId, view = "First time." });
         await staff.PostAsJsonAsync(
             $"/api/contests/{world.CandidateId}/review",
-            new { outcome = ContestOutcome.Upheld, response = "The score stands." });
+            new { outcome = "upheld", response = "The score stands." });
 
         await world.Client.PostAsJsonAsync(
             "/api/contests", new { scoringCandidateId = world.CandidateId, view = "Still wrong, and here is why." });
@@ -107,6 +108,39 @@ public class ContestTests(WebApiFactory factory)
 
         (await (await staff.GetAsync("/api/contests")).ReadOkAsync<List<ContestQueueItemDto>>())
             .Should().Contain(c => c.ScoringCandidateId == world.CandidateId);
+    }
+
+    /// <summary>
+    /// The outcome's wire and stored spelling, frozen as literals (EXP-76). The review body a
+    /// Service Manager posts, the JSON that comes back, and the column the audit reads are all the
+    /// same two strings, and no refactor of the type behind them gets to change that.
+    /// </summary>
+    [Theory]
+    [InlineData("upheld")]
+    [InlineData("overturned")]
+    public async Task A_recorded_outcome_is_that_literal_string_on_the_wire_and_in_the_column(string outcome)
+    {
+        var world = await GivenAScoredPersonAsync();
+        var staff = factory.CreateAuthenticatedClient();
+
+        await world.Client.PostAsJsonAsync(
+            "/api/contests", new { scoringCandidateId = world.CandidateId, view = "Please look." });
+
+        var response = await staff.PostAsJsonAsync(
+            $"/api/contests/{world.CandidateId}/review", new { outcome, response = "Noted." });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("outcome").GetString().Should().Be(outcome);
+
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var stored = await db.Database
+            .SqlQueryRaw<string?>(
+                """SELECT "ContestOutcome" AS "Value" FROM "ScoringJobCandidates" WHERE "Id" = {0}""",
+                world.CandidateId)
+            .ToListAsync();
+        stored.Single().Should().Be(outcome);
     }
 
     // ---- The boundaries ----------------------------------------------------------------------------
@@ -137,7 +171,7 @@ public class ContestTests(WebApiFactory factory)
             .Should().Be(HttpStatusCode.Forbidden);
         (await world.Client.PostAsJsonAsync(
                 $"/api/contests/{world.CandidateId}/review",
-                new { outcome = ContestOutcome.Upheld, response = "Mine now." }))
+                new { outcome = "upheld", response = "Mine now." }))
             .StatusCode.Should().Be(HttpStatusCode.Forbidden,
                 "the person cannot be the human who reviews their own score");
     }
@@ -165,7 +199,7 @@ public class ContestTests(WebApiFactory factory)
 
         (await staff.PostAsJsonAsync(
                 $"/api/contests/{world.CandidateId}/review",
-                new { outcome = ContestOutcome.Upheld, response = (string?)null }))
+                new { outcome = "upheld", response = (string?)null }))
             .StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 
@@ -226,7 +260,7 @@ public class ContestTests(WebApiFactory factory)
                 Name = "Quill Lovelace",
                 Title = "Engineer",
                 Digest = "Payments, platforms.",
-                Status = ScoringCandidateStatus.Scored,
+                Status = new ScoringCandidateStatus.Scored(),
                 Score = 41,
                 Band = "weak",
                 Rationale = "Looks like a user of payment platforms rather than a builder of them.",

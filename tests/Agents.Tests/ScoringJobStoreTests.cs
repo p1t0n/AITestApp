@@ -47,7 +47,7 @@ public class ScoringJobStoreTests
         var job = await CreateJobAsync(Store(db));
 
         job.State.Should().Be(ScoringJobState.Queued);
-        job.Candidates.Should().HaveCount(2).And.OnlyContain(c => c.Status == ScoringCandidateStatus.Pending);
+        job.Candidates.Should().HaveCount(2).And.OnlyContain(c => c.Status is ScoringCandidateStatus.Pending);
         ScoringJobProgress.Of(job.Candidates).Should().Be(new ScoringJobProgress(0, 0, 2, 2));
     }
 
@@ -97,9 +97,9 @@ public class ScoringJobStoreTests
 
         await store.WriteChunkResultsAsync(job.Id,
         [
-            new ScoringCandidateResult(Ada, ScoringCandidateStatus.Scored, 82, "Strong", "Great fit.", true, null),
-            new ScoringCandidateResult(Grace, ScoringCandidateStatus.Failed, null, null, null, null, "chunk fault"),
-            new ScoringCandidateResult(Guid.NewGuid(), ScoringCandidateStatus.Scored, 99, "Strong", "??", true, null),
+            new ScoringCandidateResult(Ada, new ScoringCandidateStatus.Scored(), 82, "Strong", "Great fit.", true, null),
+            new ScoringCandidateResult(Grace, new ScoringCandidateStatus.Failed(), null, null, null, null, "chunk fault"),
+            new ScoringCandidateResult(Guid.NewGuid(), new ScoringCandidateStatus.Scored(), 99, "Strong", "??", true, null),
         ]);
 
         var rows = await db.ScoringJobCandidates.Where(c => c.JobId == job.Id).ToListAsync();
@@ -156,8 +156,8 @@ public class ScoringJobStoreTests
         ]);
         await store.WriteChunkResultsAsync(job.Id,
         [
-            new ScoringCandidateResult(Ada, ScoringCandidateStatus.Scored, 60, "Moderate", "ok", true, null),
-            new ScoringCandidateResult(Grace, ScoringCandidateStatus.Scored, 90, "Strong", "great", true, null),
+            new ScoringCandidateResult(Ada, new ScoringCandidateStatus.Scored(), 60, "Moderate", "ok", true, null),
+            new ScoringCandidateResult(Grace, new ScoringCandidateStatus.Scored(), 90, "Strong", "great", true, null),
         ]);
 
         var loaded = await store.GetAsync(job.Id);

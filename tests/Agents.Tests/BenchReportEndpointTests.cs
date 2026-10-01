@@ -46,7 +46,8 @@ public class BenchReportEndpointTests
                 s.AddDbContext<AppDbContext>(o => o.UseInMemoryDatabase(dbName));
             }));
 
-    private static async Task SeedProposalAsync(WebApplicationFactory<Program> factory, string status)
+    private static async Task SeedProposalAsync(
+        WebApplicationFactory<Program> factory, StaffingProposalStatus status)
     {
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -71,7 +72,7 @@ public class BenchReportEndpointTests
     public async Task Returns_narrative_with_server_composed_stats()
     {
         using var factory = FakedHost();
-        await SeedProposalAsync(factory, StaffingProposalStatus.Pending);
+        await SeedProposalAsync(factory, new StaffingProposalStatus.Pending());
         using var client = factory.CreateAuthenticatedClient();
 
         var response = await client.PostAsJsonAsync("/agents/bench-report", new { });

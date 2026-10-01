@@ -113,7 +113,7 @@ public class QueuedSyncScoringTransportTests
         var scored = await transport.ScoreChunkAsync("JD", null, Chunk);
 
         var ada = scored.Results.Single(r => r.ExpertId == Ada);
-        ada.Status.Should().Be(ScoringCandidateStatus.Scored);
+        ada.Status.Should().Be(new ScoringCandidateStatus.Scored());
         ada.Score.Should().Be(85);
         ada.Band.Should().Be("Strong");
         var grace = scored.Results.Single(r => r.ExpertId == Grace);
@@ -139,7 +139,7 @@ public class QueuedSyncScoringTransportTests
 
         scored.Results.Should().HaveCount(2, "one row per chunk member, never per model claim");
         scored.Results.Select(r => r.ExpertId).Should().BeEquivalentTo([Ada, Grace]);
-        scored.Results.Single(r => r.ExpertId == Grace).Status.Should().Be(ScoringCandidateStatus.Failed);
+        scored.Results.Single(r => r.ExpertId == Grace).Status.Should().Be(new ScoringCandidateStatus.Failed());
         scored.Results.Single(r => r.ExpertId == Grace).Error.Should().Contain("did not assess");
     }
 
@@ -162,7 +162,7 @@ public class QueuedSyncScoringTransportTests
 
         var scored = await transport.ScoreChunkAsync("JD", null, Chunk);
 
-        scored.Results.Should().OnlyContain(r => r.Status == ScoringCandidateStatus.Failed);
+        scored.Results.Should().OnlyContain(r => r.Status is ScoringCandidateStatus.Failed);
         scored.Results.Should().OnlyContain(r => r.Error!.Contains("did not parse"));
         scored.Reply.TotalTokens.Should().Be(250, "tokens were spent either way");
     }
@@ -177,7 +177,7 @@ public class QueuedSyncScoringTransportTests
 
         var scored = await Transport(chat, limiter).ScoreChunkAsync("JD", null, Chunk);
 
-        scored.Results.Should().Contain(r => r.Status == ScoringCandidateStatus.Scored);
+        scored.Results.Should().Contain(r => r.Status is ScoringCandidateStatus.Scored);
         chat.CallCount.Should().Be(2, "one 429 then success");
         limiter.Acquired.Should().Be(2, "each attempt takes its own permit");
     }

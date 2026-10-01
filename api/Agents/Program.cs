@@ -1073,7 +1073,7 @@ internal sealed record ProposalCandidateResponse(
 internal sealed record ProposalResponse(
     Guid Id,
     string JobDescription,
-    string Status,
+    ExpertToJob.Domain.Entities.StaffingProposalStatus Status,
     DateTimeOffset CreatedAt,
     Guid? RecommendedExpertId,
     bool ReportDegraded,
@@ -1104,7 +1104,7 @@ internal sealed record ProposalResponse(
 internal sealed record ProposalDetailResponse(
     Guid Id,
     string JobDescription,
-    string Status,
+    ExpertToJob.Domain.Entities.StaffingProposalStatus Status,
     DateTimeOffset CreatedAt,
     Guid? RecommendedExpertId,
     bool ReportDegraded,
