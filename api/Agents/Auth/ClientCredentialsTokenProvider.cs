@@ -5,11 +5,12 @@ using ExpertToJob.Agents.Configuration;
 namespace ExpertToJob.Agents.Auth;
 
 /// <summary>
-/// Obtains a scoped JWT from Keycloak via the OAuth 2.1 client-credentials grant and caches it
-/// until shortly before it expires. The token carries only the configured scope (e.g.
-/// <c>mcp:read</c>), so the agent is structurally limited to the matching MCP tools.
+/// Supplies the bearer token for calling the MCP server: a scoped JWT from Keycloak via the
+/// OAuth 2.1 client-credentials grant, cached until shortly before it expires so per-request calls
+/// are cheap. The token carries only the configured scope (e.g. <c>mcp:read</c>), so the agent is
+/// structurally limited to the matching MCP tools.
 /// </summary>
-public sealed class ClientCredentialsTokenProvider : IAccessTokenProvider
+public sealed class ClientCredentialsTokenProvider
 {
     private static readonly TimeSpan ExpirySkew = TimeSpan.FromSeconds(30);
 

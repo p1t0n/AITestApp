@@ -55,7 +55,7 @@ public class AgentMcpIdentityRegistrationTests
         var capture = new CapturingHandler(accessToken: "tok-rqa");
         var sp = BuildProvider(capture, ("roster-qa", "agent-roster-qa", []));
 
-        var provider = sp.GetRequiredKeyedService<IAccessTokenProvider>("roster-qa");
+        var provider = sp.GetRequiredKeyedService<ClientCredentialsTokenProvider>("roster-qa");
         var token = await provider.GetTokenAsync();
 
         token.Should().Be("tok-rqa");
@@ -71,8 +71,8 @@ public class AgentMcpIdentityRegistrationTests
             ("roster-qa", "agent-roster-qa", []),
             ("cv-tailoring", "agent-cv-tailoring", []));
 
-        var rosterQa = sp.GetRequiredKeyedService<IAccessTokenProvider>("roster-qa");
-        var cvTailoring = sp.GetRequiredKeyedService<IAccessTokenProvider>("cv-tailoring");
+        var rosterQa = sp.GetRequiredKeyedService<ClientCredentialsTokenProvider>("roster-qa");
+        var cvTailoring = sp.GetRequiredKeyedService<ClientCredentialsTokenProvider>("cv-tailoring");
 
         cvTailoring.Should().NotBeSameAs(rosterQa);
 

@@ -8,9 +8,9 @@ namespace ExpertToJob.Agents.Auth;
 /// </summary>
 public sealed class BearerTokenHandler : DelegatingHandler
 {
-    private readonly IAccessTokenProvider _tokens;
+    private readonly ClientCredentialsTokenProvider _tokens;
 
-    public BearerTokenHandler(IAccessTokenProvider tokens) => _tokens = tokens;
+    public BearerTokenHandler(ClientCredentialsTokenProvider tokens) => _tokens = tokens;
 
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken)

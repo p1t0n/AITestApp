@@ -62,7 +62,7 @@ public sealed class RetentionWorker(
         try
         {
             using var scope = scopeFactory.CreateScope();
-            var sweep = scope.ServiceProvider.GetRequiredService<IRetentionSweep>();
+            var sweep = scope.ServiceProvider.GetRequiredService<RetentionSweep>();
             var result = await sweep.RunOnceAsync(ct);
 
             if (result.Expired > 0)

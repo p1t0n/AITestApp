@@ -32,7 +32,7 @@ public static class AuthServiceCollectionExtensions
         // In-memory distributed cache backs the single-use ceremony challenge store. Swap for Redis
         // when the app runs multi-instance.
         services.AddDistributedMemoryCache();
-        services.AddSingleton<IChallengeStore, DistributedCacheChallengeStore>();
+        services.AddSingleton<DistributedCacheChallengeStore>();
         services.AddSingleton<IControlWordHasher, ControlWordHasher>();
 
         // Erasure is registered with the hasher rather than in AddApplication, because it depends
@@ -41,7 +41,7 @@ public static class AuthServiceCollectionExtensions
         // (P1T-186). Deleting yourself is a session act, and sessions live here.
         services.AddScoped<ExpertToJob.Application.Compliance.IErasureService,
             ExpertToJob.Application.Compliance.ErasureService>();
-        services.AddScoped<IJwtTokenIssuer, JwtTokenIssuer>();
+        services.AddScoped<JwtTokenIssuer>();
 
         // Row-level reach (P1T-182). The Application services ask this; the Web host answers from
         // the session. Needs the accessor because the scope is a property of the caller, not of a

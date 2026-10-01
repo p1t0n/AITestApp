@@ -84,14 +84,14 @@ builder.Services.AddSingleton(TimeProvider.System);
 var retention = builder.Configuration.GetSection("Retention").Get<ExpertToJob.Web.Compliance.RetentionOptions>()
     ?? new ExpertToJob.Web.Compliance.RetentionOptions();
 builder.Services.AddSingleton(retention);
-builder.Services.AddScoped<ExpertToJob.Application.Compliance.IRetentionSweep,
-    ExpertToJob.Application.Compliance.RetentionSweep>();
+builder.Services.AddScoped<ExpertToJob.Application.Compliance.RetentionSweep>();
 builder.Services.AddScoped<ExpertToJob.Application.Compliance.IRetentionErasure,
     ExpertToJob.Application.Compliance.ErasureService>();
 builder.Services.AddHostedService<ExpertToJob.Web.Compliance.RetentionWorker>();
 
 // Passwordless auth: WebAuthn ceremonies + shared session JWT. The signup/signin/recovery
-// endpoints (separate issues) drive the ceremonies via IFido2 + IChallengeStore + IJwtTokenIssuer.
+// endpoints (separate issues) drive the ceremonies via IFido2 + DistributedCacheChallengeStore
+// + JwtTokenIssuer.
 builder.Services.AddPasskeyAuth(builder.Configuration);
 
 builder.Services.AddProblemDetails();

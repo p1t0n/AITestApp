@@ -25,7 +25,7 @@ namespace ExpertToJob.Agents.Mcp;
 public sealed class McpToolSource : IMcpToolSource, IAsyncDisposable
 {
     private readonly McpServerOptions _server;
-    private readonly IAccessTokenProvider _tokens;
+    private readonly ClientCredentialsTokenProvider _tokens;
     private readonly AgentToolAllowlist _allowlist;
     private readonly ILogger<McpToolSource> _logger;
     private readonly string _agentKey;
@@ -41,7 +41,7 @@ public sealed class McpToolSource : IMcpToolSource, IAsyncDisposable
     public McpToolSource(
         string agentKey,
         IOptions<McpServerOptions> server,
-        IAccessTokenProvider tokens,
+        ClientCredentialsTokenProvider tokens,
         AgentToolAllowlist allowlist,
         ILoggerFactory loggerFactory)
     {

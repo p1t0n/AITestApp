@@ -9,12 +9,6 @@ using Pgvector;
 
 namespace ExpertToJob.Infrastructure.Search;
 
-/// <summary>One reconciliation pass: sync the chunk table to the roster, then embed what's stale.</summary>
-public interface ISearchIndexReconciler
-{
-    Task<ReconcileReport> RunOnceAsync(CancellationToken ct = default);
-}
-
 /// <summary>Counts from a single pass, for logging and test assertions.</summary>
 /// <param name="Relabelled">Rows already embedded by the active model under its bare name, restamped
 /// with the full <c>&lt;provider&gt;/&lt;model&gt;</c> tag. They are not re-embedded: the vectors are
@@ -49,7 +43,7 @@ public sealed record ReconcileReport(
 /// never blanked in bulk, so a slow or interrupted re-embed narrows search instead of emptying
 /// it.</para>
 /// </summary>
-public sealed class SearchIndexReconciler : ISearchIndexReconciler
+public sealed class SearchIndexReconciler
 {
     private readonly AppDbContext _db;
     private readonly IEmbedder _embedder;
@@ -71,6 +65,8 @@ public sealed class SearchIndexReconciler : ISearchIndexReconciler
         _logger = logger;
     }
 
+    /// <summary>One reconciliation pass: sync the chunk table to the roster, then embed what's
+    /// stale.</summary>
     public async Task<ReconcileReport> RunOnceAsync(CancellationToken ct = default)
     {
         // Relabel first, before anything is tracked. It is a set-based UPDATE, invisible to the
