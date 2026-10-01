@@ -411,6 +411,6 @@ describe("how a stored turn reads back", () => {
 
     const bubble = (await screen.findByText("Ada Lovelace does.")).closest(".MuiPaper-root")!;
     const caption = within(bubble as HTMLElement).getByText("gemini-3.5-flash-lite").parentElement!;
-    expect(caption).toHaveTextContent("gemini-3.5-flash-lite · 2 h ago");
+    expect(caption).toHaveTextContent("gemini-3.5-flash-lite · 2 hours ago");
   });
 });

@@ -8,7 +8,6 @@ import {
   daysUntil,
   groupOf,
   isExpiringSoon,
-  relativeTime,
 } from "./conversationHistory";
 
 /** A local wall-clock time, so the calendar-day rules are asserted in the zone they are about. */
@@ -62,26 +61,6 @@ describe("the expiry countdown", () => {
 
   it("stays quiet for the five and a half months nothing is happening", () => {
     expect(isExpiringSoon(iso(2026, 9, 18, 12), now)).toBe(false);
-  });
-});
-
-describe("relative time", () => {
-  const now = local(2026, 3, 18, 12).getTime();
-
-  it("names the coarsest unit that still says something", () => {
-    expect(relativeTime(iso(2026, 3, 18, 11, 59), now)).toBe("1 min ago");
-    expect(relativeTime(iso(2026, 3, 18, 9), now)).toBe("3 h ago");
-    expect(relativeTime(iso(2026, 3, 16, 12), now)).toBe("2 d ago");
-  });
-
-  it("says just now rather than a negative number when the clocks disagree", () => {
-    expect(relativeTime(iso(2026, 3, 18, 12, 0), now)).toBe("just now");
-    expect(relativeTime(iso(2026, 3, 18, 12, 5), now)).toBe("just now");
-  });
-
-  it("falls back to a date past a month, rather than to arithmetic the reader has to undo", () => {
-    const old = iso(2025, 11, 2, 12);
-    expect(relativeTime(old, now)).toBe(new Date(old).toLocaleDateString());
   });
 });
 

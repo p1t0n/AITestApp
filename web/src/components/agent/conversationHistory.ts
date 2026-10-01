@@ -24,7 +24,7 @@ export const EXPIRY_HINT_DAYS = 14;
 /** How long after its last turn a conversation is still "the one you were in" — the same 30
  * minutes the in-memory thread store used to expire on, kept as a *resume* rule now that nothing
  * expires (ADR §4). Past it, opening the dock starts fresh rather than re-opening yesterday. */
-export const RESUME_WINDOW_MS = 30 * 60 * 1000;
+const RESUME_WINDOW_MS = 30 * 60 * 1000;
 
 export type HistoryGroup = "Today" | "This week" | "Older";
 
@@ -60,23 +60,6 @@ export function daysUntil(expiresAt: string, now: number = Date.now()): number {
 /** Whether the drawer should warn about this conversation's expiry at all. */
 export function isExpiringSoon(expiresAt: string, now: number = Date.now()): boolean {
   return daysUntil(expiresAt, now) <= EXPIRY_HINT_DAYS;
-}
-
-/**
- * How long ago, in the coarsest unit that still says something. Falls back to a plain local date
- * past a month, because "63 d ago" is arithmetic the reader has to undo.
- */
-export function relativeTime(at: string, now: number = Date.now()): string {
-  const when = new Date(at).getTime();
-  const minutes = Math.round((now - when) / 60_000);
-  // Also the future: a clock a few seconds ahead of the server's is not worth a negative number.
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes} min ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours} h ago`;
-  const days = Math.round(hours / 24);
-  if (days < 30) return `${days} d ago`;
-  return new Date(at).toLocaleDateString();
 }
 
 /**

@@ -42,5 +42,3 @@ export function ErrorNotice({
     </Alert>
   );
 }
-
-export default ErrorNotice;

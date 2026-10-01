@@ -118,5 +118,3 @@ export function WidgetErrorFallback({ reset }: { error: Error; reset: () => void
     </Paper>
   );
 }
-
-export default ErrorBoundary;

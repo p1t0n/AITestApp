@@ -7,10 +7,10 @@ const DOCKED_KEY = "em.agent.docked";
 const WIDTH_KEY = "em.agent.width";
 
 export const DOCK_MIN_WIDTH = 360;
-export const DOCK_DEFAULT_WIDTH = 420;
+const DOCK_DEFAULT_WIDTH = 420;
 
 /** Below this the dock has no room to sit beside the app, so it takes the whole viewport. */
-export const DOCK_NARROW_QUERY = "(max-width:600px)";
+const DOCK_NARROW_QUERY = "(max-width:600px)";
 
 /**
  * How much horizontal space the dock is currently covering, published on the document root by

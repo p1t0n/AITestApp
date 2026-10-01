@@ -42,7 +42,7 @@ export function closeCommandPalette(): void {
   notify();
 }
 
-export function toggleCommandPalette(): void {
+function toggleCommandPalette(): void {
   open = !open;
   notify();
 }
@@ -79,7 +79,7 @@ export function paletteHotkeyHint(): string {
  * elsewhere is not wrong, and neither combination means anything else in this app. `metaKey` is
  * checked before `ctrlKey` for no reason other than reading order — either one opens it.
  */
-export function isPaletteHotkey(e: KeyboardEvent): boolean {
+function isPaletteHotkey(e: KeyboardEvent): boolean {
   return (e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === "k";
 }
 

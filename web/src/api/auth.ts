@@ -112,8 +112,3 @@ export function signOut(): boolean {
   clearSession();
   return had;
 }
-
-/** Whether a session token is currently stored (not a validity check). */
-export function isSignedIn(): boolean {
-  return getToken() !== null;
-}
