@@ -45,8 +45,24 @@ SANDBOX="claude-AITestApp"
 # The sandbox image, and the only way the .NET SDK gets in: the egress allowlist permits
 # api.nuget.org but returns 403 for every SDK download host, so an agent cannot install it for
 # itself. Recreating the sandbox without this silently costs the loop `dotnet build` and
-# `dotnet test` (P1T-226). Rebuild it with: sbx template save <a sandbox with the SDK> "$TEMPLATE"
-TEMPLATE="claude-dotnet10:v1"
+# `dotnet test` (P1T-226).
+#
+# It carries two SDKs side by side, 10.0.401 and 11.0.100-rc.1.26425.128, and the repo's
+# global.json picks between them (EXP-70). A template is fixed at sandbox creation, so a new one
+# reaches the loop only when the sandbox is recreated (sbx rm, then re-auth Linear) or the same
+# SDKs are copied into the existing sandbox. Rebuild steps, all from the host:
+#   1. curl -fsSLO https://dot.net/v1/dotnet-install.sh, then, for --channel 10.0 and again for
+#      --version <the 11 SDK>:
+#        ./dotnet-install.sh --os linux --architecture arm64 --install-dir ./dotnet --no-path ...
+#   2. COPYFILE_DISABLE=1 tar -czf dotnet.tgz -C dotnet .
+#   3. sbx create --name dotnet-build --pull never -t "$TEMPLATE" claude      # no workspace
+#      sbx cp dotnet.tgz dotnet-build:/tmp/dotnet.tgz
+#      sbx exec dotnet-build -- sh -c 'sudo rm -rf /usr/share/dotnet && sudo mkdir /usr/share/dotnet
+#        && sudo tar -xzf /tmp/dotnet.tgz -C /usr/share/dotnet; sudo rm /tmp/dotnet.tgz'
+#      tar warns about macOS xattrs and exits 1, but the SDKs land: check `dotnet --list-sdks`.
+#      sbx cp leaves the tarball root-owned, hence `sudo rm`, or 400 MB rides into the image.
+#   4. sbx stop dotnet-build && sbx template save dotnet-build <name:tag>; point TEMPLATE at it.
+TEMPLATE="claude-dotnet11:v1"
 PROMPT="$(cat ralph/PROMPT.md)"
 LOGDIR="ralph/logs"
 mkdir -p "$LOGDIR"
