@@ -3,10 +3,6 @@ import {
   Autocomplete,
   Box,
   Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   Divider,
   IconButton,
   Stack,
@@ -18,12 +14,11 @@ import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import DeleteIcon from "@mui/icons-material/Delete";
 import type { SaveExperience, SkillDto } from "../types";
-import { apiErrorMessage, useSkills } from "../api";
-import { ErrorNotice } from "../components/ErrorNotice";
+import { useSkills } from "../api";
+import FormDialog, { useSaveAndClose } from "../components/FormDialog";
 import { SPECIAL_CATEGORY_GUIDANCE } from "./cvGuidance";
 
 interface Props {
-  open: boolean;
   title: string;
   initial?: Partial<SaveExperience>;
   onClose: () => void;
@@ -49,10 +44,9 @@ const empty: SaveExperience = {
  * Bullet order is derived from position in the list at save time, so moving a bullet is enough;
  * the user never types an order number.
  */
-export default function ExperienceFormDialog({ open, title, initial, onClose, onSave }: Props) {
+export default function ExperienceFormDialog({ title, initial, onClose, onSave }: Props) {
   const [form, setForm] = useState<SaveExperience>({ ...empty, ...initial });
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const { save, saving, error } = useSaveAndClose(onSave, onClose);
   const { data: catalogSkills, isLoading: skillsLoading } = useSkills();
 
   const options: SkillDto[] = catalogSkills ?? [];
@@ -97,146 +91,130 @@ export default function ExperienceFormDialog({ open, title, initial, onClose, on
     });
   }
 
-  async function handleSave() {
-    setSaving(true);
-    setError(null);
-    try {
-      await onSave({
-        ...form,
-        // Position is the order. Blank bullets are dropped rather than sent to fail validation:
-        // an empty row is a user who added one and changed their mind, not an error to report.
-        achievements: form.achievements
-          .filter((a) => a.text.trim() !== "")
-          .map((a, i) => ({ order: i + 1, text: a.text.trim() })),
-      });
-      onClose();
-    } catch (err) {
-      setError(apiErrorMessage(err));
-    } finally {
-      setSaving(false);
-    }
-  }
+  const payload = (): SaveExperience => ({
+    ...form,
+    // Position is the order. Blank bullets are dropped rather than sent to fail validation:
+    // an empty row is a user who added one and changed their mind, not an error to report.
+    achievements: form.achievements
+      .filter((a) => a.text.trim() !== "")
+      .map((a, i) => ({ order: i + 1, text: a.text.trim() })),
+  });
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>{title}</DialogTitle>
-      <DialogContent>
-        <Stack spacing={2} sx={{ mt: 1 }}>
-          <ErrorNotice message={error} />
-          <Stack direction="row" spacing={2}>
-            <TextField label="Company" value={form.company} onChange={text("company")} fullWidth />
-            <TextField label="Job title" value={form.title} onChange={text("title")} fullWidth />
-          </Stack>
+    <FormDialog
+      title={title}
+      error={error}
+      saving={saving}
+      maxWidth="sm"
+      onClose={onClose}
+      onSave={() => save(payload())}
+    >
+      <Stack direction="row" spacing={2}>
+        <TextField label="Company" value={form.company} onChange={text("company")} fullWidth />
+        <TextField label="Job title" value={form.title} onChange={text("title")} fullWidth />
+      </Stack>
+      <TextField
+        label="Location"
+        value={form.location ?? ""}
+        onChange={text("location")}
+        fullWidth
+      />
+      <Stack direction="row" spacing={2}>
+        <TextField
+          type="date"
+          label="Start date"
+          value={form.startDate}
+          onChange={text("startDate")}
+          fullWidth
+          slotProps={{
+            inputLabel: { shrink: true }
+          }}
+        />
+        <TextField
+          type="date"
+          label="End date"
+          value={form.endDate ?? ""}
+          onChange={text("endDate")}
+          helperText="Leave blank if current"
+          fullWidth
+          slotProps={{
+            inputLabel: { shrink: true }
+          }}
+        />
+      </Stack>
+      <TextField
+        label="Summary"
+        value={form.summary ?? ""}
+        onChange={text("summary")}
+        fullWidth
+        multiline
+        minRows={2}
+        helperText={SPECIAL_CATEGORY_GUIDANCE}
+      />
+
+      <Divider />
+      <Typography variant="subtitle2">Achievements</Typography>
+      {/* The bullets are the other free-text field an achievement can carry an Art. 9 detail
+          into, so the same ask is made once above them rather than repeated per bullet. */}
+      <Typography variant="caption" sx={{ color: "text.secondary" }}>
+        {SPECIAL_CATEGORY_GUIDANCE}
+      </Typography>
+      {form.achievements.length === 0 && (
+        <Typography variant="body2" sx={{ color: "text.secondary" }}>
+          No bullets yet.
+        </Typography>
+      )}
+      {form.achievements.map((a, i) => (
+        <Stack key={i} direction="row" spacing={1} sx={{ alignItems: "flex-start" }}>
           <TextField
-            label="Location"
-            value={form.location ?? ""}
-            onChange={text("location")}
-            fullWidth
-          />
-          <Stack direction="row" spacing={2}>
-            <TextField
-              type="date"
-              label="Start date"
-              value={form.startDate}
-              onChange={text("startDate")}
-              fullWidth
-              slotProps={{
-                inputLabel: { shrink: true }
-              }}
-            />
-            <TextField
-              type="date"
-              label="End date"
-              value={form.endDate ?? ""}
-              onChange={text("endDate")}
-              helperText="Leave blank if current"
-              fullWidth
-              slotProps={{
-                inputLabel: { shrink: true }
-              }}
-            />
-          </Stack>
-          <TextField
-            label="Summary"
-            value={form.summary ?? ""}
-            onChange={text("summary")}
+            label={`Bullet ${i + 1}`}
+            value={a.text}
+            onChange={(e) => setBulletText(i, e.target.value)}
             fullWidth
             multiline
-            minRows={2}
-            helperText={SPECIAL_CATEGORY_GUIDANCE}
           />
-
-          <Divider />
-          <Typography variant="subtitle2">Achievements</Typography>
-          {/* The bullets are the other free-text field an achievement can carry an Art. 9 detail
-              into, so the same ask is made once above them rather than repeated per bullet. */}
-          <Typography variant="caption" sx={{ color: "text.secondary" }}>
-            {SPECIAL_CATEGORY_GUIDANCE}
-          </Typography>
-          {form.achievements.length === 0 && (
-            <Typography variant="body2" sx={{ color: "text.secondary" }}>
-              No bullets yet.
-            </Typography>
-          )}
-          {form.achievements.map((a, i) => (
-            <Stack key={i} direction="row" spacing={1} sx={{ alignItems: "flex-start" }}>
-              <TextField
-                label={`Bullet ${i + 1}`}
-                value={a.text}
-                onChange={(e) => setBulletText(i, e.target.value)}
-                fullWidth
-                multiline
-              />
-              <IconButton
-                aria-label={`Move bullet ${i + 1} up`}
-                disabled={i === 0}
-                onClick={() => moveBullet(i, -1)}
-              >
-                <ArrowUpwardIcon fontSize="small" />
-              </IconButton>
-              <IconButton
-                aria-label={`Move bullet ${i + 1} down`}
-                disabled={i === form.achievements.length - 1}
-                onClick={() => moveBullet(i, 1)}
-              >
-                <ArrowDownwardIcon fontSize="small" />
-              </IconButton>
-              <IconButton
-                aria-label={`Remove bullet ${i + 1}`}
-                color="error"
-                onClick={() => removeBullet(i)}
-              >
-                <DeleteIcon fontSize="small" />
-              </IconButton>
-            </Stack>
-          ))}
-          <Box>
-            <Button startIcon={<AddIcon />} onClick={addBullet}>
-              Add bullet
-            </Button>
-          </Box>
-
-          <Divider />
-          <Autocomplete
-            multiple
-            options={options}
-            value={selected}
-            getOptionLabel={(o) => o.name}
-            isOptionEqualToValue={(o, v) => o.id === v.id}
-            loading={skillsLoading}
-            onChange={(_, v) => setForm((f) => ({ ...f, skillIds: v.map((o) => o.id) }))}
-            renderInput={(params) => (
-              <TextField {...params} label="Skills" placeholder="Skills used here" />
-            )}
-          />
+          <IconButton
+            aria-label={`Move bullet ${i + 1} up`}
+            disabled={i === 0}
+            onClick={() => moveBullet(i, -1)}
+          >
+            <ArrowUpwardIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            aria-label={`Move bullet ${i + 1} down`}
+            disabled={i === form.achievements.length - 1}
+            onClick={() => moveBullet(i, 1)}
+          >
+            <ArrowDownwardIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            aria-label={`Remove bullet ${i + 1}`}
+            color="error"
+            onClick={() => removeBullet(i)}
+          >
+            <DeleteIcon fontSize="small" />
+          </IconButton>
         </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={handleSave} disabled={saving}>
-          Save
+      ))}
+      <Box>
+        <Button startIcon={<AddIcon />} onClick={addBullet}>
+          Add bullet
         </Button>
-      </DialogActions>
-    </Dialog>
+      </Box>
+
+      <Divider />
+      <Autocomplete
+        multiple
+        options={options}
+        value={selected}
+        getOptionLabel={(o) => o.name}
+        isOptionEqualToValue={(o, v) => o.id === v.id}
+        loading={skillsLoading}
+        onChange={(_, v) => setForm((f) => ({ ...f, skillIds: v.map((o) => o.id) }))}
+        renderInput={(params) => (
+          <TextField {...params} label="Skills" placeholder="Skills used here" />
+        )}
+      />
+    </FormDialog>
   );
 }

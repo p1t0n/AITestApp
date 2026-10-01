@@ -2,17 +2,13 @@ import { useState } from "react";
 import {
   Alert,
   Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
   Divider,
   Paper,
   Stack,
   Typography,
 } from "@mui/material";
 import { apiErrorMessage, useExpertOwnership, useIssueClaimCode, useRevokeOwnership } from "../api";
+import ConfirmDialog from "./ConfirmDialog";
 import { ErrorNotice } from "./ErrorNotice";
 
 /**
@@ -102,25 +98,18 @@ export default function ExpertOwnership({ expertId }: { expertId: string }) {
         </Alert>
       )}
 
-      <Dialog open={confirmRevoke} onClose={() => setConfirmRevoke(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Revoke {ownerEmail}&rsquo;s ownership?</DialogTitle>
-        <DialogContent>
-          <DialogContentText>{REVOKE_CONSEQUENCE}</DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirmRevoke(false)}>Cancel</Button>
-          <Button
-            color="error"
-            variant="contained"
-            disabled={revoke.isPending}
-            onClick={() =>
-              revoke.mutate(expertId, { onSuccess: () => setConfirmRevoke(false) })
-            }
-          >
-            Revoke ownership
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {confirmRevoke && (
+        <ConfirmDialog
+          title={<>Revoke {ownerEmail}&rsquo;s ownership?</>}
+          body={REVOKE_CONSEQUENCE}
+          confirmLabel="Revoke ownership"
+          busy={revoke.isPending}
+          onClose={() => setConfirmRevoke(false)}
+          onConfirm={() =>
+            revoke.mutate(expertId, { onSuccess: () => setConfirmRevoke(false) })
+          }
+        />
+      )}
     </Paper>
   );
 }

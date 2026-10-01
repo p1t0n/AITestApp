@@ -1,12 +1,6 @@
 import { useMemo, useState } from "react";
 import {
-  Button,
   Chip,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
   IconButton,
   MenuItem,
   Stack,
@@ -41,6 +35,7 @@ import { useSessionUserId } from "../auth/useAuth";
 import { ErrorNotice } from "../components/ErrorNotice";
 import PageHeader from "../components/PageHeader";
 import ClaimQueue from "../components/ClaimQueue";
+import ConfirmDialog from "../components/ConfirmDialog";
 import ContestQueue from "../components/ContestQueue";
 import DictionaryTable, { type DictionaryColumn } from "../components/DictionaryTable";
 import EditDialog from "../components/EditDialog";
@@ -273,9 +268,14 @@ export default function UsersPage() {
         emptyFiltered="No accounts match."
       />
 
+      {/* Asked before a demotion, and only before a demotion — a promotion takes nothing away, so
+          stopping to confirm one would train people to click through this dialog. */}
       {demoting && (
-        <ConfirmDemotionDialog
-          user={demoting}
+        <ConfirmDialog
+          data-testid="users-role-confirm"
+          title={`Demote ${demoting.email} to User?`}
+          body={DEMOTION_CONSEQUENCE}
+          confirmLabel="Demote to User"
           busy={changeRole.isPending}
           onClose={() => setDemoting(null)}
           onConfirm={() =>
@@ -288,8 +288,10 @@ export default function UsersPage() {
       )}
 
       {deleting && (
-        <ConfirmDeleteDialog
-          user={deleting}
+        <ConfirmDialog
+          title={`Delete ${deleting.email}?`}
+          body="This removes the account and its passkeys. They cannot sign in again, and it cannot be undone."
+          confirmLabel="Delete account"
           busy={deleteUser.isPending}
           onClose={() => setDeleting(null)}
           onConfirm={() =>
@@ -427,70 +429,3 @@ function EditUserDialog({
   );
 }
 
-/**
- * The question asked before a demotion, and only before a demotion — a promotion takes nothing
- * away, so stopping to confirm one would train people to click through this dialog.
- */
-function ConfirmDemotionDialog({
-  user,
-  busy,
-  onClose,
-  onConfirm,
-}: {
-  user: UserSummary;
-  busy: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <Dialog open onClose={onClose} fullWidth maxWidth="sm" data-testid="users-role-confirm">
-      <DialogTitle>Demote {user.email} to User?</DialogTitle>
-      <DialogContent>
-        <DialogContentText>{DEMOTION_CONSEQUENCE}</DialogContentText>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button color="error" variant="contained" onClick={onConfirm} disabled={busy}>
-          Demote to User
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-}
-
-/**
- * Deleting an account, asked in a dialog rather than `window.confirm`.
- *
- * Not a cosmetic swap: a native confirm is unstyleable, unreadable to the e2e suite, and — being
- * the browser's own chrome — looks identical to every other page's. The convention is that a write
- * happens in a popup this app drew.
- */
-function ConfirmDeleteDialog({
-  user,
-  busy,
-  onClose,
-  onConfirm,
-}: {
-  user: UserSummary;
-  busy: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <Dialog open onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>Delete {user.email}?</DialogTitle>
-      <DialogContent>
-        <DialogContentText>
-          This removes the account and its passkeys. They cannot sign in again, and it cannot be
-          undone.
-        </DialogContentText>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button color="error" variant="contained" onClick={onConfirm} disabled={busy}>
-          Delete account
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-}

@@ -37,7 +37,7 @@ describe("LanguageFormDialog", () => {
     const onSave = vi.fn().mockResolvedValue({});
     const onClose = vi.fn();
     render(
-      <LanguageFormDialog open title="Add language" onClose={onClose} onSave={onSave} />,
+      <LanguageFormDialog title="Add language" onClose={onClose} onSave={onSave} />,
     );
 
     await userEvent.type(screen.getByLabelText("Language"), "German");
@@ -52,7 +52,6 @@ describe("LanguageFormDialog", () => {
   it("seeds the form from initial so an edit starts from the current row", () => {
     render(
       <LanguageFormDialog
-        open
         title="Edit language"
         initial={{ language: "Polish", level: "Fluent" }}
         onClose={() => {}}
@@ -67,7 +66,7 @@ describe("LanguageFormDialog", () => {
   it("shows a server validation failure and keeps the dialog open", async () => {
     const onSave = vi.fn().mockRejectedValue(validationFailure("Language must not be empty."));
     const onClose = vi.fn();
-    render(<LanguageFormDialog open title="Add language" onClose={onClose} onSave={onSave} />);
+    render(<LanguageFormDialog title="Add language" onClose={onClose} onSave={onSave} />);
 
     await userEvent.click(save());
 
@@ -80,7 +79,7 @@ describe("QualificationFormDialog", () => {
   it("sends the degree fields and leaves the certification half null", async () => {
     const onSave = vi.fn().mockResolvedValue({});
     render(
-      <QualificationFormDialog open title="Add qualification" onClose={() => {}} onSave={onSave} />,
+      <QualificationFormDialog title="Add qualification" onClose={() => {}} onSave={onSave} />,
     );
 
     await userEvent.type(screen.getByLabelText("Name"), "BSc Computer Science");
@@ -104,7 +103,6 @@ describe("QualificationFormDialog", () => {
     const onSave = vi.fn().mockResolvedValue({});
     render(
       <QualificationFormDialog
-        open
         title="Edit qualification"
         // A record that started life as a Degree, then re-typed as a Certification: its
         // institution must not ride along into the saved certification.
@@ -137,7 +135,7 @@ describe("QualificationFormDialog", () => {
     const onSave = vi.fn().mockRejectedValue(validationFailure("Name must not be empty."));
     const onClose = vi.fn();
     render(
-      <QualificationFormDialog open title="Add qualification" onClose={onClose} onSave={onSave} />,
+      <QualificationFormDialog title="Add qualification" onClose={onClose} onSave={onSave} />,
     );
 
     await userEvent.click(save());
@@ -151,7 +149,7 @@ describe("ExperienceFormDialog", () => {
   it("saves the experience with its bullets and catalog skills", async () => {
     const onSave = vi.fn().mockResolvedValue({});
     render(
-      <ExperienceFormDialog open title="Add experience" onClose={() => {}} onSave={onSave} />,
+      <ExperienceFormDialog title="Add experience" onClose={() => {}} onSave={onSave} />,
     );
 
     await userEvent.type(screen.getByLabelText("Company"), "Contoso");
@@ -182,7 +180,6 @@ describe("ExperienceFormDialog", () => {
     const onSave = vi.fn().mockResolvedValue({});
     render(
       <ExperienceFormDialog
-        open
         title="Edit experience"
         initial={{
           company: "Contoso",
@@ -218,7 +215,6 @@ describe("ExperienceFormDialog", () => {
     const onSave = vi.fn().mockResolvedValue({});
     render(
       <ExperienceFormDialog
-        open
         title="Edit experience"
         initial={{
           company: "Contoso",
@@ -252,7 +248,6 @@ describe("ExperienceFormDialog", () => {
   it("seeds the skill picker from the experience's existing skills", () => {
     render(
       <ExperienceFormDialog
-        open
         title="Edit experience"
         initial={{
           company: "Contoso",
@@ -272,7 +267,7 @@ describe("ExperienceFormDialog", () => {
   it("shows a server validation failure and keeps the dialog open", async () => {
     const onSave = vi.fn().mockRejectedValue(validationFailure("Company must not be empty."));
     const onClose = vi.fn();
-    render(<ExperienceFormDialog open title="Add experience" onClose={onClose} onSave={onSave} />);
+    render(<ExperienceFormDialog title="Add experience" onClose={onClose} onSave={onSave} />);
 
     await userEvent.click(save());
 
@@ -286,7 +281,7 @@ describe("AvailabilityFormDialog", () => {
     const onSave = vi.fn().mockResolvedValue({});
     const onClose = vi.fn();
     render(
-      <AvailabilityFormDialog open title="Add availability" onClose={onClose} onSave={onSave} />,
+      <AvailabilityFormDialog title="Add availability" onClose={onClose} onSave={onSave} />,
     );
 
     await userEvent.type(screen.getByLabelText("Effective from"), "2026-04-01");
@@ -301,7 +296,6 @@ describe("AvailabilityFormDialog", () => {
   it("seeds the form from initial so an edit starts from the current entry", () => {
     render(
       <AvailabilityFormDialog
-        open
         title="Edit availability"
         initial={{ effectiveFrom: "2026-01-15", capacityPercent: 80 }}
         onClose={() => {}}
@@ -315,7 +309,7 @@ describe("AvailabilityFormDialog", () => {
 
   it("cannot save without a date, because an empty one fails binding before validation", async () => {
     const onSave = vi.fn();
-    render(<AvailabilityFormDialog open title="Add availability" onClose={() => {}} onSave={onSave} />);
+    render(<AvailabilityFormDialog title="Add availability" onClose={() => {}} onSave={onSave} />);
 
     expect(save()).toBeDisabled();
     await userEvent.type(screen.getByLabelText("Effective from"), "2026-04-01");
@@ -329,7 +323,6 @@ describe("AvailabilityFormDialog", () => {
     const onClose = vi.fn();
     render(
       <AvailabilityFormDialog
-        open
         title="Edit availability"
         initial={{ effectiveFrom: "2026-04-01", capacityPercent: 140 }}
         onClose={onClose}
@@ -349,7 +342,7 @@ describe("AvailabilityFormDialog", () => {
 describe("ExpertSkillFormDialog", () => {
   it("links a catalog skill with its level and years", async () => {
     const onSave = vi.fn().mockResolvedValue({});
-    render(<ExpertSkillFormDialog open title="Add skill" onClose={() => {}} onSave={onSave} />);
+    render(<ExpertSkillFormDialog title="Add skill" onClose={() => {}} onSave={onSave} />);
 
     await userEvent.click(screen.getByLabelText("Skill"));
     await userEvent.click(screen.getByRole("option", { name: "React" }));
@@ -367,7 +360,7 @@ describe("ExpertSkillFormDialog", () => {
   });
 
   it("cannot save until a catalog skill is picked", () => {
-    render(<ExpertSkillFormDialog open title="Add skill" onClose={() => {}} onSave={vi.fn()} />);
+    render(<ExpertSkillFormDialog title="Add skill" onClose={() => {}} onSave={vi.fn()} />);
 
     expect(save()).toBeDisabled();
   });
@@ -376,7 +369,6 @@ describe("ExpertSkillFormDialog", () => {
     const onSave = vi.fn().mockResolvedValue({});
     render(
       <ExpertSkillFormDialog
-        open
         title="Edit skill"
         initial={{ skillId: "skill-dotnet", level: "Intermediate", yearsExperience: 3 }}
         lockedSkillName=".NET"
@@ -407,7 +399,6 @@ describe("ExpertSkillFormDialog", () => {
     const onClose = vi.fn();
     render(
       <ExpertSkillFormDialog
-        open
         title="Add skill"
         initial={{ skillId: "skill-react" }}
         onClose={onClose}
