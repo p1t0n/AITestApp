@@ -1,6 +1,6 @@
 # ExpertToJob
 
-A .NET 10 + React (Vite) service to manage available experts — skills, qualifications,
+A .NET 11 + React (Vite) service to manage available experts — skills, qualifications,
 work experience, and time-based availability — and render their CVs. An MCP server exposes
 every operation on every entity to external AI agents over the same Application layer, and a
 suite of built-in AI agents (Roster Q&A, CV Tailoring, Match, **JD Shortlist**) consumes it —
@@ -66,7 +66,7 @@ See [SPEC.md](SPEC.md).
 
 ## Stack
 
-- **Backend:** ASP.NET Core Web API (.NET 10), layered Domain / Application / Infrastructure / Web
+- **Backend:** ASP.NET Core Web API (.NET 11), layered Domain / Application / Infrastructure / Web
 - **MCP server:** ModelContextProtocol (Streamable HTTP), thin adapters over the Application layer, OAuth 2.1 (Keycloak) with per-tool scopes
 - **AI agents:** Microsoft Agent Framework over provider-agnostic `IChatClient`, behind a chat-provider seam that configuration selects — an Azure OpenAI deployment (default, `gpt-4-1-mini`) or the Gemini free tier
 - **Embeddings:** their own seam and their own key, selected independently of chat — Azure OpenAI `text-embedding-3-small` (default, EU-confined) or Gemini `gemini-embedding-001` (development and demo only), 1536 dims either way
@@ -113,7 +113,10 @@ SPEC.md            full design + decisions
 
 ## Run it
 
-You need Docker running and the .NET 10 SDK. Then, one command:
+You need Docker running and the .NET 11 SDK. `global.json` pins it to the release candidate
+`11.0.100-rc.1.26425.128` with `allowPrerelease` and `rollForward: latestPatch`, so a machine
+without that SDK is told exactly which one to install rather than failing to compile `net11.0`
+(`manuals/adr-dotnet-11-on-rc.md` says why the RC). Then, one command:
 
 ```bash
 dotnet run --project api/AppHost
