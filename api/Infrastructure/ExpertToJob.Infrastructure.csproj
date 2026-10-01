@@ -14,8 +14,6 @@
     <PackageReference Include="Microsoft.Extensions.AI.OpenAI" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
-    <!-- Referenced only to unify the transitive EF Core version; see Directory.Packages.props. -->
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
     <PackageReference Include="Pgvector" />
     <!-- Server-side CV render (P1T-139). Community licence: free at this project's scale, and it
          needs no browser process, so the render stays usable from a worker or an agent path. -->
@@ -30,7 +28,7 @@
   </ItemGroup>
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>

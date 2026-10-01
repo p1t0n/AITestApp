@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-Backend (.NET 10, solution `ExpertToJob.slnx`):
+Backend (.NET 11, solution `ExpertToJob.slnx`; `global.json` pins SDK
+`11.0.100-rc.1.26425.128`, `allowPrerelease`, `rollForward: latestPatch` —
+`manuals/adr-dotnet-11-on-rc.md`):
 
 ```bash
 dotnet build
