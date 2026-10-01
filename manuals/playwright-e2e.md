@@ -37,6 +37,15 @@ and so is the dev database — a suite that could delete a developer's roster wo
 turn off. The container is removed on every exit path, including Ctrl-C, and a leftover from an
 interrupted run is cleared before the next one starts.
 
+**The suite never reaches the dev Agents host** (EXP-91). `run.mjs` pins `VITE_AGENTS_TARGET` to
+`:5299`, a port it owns and nothing in this repo binds, so `/agents` fails by connection-refused —
+the same thing it does on CI, where no dev stack exists. Left unset, Vite's own `:5200` default sent
+the proxy at the *developer's* Agents host, which answers 401 to a session minted against the e2e
+database; `src/api/http.ts` ends the session on any 401, so 20 specs failed for anybody running the
+suite with their stack up and nobody else. `E2E_STUB_DEV_AGENTS=1` puts a 401-answering server back
+on `:5200` to prove the leak is closed — red before the fix, green after, without needing a dev
+stack to reproduce it.
+
 **A script, not Playwright's `webServer`, for the API.** The API cannot boot before its database
 exists, and the database is a container this run creates. `webServer` has no way to express that
 ordering, so the sequencing lives in one readable script and `webServer` keeps only the SPA, which
