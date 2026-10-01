@@ -8,9 +8,10 @@ namespace ExpertToJob.ServiceDefaults.Tests;
 /// A private <c>new(JsonSerializerDefaults.Web)</c> field is a copy of it, and
 /// <c>PropertyNameCaseInsensitive = true</c> on top of that sets what the Web defaults already set —
 /// so the copy is not a customisation, just another instance with its own caches. EXP-84 removed 21
-/// of them; this test is what keeps the twenty-second from being written. It reads the repo's own
-/// source rather than reflecting over the assemblies, because a field is only visible as a field in
-/// the text that declares it.
+/// of them and EXP-90 the twenty-second (<c>AuthController.FidoJson</c>), which is why the sweep
+/// below is unconditional and carries no allow-list: every path it reports is a new copy. It reads
+/// the repo's own source rather than reflecting over the assemblies, because a field is only visible
+/// as a field in the text that declares it.
 ///
 /// An options object that actually customises something (a converter, an indent, a resolver) is not
 /// an offender and never shows up here: the rule below only fires on a construction whose initializer
@@ -39,16 +40,6 @@ public class JsonSerializerOptionsReuseTests
         "{PropertyNameCaseInsensitive=true,}",
     ];
 
-    /// <summary>
-    /// The one redundant copy EXP-84 left standing. It is out of that issue's enumerated scope — the
-    /// ticket listed 21 sites and never saw this one — and is tracked separately rather than removed
-    /// here. Any other path appearing in the failure message is a new copy, not an inherited one.
-    /// </summary>
-    private static readonly string[] KnownRemaining =
-    [
-        Path.Combine("api", "Web", "Controllers", "AuthController.cs"),
-    ];
-
     [Fact]
     public void No_production_file_copies_the_web_defaults_into_its_own_options()
     {
@@ -59,7 +50,6 @@ public class JsonSerializerOptionsReuseTests
                 .Matches(File.ReadAllText(file))
                 .Where(m => RedundantInitializers.Contains(Strip(m.Groups["initializer"].Value), StringComparer.Ordinal))
                 .Select(_ => Path.GetRelativePath(root, file)))
-            .Where(path => !KnownRemaining.Contains(path, StringComparer.Ordinal))
             .OrderBy(path => path, StringComparer.Ordinal)
             .ToList();
 

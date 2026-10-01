@@ -31,11 +31,6 @@ public class AuthController(
     IClaimService claims,
     TimeProvider clock) : ControllerBase
 {
-    // fido2 models carry their own enum converters (e.g. "public-key"). The app's global MVC
-    // JsonStringEnumConverter outranks those type-level converters, so the authenticator responses
-    // are bound as raw JSON and deserialized here with clean web defaults instead.
-    private static readonly JsonSerializerOptions FidoJson = new(JsonSerializerDefaults.Web);
-
     [HttpPost("signup/begin")]
     public async Task<ActionResult<SignupBeginResponse>> SignupBegin(SignupBeginRequest request, CancellationToken ct)
     {
@@ -111,7 +106,8 @@ public class AuthController(
         var ceremony = JsonSerializer.Deserialize<SignupCeremony>(stashed)!;
         var options = CredentialCreateOptions.FromJson(ceremony.OptionsJson);
 
-        var attestation = request.Attestation.Deserialize<AuthenticatorAttestationRawResponse>(FidoJson);
+        // Raw JSON, not a model MVC bound — see SignupCompleteRequest.Attestation for why.
+        var attestation = request.Attestation.Deserialize<AuthenticatorAttestationRawResponse>(JsonSerializerOptions.Web);
         if (attestation is null)
         {
             return BadRequest(new { error = "Invalid attestation response." });
@@ -256,7 +252,8 @@ public class AuthController(
 
         var options = AssertionOptions.FromJson(optionsJson);
 
-        var assertion = request.Assertion.Deserialize<AuthenticatorAssertionRawResponse>(FidoJson);
+        // Raw JSON, not a model MVC bound — see SigninCompleteRequest.Assertion for why.
+        var assertion = request.Assertion.Deserialize<AuthenticatorAssertionRawResponse>(JsonSerializerOptions.Web);
         if (assertion is null)
         {
             return BadRequest(new { error = "Invalid assertion response." });
@@ -371,7 +368,8 @@ public class AuthController(
         var ceremony = JsonSerializer.Deserialize<RecoverCeremony>(stashed)!;
         var options = CredentialCreateOptions.FromJson(ceremony.OptionsJson);
 
-        var attestation = request.Attestation.Deserialize<AuthenticatorAttestationRawResponse>(FidoJson);
+        // Raw JSON, not a model MVC bound — see RecoverCompleteRequest.Attestation for why.
+        var attestation = request.Attestation.Deserialize<AuthenticatorAttestationRawResponse>(JsonSerializerOptions.Web);
         if (attestation is null)
         {
             return BadRequest(new { error = "Invalid attestation response." });
@@ -457,12 +455,33 @@ public class AuthController(
 /// </param>
 public sealed record SignupBeginRequest(string Email, string ControlWord, string? AcknowledgedNoticeVersion);
 public sealed record SignupBeginResponse(string CeremonyId, string OptionsJson);
+/// <param name="Attestation">
+/// The authenticator's response, held as raw JSON rather than bound to a fido2 model. Those models
+/// carry their own enum converters (e.g. "public-key"), and the app's global MVC
+/// JsonStringEnumConverter outranks those type-level converters — so the payload is taken verbatim
+/// here and deserialized in the action with <see cref="JsonSerializerOptions.Web"/>, clean web
+/// defaults with the global converter out of the way.
+/// </param>
 public sealed record SignupCompleteRequest(string CeremonyId, JsonElement Attestation);
 public sealed record SigninBeginRequest(string? Email);
 public sealed record SigninBeginResponse(string CeremonyId, string OptionsJson);
+/// <param name="Assertion">
+/// The authenticator's response, held as raw JSON rather than bound to a fido2 model. Those models
+/// carry their own enum converters (e.g. "public-key"), and the app's global MVC
+/// JsonStringEnumConverter outranks those type-level converters — so the payload is taken verbatim
+/// here and deserialized in the action with <see cref="JsonSerializerOptions.Web"/>, clean web
+/// defaults with the global converter out of the way.
+/// </param>
 public sealed record SigninCompleteRequest(string CeremonyId, JsonElement Assertion);
 public sealed record RecoverBeginRequest(string Email, string ControlWord);
 public sealed record RecoverBeginResponse(string CeremonyId, string OptionsJson);
+/// <param name="Attestation">
+/// The authenticator's response, held as raw JSON rather than bound to a fido2 model. Those models
+/// carry their own enum converters (e.g. "public-key"), and the app's global MVC
+/// JsonStringEnumConverter outranks those type-level converters — so the payload is taken verbatim
+/// here and deserialized in the action with <see cref="JsonSerializerOptions.Web"/>, clean web
+/// defaults with the global converter out of the way.
+/// </param>
 public sealed record RecoverCompleteRequest(string CeremonyId, JsonElement Attestation);
 /// <summary>
 /// What a completed ceremony hands the SPA. <paramref name="Role"/> is presentation only — it tells
