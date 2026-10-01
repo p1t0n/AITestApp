@@ -1,7 +1,7 @@
 import { AxiosError, type AxiosAdapter, type InternalAxiosRequestConfig } from "axios";
 import { afterEach, describe, expect, it } from "vitest";
 import { clearSession, getToken, setSession } from "../auth/session";
-import { agentHttp, http } from "./http";
+import { agentHttp, apiErrorMessage, bodyMessage, http } from "./http";
 
 // An expired or refused token comes back as 401 from either host. Clearing the session is what
 // sends the user to /signin: the router's gate reads the token reactively (App.tsx).
@@ -50,5 +50,48 @@ describe.each([
     await expect(client.get("/anything")).rejects.toThrow();
 
     expect(getToken()).toBe("good-token");
+  });
+});
+
+// `bodyMessage` is the one reader of a fault body in the SPA: `apiErrorMessage` uses it for axios
+// failures and `sse.ts` for a pre-stream HTTP failure, so the two paths cannot drift apart on
+// which field wins. Null, rather than a fallback of its own, is what lets each caller keep the
+// fallback it already had (the axios error's message; "Request failed with status code N").
+
+describe("bodyMessage", () => {
+  it.each([
+    ["our own envelope", { error: "Cap reached" }, "Cap reached"],
+    ["an RFC-7807 detail", { detail: "Expert not found", title: "Not Found" }, "Expert not found"],
+    ["an RFC-7807 title alone", { title: "Not Found" }, "Not Found"],
+    ["error winning over both", { error: "Cap reached", detail: "d", title: "t" }, "Cap reached"],
+  ])("reads %s", (_case, body, expected) => {
+    expect(bodyMessage(body)).toBe(expected);
+  });
+
+  it.each([
+    ["null", null],
+    ["undefined", undefined],
+    ["a non-JSON body", "<html>502</html>"],
+    ["a JSON object with none of the three fields", { status: 500 }],
+  ])("returns null for %s, leaving the fallback to the caller", (_case, body) => {
+    expect(bodyMessage(body)).toBeNull();
+  });
+});
+
+describe("apiErrorMessage", () => {
+  it("prefers the fault body over the axios message", () => {
+    const config = { headers: {} } as InternalAxiosRequestConfig;
+    const response = { status: 429, statusText: "", headers: {}, config, data: { error: "Cap reached" } };
+    const err = new AxiosError("Request failed with status code 429", "ERR_BAD_REQUEST", config, null, response);
+
+    expect(apiErrorMessage(err)).toBe("Cap reached");
+  });
+
+  it("falls back to the axios message when the body carries none", () => {
+    const config = { headers: {} } as InternalAxiosRequestConfig;
+    const response = { status: 500, statusText: "", headers: {}, config, data: "" };
+    const err = new AxiosError("Request failed with status code 500", "ERR_BAD_RESPONSE", config, null, response);
+
+    expect(apiErrorMessage(err)).toBe("Request failed with status code 500");
   });
 });

@@ -5,8 +5,8 @@
 // Applying a rewrite is a plain Web-API edit under the user's own session. The agent never writes.
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Achievement } from "../../types";
-import { agentHttp, http } from "../http";
-import type { AgentJobRequest } from "./shared";
+import { http } from "../http";
+import { agentPost, type AgentJobRequest } from "./shared";
 
 export interface TailoringRewrite {
   experienceId: string;
@@ -20,14 +20,7 @@ export interface CvTailoringResponse {
   rewrites: TailoringRewrite[];
 }
 
-export function useCvTailoring() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (req: AgentJobRequest) =>
-      (await agentHttp.post<CvTailoringResponse>("/cv-tailoring", req)).data,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["usage"] }),
-  });
-}
+export const useCvTailoring = agentPost<AgentJobRequest, CvTailoringResponse>("/cv-tailoring");
 
 /** A tailoring rewrite plus the expert it belongs to — everything Apply needs. */
 export interface ApplyRewriteInput extends TailoringRewrite {

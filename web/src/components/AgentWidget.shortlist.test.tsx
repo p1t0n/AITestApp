@@ -20,12 +20,15 @@ const EXPERT_ID = "11111111-2222-3333-4444-555555555555";
 
 vi.mock("../api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../api")>();
+  const { useFakeMutation } = await import("../test/fakeMutation");
   return {
     ...actual,
     // The dock asks which model answers on the current surface (EXP-31); it renders outside a
     // QueryClientProvider here, like every other hook in this factory.
     useAgentModels: () => ({ data: undefined, isError: false }),
-    useShortlist: () => shortlistState,
+    // Shortlist reads its result off the mutation (EXP-82), so the stub has to be one rather
+    // than a bare spy — `shortlistState.mutateAsync` is still what the assertions below watch.
+    useShortlist: () => useFakeMutation(shortlistState),
     useSkills: () => ({
       data: [
         { id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", name: "React", categoryId: "c1", categoryName: "Frontend", rank: 1 },

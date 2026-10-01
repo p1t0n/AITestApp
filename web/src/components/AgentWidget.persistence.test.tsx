@@ -41,6 +41,7 @@ const benchHook = vi.fn();
 
 vi.mock("../api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../api")>();
+  const { useFakeMutation } = await import("../test/fakeMutation");
   // Declared inside the factory: `vi.mock` is hoisted above every top-level binding in this file,
   // so anything the factory *calls* while it builds the module has to live here.
   const idle = () => ({
@@ -61,7 +62,9 @@ vi.mock("../api", async (importOriginal) => {
     // QueryClientProvider here, like every other hook in this factory.
     useAgentModels: () => ({ data: undefined, isError: false }),
     useRosterQa: () => askState,
-    useShortlist: () => shortlistState,
+    // Shortlist reads its result off the mutation (EXP-82), so the stub has to be one rather
+    // than a bare spy — `shortlistState.mutateAsync` is still what the assertions below watch.
+    useShortlist: () => useFakeMutation(shortlistState),
     useUsage: () => {
       if (usageExplodes) throw new Error("usage panel exploded");
       return { data: USAGE, isLoading: false, isError: false, error: null };

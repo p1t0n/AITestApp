@@ -1,9 +1,7 @@
 // Interview kit (P1T-102). Same input as Match/Tailoring; returns the markdown kit plus vetted
 // structured questions. `evidence` is present only when the server verified the quote verbatim
 // against the CV.
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { agentHttp } from "../http";
-import type { AgentJobRequest } from "./shared";
+import { agentPost, type AgentJobRequest } from "./shared";
 
 export interface InterviewQuestion {
   question: string;
@@ -16,11 +14,4 @@ export interface InterviewKitResponse {
   questions: InterviewQuestion[];
 }
 
-export function useInterviewKit() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (req: AgentJobRequest) =>
-      (await agentHttp.post<InterviewKitResponse>("/interview-kit", req)).data,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["usage"] }),
-  });
-}
+export const useInterviewKit = agentPost<AgentJobRequest, InterviewKitResponse>("/interview-kit");
