@@ -40,11 +40,6 @@ internal sealed record IngestionClosing(string[]? Proposals, bool Aborted, strin
 /// </summary>
 public sealed class ResumeIngestionRunService
 {
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
-    {
-        PropertyNameCaseInsensitive = true,
-    };
-
     private readonly ResumeIngestionAgent _agent;
 
     public ResumeIngestionRunService(ResumeIngestionAgent agent) => _agent = agent;
@@ -124,7 +119,7 @@ public sealed class ResumeIngestionRunService
 
         try
         {
-            return JsonSerializer.Deserialize<IngestionClosing>(trimmed[start..(end + 1)], Json);
+            return JsonSerializer.Deserialize<IngestionClosing>(trimmed[start..(end + 1)], JsonSerializerOptions.Web);
         }
         catch (JsonException)
         {

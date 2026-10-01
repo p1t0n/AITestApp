@@ -21,11 +21,6 @@ public sealed class McpShortlistSearch : IShortlistSearch
 {
     private const string ToolName = "roster_shortlist_search";
 
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
-    {
-        PropertyNameCaseInsensitive = true,
-    };
-
     private readonly IMcpToolSource _toolSource;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
@@ -65,7 +60,7 @@ public sealed class McpShortlistSearch : IShortlistSearch
 
         var result = await tool.InvokeAsync(arguments, ct);
         return ToolResultPayload.Extract<ShortlistToolPayload>(
-            result, obj => obj.ContainsKey("results") || obj.ContainsKey("Results"), Json);
+            result, obj => obj.ContainsKey("results") || obj.ContainsKey("Results"), JsonSerializerOptions.Web);
     }
 
     private async Task<AIFunction> GetToolAsync(CancellationToken ct)

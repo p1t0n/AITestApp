@@ -40,11 +40,6 @@ public sealed record ShortlistResponse(
 /// </summary>
 public static class ShortlistComposer
 {
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
-    {
-        PropertyNameCaseInsensitive = true,
-    };
-
     /// <summary>Composes the response. The caller guarantees <c>outcome.Tool</c> is non-null and
     /// error-free (upstream faults are handled before composition).</summary>
     public static ShortlistResponse Compose(ShortlistAgentOutcome outcome, JdRequirements? extraction = null)
@@ -126,7 +121,7 @@ public static class ShortlistComposer
     {
         try
         {
-            return JsonSerializer.Deserialize<List<RationaleEntry?>>(text, Json);
+            return JsonSerializer.Deserialize<List<RationaleEntry?>>(text, JsonSerializerOptions.Web);
         }
         catch (JsonException)
         {
@@ -138,7 +133,7 @@ public static class ShortlistComposer
     {
         try
         {
-            return JsonSerializer.Deserialize<ShortlistRationalePayload>(text.Trim(), Json);
+            return JsonSerializer.Deserialize<ShortlistRationalePayload>(text.Trim(), JsonSerializerOptions.Web);
         }
         catch (JsonException)
         {

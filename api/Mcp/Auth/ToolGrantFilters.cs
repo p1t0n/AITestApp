@@ -17,8 +17,6 @@ public static class ToolGrantFilters
     /// <c>not_found</c> / <c>conflict</c> / <c>validation</c>.</summary>
     public const string ForbiddenCode = "forbidden";
 
-    private static readonly JsonSerializerOptions ErrorJson = new(JsonSerializerDefaults.Web);
-
     /// <summary>
     /// Registers the grant filters. Composes with (and is independent of the ordering of) the
     /// SDK's <c>AddAuthorizationFilters()</c>: the list filter narrows whatever survived the
@@ -83,7 +81,7 @@ public static class ToolGrantFilters
         return new CallToolResult
         {
             IsError = true,
-            Content = [new TextContentBlock { Text = JsonSerializer.Serialize(error, ErrorJson) }],
+            Content = [new TextContentBlock { Text = JsonSerializer.Serialize(error, JsonSerializerOptions.Web) }],
         };
     }
 }

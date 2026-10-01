@@ -40,11 +40,6 @@ public sealed class RosterScanRunner(
     /// <summary>One span per job pass, so a scan reads as one trace in the Aspire dashboard.</summary>
     public static readonly System.Diagnostics.ActivitySource Tracing = new("ExpertToJob.Agents.RosterScan");
 
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
-    {
-        PropertyNameCaseInsensitive = true,
-    };
-
     /// <summary>Runs one pass over a queued job until it completes, pauses, or fails.</summary>
     public async Task<RosterScanRunResult> RunAsync(ScoringJob job, CancellationToken ct = default)
     {
@@ -86,7 +81,7 @@ public sealed class RosterScanRunner(
         JdRequirements? extraction = null;
         if (job.ExtractionJson is { Length: > 0 } persisted)
         {
-            extraction = JsonSerializer.Deserialize<JdRequirements>(persisted, Json);
+            extraction = JsonSerializer.Deserialize<JdRequirements>(persisted, JsonSerializerOptions.Web);
         }
         else
         {
@@ -99,7 +94,7 @@ public sealed class RosterScanRunner(
             }
 
             extraction = outcome.Requirements;
-            await store.SetExtractionAsync(job.Id, JsonSerializer.Serialize(extraction, Json), ct);
+            await store.SetExtractionAsync(job.Id, JsonSerializer.Serialize(extraction, JsonSerializerOptions.Web), ct);
         }
 
         if (job.Candidates.Count == 0 && !await HasCandidatesAsync(job.Id, ct))
@@ -119,7 +114,7 @@ public sealed class RosterScanRunner(
         // Pre-filters resolve to a deterministic eligible-id set (same semantics as semantic
         // search's SQL prefilter); the model still only ever sees MCP-captured digests.
         var scanFilters = job.FiltersJson is { Length: > 0 } json
-            ? JsonSerializer.Deserialize<SemanticSearchFilters>(json, Json)
+            ? JsonSerializer.Deserialize<SemanticSearchFilters>(json, JsonSerializerOptions.Web)
             : null;
         var eligible = await filters.ResolveEligibleAsync(scanFilters, ct);
 

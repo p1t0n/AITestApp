@@ -11,8 +11,6 @@ namespace ExpertToJob.Mcp;
 /// </summary>
 internal static class McpToolExecutor
 {
-    private static readonly JsonSerializerOptions ErrorJson = new(JsonSerializerDefaults.Web);
-
     /// <summary>Runs a void operation (e.g. delete); returns <c>{ ok = true }</c> on success.</summary>
     public static Task<object> RunAsync(Func<Task> body) =>
         RunAsync(async () =>
@@ -34,7 +32,7 @@ internal static class McpToolExecutor
                 IsError = true,
                 Content = new List<ContentBlock>
                 {
-                    new TextContentBlock { Text = JsonSerializer.Serialize(error, ErrorJson) },
+                    new TextContentBlock { Text = JsonSerializer.Serialize(error, JsonSerializerOptions.Web) },
                 },
             };
         }

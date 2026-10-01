@@ -66,16 +66,11 @@ public sealed class MatchRunService : IMatchRunService
         return new MatchRunOutcome(_agent.Name, reply.Text, reply, facts.Score, facts.Band);
     }
 
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
-    {
-        PropertyNameCaseInsensitive = true,
-    };
-
     private static MatchAssessment? TryParseAssessment(string text)
     {
         try
         {
-            var parsed = JsonSerializer.Deserialize<MatchAssessment>(text.Trim(), Json);
+            var parsed = JsonSerializer.Deserialize<MatchAssessment>(text.Trim(), JsonSerializerOptions.Web);
             return string.IsNullOrWhiteSpace(parsed?.GapAnalysisMarkdown) ? null : parsed;
         }
         catch (JsonException)

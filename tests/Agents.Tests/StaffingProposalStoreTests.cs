@@ -176,9 +176,9 @@ public class StaffingProposalStoreTests
         document.Should().NotBeNull();
         // The report round-trips whole — same wire JSON in as out (plus its own proposal id,
         // stamped at creation so the drill-in matches the requester's SSE report), no truncation.
-        System.Text.Json.JsonSerializer.Serialize(document!.Report, StaffingHandoffDocument.Json)
+        System.Text.Json.JsonSerializer.Serialize(document!.Report, System.Text.Json.JsonSerializerOptions.Web)
             .Should().Be(System.Text.Json.JsonSerializer.Serialize(
-                report with { ProposalId = id }, StaffingHandoffDocument.Json));
+                report with { ProposalId = id }, System.Text.Json.JsonSerializerOptions.Web));
         document.Inputs["jobDescription"].Should().Be("Platform engineer.");
         document.Provenance.CallerUserId.Should().Be(Guid.Parse("33333333-3333-3333-3333-333333333333"));
         document.Provenance.CapsSnapshotAtStart.Should().ContainSingle().Which.Window.Should().Be("daily");

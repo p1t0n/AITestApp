@@ -180,11 +180,6 @@ internal sealed class InterviewKitCapture
 internal sealed class InterviewCapturingCvFunction(AIFunction inner, InterviewKitCapture capture)
     : DelegatingAIFunction(inner)
 {
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
-    {
-        PropertyNameCaseInsensitive = true,
-    };
-
     protected override async ValueTask<object?> InvokeCoreAsync(
         AIFunctionArguments arguments, CancellationToken cancellationToken)
     {
@@ -192,7 +187,7 @@ internal sealed class InterviewCapturingCvFunction(AIFunction inner, InterviewKi
         capture.Cv = ToolResultPayload.Extract<InterviewCvPayload>(
             result,
             obj => obj.ContainsKey("experiences") || obj.ContainsKey("Experiences"),
-            Json) ?? capture.Cv;
+            JsonSerializerOptions.Web) ?? capture.Cv;
         return result;
     }
 }

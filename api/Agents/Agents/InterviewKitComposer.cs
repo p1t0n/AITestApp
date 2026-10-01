@@ -20,11 +20,6 @@ public sealed record InterviewKitResponse(string Answer, IReadOnlyList<Interview
 /// </summary>
 public static class InterviewKitComposer
 {
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
-    {
-        PropertyNameCaseInsensitive = true,
-    };
-
     public static InterviewKitResponse Compose(InterviewKitOutcome outcome, ILogger logger)
         => new(outcome.Reply.Text, ComposeQuestions(outcome, logger));
 
@@ -129,7 +124,7 @@ public static class InterviewKitComposer
     {
         try
         {
-            return JsonSerializer.Deserialize<List<QuestionEntry?>>(text, Json);
+            return JsonSerializer.Deserialize<List<QuestionEntry?>>(text, JsonSerializerOptions.Web);
         }
         catch (JsonException)
         {

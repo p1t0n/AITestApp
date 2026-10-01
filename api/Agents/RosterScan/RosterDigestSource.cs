@@ -20,11 +20,6 @@ public sealed class McpRosterDigestSource : IRosterDigestSource
 {
     private const string ToolName = "roster_digest_list";
 
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
-    {
-        PropertyNameCaseInsensitive = true,
-    };
-
     private readonly IMcpToolSource _toolSource;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
@@ -41,7 +36,7 @@ public sealed class McpRosterDigestSource : IRosterDigestSource
             ["pageSize"] = pageSize,
         }, ct);
         return ToolResultPayload.Extract<ExpertDigestPage>(
-            result, obj => obj.ContainsKey("items") || obj.ContainsKey("Items"), Json);
+            result, obj => obj.ContainsKey("items") || obj.ContainsKey("Items"), JsonSerializerOptions.Web);
     }
 
     private async Task<AIFunction> GetToolAsync(CancellationToken ct)

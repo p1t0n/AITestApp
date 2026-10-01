@@ -22,9 +22,6 @@ namespace ExpertToJob.Application.Compliance;
 /// </summary>
 public static class HandoffPackageScrub
 {
-    /// <summary>Same options the document is written with — camelCase, so the paths below match.</summary>
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
-
     /// <summary>
     /// Nulls everything the report says about <paramref name="expertId"/>, and returns the rewritten
     /// JSON — or the original string when there is nothing to change, when the column is empty, or
@@ -92,7 +89,9 @@ public static class HandoffPackageScrub
             changed |= Blank(recommendation, "narrative");
         }
 
-        return changed ? document!.ToJsonString(Json) : packageJson;
+        // Written back with the Web defaults, the same options the document was written with, so
+        // the paths above keep matching after a rewrite.
+        return changed ? document!.ToJsonString(JsonSerializerOptions.Web) : packageJson;
     }
 
     /// <summary>The six paths this scrub is responsible for, as the completeness test reads them.

@@ -47,11 +47,6 @@ public sealed class BenchReportService(
         under 400 words.
         """;
 
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
-    {
-        PropertyNameCaseInsensitive = true,
-    };
-
     public async Task<BenchReportOutcome> RunAsync(CancellationToken ct = default)
     {
         var notes = new List<string>();
@@ -78,7 +73,7 @@ public sealed class BenchReportService(
             }
 
             var result = await list.InvokeAsync(new AIFunctionArguments(), ct);
-            var experts = ExtractExperts(JsonSerializer.SerializeToNode(result, Json), depth: 0);
+            var experts = ExtractExperts(JsonSerializer.SerializeToNode(result, JsonSerializerOptions.Web), depth: 0);
             if (experts is null)
             {
                 notes.Add("Roster stats unavailable (unrecognized expert_list result shape).");
@@ -121,7 +116,7 @@ public sealed class BenchReportService(
             var response = await chatClient.GetResponseAsync(
                 [
                     new ChatMessage(ChatRole.System, Instructions),
-                    new ChatMessage(ChatRole.User, JsonSerializer.Serialize(stats, Json)),
+                    new ChatMessage(ChatRole.User, JsonSerializer.Serialize(stats, JsonSerializerOptions.Web)),
                 ],
                 options: null,
                 cancellationToken: ct);
@@ -164,7 +159,7 @@ public sealed class BenchReportService(
         {
             try
             {
-                return array.Deserialize<List<BenchExpert>>(Json);
+                return array.Deserialize<List<BenchExpert>>(JsonSerializerOptions.Web);
             }
             catch (JsonException)
             {
