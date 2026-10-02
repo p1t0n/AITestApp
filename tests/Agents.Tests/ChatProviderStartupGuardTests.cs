@@ -125,6 +125,60 @@ public class ChatProviderStartupGuardTests
             + "provider nothing asks chat for one");
     }
 
+    /// <summary>
+    /// The guard and the runtime have to answer the same question the same way (EXP-97). They did
+    /// not: <see cref="ChatCredential.Resolve"/> took the environment variable whenever it had any
+    /// length at all, so a variable of only whitespace beat a perfectly good config key and resolved
+    /// to <em>missing</em>, while this guard tested the same variable with
+    /// <see cref="string.IsNullOrWhiteSpace"/>, fell back to config, and called it <em>present</em>.
+    /// A Production host set up that way booted and then returned the EXP-93 503 on every agent
+    /// call — the exact failure the guard exists to move from request time to startup.
+    ///
+    /// <para>The rule asserted here is <b>whitespace counts as unset</b>, on both sides: a variable
+    /// exported empty is an operator who has not set it, not an operator who set it to a space. So
+    /// config wins, and both halves agree the key is present.</para>
+    ///
+    /// <para>Stated as an equivalence rather than two separate expectations, because the defect was
+    /// never in either answer alone — each was defensible — but in the two disagreeing. A case added
+    /// here fails if the guard and the runtime part ways on it, whichever way they part.</para>
+    /// </summary>
+    [Theory]
+    [InlineData(null, "", false)]
+    [InlineData(null, "a-real-key", true)]
+    [InlineData("a-real-key", "", true)]
+    [InlineData("  ", "a-real-key", true)]
+    [InlineData("  ", "", false)]
+    [InlineData("  ", "   ", false)]
+    [InlineData("", "a-real-key", true)]
+    public void Guard_and_runtime_agree_on_whether_a_key_is_present(
+        string? fromEnvironment, string fromConfiguration, bool present)
+    {
+        const ChatProvider provider = ChatProvider.Gemini;
+        var variable = ChatProviderOptions.ApiKeyVariableFor(provider);
+        Func<string, string?> read = name => name == variable ? fromEnvironment : null;
+
+        var guard = () => ChatProviderStartupGuard.RequireActiveProviderCredential(
+            Config((ProviderKey, provider.ToString()), (GeminiKeyPath, fromConfiguration)),
+            Environment("Production"),
+            read);
+
+        var runtime = ChatCredential.Resolve(
+            provider, new ChatProviderOptions { ApiKey = fromConfiguration }, read);
+
+        runtime.IsMissing.Should().Be(!present,
+            "whitespace counts as unset on both sides, so a real config key is the credential");
+
+        if (present)
+        {
+            guard.Should().NotThrow("the runtime has a key, so Production must be allowed to boot");
+        }
+        else
+        {
+            guard.Should().Throw<InvalidOperationException>(
+                "the runtime has no key, so the host must stop at startup rather than 503 later");
+        }
+    }
+
     /// <summary>An unknown provider name still fails, in Production as everywhere else — the guard
     /// reads the discriminator through the seam's own reader rather than parsing it a second way,
     /// so the two cannot drift into disagreeing about what a provider name is.</summary>

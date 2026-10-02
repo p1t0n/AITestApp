@@ -4,9 +4,10 @@ namespace ExpertToJob.Agents.Configuration;
 
 /// <summary>
 /// The active chat provider's credential, as one resolved value (EXP-93): the provider's own
-/// environment variable first, its <c>ApiKey</c> config path second, and nothing else — the same
-/// two lookups the Production guard requires (<see cref="ChatProviderStartupGuard"/>), written
-/// once.
+/// environment variable first, its <c>ApiKey</c> config path second, and nothing else. The
+/// Production guard (<see cref="ChatProviderStartupGuard"/>) calls this rather than repeating the
+/// two lookups (EXP-97), so exactly one rule decides whether a host has a key — and startup and
+/// request time can no longer answer that differently.
 ///
 /// <para><b>Why a type and not a string.</b> A missing credential is a normal development
 /// condition, so the seam has to be able to ask whether one is present without having already
@@ -35,18 +36,26 @@ public sealed class ChatCredential(ChatProvider provider, string? key)
     public string Key => IsMissing ? throw new ChatCredentialMissingException(Provider) : key!;
 
     /// <summary>The credential as the two places it is read from, resolved through an injectable
-    /// environment reader so a test can describe an unset variable without unsetting one.</summary>
+    /// environment reader so a test can describe an unset variable without unsetting one.
+    ///
+    /// <para><b>Whitespace counts as unset</b> (EXP-97), by the same
+    /// <see cref="string.IsNullOrWhiteSpace"/> test <see cref="IsMissing"/> applies — a variable
+    /// exported empty is an operator who has not set it, not one who set it to a space. The
+    /// stricter <c>{ Length: > 0 }</c> this used to match on let such a variable beat a perfectly
+    /// good config key and resolve to missing, while the Production guard tested the same variable
+    /// with <see cref="string.IsNullOrWhiteSpace"/> and called the setup configured: the host
+    /// booted and then returned the EXP-93 503 on every agent call. One test, applied in one
+    /// place, is what keeps the two from disagreeing.</para></summary>
     public static ChatCredential Resolve(
         ChatProvider provider,
         ChatProviderOptions cfg,
         Func<string, string?>? readEnvironmentVariable = null)
     {
         var read = readEnvironmentVariable ?? Environment.GetEnvironmentVariable;
+        var fromEnvironment = read(ChatProviderOptions.ApiKeyVariableFor(provider));
         return new ChatCredential(
             provider,
-            read(ChatProviderOptions.ApiKeyVariableFor(provider)) is { Length: > 0 } fromEnvironment
-                ? fromEnvironment
-                : cfg.ApiKey);
+            string.IsNullOrWhiteSpace(fromEnvironment) ? cfg.ApiKey : fromEnvironment);
     }
 }
 

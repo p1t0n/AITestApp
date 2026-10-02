@@ -170,8 +170,13 @@ public static class ChatProviderServiceCollectionExtensions
 
     /// <summary>One provider's settings: its code defaults with its own configuration block bound
     /// over them. The one place a chat provider's section is read, so the mapping lives only in
-    /// <see cref="ChatProviderOptions.SectionFor"/>.</summary>
-    private static ChatProviderOptions Bind(IConfiguration config, ChatProvider provider)
+    /// <see cref="ChatProviderOptions.SectionFor"/>.
+    ///
+    /// <para>Internal rather than private because <see cref="ChatProviderStartupGuard"/> needs the
+    /// same <see cref="ChatProviderOptions.ApiKey"/> this binds in order to ask
+    /// <see cref="ChatCredential.Resolve"/> the credential question (EXP-97). Reading the config
+    /// path itself would be the second lookup that issue removed.</para></summary>
+    internal static ChatProviderOptions Bind(IConfiguration config, ChatProvider provider)
     {
         var options = ChatProviderOptions.Defaults(provider);
         config.GetSection(ChatProviderOptions.SectionFor(provider)).Bind(options);
