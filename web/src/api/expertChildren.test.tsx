@@ -1,31 +1,30 @@
-// What the 15 child-collection hooks put on the wire, and what they invalidate afterwards
-// (EXP-80).
+// What the child-collection hooks put on the wire, and what they invalidate afterwards
+// (EXP-80, EXP-103).
 //
-// Both halves are here because the hooks are now generated from one `childCrud` factory rather
-// than hand-written fifteen times. A generator makes the shape uniform, which is the point — and
-// it also makes a wrong path or a wrong key uniform, which is the risk. These tests pin the two
-// things a reader can no longer see by scrolling the file.
+// Both halves are here because the hooks are generated from one `childCrud` factory rather than
+// hand-written. A generator makes the shape uniform, which is the point — and it also makes a
+// wrong path or a wrong key uniform, which is the risk. These tests pin the two things a reader
+// can no longer see by scrolling the file.
+//
+// Since EXP-103 there is one `useSave` per collection instead of an add and an update, so the
+// branch that chooses POST from PUT is code rather than a call site: the `id` is what picks the
+// verb, and that choice is pinned below on its own as well as once per collection.
 import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import type { AxiosAdapter, InternalAxiosRequestConfig } from "axios";
 import {
-  useAddAvailability,
-  useAddExperience,
-  useAddExpertSkill,
-  useAddLanguage,
-  useAddQualification,
   useDeleteAvailability,
   useDeleteExperience,
   useDeleteExpertSkill,
   useDeleteLanguage,
   useDeleteQualification,
-  useUpdateAvailability,
-  useUpdateExperience,
-  useUpdateExpertSkill,
-  useUpdateLanguage,
-  useUpdateQualification,
+  useSaveAvailability,
+  useSaveExperience,
+  useSaveExpertSkill,
+  useSaveLanguage,
+  useSaveQualification,
 } from "./expertChildren";
 import { http } from "./http";
 
@@ -73,20 +72,20 @@ describe("the child-collection hooks", () => {
   // Literal paths, not derived from the module under test: a generator that changed a segment
   // would still agree with itself.
   const wire: Array<[string, (id: string) => never, unknown, string, string]> = [
-    ["add a skill", useAddExpertSkill as never, { skillId: "s", level: 3 }, "POST", `/experts/${EXPERT}/skills`],
-    ["update a skill", useUpdateExpertSkill as never, { id: ITEM, skillId: "s", level: 3 }, "PUT", `/expert-skills/${ITEM}`],
+    ["add a skill", useSaveExpertSkill as never, { skillId: "s", level: 3 }, "POST", `/experts/${EXPERT}/skills`],
+    ["update a skill", useSaveExpertSkill as never, { id: ITEM, skillId: "s", level: 3 }, "PUT", `/expert-skills/${ITEM}`],
     ["delete a skill", useDeleteExpertSkill as never, ITEM, "DELETE", `/expert-skills/${ITEM}`],
-    ["add availability", useAddAvailability as never, { effectiveFrom: "2026-01-01" }, "POST", `/experts/${EXPERT}/availability`],
-    ["update availability", useUpdateAvailability as never, { id: ITEM, effectiveFrom: "2026-01-01" }, "PUT", `/availability/${ITEM}`],
+    ["add availability", useSaveAvailability as never, { effectiveFrom: "2026-01-01" }, "POST", `/experts/${EXPERT}/availability`],
+    ["update availability", useSaveAvailability as never, { id: ITEM, effectiveFrom: "2026-01-01" }, "PUT", `/availability/${ITEM}`],
     ["delete availability", useDeleteAvailability as never, ITEM, "DELETE", `/availability/${ITEM}`],
-    ["add a language", useAddLanguage as never, { language: "Dutch" }, "POST", `/experts/${EXPERT}/languages`],
-    ["update a language", useUpdateLanguage as never, { id: ITEM, language: "Dutch" }, "PUT", `/languages/${ITEM}`],
+    ["add a language", useSaveLanguage as never, { language: "Dutch" }, "POST", `/experts/${EXPERT}/languages`],
+    ["update a language", useSaveLanguage as never, { id: ITEM, language: "Dutch" }, "PUT", `/languages/${ITEM}`],
     ["delete a language", useDeleteLanguage as never, ITEM, "DELETE", `/languages/${ITEM}`],
-    ["add a qualification", useAddQualification as never, { title: "BSc" }, "POST", `/experts/${EXPERT}/qualifications`],
-    ["update a qualification", useUpdateQualification as never, { id: ITEM, title: "BSc" }, "PUT", `/qualifications/${ITEM}`],
+    ["add a qualification", useSaveQualification as never, { title: "BSc" }, "POST", `/experts/${EXPERT}/qualifications`],
+    ["update a qualification", useSaveQualification as never, { id: ITEM, title: "BSc" }, "PUT", `/qualifications/${ITEM}`],
     ["delete a qualification", useDeleteQualification as never, ITEM, "DELETE", `/qualifications/${ITEM}`],
-    ["add an experience", useAddExperience as never, { role: "Dev" }, "POST", `/experts/${EXPERT}/experiences`],
-    ["update an experience", useUpdateExperience as never, { id: ITEM, role: "Dev" }, "PUT", `/experiences/${ITEM}`],
+    ["add an experience", useSaveExperience as never, { role: "Dev" }, "POST", `/experts/${EXPERT}/experiences`],
+    ["update an experience", useSaveExperience as never, { id: ITEM, role: "Dev" }, "PUT", `/experiences/${ITEM}`],
     ["delete an experience", useDeleteExperience as never, ITEM, "DELETE", `/experiences/${ITEM}`],
   ];
 
@@ -97,9 +96,31 @@ describe("the child-collection hooks", () => {
     expect(request.url).toBe(url);
   });
 
-  it("sends an update without the id in the body — the id addresses the row, it is not a field", async () => {
-    const request = await requestFrom(useUpdateLanguage as never, { id: ITEM, language: "Dutch" });
+  it("picks the verb from the id: with one it is a PUT to the item, without one a POST to the collection", async () => {
+    // The whole of what EXP-103 moved out of the five dialogs and into the factory. One hook
+    // instance decides both ways, so this is the branch itself and not two hooks agreeing.
+    const update = await requestFrom(useSaveLanguage as never, { id: ITEM, language: "Dutch" });
+    expect(update.method).toBe("PUT");
+    expect(update.url).toBe(`/languages/${ITEM}`);
 
+    const add = await requestFrom(useSaveLanguage as never, { language: "Dutch" });
+    expect(add.method).toBe("POST");
+    expect(add.url).toBe(`/experts/${EXPERT}/languages`);
+  });
+
+  it("sends an update without the id in the body — the id addresses the row, it is not a field", async () => {
+    const request = await requestFrom(useSaveLanguage as never, { id: ITEM, language: "Dutch" });
+
+    expect(JSON.parse(request.body as string)).toEqual({ language: "Dutch" });
+  });
+
+  it("posts an explicitly absent id as a create, and never as a field", async () => {
+    // `edit.id` is `string | undefined` at every call site, so `{ id: undefined, ...dto }` is a
+    // shape the hook really receives — it has to read as "no id", not as an id of `undefined`.
+    const request = await requestFrom(useSaveLanguage as never, { id: undefined, language: "Dutch" });
+
+    expect(request.method).toBe("POST");
+    expect(request.url).toBe(`/experts/${EXPERT}/languages`);
     expect(JSON.parse(request.body as string)).toEqual({ language: "Dutch" });
   });
 });
@@ -125,11 +146,11 @@ describe("what a mutation refreshes", () => {
   }
 
   it("refreshes the CV when an experience is added", async () => {
-    expect(await cvInvalidatedBy(useAddExperience as never, { role: "Dev" })).toBe(true);
+    expect(await cvInvalidatedBy(useSaveExperience as never, { role: "Dev" })).toBe(true);
   });
 
   it("refreshes the CV when an experience is updated", async () => {
-    expect(await cvInvalidatedBy(useUpdateExperience as never, { id: ITEM, role: "Dev" })).toBe(true);
+    expect(await cvInvalidatedBy(useSaveExperience as never, { id: ITEM, role: "Dev" })).toBe(true);
   });
 
   it("refreshes the CV when an experience is deleted", async () => {
@@ -139,7 +160,7 @@ describe("what a mutation refreshes", () => {
   it("refreshes the CV when a qualification changes too — the detail key covers every child", async () => {
     // Not an accident of the experience hooks: every child mutation invalidates the same prefix,
     // and the CV hangs off it. Qualifications appear on the rendered CV as well.
-    expect(await cvInvalidatedBy(useAddQualification as never, { title: "BSc" })).toBe(true);
+    expect(await cvInvalidatedBy(useSaveQualification as never, { title: "BSc" })).toBe(true);
   });
 
   it("leaves another expert's CV alone", async () => {
@@ -147,7 +168,7 @@ describe("what a mutation refreshes", () => {
     const client = freshClient();
     client.setQueryData(other, { markdown: "# Someone else" });
 
-    await requestFrom(useAddExperience as never, { role: "Dev" }, client);
+    await requestFrom(useSaveExperience as never, { role: "Dev" }, client);
 
     expect(client.getQueryState(other)?.isInvalidated).toBe(false);
   });
