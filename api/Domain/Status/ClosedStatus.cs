@@ -21,13 +21,36 @@ public interface IClosedStatus<TSelf> : IClosedStatus
     where TSelf : class, IClosedStatus<TSelf>
 {
     /// <summary>The inverse of <see cref="Value"/>. False for anything outside the set — including
-    /// null — so the caller decides whether an unreadable value degrades or throws.</summary>
+    /// null — so the caller decides whether an unreadable value degrades or throws.
+    ///
+    /// <para>Every implementation ends in a discard arm, and it is the one the closed set keeps:
+    /// this switches over a string read back from a column or a payload, not over the hierarchy, so
+    /// "none of them" is a real case. <see cref="ClosedStatus.Parse{T}"/> is the caller that turns
+    /// it into a throw; the JSON converter below is the caller that turns it into a 400.</para>
+    /// </summary>
     static abstract bool TryParse(string? value, [NotNullWhen(true)] out TSelf? status);
+}
 
-    /// <summary>The inverse of <see cref="Value"/> for callers that have already established the
-    /// value is one of the set (a column this code wrote, a request already validated).</summary>
+/// <summary>
+/// The strict half of <see cref="IClosedStatus{TSelf}.TryParse"/>, for callers that have already
+/// established the value is one of the set (a column this code wrote, a request already validated).
+///
+/// <para>One generic method rather than a <c>static abstract Parse</c> each hierarchy implements
+/// (EXP-98). The six copies that shape produced differed only in how they spelled the error, and
+/// nothing read the difference: <c>Parse</c>'s only callers are the three EF value converters in
+/// <c>AppDbContext</c>, and three of the six copies had no caller at all. What a converter needs
+/// from the failure is the value that broke the row and which set it missed — the type name carries
+/// the second, so the wording does not have to be written out six times to get it.</para>
+/// </summary>
+public static class ClosedStatus
+{
+    /// <inheritdoc cref="ClosedStatus"/>
     /// <exception cref="FormatException">The value is not one of the cases.</exception>
-    static abstract TSelf Parse(string value);
+    public static T Parse<T>(string value)
+        where T : class, IClosedStatus<T> =>
+        T.TryParse(value, out var status)
+            ? status
+            : throw new FormatException($"'{value}' is not a {typeof(T).Name}.");
 }
 
 /// <summary>

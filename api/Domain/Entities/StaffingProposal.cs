@@ -100,19 +100,10 @@ public closed record StaffingProposalStatus : IClosedStatus<StaffingProposalStat
             "pending" => new Pending(),
             "approved" => new Approved(),
             "rejected" => new Rejected(),
-            // The one discard arm the closed set keeps: this switches over a string read back
-            // from a column or a payload, not over the hierarchy, so "none of them" is a real
-            // case and the caller decides whether it degrades or throws.
             _ => null,
         };
         return status is not null;
     }
-
-    /// <inheritdoc/>
-    public static StaffingProposalStatus Parse(string value) =>
-        TryParse(value, out var status)
-            ? status
-            : throw new FormatException($"'{value}' is not a proposal status.");
 
     public sealed override string ToString() => Value;
 }
