@@ -24,17 +24,10 @@ public static class RateLimitRetry
         is HttpRequestException { StatusCode: HttpStatusCode.TooManyRequests }
         or ClientResultException { Status: (int)HttpStatusCode.TooManyRequests };
 
-    /// <summary>Linear ladder: <paramref name="maxAttempts"/> tries in all, the n-th wait being
-    /// n × <paramref name="step"/> (5s, 10s, 15s…).</summary>
-    public static ResiliencePipeline Linear(int maxAttempts, TimeSpan step, TimeProvider clock) =>
-        Build(maxAttempts, step, DelayBackoffType.Linear, clock);
-
-    /// <summary>Exponential ladder: <paramref name="maxAttempts"/> tries in all, the n-th wait
-    /// being 2ⁿ⁻¹ × <paramref name="baseDelay"/> (2s, 4s, 8s…).</summary>
-    public static ResiliencePipeline Exponential(int maxAttempts, TimeSpan baseDelay, TimeProvider clock) =>
-        Build(maxAttempts, baseDelay, DelayBackoffType.Exponential, clock);
-
-    private static ResiliencePipeline Build(
+    /// <summary>A 429 ladder of <paramref name="maxAttempts"/> tries in all, the n-th wait coming
+    /// from <paramref name="backoff"/> over <paramref name="delay"/>: linear gives n × delay
+    /// (5s, 10s, 15s…), exponential gives 2ⁿ⁻¹ × delay (2s, 4s, 8s…).</summary>
+    public static ResiliencePipeline Build(
         int maxAttempts, TimeSpan delay, DelayBackoffType backoff, TimeProvider clock) =>
         // A budget of one attempt is a budget of no retries, which Polly declines to model (and
         // Roster Scan can be configured to exactly that), so it is the empty pipeline instead.

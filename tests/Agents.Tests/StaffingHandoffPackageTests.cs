@@ -82,7 +82,7 @@ public class StaffingHandoffPackageTests
         usage ?? new FakeUsageService(),
         new RecordingUsageMeter(),
         new StaffingThrottle(maxConcurrentMatches),
-        retry ?? RateLimitRetry.Linear(maxAttempts: 3, TimeSpan.Zero, TimeProvider.System),
+        retry ?? RateLimitRetry.Build(maxAttempts: 3, TimeSpan.Zero, DelayBackoffType.Linear, TimeProvider.System),
         new MapIdentitySource(),
         TimeProvider.System,
         NullLogger<StaffingPipeline>.Instance);
@@ -241,7 +241,7 @@ public class StaffingHandoffPackageTests
             new FakeShortlistRunService(ShortlistOk(Candidate(1))),
             match,
             NarrativeChat(Id(1), Id(1)),
-            retry: RateLimitRetry.Linear(maxAttempts: 3, TimeSpan.Zero, TimeProvider.System));
+            retry: RateLimitRetry.Build(maxAttempts: 3, TimeSpan.Zero, DelayBackoffType.Linear, TimeProvider.System));
 
         var outcome = await RunAsync(pipeline, UserId);
 
