@@ -58,19 +58,10 @@ public closed record StaffingMatchStatus : IClosedStatus<StaffingMatchStatus>
             "completed" => new Completed(),
             "failed" => new Failed(),
             "skipped" => new Skipped(),
-            // The one discard arm the closed set keeps: this switches over a string read back
-            // from a column or a payload, not over the hierarchy, so "none of them" is a real
-            // case and the caller decides whether it degrades or throws.
             _ => null,
         };
         return status is not null;
     }
-
-    /// <inheritdoc/>
-    public static StaffingMatchStatus Parse(string value) =>
-        TryParse(value, out var status)
-            ? status
-            : throw new FormatException($"'{value}' is not a match status.");
 
     public sealed override string ToString() => Value;
 }
@@ -153,19 +144,10 @@ public closed record StaffingStepStatus : IClosedStatus<StaffingStepStatus>
             "started" => new Started(),
             "completed" => new Completed(),
             "failed" => new Failed(),
-            // The one discard arm the closed set keeps: this switches over a string read back
-            // from a column or a payload, not over the hierarchy, so "none of them" is a real
-            // case and the caller decides whether it degrades or throws.
             _ => null,
         };
         return status is not null;
     }
-
-    /// <inheritdoc/>
-    public static StaffingStepStatus Parse(string value) =>
-        TryParse(value, out var status)
-            ? status
-            : throw new FormatException($"'{value}' is not a step status.");
 
     public sealed override string ToString() => Value;
 }

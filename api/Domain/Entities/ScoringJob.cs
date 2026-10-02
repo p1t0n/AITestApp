@@ -144,19 +144,10 @@ public closed record ContestOutcome : IClosedStatus<ContestOutcome>
         {
             "upheld" => new Upheld(),
             "overturned" => new Overturned(),
-            // The one discard arm the closed set keeps: this switches over a string read back
-            // from a column or a payload, not over the hierarchy, so "none of them" is a real
-            // case and the caller decides whether it degrades or throws.
             _ => null,
         };
         return status is not null;
     }
-
-    /// <inheritdoc/>
-    public static ContestOutcome Parse(string value) =>
-        TryParse(value, out var status)
-            ? status
-            : throw new FormatException($"'{value}' is not a contest outcome.");
 
     public sealed override string ToString() => Value;
 }
@@ -208,19 +199,10 @@ public closed record ScoringCandidateStatus : IClosedStatus<ScoringCandidateStat
             "pending" => new Pending(),
             "scored" => new Scored(),
             "failed" => new Failed(),
-            // The one discard arm the closed set keeps: this switches over a string read back
-            // from a column or a payload, not over the hierarchy, so "none of them" is a real
-            // case and the caller decides whether it degrades or throws.
             _ => null,
         };
         return status is not null;
     }
-
-    /// <inheritdoc/>
-    public static ScoringCandidateStatus Parse(string value) =>
-        TryParse(value, out var status)
-            ? status
-            : throw new FormatException($"'{value}' is not a scan candidate status.");
 
     public sealed override string ToString() => Value;
 }

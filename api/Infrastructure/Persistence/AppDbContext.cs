@@ -1,5 +1,6 @@
 using ExpertToJob.Application.Abstractions;
 using ExpertToJob.Domain.Entities;
+using ExpertToJob.Domain.Status;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExpertToJob.Infrastructure.Persistence;
@@ -289,7 +290,7 @@ public class AppDbContext : DbContext, IAppDbContext
             // can reach it. Reading back a string outside the set throws rather than materialising
             // a status nobody wrote — StatusStorageFreezeTests pins both halves.
             e.Property(x => x.Status)
-                .HasConversion(v => v.Value, v => StaffingProposalStatus.Parse(v))
+                .HasConversion(v => v.Value, v => ClosedStatus.Parse<StaffingProposalStatus>(v))
                 .HasMaxLength(20).IsRequired();
             e.Property(x => x.DecisionNote).HasMaxLength(2000);
             if (isNpgsql)
@@ -350,11 +351,11 @@ public class AppDbContext : DbContext, IAppDbContext
             e.Property(x => x.Title).HasMaxLength(200);
             // See StaffingProposal.Status above: closed hierarchy in, the stored string out.
             e.Property(x => x.Status)
-                .HasConversion(v => v.Value, v => ScoringCandidateStatus.Parse(v))
+                .HasConversion(v => v.Value, v => ClosedStatus.Parse<ScoringCandidateStatus>(v))
                 .HasMaxLength(20).IsRequired();
             // Nullable, so the converter only ever sees a value: EF keeps null as null.
             e.Property(x => x.ContestOutcome)
-                .HasConversion(v => v!.Value, v => ContestOutcome.Parse(v));
+                .HasConversion(v => v!.Value, v => ClosedStatus.Parse<ContestOutcome>(v));
             e.Property(x => x.Band).HasMaxLength(50);
             e.Property(x => x.Error).HasMaxLength(2000);
             // Progress counts group by status within a job; chunk writes look rows up per job.
