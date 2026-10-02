@@ -152,31 +152,74 @@ public class ConfigKeyMigrationTests
     }
 
     /// <summary>
-    /// The half neither the sweep nor the throw covers: that the shipped settings files still
-    /// <em>bind</em>. A rename that unbinds is silent by construction — nothing throws, the options
-    /// object falls back to its property defaults, and the host looks healthy while reading none of
-    /// the values anyone set.
+    /// The half neither the sweep nor the throw covers: that the section the options class reads
+    /// still <em>binds</em>. A rename that unbinds is silent by construction — nothing throws, the
+    /// options object falls back to its code defaults, and the host looks healthy while reading
+    /// none of the values anyone set.
     ///
-    /// <para>Each value is asserted against the literal in its settings file, never against the
-    /// matching property default: those two agreeing is exactly what would hide the failure. The
-    /// chat client itself is not resolved here, because constructing one needs a real credential
-    /// (<c>ApiKeyCredential</c> rejects an empty key) — and needing a key to prove a key name is
-    /// the wrong trade.</para>
+    /// <para>Asserted by overriding through the section rather than by reading a literal out of a
+    /// settings file, because since EXP-102 the shipped files carry no Gemini chat values at all:
+    /// every one of them equalled <see cref="ChatProviderOptions.Defaults"/> and the duplicate was
+    /// removed, not the knob. An override that arrives is proof the path is live, and it is proof
+    /// the <em>binder</em> accepts it rather than proof one JSON file and one C# method happen to
+    /// spell the same string. The chat client itself is not resolved here, because constructing one
+    /// needs a real credential (<c>ApiKeyCredential</c> rejects an empty key) — and needing a key
+    /// to prove a key name is the wrong trade.</para>
     /// </summary>
     [Theory]
-    [InlineData("api/Agents/appsettings.json", "Model", "gemini-3.5-flash-lite")]
-    [InlineData("api/Agents/appsettings.json", "Endpoint", "https://generativelanguage.googleapis.com/v1beta/openai")]
-    [InlineData("api/Mcp/appsettings.json", "EmbeddingModel", "gemini-embedding-001")]
-    [InlineData("api/Mcp/appsettings.json", "Endpoint", "https://generativelanguage.googleapis.com/v1beta/openai")]
-    public void The_shipped_settings_bind_under_the_new_section(string settingsFile, string key, string expected)
+    [InlineData("Model", "gemini-pro-latest")]
+    [InlineData("Endpoint", "https://override.example/v1beta/openai")]
+    public void The_shipped_section_still_binds_under_the_new_path(string key, string overridden)
     {
         var config = new ConfigurationBuilder()
-            .AddJsonFile(Path.Combine(RepoRoot(), settingsFile))
+            .AddJsonFile(Path.Combine(RepoRoot(), "api/Agents/appsettings.json"))
+            .AddInMemoryCollection([new KeyValuePair<string, string?>($"{GeminiSection}:{key}", overridden)])
             .Build();
 
-        config[$"{GeminiSection}:{key}"].Should().Be(expected,
-            $"'{settingsFile}' has to spell the path the options class reads ('{GeminiSection}'); "
-            + "a mismatch binds to nothing and falls back to the property default in silence");
+        var options = ChatProviderOptions.Defaults(ChatProvider.Gemini);
+        config.GetSection(GeminiSection).Bind(options);
+
+        typeof(ChatProviderOptions).GetProperty(key)!.GetValue(options).Should().Be(overridden,
+            $"'{GeminiSection}:{key}' has to be the path the options class reads; a mismatch binds "
+            + "to nothing and falls back to the code default in silence");
+    }
+
+    /// <summary>
+    /// EXP-102, which is EXP-89's "each value on one side" rule applied to the <c>Ai:*</c> blocks it
+    /// skipped. Every key the shipped Agents file spelled under <see cref="GeminiSection"/> —
+    /// endpoint, model, empty credential — already had exactly that value in
+    /// <see cref="ChatProviderOptions.Defaults"/>, where the comment recording <em>why</em> the model
+    /// is pinned to an explicit generation also lives. Two copies are free to drift, and when they
+    /// do the file wins while the comment goes on describing the other one.
+    ///
+    /// <para>Neither value is tuned per environment, which is the rule's test for which side wins:
+    /// the endpoint is Google's one public OpenAI-compatible host and the model is a free-tier quota
+    /// row (P1T-114/P1T-115). Azure's chat block is the deliberate opposite and stays shipped — its
+    /// code default is empty, so the file is the only copy, not a second one.</para>
+    /// </summary>
+    [Fact]
+    public void The_shipped_agents_settings_repeat_no_chat_code_default()
+    {
+        var section = new ConfigurationBuilder()
+            .AddJsonFile(Path.Combine(RepoRoot(), "api/Agents/appsettings.json"))
+            .Build()
+            .GetSection(GeminiSection);
+        var defaults = ChatProviderOptions.Defaults(ChatProvider.Gemini);
+
+        var repeated = new[]
+            {
+                (Key: nameof(ChatProviderOptions.Endpoint), FromCode: defaults.Endpoint),
+                (Key: nameof(ChatProviderOptions.Model), FromCode: defaults.Model),
+                (Key: nameof(ChatProviderOptions.ApiKey), FromCode: defaults.ApiKey),
+            }
+            .Where(v => section[v.Key] == v.FromCode)
+            .Select(v => $"{GeminiSection}:{v.Key}")
+            .ToList();
+
+        repeated.Should().BeEmpty(
+            "each of these already has exactly this value in ChatProviderOptions.Defaults, so the "
+            + "shipped file is a second copy that can drift from the one carrying the reason. "
+            + "Found: " + string.Join(", ", repeated));
     }
 
     /// <summary>
