@@ -9,6 +9,7 @@ import type { SaveExpert } from "../types";
 import { apiErrorMessage } from "../api";
 import ConfirmDialog from "../components/ConfirmDialog";
 import EditDialog from "../components/EditDialog";
+import { useSaveAndClose } from "../components/FormDialog";
 import { ErrorNotice } from "../components/ErrorNotice";
 import { SPECIAL_CATEGORY_GUIDANCE } from "./cvGuidance";
 
@@ -72,8 +73,11 @@ function ExpertForm({
   // render, which is the one thing a ref is not for.
   const [pristine] = useState<SaveExpert>(() => ({ ...empty, ...initial }));
   const [form, setForm] = useState<SaveExpert>(pristine);
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  // The sixth copy of save-then-close, now the shared one (EXP-104). Deleting is a different write
+  // with a different failure — it drops its own confirmation on the way out — so it keeps its own
+  // pair; the notice shows whichever has something to say.
+  const { save, saving, error: saveError } = useSaveAndClose<SaveExpert>(onSave, onClose);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -88,29 +92,16 @@ function ExpertForm({
     (key) => (form[key] ?? "") !== (pristine[key] ?? ""),
   );
 
-  async function handleSave() {
-    setSaving(true);
-    setError(null);
-    try {
-      await onSave(form);
-      onClose();
-    } catch (err) {
-      setError(apiErrorMessage(err));
-    } finally {
-      setSaving(false);
-    }
-  }
-
   async function handleDelete() {
     setDeleting(true);
-    setError(null);
+    setDeleteError(null);
     try {
       await onDelete!();
       setConfirmingDelete(false);
       onClose();
     } catch (err) {
       setConfirmingDelete(false);
-      setError(apiErrorMessage(err));
+      setDeleteError(apiErrorMessage(err));
     } finally {
       setDeleting(false);
     }
@@ -123,7 +114,7 @@ function ExpertForm({
         dirty={dirty}
         saving={saving}
         onClose={onClose}
-        onSave={handleSave}
+        onSave={() => void save(form)}
         recordAction={
           onDelete && (
             <Button color="error" startIcon={<DeleteIcon />} onClick={() => setConfirmingDelete(true)}>
@@ -132,7 +123,7 @@ function ExpertForm({
           )
         }
       >
-        <ErrorNotice message={error} />
+        <ErrorNotice message={saveError ?? deleteError} />
         <Stack direction="row" spacing={2}>
           <TextField label="First name" value={form.firstName} onChange={field("firstName")} fullWidth />
           <TextField label="Last name" value={form.lastName} onChange={field("lastName")} fullWidth />

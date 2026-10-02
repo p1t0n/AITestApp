@@ -4,7 +4,7 @@
 import { Box, Chip, Stack, TextField, Typography } from "@mui/material";
 import { PRESET_JDS } from "./presets";
 
-export const JD_PLACEHOLDER = "Paste a job description, or pick a preset above…";
+const JD_PLACEHOLDER = "Paste a job description, or pick a preset above…";
 
 export function JdInput({
   value,

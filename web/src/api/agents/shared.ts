@@ -7,22 +7,19 @@ import { agentHttp } from "../http";
  * response, invalidate the usage ledger. The ledger is not a nicety — every agent call spends
  * tokens, so a run that leaves it alone leaves a number on screen that the server disagrees with.
  *
- * By default the hook's argument is the wire payload, and `{}` when it takes none — which is what
- * the server parses either way. `body` is for the one hook whose argument is not the request
- * (ingestion takes a bare string); `onSuccess` for the two that invalidate more than the ledger.
+ * The hook's argument is the wire payload, and `{}` when it takes none — which is what the server
+ * parses either way. `onSuccess` is for the two hooks that invalidate more than the ledger.
  */
 export function agentPost<Req, Res>(
   path: string,
   options: {
-    body?: (req: Req) => unknown;
     onSuccess?: (qc: QueryClient, data: Res, req: Req) => void;
   } = {},
 ) {
   return function useAgentPost() {
     const qc = useQueryClient();
     return useMutation({
-      mutationFn: async (req: Req) =>
-        (await agentHttp.post<Res>(path, options.body ? options.body(req) : (req ?? {}))).data,
+      mutationFn: async (req: Req) => (await agentHttp.post<Res>(path, req ?? {})).data,
       onSuccess: (data, req) => {
         qc.invalidateQueries({ queryKey: ["usage"] });
         options.onSuccess?.(qc, data, req);

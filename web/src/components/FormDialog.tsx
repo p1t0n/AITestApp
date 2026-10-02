@@ -23,7 +23,7 @@ import { ErrorNotice } from "./ErrorNotice";
  * There is no `open` prop: all five call sites passed the literal `open`, which is a prop that can
  * only ever be true.
  */
-export interface FormDialogProps {
+interface FormDialogProps {
   title: ReactNode;
   /** The last failure, rendered above the fields. Null when nothing has gone wrong. */
   error: string | null;

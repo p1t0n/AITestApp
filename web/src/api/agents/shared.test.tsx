@@ -18,9 +18,8 @@ import {
 // the same four lines is now one implementation — and the thing worth holding is what each hook
 // still puts on the wire. Two properties the types cannot carry:
 //
-//   the URL and body — these go to the *agents* backend, and the ones whose argument is not the
-//   request itself (bench's absent argument, ingestion's bare string) have to keep sending what
-//   the server already parses;
+//   the URL and body — these go to the *agents* backend, and the one whose argument is not the
+//   request itself (bench's absent argument) has to keep sending what the server already parses;
 //   the usage invalidation — every agent call spends tokens, so a run that does not invalidate
 //   ["usage"] leaves the ledger on screen quietly wrong.
 
@@ -83,11 +82,10 @@ const CASES: {
     path: "/roster-qa",
     body: { question: "who knows React?" },
   },
-  // The one hook whose argument is not the request: a bare string, wrapped by the hook.
   {
     name: "useResumeIngestion",
     hook: useResumeIngestion as never,
-    variables: "Ada Lovelace, engineer",
+    variables: { resumeText: "Ada Lovelace, engineer" },
     path: "/resume-ingestion",
     body: { resumeText: "Ada Lovelace, engineer" },
   },
@@ -142,7 +140,7 @@ describe("the surfaces that invalidate more than usage", () => {
     const invalidate = vi.spyOn(queryClient, "invalidateQueries");
 
     const { result } = renderHook(() => useResumeIngestion(), { wrapper });
-    result.current.mutate("Ada Lovelace, engineer");
+    result.current.mutate({ resumeText: "Ada Lovelace, engineer" });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["experts"] });
