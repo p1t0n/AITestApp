@@ -7,7 +7,7 @@
 > shown 4 of the 11 read tools. P1T-147: every agent run is bounded by a Runtime Budget (§3.2).
 > P1T-148: roster-qa's instructions and `roster_semantic_search`'s description point at the
 > Convergent Path, and a Convergence floor prices the whole reference run model-free (§6) —
-> **7,338** (6,984 before EXP-94), inside the 8,000 target. Values
+> **7,401** (6,984 before EXP-94), inside the 8,000 target. Values
 > and how to re-measure them: `manuals/agent-eval-baselines.md` §4. P1T-150: resume-ingestion's
 > 157,252-token call is decomposed and its iteration ceiling fixed (§7). Measurements below are real —
 > taken from the `AgentUsages` ledger and from one live traced run of the roster-qa endpoint on
@@ -287,8 +287,8 @@ Sequential, each landing on its own:
    `ResolveAgentChatClient`. resume-ingestion is covered for free. Budgets are configuration
    (`AgentBudgets` in `api/Agents/appsettings.json`), not constants.
 5. ~~**Convergence**~~ (P1T-148) — **landed**, except the two live re-runs. Instructions and
-   descriptions now point at the Convergent Path, and §6's floor prices the whole run at **7,221**
-   (1,949 × 3 calls + 87 × 2 + 1,200), inside the 8,000 target. The real-token 8,000 Cost Floor is
+   descriptions now point at the Convergent Path, and §6's floor prices the whole run at **7,401**
+   (2,009 × 3 calls + 87 × 2 + 1,200), inside the 8,000 target. The real-token 8,000 Cost Floor is
    committed as a live ceiling (`RosterQaConvergenceLiveFloorTests`, `Category=live`) rather than a
    deterministic one, because a real-token number cannot be measured without a model. The
    Tool-Selection Eval re-baseline landed in P1T-178 — see `manuals/mcp-tool-descriptions.md`.
@@ -664,3 +664,22 @@ Active rows before any filter runs, and a status needle could only return everyo
 came out, and with it 39 of the 132: `expert_list` 373 → 334, read surface 4,094 → 4,055,
 roster-qa's Baseline Prompt Size 1,988 → 1,949, and the convergent run 7,338 → 7,221. The
 `location` filter and `total` — the half that answers the question — stay.
+
+**EXP-96: the unfiltered count still had no answer.** EXP-94 made *"how many experts are based in
+Warsaw"* answerable; *"how many experts are on the roster in total?"* was not. There was no filter
+narrow enough to ask it with, so the only call available was the whole bench — ~31,000 tokens over
+505 experts — and the ceiling refused it. The honest refusal notice meant the model no longer said
+"zero"; it said the roster was too large to retrieve, which is not an answer either. `countOnly`
+returns `total` and no rows: **6 estimated tokens at any roster size**, because the payload is
+`{"total":n,"items":[]}` whether n is 3 or 505. It is implemented in `ExpertService.ListAsync`,
+which stops after the `CountAsync` — the rows are never fetched, so the cost is not "fetched and
+discarded". Visibility and the `location` filter apply exactly as they do to row listing, so a
+hidden expert is not in the count and a filtered count is the filter's.
+
+The schema cost is +60 per iteration (`expert_list` 334 → 394, read surface 4,055 → 4,115,
+roster-qa's Baseline Prompt Size 1,949 → 2,009, convergent run 7,221 → 7,401), the same trade
+P1T-145 and EXP-94 made: description tokens against a result that is otherwise refused outright.
+The 2,810-token sweep stays — `list everyone with their emails` is still a real question — and
+`ExpertListCountOnlyCeiling` is what keeps the cheap call cheap. The exact bytes are pinned in
+`Mcp.Tests/ExpertToolsTests`, not just the token estimate, because the claim being made is that
+the Tool Result Budget can never refuse this call.

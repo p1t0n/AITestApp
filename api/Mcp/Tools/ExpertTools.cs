@@ -13,7 +13,8 @@ public class ExpertTools
          "List active experts as one flat roster row each — id, first/last name, " +
          "title, location, email, current capacity percent and status — under total, the count of " +
          "the whole match. Pass location to narrow to a place (case-insensitive substring, so " +
-         "\"warsaw\" matches \"Warsaw, Poland\"); a COUNT question is answered by total alone. " +
+         "\"warsaw\" matches \"Warsaw, Poland\"). For a HOW MANY question pass countOnly true: " +
+         "it returns total and no rows, so it answers even when the rows are too many to return. " +
          "Use it when the roster itself is the answer: 'list everyone with their " +
          "emails', 'how many experts are based in Warsaw', 'show each person and their location'. " +
          "Do NOT " +
@@ -22,7 +23,8 @@ public class ExpertTools
          "roster_shortlist_search returns coverage and per-requirement evidence; do NOT use it to " +
          "sweep career narratives in bulk — roster_digest_list pages compact digests; do NOT use " +
          "it for one person — expert_get returns their child records, cv_get the assembled CV. " +
-         "Input, optional: location; e.g. {\"location\": \"Warsaw\"} to narrow, " +
+         "Input, optional: location, countOnly; e.g. {\"location\": \"Warsaw\"} to narrow, " +
+         "e.g. {\"countOnly\": true} for the roster total, " +
          "e.g. {} for the whole bench. Rows carry NO skills, languages, qualifications, " +
          "experiences, availability history or CV prose, and draft experts are excluded."),
      Authorize(Policy = McpScopes.Read)]
@@ -30,8 +32,10 @@ public class ExpertTools
         IExpertService experts,
         CancellationToken ct,
         [Description("Case-insensitive substring of the expert's location; omit for every place.")]
-        string? location = null)
-        => await experts.ListAsync(new ExpertListQuery(location), ct);
+        string? location = null,
+        [Description("True returns total and no rows.")]
+        bool countOnly = false)
+        => await experts.ListAsync(new ExpertListQuery(location, CountOnly: countOnly), ct);
 
     [McpServerTool(Name = "expert_get", ReadOnly = true, Destructive = false),
      Description(

@@ -20,8 +20,9 @@ public interface IExpertService
 {
     /// <summary>The bench listing, narrowed and counted (EXP-94): Active experts only unless
     /// drafts opt in (review surfaces), an optional case-insensitive substring filter on location,
-    /// plus the total of the whole match. The filter is here rather than in a shell so REST and
-    /// MCP narrow identically.</summary>
+    /// plus the total of the whole match. <see cref="ExpertListQuery.CountOnly"/> asks for that
+    /// total and no rows (EXP-96). The filter is here rather than in a shell so REST and MCP
+    /// narrow identically.</summary>
     Task<ExpertListResult> ListAsync(ExpertListQuery query, CancellationToken ct = default);
     /// <summary>One page of the whole Roster — Draft, Active and Paused — searched, sorted and
     /// counted in SQL (EXP-45). The staff roster's query; <see cref="ListAsync"/> stays the bench's.</summary>
@@ -93,6 +94,15 @@ public class ExpertService : IExpertService
             query);
 
         var total = await matches.CountAsync(ct);
+        // Count-only stops here (EXP-96). Not "fetch then discard": the rows are the cost, and the
+        // whole reason this mode exists is that over a 505-expert roster they are ~31k tokens the
+        // Tool Result Budget refuses — so "how many experts are on the roster" had no answer at
+        // all. The count is the same count either way; it is the payload that goes away.
+        if (query.CountOnly)
+        {
+            return new ExpertListResult(total, []);
+        }
+
         var experts = await matches
             .Include(e => e.AvailabilityEntries)
             .OrderBy(e => e.LastName).ThenBy(e => e.FirstName)

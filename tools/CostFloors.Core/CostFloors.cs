@@ -102,6 +102,20 @@ public static class CostFloors
     public const int ExpertListFilteredCeiling = 187;
 
     /// <summary>
+    /// Ceiling on <c>expert_list</c> called with <c>countOnly</c> — EXP-96's answer to "how many
+    /// experts are on the roster in total?", which EXP-94's filters could not reach. The payload is
+    /// <c>{"total":n,"items":[]}</c>, so it does not grow with the roster: 6 estimated tokens over
+    /// the seeded 45, and 6 over the 505 that produced the bug, against 2,810 and ~31,000 for the
+    /// sweeps. That invariance is the point — <c>roster-qa</c>'s MaxToolResultTokens is 5,000, and
+    /// a result this size can never be the thing that is refused.
+    ///
+    /// <para>Pinned small deliberately. A count that ever starts carrying rows would show up here
+    /// first, and the exact bytes are asserted too, in
+    /// <c>Mcp.Tests/ExpertToolsTests.expert_list_count_only_serialises_to_a_number_and_an_empty_array</c>.</para>
+    /// </summary>
+    public const int ExpertListCountOnlyCeiling = 6;
+
+    /// <summary>
     /// Read tools whose result cannot be measured without a model: they embed the query first, so
     /// they have no place in a deterministic floor. Their results are the CHEAP half anyway
     /// (73–1,183 tokens in the traced run) — the structured tools above are the expensive ones.
@@ -146,7 +160,16 @@ public static class CostFloors
             // could only ever answer "everyone" or "nobody" — 39 tokens an iteration for a filter
             // with no reachable second answer. The location filter and total stay; they are the
             // fix EXP-94 was for.
-            ["expert_list"] = 334,
+            //
+            // RAISED 334 → 394 by EXP-96, the third deliberate re-baseline in this file. EXP-94
+            // made "how many experts are based in Warsaw" answerable; the UNFILTERED count still
+            // was not — the only way to ask was for all 505 rows (~31k tokens), which the Tool
+            // Result Budget refuses, so "how many experts are on the roster in total?" got "the
+            // roster is too large to retrieve" instead of a number. countOnly returns the total
+            // and no rows: +60 tokens an iteration against a result that is 6 tokens at ANY roster
+            // size (ExpertListCountOnlyCeiling) where the alternative is refused outright. Down
+            // from here, never back up.
+            ["expert_list"] = 394,
             ["roster_digest_list"] = 299,
             // P1T-148 made its filters read as the primary path for a compound question and
             // paid for the words by cutting elaboration — a ratchet down, not a trade.
@@ -237,9 +260,12 @@ public static class CostFloors
     /// allowlist, not by shortening the surface. 3,962 → 4,094 with EXP-94's <c>expert_list</c>
     /// re-baseline, the same trade: +132 on the surface, bought by a filter that takes the result
     /// it narrows from 2,810 tokens to under a hundred. 4,094 → 4,055 by EXP-100, which gave 39 of
-    /// those 132 back by dropping the half of that re-baseline that could not change an answer.</para>
+    /// those 132 back by dropping the half of that re-baseline that could not change an answer.
+    /// 4,055 → 4,115 by EXP-96's <c>countOnly</c>, the same trade once more: 60 tokens on the
+    /// surface, bought by a call that answers a count in 6 tokens where the row dump it replaces is
+    /// refused before the model sees it.</para>
     /// </summary>
-    public const int ReadToolSurfaceCeiling = 4_055;
+    public const int ReadToolSurfaceCeiling = 4_115;
 
     /// <summary>
     /// Each agent's <b>Tool Allowlist</b> (P1T-146), keyed by the agent's <c>McpAuth:&lt;agent&gt;</c>
@@ -336,7 +362,11 @@ public static class CostFloors
             //
             // 1,988 → 1,949 by EXP-100: expert_list's schema lost the status filter, which this
             // agent could never have used — it reads the bench, where everyone is Active.
-            ["RosterQaAgent"] = 1_949,
+            //
+            // 1,949 → 2,009 by EXP-96: expert_list's schema gained countOnly. Same agent, same
+            // reason as EXP-94 — it is the one that could not answer "how many experts are on the
+            // roster in total?", so it is the one that pays the 60 tokens that make it answerable.
+            ["RosterQaAgent"] = 2_009,
             ["CvTailoringAgent"] = 1_186,
             // +132 for P1T-145's skill_list schema, which this agent is also shown, then +140 for
             // P1T-155's Batching and lookup rules. The one baseline in this table that went UP:
@@ -421,8 +451,15 @@ public static class CostFloors
     /// computed, so a ratchet underneath it only reaches the run price when someone moves it —
     /// read the new number off <c>ConvergenceCostFloorTests</c>' output, never derive it by
     /// hand.</para>
+    ///
+    /// <para>7,221 → 7,401 by EXP-96's <c>countOnly</c>: +60 on the baseline, re-sent on all three
+    /// calls. 2,009×3 + 87×2 + 1,200, read off the floor's output. As with EXP-94, the reference
+    /// question never calls <c>expert_list</c> — it pays for the schema because the tool is in its
+    /// allowlist, and what it buys is the agent being able to answer "how many experts are on the
+    /// roster in total?" at all, instead of saying the roster is too large to retrieve. 599 of the
+    /// 8,000 target left; the baseline is still the term worth moving.</para>
     /// </summary>
-    public const int RosterQaConvergentRunCeiling = 7_221;
+    public const int RosterQaConvergentRunCeiling = 7_401;
 
     /// <summary>
     /// Prices one agent run along a declared tool path, model-free — Turn Amplification made

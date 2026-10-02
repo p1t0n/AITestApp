@@ -129,6 +129,7 @@ Read-tool results, 45-expert demo roster:
 | `category_tree` | 3,379 | |
 | `expert_list` (unfiltered) | 2,810 | 12.7% of the same run; +5 for EXP-94's `{total, items}` envelope |
 | `expert_list` (`location: "warsaw"`) | 187 | **EXP-94** — the call a count question should make, ratcheted as `ExpertListFilteredCeiling` |
+| `expert_list` (`countOnly: true`) | 6 | **EXP-96** — `{"total":n,"items":[]}`, the same size at 45 experts and at 505; ratcheted as `ExpertListCountOnlyCeiling` |
 | `expert_get` | 2,064 | |
 | `cv_get` | 1,643 | |
 | `category_list` | 270 | |
@@ -152,8 +153,9 @@ Baseline Prompt Size:
 Instructions only (no tools reach the model): shortlist 121, bench-report 199, roster-scan
 scorer 199, JD-requirement extractor 237.
 
-The read surface totals **4,055** across 11 tools (3,962 before EXP-94 taught `expert_list` its
-filters, 4,094 before EXP-100 took the `status` one back out); the widest single schemas are
+The read surface totals **4,115** across 11 tools (3,962 before EXP-94 taught `expert_list` its
+filters, 4,094 before EXP-100 took the `status` one back out, 4,055 before EXP-96 added
+`countOnly`); the widest single schemas are
 `style_exemplar_search` 689, `roster_shortlist_search` 635 and `roster_semantic_search` 611. Since
 P1T-146 no agent is shown all of it — each identity's Tool Allowlist is declared in
 `CostFloors.AgentToolAllowlists` and configured under `McpAuth:<agent>:Tools`.
@@ -199,12 +201,13 @@ description that does not change what comes back — is not.
 
 ### Convergent run (P1T-148)
 
-The reference question *"who knows react and lives in London"* prices at **7,221** along
-`skill_list` → `roster_semantic_search` → answer: 1,949 × 3 model calls, plus 87 × 2 and 1,200 × 1
+The reference question *"who knows react and lives in London"* prices at **7,401** along
+`skill_list` → `roster_semantic_search` → answer: 2,009 × 3 model calls, plus 87 × 2 and 1,200 × 1
 for the results each following call re-sends. It was 6,984 at a 1,870 baseline; EXP-94 raised the
 baseline by 132 for `expert_list`'s two filters, which this path does not call and still pays for,
-because the tool is in roster-qa's allowlist, and EXP-100 gave 39 of them back by dropping the
-filter that could not change an answer (7,338 → 7,221). Its iteration ratchet is **4** model calls; the
+because the tool is in roster-qa's allowlist, EXP-100 gave 39 of them back by dropping the
+filter that could not change an answer (7,338 → 7,221), and EXP-96 spent 60 on `countOnly`
+(7,221 → 7,401). Its iteration ratchet is **4** model calls; the
 traced run took 10. This ceiling is composed from the two tables above rather than pinned
 independently, so it tightens whenever they do — re-read it off the test output, never re-derive
 it by hand:
