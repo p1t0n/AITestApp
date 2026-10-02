@@ -28,7 +28,7 @@ public class RosterShortlistToolsTests
     [Fact]
     public async Task Calling_the_tool_returns_coverage_ranked_candidates_with_evidence()
     {
-        var stub = new StubShortlist(new ShortlistMatches(
+        var stub = new StubShortlist(new ShortlistSearchResult(
         [
             new ShortlistCandidate(
                 Guid.NewGuid(), "Ada Lovelace", "Payments Lead", 0.7841, 2, 3,
@@ -75,7 +75,7 @@ public class RosterShortlistToolsTests
     [Fact]
     public async Task Calling_without_filters_passes_null_filters()
     {
-        var stub = new StubShortlist(ShortlistMatches.None);
+        var stub = new StubShortlist(ShortlistSearchResult.None);
 
         using var factory = McpTestHost.CreateFactory(nameof(Calling_without_filters_passes_null_filters) + "_shortlist")
             .WithWebHostBuilder(builder => builder.ConfigureServices(services =>
@@ -106,7 +106,7 @@ public class RosterShortlistToolsTests
     [Fact]
     public async Task The_serialised_tool_result_is_byte_for_byte_the_published_shape()
     {
-        var stub = new StubShortlist(new ShortlistMatches(
+        var stub = new StubShortlist(new ShortlistSearchResult(
         [
             new ShortlistCandidate(
                 Guid.Parse("11111111-1111-1111-1111-111111111111"), "Ada Lovelace", "Payments Lead",
@@ -142,7 +142,7 @@ public class RosterShortlistToolsTests
     [Fact]
     public async Task The_serialised_fault_result_is_byte_for_byte_the_published_shape()
     {
-        var stub = new StubShortlist(new ShortlistSearchFault("The semantic search backend is unavailable."));
+        var stub = new StubShortlist(new ShortlistSearchResult([], "The semantic search backend is unavailable."));
 
         using var factory = McpTestHost.CreateFactory(nameof(The_serialised_fault_result_is_byte_for_byte_the_published_shape))
             .WithWebHostBuilder(builder => builder.ConfigureServices(services =>
@@ -166,15 +166,15 @@ public class RosterShortlistToolsTests
 
     private sealed class StubShortlist : IShortlistSearchService
     {
-        private readonly ShortlistSearchOutcome _result;
+        private readonly ShortlistSearchResult _result;
 
-        public StubShortlist(ShortlistSearchOutcome result) => _result = result;
+        public StubShortlist(ShortlistSearchResult result) => _result = result;
 
         public IReadOnlyList<string>? LastRequirements { get; private set; }
         public SemanticSearchFilters? LastFilters { get; private set; }
         public int? LastTopK { get; private set; }
 
-        public Task<ShortlistSearchOutcome> SearchAsync(
+        public Task<ShortlistSearchResult> SearchAsync(
             IReadOnlyList<string> requirements, SemanticSearchFilters? filters = null, int? topK = null,
             CancellationToken ct = default)
         {

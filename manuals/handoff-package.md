@@ -85,7 +85,7 @@ the match fan-out races). Each stage appends its slice where it already meters:
 **OTel**: each slice's facts are stamped as `handoff.slice.*` tags on the existing stage spans
 (`Activity.Current` at append time) — no new span hierarchy.
 
-The package rides `StaffingRunOutcome.Package`; the report/SSE contracts are unchanged.
+The package rides `StaffingRun.Package`; the report/SSE contracts are unchanged.
 
 ## Persistence + restart survival (P1T-133)
 

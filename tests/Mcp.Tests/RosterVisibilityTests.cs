@@ -81,12 +81,8 @@ public sealed class RosterVisibilityTests : IAsyncLifetime
 
         var result = await Search().SearchAsync(["fintech trading systems"]);
 
-        var candidates = result switch
-        {
-            ShortlistMatches matches => matches.Results,
-            ShortlistSearchFault fault => throw new InvalidOperationException(fault.Error),
-        };
-        candidates.Select(c => c.Name).Should().NotContain("Fiona Fintech");
+        result.Error.Should().BeNull();
+        result.Results.Select(c => c.Name).Should().NotContain("Fiona Fintech");
     }
 
     /// <summary>

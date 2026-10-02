@@ -132,7 +132,7 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
     /// per requirement over the pre-filtered chunk set, then merge coverage-first via
     /// <see cref="ShortlistRanker"/> (requirements matched before similarity).
     /// </summary>
-    public async Task<ShortlistSearchOutcome> SearchAsync(
+    public async Task<ShortlistSearchResult> SearchAsync(
         IReadOnlyList<string> requirements, SemanticSearchFilters? filters = null, int? topK = null,
         CancellationToken ct = default)
     {
@@ -141,7 +141,7 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
             .ToList();
         if (cleaned.Count == 0)
         {
-            return ShortlistMatches.None;
+            return ShortlistSearchResult.None;
         }
 
         var limit = Math.Clamp(topK ?? _options.ShortlistDefaultTopK, 1, _options.ShortlistMaxTopK);
@@ -157,13 +157,13 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Shortlist search could not embed the requirements; returning a soft error.");
-            return new ShortlistSearchFault("The semantic search backend is unavailable.");
+            return new ShortlistSearchResult([], "The semantic search backend is unavailable.");
         }
 
         var eligibleIds = await ResolveEligibleExpertsAsync(filters, ct);
         if (eligibleIds is { Count: 0 })
         {
-            return ShortlistMatches.None; // filters excluded everyone
+            return ShortlistSearchResult.None; // filters excluded everyone
         }
 
         // One cosine query per requirement; keep each expert's best chunk as that requirement's match.
@@ -186,7 +186,7 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
         var merged = ShortlistRanker.Rank(cleaned, matchesPerRequirement, limit);
         if (merged.Count == 0)
         {
-            return ShortlistMatches.None;
+            return ShortlistSearchResult.None;
         }
 
         var ids = merged.Select(x => x.ExpertId).ToList();
@@ -212,7 +212,7 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
             })
             .ToList();
 
-        return new ShortlistMatches(candidatesRanked);
+        return new ShortlistSearchResult(candidatesRanked);
     }
 
     private const string LexicalDegradedReason =

@@ -138,23 +138,18 @@ public sealed class ShortlistSearchServiceTests : IAsyncLifetime
         Faulted(result).Should().NotBeNullOrWhiteSpace();
     }
 
-    /// <summary>Asserts the matches case of the union and hands back the candidates. The arms are
-    /// exhaustive, so a fault here fails as a fault rather than as a null-reference two lines
-    /// later — which is the whole point of the union.</summary>
-    private static IReadOnlyList<ShortlistCandidate> Matched(ShortlistSearchOutcome outcome) => outcome switch
-    {
-        ShortlistMatches matches => matches.Results,
-        ShortlistSearchFault fault => throw new InvalidOperationException(
-            $"Expected candidates; the search faulted with: {fault.Error}"),
-    };
+    /// <summary>Hands back the candidates, failing as a fault rather than as a null-reference two
+    /// lines later when retrieval actually broke.</summary>
+    private static IReadOnlyList<ShortlistCandidate> Matched(ShortlistSearchResult result) =>
+        result.Error is { } error
+            ? throw new InvalidOperationException($"Expected candidates; the search faulted with: {error}")
+            : result.Results;
 
     /// <summary>The mirror of <see cref="Matched"/> for the soft-error path.</summary>
-    private static string Faulted(ShortlistSearchOutcome outcome) => outcome switch
-    {
-        ShortlistMatches matches => throw new InvalidOperationException(
-            $"Expected a fault; the search returned {matches.Results.Count} candidate(s)."),
-        ShortlistSearchFault fault => fault.Error,
-    };
+    private static string Faulted(ShortlistSearchResult result) =>
+        result.Error
+        ?? throw new InvalidOperationException(
+            $"Expected a fault; the search returned {result.Results.Count} candidate(s).");
 
     private IShortlistSearchService Service(IEmbedder? embedder = null) => new SemanticSearchService(
         NewDb(), embedder ?? new CountingKeywordEmbedder(),

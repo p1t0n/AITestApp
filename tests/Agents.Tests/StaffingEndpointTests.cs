@@ -255,6 +255,52 @@ public class StaffingEndpointTests
         body.GetProperty("notes").GetArrayLength().Should().Be(0);
     }
 
+    /// <summary>
+    /// The two terminal frames, pinned as whole payloads rather than field by field. The field
+    /// assertions above say each value is right; this one says nothing else is there and nothing
+    /// moved — which is what a refactor of the outcome type crossing this boundary (EXP-99) has
+    /// to leave alone. The one value that cannot be literal is the generated proposal id, so it
+    /// is substituted for a placeholder and asserted separately above.
+    /// </summary>
+    [Fact]
+    public async Task The_terminal_report_and_error_payloads_are_byte_for_byte_the_pinned_contract()
+    {
+        using var factory = FakedHost();
+        using var client = factory.CreateAuthenticatedClient();
+
+        using var response = await client.PostSseAsync(
+            "/agents/staffing",
+            new { jobDescription = "Platform engineer: Kafka, Kubernetes, leadership.", matchTop = 2 });
+
+        var frames = await response.ReadAllSseFramesAsync();
+        frames[^1].Event.Should().Be("report");
+        var proposalId = frames[^1].Json.GetProperty("proposalId").GetGuid();
+
+        frames[^1].Data.Replace(proposalId.ToString(), "<proposalId>").Should().Be(
+            """
+            {"requirements":["event streaming with Kafka","Kubernetes operations","team leadership"],"candidates":[{"expertId":"11111111-1111-1111-1111-111111111111","name":"Ada Lovelace","title":"Platform Lead","shortlist":{"score":0.91,"coverage":{"matched":2,"total":3},"requirements":[{"text":"event streaming with Kafka","matched":true,"snippet":"Built Kafka pipelines."},{"text":"Kubernetes operations","matched":true,"snippet":"Ran K8s clusters."},{"text":"team leadership","matched":false}]},"match":{"status":"completed","score":78,"band":"Strong","answer":"Gap analysis for 11111111-1111-1111-1111-111111111111.","error":null},"rationale":"Best coverage."},{"expertId":"22222222-2222-2222-2222-222222222222","name":"Grace Hopper","title":"Platform Lead","shortlist":{"score":0.91,"coverage":{"matched":2,"total":3},"requirements":[{"text":"event streaming with Kafka","matched":true,"snippet":"Built Kafka pipelines."},{"text":"Kubernetes operations","matched":true,"snippet":"Ran K8s clusters."},{"text":"team leadership","matched":false}]},"match":{"status":"completed","score":78,"band":"Strong","answer":"Gap analysis for 22222222-2222-2222-2222-222222222222.","error":null},"rationale":"Solid depth."}],"recommendation":{"expertId":"11111111-1111-1111-1111-111111111111","narrative":"Ada is the strongest fit."},"degraded":false,"notes":[],"proposalId":"<proposalId>"}
+            """);
+    }
+
+    [Fact]
+    public async Task The_terminal_error_payload_is_byte_for_byte_the_pinned_contract()
+    {
+        var shortlist = new FakeShortlistRunService(
+            _ => throw new HttpRequestException("model endpoint unreachable"));
+        using var factory = FakedHost(shortlist);
+        using var client = factory.CreateAuthenticatedClient();
+
+        using var response = await client.PostSseAsync(
+            "/agents/staffing", new { jobDescription = "Platform engineer." });
+
+        var frames = await response.ReadAllSseFramesAsync();
+        frames[^1].Event.Should().Be("error");
+        frames[^1].Data.Should().Be(
+            """
+            {"title":"Upstream dependency failed (staffing shortlist step).","detail":"model endpoint unreachable"}
+            """);
+    }
+
     [Fact]
     public async Task The_report_carries_a_proposal_id_and_a_human_decides_it_exactly_once()
     {
