@@ -17,10 +17,10 @@ namespace ExpertToJob.Agents.Configuration;
 ///
 /// <para>This lives beside the seam rather than inline in <c>api/Agents/Program.cs</c> so that both
 /// halves of that rule are reachable by a test. It is not a second place a provider is chosen: it
-/// asks the seam which one is active and looks up that provider's credential, and the variable
-/// names it requires are the same constants the construction branches read
-/// (<see cref="ChatProviderOptions.ApiKeyVariableFor"/>), so a guard cannot come to demand a key no
-/// branch would use.</para>
+/// asks the seam which one is active and then asks the seam's own
+/// <see cref="ChatCredential.Resolve"/> whether that provider has a credential, so a guard cannot
+/// come to demand a key no branch would use — nor to accept one the runtime would refuse
+/// (EXP-97).</para>
 ///
 /// <para>Embeddings are not covered here and must not become conditional on the chat provider: they
 /// follow their own key and are registered in the MCP host, not this one. Their guard is
@@ -34,6 +34,15 @@ public static class ChatProviderStartupGuard
     /// Throws when a Production host has no credential for its active chat provider, in either
     /// place that provider's construction branch reads: the environment variable it reads by name,
     /// or the provider's own <c>ApiKey</c> config path.
+    ///
+    /// <para>It does not decide that for itself — it asks <see cref="ChatCredential.Resolve"/>, the
+    /// same call the construction branch registers its credential from (EXP-97). It used to repeat
+    /// the two lookups, and the copies disagreed about a whitespace-only environment variable:
+    /// this guard read it with <see cref="string.IsNullOrWhiteSpace"/>, fell back to the config key
+    /// and booted, while <see cref="ChatCredential.Resolve"/> took any non-empty value and resolved
+    /// to missing. A Production host set up that way started and then returned the EXP-93 503 on
+    /// every agent call — a startup mistake discovered at request time, which is the one thing this
+    /// guard exists to prevent.</para>
     /// </summary>
     /// <param name="config">The host's configuration — the discriminator and the provider blocks.</param>
     /// <param name="environment">The host environment. Non-Production returns without a check.</param>
@@ -55,27 +64,24 @@ public static class ChatProviderStartupGuard
         }
 
         var provider = ChatProviderServiceCollectionExtensions.ReadProvider(config);
-        var (variable, configPath) = CredentialFor(provider);
-        var readVariable = readEnvironmentVariable ?? Environment.GetEnvironmentVariable;
+        var credential = ChatCredential.Resolve(
+            provider,
+            ChatProviderServiceCollectionExtensions.Bind(config, provider),
+            readEnvironmentVariable);
 
-        if (!string.IsNullOrWhiteSpace(readVariable(variable))
-            || !string.IsNullOrWhiteSpace(config[configPath]))
+        if (!credential.IsMissing)
         {
             return;
         }
 
+        // The two spellings an operator would set come off the runtime's own failure, so the
+        // startup message and the request-time 503 can never name different settings.
+        var missing = new ChatCredentialMissingException(provider);
         throw new InvalidOperationException(
             $"No API key for the configured chat provider. "
             + $"'{ChatProviderServiceCollectionExtensions.ProviderKey}' is '{provider}', so set "
-            + $"{variable} (or '{configPath}') before running in Production. "
-            + "See manuals/adr-chat-provider-seam.md.");
+            + $"{missing.Variable} (or '{missing.ConfigPath}') before running in Production. "
+            + "See manuals/adr-chat-provider-seam.md.",
+            missing);
     }
-
-    /// <summary>Where the active provider's credential comes from — the same two lookups the
-    /// construction branch reads, so a new <see cref="ChatProvider"/> member that reaches here
-    /// without an entry in <see cref="ChatProviderOptions"/> throws there rather than booting
-    /// Production unguarded.</summary>
-    private static (string Variable, string ConfigPath) CredentialFor(ChatProvider provider) =>
-        (ChatProviderOptions.ApiKeyVariableFor(provider),
-            $"{ChatProviderOptions.SectionFor(provider)}:ApiKey");
 }
