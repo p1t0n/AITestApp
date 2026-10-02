@@ -20,15 +20,11 @@ public sealed record EvalRunResult(EvalMetrics Metrics, IReadOnlyList<EvalQueryT
 /// Unlike the agents' 429 ladders this one retries on a <em>result</em>: the search service answers
 /// a soft failure as <see cref="SemanticSearchResult.Error"/> rather than by throwing, so the
 /// predicate reads the outcome, not an exception type, and the two cannot share a builder.
-/// <see cref="None"/> fails on the first error — the plumbing/live-test behavior — while
-/// <see cref="Default"/> rides out per-minute limits.
+/// A budget of one attempt is the empty pipeline — the first soft error is the answer, which is
+/// the plumbing/live-test behavior — while <see cref="Default"/> rides out per-minute limits.
 /// </summary>
 public static class QueryRetry
 {
-    /// <summary>No ladder at all: the first soft error is the answer.</summary>
-    public static ResiliencePipeline<SemanticSearchResult> None { get; } =
-        ResiliencePipeline<SemanticSearchResult>.Empty;
-
     /// <summary>The shipped ladder: five attempts, waiting 20s, 40s, 60s then 80s.</summary>
     public static ResiliencePipeline<SemanticSearchResult> Default(TimeProvider clock) =>
         Ladder(maxAttempts: 5, step: TimeSpan.FromSeconds(20), clock);
@@ -38,7 +34,7 @@ public static class QueryRetry
     public static ResiliencePipeline<SemanticSearchResult> Ladder(
         int maxAttempts, TimeSpan step, TimeProvider clock) =>
         maxAttempts <= 1
-            ? None
+            ? ResiliencePipeline<SemanticSearchResult>.Empty
             : new ResiliencePipelineBuilder<SemanticSearchResult> { TimeProvider = clock }
                 .AddRetry(new RetryStrategyOptions<SemanticSearchResult>
                 {
@@ -100,7 +96,7 @@ public static class EvalRunner
         ResiliencePipeline<SemanticSearchResult>? retry = null,
         CancellationToken ct = default)
     {
-        retry ??= QueryRetry.None;
+        retry ??= ResiliencePipeline<SemanticSearchResult>.Empty;
         var keysById = await SeedAndIndexAsync(dbFactory, embedder, corpus, ct);
 
         await using var db = dbFactory();

@@ -235,14 +235,6 @@ builder.Services.AddSingleton(sp => new JdMatchRunService(
 builder.Services.AddOptions<StaffingOptions>().Bind(builder.Configuration.GetSection(StaffingOptions.Section));
 builder.Services.AddSingleton(sp => new StaffingThrottle(
     sp.GetRequiredService<IOptions<StaffingOptions>>().Value.MaxConcurrentMatches));
-const string StaffingMatchRetry = "staffing-match";
-// The match step's 429 ladder: three attempts per candidate, waiting 5s then 10s — enough to ride
-// out a free-tier per-minute limit without stalling the report for long (EXP-87). Keyed, because
-// `ResiliencePipeline` is a shape, not a name, and the next ladder registered must not shadow it.
-builder.Services.AddKeyedSingleton(
-    StaffingMatchRetry,
-    (sp, _) => RateLimitRetry.Linear(
-        maxAttempts: 3, step: TimeSpan.FromSeconds(5), sp.GetRequiredService<TimeProvider>()));
 // The proposal ledger (P1T-100): staffing runs persist a pending proposal; humans decide it.
 builder.Services.AddScoped<StaffingProposalStore>();
 // The handoff package's identity facts (client ids + scopes, never secrets) come from the same
@@ -255,7 +247,13 @@ builder.Services.AddScoped(sp => new StaffingPipeline(
     sp.GetRequiredService<IUsageService>(),
     sp.GetRequiredService<IUsageMeter>(),
     sp.GetRequiredService<StaffingThrottle>(),
-    sp.GetRequiredKeyedService<ResiliencePipeline>(StaffingMatchRetry),
+    // The match step's 429 ladder: three attempts per candidate, waiting 5s then 10s — enough to
+    // ride out a free-tier per-minute limit without stalling the report for long (EXP-87).
+    RateLimitRetry.Build(
+        maxAttempts: 3,
+        TimeSpan.FromSeconds(5),
+        DelayBackoffType.Linear,
+        sp.GetRequiredService<TimeProvider>()),
     sp.GetRequiredService<IAgentIdentitySource>(),
     sp.GetRequiredService<TimeProvider>(),
     sp.GetRequiredService<ILogger<StaffingPipeline>>()));

@@ -81,7 +81,7 @@ public class StaffingPipelineTests
         usage ?? new FakeUsageService(),
         meter ?? new RecordingUsageMeter(),
         new StaffingThrottle(maxConcurrentMatches),
-        retry ?? RateLimitRetry.Linear(maxAttempts: 3, TimeSpan.Zero, TimeProvider.System),
+        retry ?? RateLimitRetry.Build(maxAttempts: 3, TimeSpan.Zero, DelayBackoffType.Linear, TimeProvider.System),
         new NullAgentIdentitySource(),
         clock ?? TimeProvider.System,
         NullLogger<StaffingPipeline>.Instance);
@@ -89,7 +89,7 @@ public class StaffingPipelineTests
     /// <summary>The shipped match ladder, built on <paramref name="clock"/>. The one line that
     /// knows how the ladder is constructed — the freeze test below reads only its behaviour.</summary>
     private static ResiliencePipeline MatchLadder(TimeProvider clock) =>
-        RateLimitRetry.Linear(maxAttempts: 3, step: TimeSpan.FromSeconds(5), clock);
+        RateLimitRetry.Build(maxAttempts: 3, TimeSpan.FromSeconds(5), DelayBackoffType.Linear, clock);
 
     private static Task<StaffingRun> RunAsync(
         StaffingPipeline pipeline, int? matchTop = null, string jobDescription = "Platform engineer.") =>
@@ -384,7 +384,7 @@ public class StaffingPipelineTests
             new FakeShortlistRunService(ShortlistOk(Candidate(1))),
             match,
             NarrativeChat(NarrativeJson(Id(1), Id(1))),
-            retry: RateLimitRetry.Linear(maxAttempts: 3, TimeSpan.Zero, TimeProvider.System));
+            retry: RateLimitRetry.Build(maxAttempts: 3, TimeSpan.Zero, DelayBackoffType.Linear, TimeProvider.System));
 
         var outcome = await RunAsync(pipeline, matchTop: 1);
 
@@ -402,7 +402,7 @@ public class StaffingPipelineTests
             new FakeShortlistRunService(ShortlistOk(Candidate(1))),
             match,
             NarrativeChat(NarrativeJson(Id(1), Id(1))),
-            retry: RateLimitRetry.Linear(maxAttempts: 3, TimeSpan.Zero, TimeProvider.System));
+            retry: RateLimitRetry.Build(maxAttempts: 3, TimeSpan.Zero, DelayBackoffType.Linear, TimeProvider.System));
 
         var outcome = await RunAsync(pipeline, matchTop: 1);
 

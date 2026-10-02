@@ -100,8 +100,11 @@ public sealed class QueuedSyncScoringTransport : IScoringTransport
     {
         _chat = chat;
         _limiter = limiter;
-        _retry = RateLimitRetry.Exponential(
-            options.MaxRetryAttempts, TimeSpan.FromSeconds(options.RetryBaseSeconds), clock);
+        _retry = RateLimitRetry.Build(
+            options.MaxRetryAttempts,
+            TimeSpan.FromSeconds(options.RetryBaseSeconds),
+            DelayBackoffType.Exponential,
+            clock);
     }
 
     public async Task<ScoredChunk> ScoreChunkAsync(
