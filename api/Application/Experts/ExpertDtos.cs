@@ -130,9 +130,13 @@ public record UpdateExpertDto(
 /// <param name="Location">Case-insensitive <em>contains</em> over the expert's location. A row
 /// with no location never matches a non-empty needle.</param>
 /// <param name="IncludeDrafts">Drafts opt in (review surfaces), as in the unfiltered listing.</param>
+/// <param name="CountOnly">Answer with the total and no rows (EXP-96). The match is the same one
+/// the rows would have been drawn from — same visibility, same filters — so the number is the
+/// number, just without the payload that made asking for it impossible.</param>
 public sealed record ExpertListQuery(
     string? Location = null,
-    bool IncludeDrafts = false);
+    bool IncludeDrafts = false,
+    bool CountOnly = false);
 
 /// <summary>
 /// The bench listing's result: the matching rows, and how many there are.
@@ -141,5 +145,11 @@ public sealed record ExpertListQuery(
 /// come from, so "how many experts are in Warsaw" is answered by a number the caller can read
 /// without counting a list — which is the whole point when the reader is a model with a tool-result
 /// budget and a 500-row dump is refused before it ever sees it (EXP-94).</para>
+///
+/// <para>Under <see cref="ExpertListQuery.CountOnly"/> the rows are not fetched at all and
+/// <c>Items</c> is empty (EXP-96). Empty rather than absent: one shape, so a caller reads
+/// <c>Total</c> the same way whichever call it made, and the payload is <c>{"total":n,"items":[]}</c>
+/// at every roster size — which is what makes "how many experts are on the roster" answerable when
+/// listing them is not.</para>
 /// </summary>
 public sealed record ExpertListResult(int Total, IReadOnlyList<ExpertSummaryDto> Items);

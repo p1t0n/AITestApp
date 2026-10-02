@@ -155,6 +155,34 @@ public sealed class ReadToolResultCostFloorTests(ITestOutputHelper output) : IAs
         page.GetProperty("items").GetArrayLength().Should().Be(3);
     }
 
+    /// <summary>
+    /// EXP-96's count-only call, measured. The filtered call above is cheap because the filter is
+    /// narrow; this one is cheap no matter what is asked, because the rows never leave the
+    /// database — which is what makes it the answer to "how many experts are on the roster in
+    /// total?", the question the unfiltered sweep could not answer at all over 505 experts.
+    /// </summary>
+    [Fact]
+    public async Task Expert_list_count_only_is_a_number_the_budget_can_never_refuse()
+    {
+        await using var client = await McpTestHost.ConnectAsync(_factory, McpTestHost.MintToken(McpTestHost.ReadScope));
+
+        var result = await client.CallToolAsync(
+            "expert_list", new Dictionary<string, object?> { ["countOnly"] = true });
+        var text = McpTestHost.Text(result);
+        var tokens = TokenEstimate.Of(text);
+        output.WriteLine($"expert_list (countOnly) {tokens,6} tokens");
+
+        tokens.Should().BeLessThanOrEqualTo(
+            ExpertToJob.CostFloors.CostFloors.ExpertListCountOnlyCeiling,
+            "a count must stay answerable at any roster size");
+
+        // The number is the whole seeded roster, not a page of it — cheap because the rows stayed
+        // in the database, not because the count was truncated.
+        var page = JsonDocument.Parse(text).RootElement;
+        page.GetProperty("total").GetInt32().Should().Be(ExpertToJob.CostFloors.CostFloors.DemoRosterExperts);
+        page.GetProperty("items").GetArrayLength().Should().Be(0);
+    }
+
     [Fact]
     public async Task Every_read_tool_is_either_ratcheted_or_declared_model_backed()
     {

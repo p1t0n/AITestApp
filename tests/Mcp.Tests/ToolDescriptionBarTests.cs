@@ -24,7 +24,11 @@ public class ToolDescriptionBarTests
             // EXP-94: the filter and the total are the whole point — a description that stops
             // naming them sends the model back to dumping 500 rows, having them refused by the
             // Tool Result Budget, and answering "no experts in Warsaw" over 31 of them.
-            "location", "total", "{\"location\": \"Warsaw\"}"]),
+            "location", "total", "{\"location\": \"Warsaw\"}",
+            // EXP-96: count-only is the only way "how many experts are on the roster in total?"
+            // has an answer — the unfiltered row dump is refused by the Tool Result Budget long
+            // before the model sees it. A description that stops naming it takes the answer away.
+            "countOnly", "{\"countOnly\": true}"]),
         ("expert_get", [
             "roster_semantic_search", "roster_shortlist_search", "cv_get", "expert_list",
             "roster_digest_list", "\"id\":", "not_found", "no PDF", "availability step function"]),

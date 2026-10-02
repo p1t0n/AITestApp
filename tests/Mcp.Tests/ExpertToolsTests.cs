@@ -202,26 +202,6 @@ public class ExpertToolsTests
         doc.RootElement.GetProperty("items").GetArrayLength().Should().Be(0);
     }
 
-    /// <summary>
-    /// EXP-100: the status filter is gone, and the tool advertises exactly one input. The MCP
-    /// path never sets <c>IncludeDrafts</c>, so every row it can return is Active and a status
-    /// filter could only ever answer "everyone" or "nobody" — a parameter the model paid 132
-    /// tokens per iteration to be taught and could not use. Asserted on the advertised schema
-    /// rather than on a call, because the cost is in being offered it at all.
-    /// </summary>
-    [Fact]
-    public async Task expert_list_advertises_location_as_its_only_input()
-    {
-        using var factory = McpTestHost.CreateFactory(nameof(expert_list_advertises_location_as_its_only_input));
-        await using var client = await McpTestHost.ConnectAsync(factory);
-
-        var tool = (await client.ListToolsAsync()).Single(t => t.Name == "expert_list");
-
-        using var schema = JsonDocument.Parse(JsonSerializer.Serialize(tool.ProtocolTool.InputSchema));
-        schema.RootElement.GetProperty("properties").EnumerateObject()
-            .Select(p => p.Name).Should().Equal("location");
-    }
-
     /// <summary>A status argument is no longer a filter the tool knows, so passing one cannot
     /// quietly narrow (or quietly widen) the bench.</summary>
     [Fact]
@@ -237,5 +217,122 @@ public class ExpertToolsTests
 
         using var doc = JsonDocument.Parse(ResultText(result));
         doc.RootElement.GetProperty("total").GetInt32().Should().Be(2);
+    }
+
+    /// <summary>
+    /// EXP-96: the count-only mode. "How many experts are on the roster in total?" had no answer —
+    /// the only way to ask was for every row, and over the 505-expert roster that is ~31k tokens
+    /// the Tool Result Budget refuses outright. Count-only returns the total and no rows.
+    /// </summary>
+    [Fact]
+    public async Task expert_list_count_only_returns_the_total_and_no_rows()
+    {
+        using var factory = McpTestHost.CreateFactory(nameof(expert_list_count_only_returns_the_total_and_no_rows));
+        await using var client = await McpTestHost.ConnectAsync(factory);
+
+        await SeedAsync(client,
+            ("Kowalski", "Warsaw, Poland"),
+            ("Nowak", "warsaw, poland"),
+            ("Schmidt", "Berlin, Germany"));
+
+        var result = await client.CallToolAsync(
+            "expert_list", new Dictionary<string, object?> { ["countOnly"] = true });
+
+        result.IsError.Should().NotBe(true);
+        using var doc = JsonDocument.Parse(ResultText(result));
+        doc.RootElement.GetProperty("total").GetInt32().Should().Be(3);
+        doc.RootElement.GetProperty("items").GetArrayLength().Should().Be(0);
+    }
+
+    /// <summary>A count-only call still answers the question the filter asks, so "how many in
+    /// Warsaw" needs neither the rows nor a second call.</summary>
+    [Fact]
+    public async Task expert_list_count_only_counts_the_filtered_match()
+    {
+        using var factory = McpTestHost.CreateFactory(nameof(expert_list_count_only_counts_the_filtered_match));
+        await using var client = await McpTestHost.ConnectAsync(factory);
+
+        await SeedAsync(client,
+            ("Kowalski", "Warsaw, Poland"),
+            ("Nowak", "warsaw, poland"),
+            ("Schmidt", "Berlin, Germany"));
+
+        var result = await client.CallToolAsync(
+            "expert_list",
+            new Dictionary<string, object?> { ["location"] = "warsaw", ["countOnly"] = true });
+
+        result.IsError.Should().NotBe(true);
+        using var doc = JsonDocument.Parse(ResultText(result));
+        doc.RootElement.GetProperty("total").GetInt32().Should().Be(2);
+        doc.RootElement.GetProperty("items").GetArrayLength().Should().Be(0);
+    }
+
+    /// <summary>
+    /// A draft expert is not on the bench, so it is not in the count either. Asserted through the
+    /// tool rather than the service, because the leak that would matter is the one a model can
+    /// reach: count-only is the cheapest call on the surface and the easiest to make repeatedly.
+    /// </summary>
+    [Fact]
+    public async Task expert_list_count_only_does_not_count_a_draft_expert()
+    {
+        using var factory = McpTestHost.CreateFactory(nameof(expert_list_count_only_does_not_count_a_draft_expert));
+        await using var client = await McpTestHost.ConnectAsync(factory);
+
+        await SeedAsync(client, ("Kowalski", "Warsaw, Poland"));
+
+        var draft = ValidDto("Draftsman");
+        draft["email"] = "draftsman@example.com";
+        draft["location"] = "Warsaw, Poland";
+        (await client.CallToolAsync("expert_create_draft", new Dictionary<string, object?> { ["dto"] = draft }))
+            .IsError.Should().NotBe(true);
+
+        var result = await client.CallToolAsync(
+            "expert_list", new Dictionary<string, object?> { ["countOnly"] = true });
+
+        using var doc = JsonDocument.Parse(ResultText(result));
+        doc.RootElement.GetProperty("total").GetInt32().Should().Be(1, "the draft is not on the bench");
+    }
+
+    /// <summary>
+    /// The serialised count-only payload, pinned exactly. The whole point of the mode is that it
+    /// is small enough that the Tool Result Budget can never refuse it — a number and an empty
+    /// array, whatever the roster size — and that claim is only worth anything if the bytes are
+    /// asserted rather than described. 505 experts serialise to the same shape as 3.
+    /// </summary>
+    [Fact]
+    public async Task expert_list_count_only_serialises_to_a_number_and_an_empty_array()
+    {
+        using var factory = McpTestHost.CreateFactory(nameof(expert_list_count_only_serialises_to_a_number_and_an_empty_array));
+        await using var client = await McpTestHost.ConnectAsync(factory);
+
+        await SeedAsync(client,
+            ("Kowalski", "Warsaw, Poland"),
+            ("Nowak", "warsaw, poland"),
+            ("Schmidt", "Berlin, Germany"));
+
+        var result = await client.CallToolAsync(
+            "expert_list", new Dictionary<string, object?> { ["countOnly"] = true });
+
+        ResultText(result).Should().Be("""{"total":3,"items":[]}""");
+    }
+
+    /// <summary>
+    /// The tool's whole input surface, asserted on the advertised schema rather than on a call,
+    /// because the cost is in being offered a parameter at all. EXP-100 took the status filter
+    /// off it — the MCP path never sets <c>IncludeDrafts</c>, so every row it can return is
+    /// Active and a status needle could only ever answer "everyone" or "nobody". EXP-96 adds
+    /// <c>countOnly</c>, which answers a question no other input could.
+    /// </summary>
+    [Fact]
+    public async Task expert_list_advertises_location_and_count_only()
+    {
+        using var factory = McpTestHost.CreateFactory(nameof(expert_list_advertises_location_and_count_only));
+        await using var client = await McpTestHost.ConnectAsync(factory);
+
+        var tool = (await client.ListToolsAsync()).Single(t => t.Name == "expert_list");
+
+        using var schema = JsonDocument.Parse(JsonSerializer.Serialize(tool.ProtocolTool.InputSchema));
+        schema.RootElement.GetProperty("properties").EnumerateObject()
+            .Select(p => p.Name).Should().Equal("location", "countOnly");
     }
 }

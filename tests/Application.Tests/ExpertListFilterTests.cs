@@ -111,4 +111,56 @@ public class ExpertListFilterTests
 
         rows.Select(e => e.LastName).Should().Equal("Kowalski", "Nowak", "Nowhere", "Schmidt");
     }
+
+    /// <summary>
+    /// EXP-96: "how many experts are on the roster in total?" had no answer. The only way to ask
+    /// was for every row, and over the 505-expert demo roster that is ~31k tokens the Tool Result
+    /// Budget refuses — so the count-only mode returns the total and no rows at all.
+    /// </summary>
+    [Fact]
+    public async Task Count_only_returns_the_total_and_no_rows()
+    {
+        await using var db = NewDb();
+        var svc = await SeededAsync(db);
+
+        var result = await svc.ListAsync(new ExpertListQuery(CountOnly: true));
+
+        result.Total.Should().Be(4);
+        result.Items.Should().BeEmpty();
+    }
+
+    /// <summary>Count-only counts the same match the rows would have been drawn from, so a
+    /// filtered count is the filter's total and not the bench's.</summary>
+    [Fact]
+    public async Task Count_only_counts_the_filtered_match()
+    {
+        await using var db = NewDb();
+        var svc = await SeededAsync(db);
+
+        var result = await svc.ListAsync(new ExpertListQuery(Location: "WARSAW", CountOnly: true));
+
+        result.Total.Should().Be(2);
+        result.Items.Should().BeEmpty();
+    }
+
+    /// <summary>
+    /// Visibility is applied exactly as it is for row listing — before the filters, and therefore
+    /// before the count. A hidden expert counted here would leak the one fact the pause withholds,
+    /// and it would do it through the cheapest call on the surface.
+    /// </summary>
+    [Fact]
+    public async Task Count_only_does_not_count_a_hidden_expert_for_the_bench_audience()
+    {
+        await using var db = NewDb();
+        await SeededAsync(db);
+        var paused = await db.Experts.SingleAsync(e => e.LastName == "Kowalski");
+        paused.HiddenAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync();
+
+        var bench = NewService(db, new BenchAudienceProvider());
+
+        (await bench.ListAsync(new ExpertListQuery(CountOnly: true))).Total.Should().Be(3);
+        (await bench.ListAsync(new ExpertListQuery(Location: "warsaw", CountOnly: true)))
+            .Total.Should().Be(1);
+    }
 }
