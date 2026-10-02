@@ -18,19 +18,18 @@ namespace ExpertToJob.Agents.Tests;
 /// and not the other silently 401s every agent call — the app still starts, still serves the SPA,
 /// and only the agent surface goes dark.
 ///
-/// <para>Since EXP-89 the two hosts no longer each ship a copy of the names: both fall back to
-/// <see cref="SessionIdentity"/>, in the layer both reference. So what this asserts is what the two
-/// hosts <em>resolve</em> — configuration first, shared constant second, exactly as each host reads
-/// it — rather than what two JSON files happen to spell. A deployment that overrides the names in
-/// one host's configuration and not the other's is still the drift, and still caught here.</para>
+/// <para>Since EXP-106 the drift is closed by construction: neither host reads the names from
+/// configuration at all, so there is only one copy and it lives in <see cref="SessionIdentity"/>,
+/// in the layer both hosts reference. What is left to catch is the copy coming <em>back</em> — a
+/// <c>Auth:Jwt:Issuer</c> line re-added to either host's settings is now inert, and an operator
+/// reading it would believe they had changed the session identity when they had not. So both
+/// shipped configurations are asserted to carry no such key.</para>
 ///
-/// <para>Hence three copies of one fact on purpose: what Web resolves, what Agents resolves, and the
-/// names pinned below. Two of them drifting is what this catches, and the third is what stops both
-/// drifting together into a name nobody chose.</para>
+/// <para>Two copies of one fact on purpose: the shared constant, and the names pinned below. The
+/// pin is what stops the constant drifting into a name nobody chose.</para>
 ///
-/// <para>Deterministic: the Web side is the shipped config on disk (copied beside the test binary)
-/// read the way the Web host binds it, and the Agents side is the real host's own configuration and
-/// its real JWT middleware.</para>
+/// <para>Deterministic: the Web side is the shipped config on disk (copied beside the test binary),
+/// and the Agents side is the real host's own configuration and its real JWT middleware.</para>
 /// </summary>
 public class WebSessionTokenLockstepTests
 {
@@ -46,17 +45,6 @@ public class WebSessionTokenLockstepTests
     private static readonly IConfigurationRoot WebSettings = new ConfigurationBuilder()
         .AddJsonFile(Path.Combine(AppContext.BaseDirectory, "web-appsettings.json"))
         .Build();
-
-    /// <summary>What the Web host resolves for a <c>Auth:Jwt</c> name: its shipped configuration if
-    /// it carries one, otherwise the shared constant its options class defaults to. The same two
-    /// steps <c>ExpertToJob.Web.Auth.JwtOptions</c> takes — Agents does not reference the Web
-    /// project, and that separation is precisely what can drift.</summary>
-    private static string WebJwt(string key) => WebSettings[$"Auth:Jwt:{key}"] ?? key switch
-    {
-        "Issuer" => SessionIdentity.Issuer,
-        "Audience" => SessionIdentity.Audience,
-        _ => throw new ArgumentOutOfRangeException(nameof(key), key, "No session-identity default."),
-    };
 
     private static WebApplicationFactory<Program> AgentsHost()
     {
@@ -75,25 +63,28 @@ public class WebSessionTokenLockstepTests
     }
 
     [Fact]
-    public void The_two_hosts_ship_the_same_session_identity()
+    public void The_two_hosts_share_one_session_identity_and_neither_ships_a_copy()
     {
         using var factory = AgentsHost();
         var agents = factory.Services.GetRequiredService<IConfiguration>();
 
         using var _ = new AssertionScope();
-        WebJwt("Issuer").Should().Be(ExpectedIssuer);
-        WebJwt("Audience").Should().Be(ExpectedAudience);
-        (agents["Auth:Jwt:Issuer"] ?? SessionIdentity.Issuer).Should().Be(
-            ExpectedIssuer, "the Agents host validates what Web mints");
-        (agents["Auth:Jwt:Audience"] ?? SessionIdentity.Audience).Should().Be(
-            ExpectedAudience, "the Agents host validates what Web mints");
+        SessionIdentity.Issuer.Should().Be(ExpectedIssuer);
+        SessionIdentity.Audience.Should().Be(ExpectedAudience);
+
+        // A re-added JSON line would not drift the two hosts any more — it would be read by
+        // neither, which is its own way of lying to whoever set it.
+        WebSettings["Auth:Jwt:Issuer"].Should().BeNull("the Web host mints from the shared constant");
+        WebSettings["Auth:Jwt:Audience"].Should().BeNull("the Web host mints from the shared constant");
+        agents["Auth:Jwt:Issuer"].Should().BeNull("the Agents host validates against the shared constant");
+        agents["Auth:Jwt:Audience"].Should().BeNull("the Agents host validates against the shared constant");
     }
 
     [Fact]
     public async Task A_web_minted_session_token_is_accepted_by_the_agents_service()
     {
         using var factory = AgentsHost();
-        using var client = factory.CreateClientWithToken(WebJwt("Issuer"), WebJwt("Audience"));
+        using var client = factory.CreateClientWithToken(SessionIdentity.Issuer, SessionIdentity.Audience);
 
         var response = await client.GetAsync($"{AuthorizedProbe}{Guid.NewGuid()}");
 
@@ -107,7 +98,7 @@ public class WebSessionTokenLockstepTests
         // Keeps the check above honest — it must fail for the right reason, not because the host
         // stopped validating issuers at all.
         using var factory = AgentsHost();
-        using var client = factory.CreateClientWithToken("some-other-product", WebJwt("Audience"));
+        using var client = factory.CreateClientWithToken("some-other-product", SessionIdentity.Audience);
 
         var response = await client.GetAsync($"{AuthorizedProbe}{Guid.NewGuid()}");
 
