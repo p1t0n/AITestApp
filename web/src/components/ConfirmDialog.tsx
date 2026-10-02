@@ -25,7 +25,7 @@ import {
  * dismisses the dialog, so a failed write leaves the question on screen rather than silently
  * dropping it.
  */
-export interface ConfirmDialogProps {
+interface ConfirmDialogProps {
   /** The question, as a question. */
   title: ReactNode;
   /** What confirming will actually do — the part a user is agreeing to. */

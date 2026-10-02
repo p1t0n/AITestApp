@@ -325,7 +325,7 @@ export function IngestionPanel() {
     setError(null);
     setResult(null);
     try {
-      setResult(await ingest.mutateAsync(resumeText.trim()));
+      setResult(await ingest.mutateAsync({ resumeText: resumeText.trim() }));
     } catch (err) {
       setError(apiErrorMessage(err));
     }

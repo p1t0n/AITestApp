@@ -2,7 +2,7 @@
 // rule for turning them into a request body: only a filter the user actually set is sent, because
 // the server owns every default. Shortlist hangs its own "Top K" off `trailing`, which is the only
 // field any tab adds.
-import { useMemo, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Autocomplete, Box, Button, Collapse, Stack, TextField } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
@@ -10,45 +10,23 @@ import FilterListIcon from "@mui/icons-material/FilterList";
 import { useSkills } from "../../api";
 
 /** The filter fields of a shortlist / staffing / roster-scan request — all optional by design. */
-export interface JdFilterFields {
+interface JdFilterFields {
   availableOn?: string;
   skillIds?: string[];
   location?: string;
   minYears?: number;
 }
 
-export interface JdFiltersState {
-  showFilters: boolean;
-  setShowFilters: (open: boolean | ((open: boolean) => boolean)) => void;
-  availableOn: string;
-  setAvailableOn: (value: string) => void;
-  skillIds: string[];
-  setSkillIds: (value: string[]) => void;
-  location: string;
-  setLocation: (value: string) => void;
-  minYears: string;
-  setMinYears: (value: string) => void;
-  skillOptions: { id: string; label: string }[];
-  selectedSkills: { id: string; label: string }[];
-  skillsLoading: boolean;
-  /** Just the filters that are set, ready to spread into a request body. */
-  toRequest: () => JdFilterFields;
-}
-
-export function useJdFilters(): JdFiltersState {
-  const skills = useSkills();
-
-  const [showFilters, setShowFilters] = useState(false);
+/**
+ * The four filter values and the one rule for sending them. Nothing else: the three tabs that hold
+ * this hook read only `toRequest()`, so whether the panel is open and what the skill catalog
+ * contains are the panel's own business and live in `JdFilters` (EXP-104).
+ */
+export function useJdFilters() {
   const [availableOn, setAvailableOn] = useState("");
   const [skillIds, setSkillIds] = useState<string[]>([]);
   const [location, setLocation] = useState("");
   const [minYears, setMinYears] = useState("");
-
-  const skillOptions = useMemo(
-    () => (skills.data ?? []).map((s) => ({ id: s.id, label: s.name })),
-    [skills.data],
-  );
-  const selectedSkills = skillOptions.filter((o) => skillIds.includes(o.id));
 
   function toRequest(): JdFilterFields {
     const req: JdFilterFields = {};
@@ -60,8 +38,6 @@ export function useJdFilters(): JdFiltersState {
   }
 
   return {
-    showFilters,
-    setShowFilters,
     availableOn,
     setAvailableOn,
     skillIds,
@@ -70,14 +46,25 @@ export function useJdFilters(): JdFiltersState {
     setLocation,
     minYears,
     setMinYears,
-    skillOptions,
-    selectedSkills,
-    skillsLoading: skills.isLoading,
     toRequest,
   };
 }
 
-export function JdFilters({ filters, trailing }: { filters: JdFiltersState; trailing?: ReactNode }) {
+export function JdFilters({
+  filters,
+  trailing,
+}: {
+  filters: ReturnType<typeof useJdFilters>;
+  trailing?: ReactNode;
+}) {
+  const { data: catalogSkills, isLoading: skillsLoading } = useSkills();
+  const [showFilters, setShowFilters] = useState(false);
+
+  // The catalog rows are the options, as they come: `getOptionLabel` is what names them, so there
+  // is no second `{id,label}` shape to keep in step with the first.
+  const options = catalogSkills ?? [];
+  const selected = options.filter((s) => filters.skillIds.includes(s.id));
+
   const minYearsField = (
     <TextField
       type="number"
@@ -94,12 +81,12 @@ export function JdFilters({ filters, trailing }: { filters: JdFiltersState; trai
     <Box>
       <Button
         startIcon={<FilterListIcon />}
-        endIcon={filters.showFilters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-        onClick={() => filters.setShowFilters((v) => !v)}
+        endIcon={showFilters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+        onClick={() => setShowFilters((v) => !v)}
       >
         Filters (optional)
       </Button>
-      <Collapse in={filters.showFilters} unmountOnExit>
+      <Collapse in={showFilters} unmountOnExit>
         <Stack spacing={1.5} sx={{ mt: 1 }}>
           <TextField
             type="date"
@@ -112,10 +99,11 @@ export function JdFilters({ filters, trailing }: { filters: JdFiltersState; trai
           />
           <Autocomplete
             multiple
-            options={filters.skillOptions}
-            value={filters.selectedSkills}
+            options={options}
+            value={selected}
+            getOptionLabel={(o) => o.name}
             onChange={(_, v) => filters.setSkillIds(v.map((o) => o.id))}
-            loading={filters.skillsLoading}
+            loading={skillsLoading}
             isOptionEqualToValue={(o, v) => o.id === v.id}
             renderInput={(params) => <TextField {...params} label="Skills" placeholder="Any skill" />}
           />

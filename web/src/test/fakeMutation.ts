@@ -9,7 +9,7 @@
 import { useState } from "react";
 
 /** The spy object a spec already keeps for the surface under test. */
-export interface MutationSpy<Req, Res> {
+interface MutationSpy<Req, Res> {
   mutateAsync: (req: Req) => Promise<Res>;
   isPending: boolean;
 }

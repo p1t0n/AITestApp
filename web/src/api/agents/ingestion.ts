@@ -21,8 +21,8 @@ export interface IngestionResponse {
   degraded: boolean;
 }
 
-export const useResumeIngestion = agentPost<string, IngestionResponse>("/resume-ingestion", {
-  body: (resumeText) => ({ resumeText }),
-  onSuccess: (qc) => qc.invalidateQueries({ queryKey: ["experts"] }),
-});
+export const useResumeIngestion = agentPost<{ resumeText: string }, IngestionResponse>(
+  "/resume-ingestion",
+  { onSuccess: (qc) => qc.invalidateQueries({ queryKey: ["experts"] }) },
+);
 

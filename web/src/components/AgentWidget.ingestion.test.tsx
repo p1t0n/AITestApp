@@ -14,7 +14,7 @@ import type { ExpertDetail } from "../types";
 const DRAFT_ID = "dddddddd-1111-2222-3333-444444444444";
 
 const ingestState = {
-  mutateAsync: vi.fn<(text: string) => Promise<IngestionResponse>>(),
+  mutateAsync: vi.fn<(req: { resumeText: string }) => Promise<IngestionResponse>>(),
   isPending: false,
 };
 const promoteState = { mutateAsync: vi.fn(), isPending: false };
