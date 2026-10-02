@@ -248,7 +248,7 @@ public class IngestionRunCostFloorTests(ITestOutputHelper output)
         // match: the per-user daily cap is enforced before a request rather than during one, so a
         // single run is bounded by this and nothing else. One resume may not cost a user a day.
         budget.MaxInputTokens.Should().BeLessThan(
-            new UsageOptions().DefaultDailyTokens,
+            ShippedAgentsSettings.DefaultDailyTokens,
             "a Runtime Budget above the daily cap would let one run spend a user's whole day");
 
         output.WriteLine(

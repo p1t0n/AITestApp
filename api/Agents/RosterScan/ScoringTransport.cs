@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -39,8 +40,15 @@ public interface IScoringTransport
 public sealed class ScoringQuotaExceededException(string message, Exception? inner = null)
     : Exception(message, inner);
 
-/// <summary>Roster Scan knobs. RPM defaults leave headroom under the pinned model's free-tier
-/// limit (gemini-3.5-flash-lite: RPM 15 / RPD 500, P1T-114).</summary>
+/// <summary>Roster Scan knobs. The shipped quota numbers leave headroom under the pinned model's
+/// free-tier limit (gemini-3.5-flash-lite: RPM 15 / RPD 500, P1T-114).
+///
+/// <para>Since EXP-107 the two quota knobs carry no property default: they are the pair an
+/// operator has to move the day the key changes tier, so the shipped values live once, in
+/// <c>api/Agents/appsettings.json</c>, where they are visible next to the host that reads them.
+/// Both are validated with <c>ValidateOnStart</c>. The pacing and retry knobs beside them keep
+/// their code defaults — nothing ever set those, and they are tuning of the transport rather than
+/// an operator's decision.</para></summary>
 public sealed class RosterScanOptions
 {
     public const string Section = "RosterScan";
@@ -48,8 +56,9 @@ public sealed class RosterScanOptions
     /// <summary>Candidates per scoring chunk (one model call each).</summary>
     public int ChunkSize { get; set; } = 10;
 
-    /// <summary>Pacing budget for the shared limiter.</summary>
-    public int RequestsPerMinute { get; set; } = 12;
+    /// <summary>Pacing budget for the shared limiter. From configuration only (EXP-107).</summary>
+    [Range(1, int.MaxValue, ErrorMessage = $"{Section}:{nameof(RequestsPerMinute)} must be greater than 0.")]
+    public int RequestsPerMinute { get; set; }
 
     /// <summary>Attempts per chunk before a 429 is treated as quota exhaustion.</summary>
     public int MaxRetryAttempts { get; set; } = 3;
@@ -64,8 +73,9 @@ public sealed class RosterScanOptions
     public const double ResumeSweepSeconds = 30;
 
     /// <summary>The day's call budget the submit estimate is judged against (the pinned model's
-    /// free-tier RPD, P1T-114).</summary>
-    public int RequestsPerDay { get; set; } = 500;
+    /// free-tier RPD, P1T-114). From configuration only (EXP-107).</summary>
+    [Range(1, int.MaxValue, ErrorMessage = $"{Section}:{nameof(RequestsPerDay)} must be greater than 0.")]
+    public int RequestsPerDay { get; set; }
 }
 
 /// <summary>
