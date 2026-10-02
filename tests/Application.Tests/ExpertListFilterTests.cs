@@ -1,7 +1,6 @@
 using ExpertToJob.Application.Auth;
 using ExpertToJob.Application.Experts;
 using ExpertToJob.Application.Visibility;
-using ExpertToJob.Domain.Enums;
 using ExpertToJob.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -74,22 +73,6 @@ public class ExpertListFilterTests
         result.Items.Should().HaveCount(4);
     }
 
-    /// <summary>A needle naming no status matches nobody. The alternative — ignoring an
-    /// unrecognised filter — answers a narrowed question with the whole bench, which is the same
-    /// class of wrong answer EXP-94 is about.</summary>
-    [Fact]
-    public async Task A_status_filter_matches_the_status_name_and_an_unknown_one_matches_nobody()
-    {
-        await using var db = NewDb();
-        var svc = await SeededAsync(db);
-        await svc.CreateDraftAsync(Dto("Draftsman", "Warsaw, Poland", ""));
-
-        (await svc.ListAsync(new ExpertListQuery(Status: "ACTIVE"))).Total.Should().Be(4);
-        (await svc.ListAsync(new ExpertListQuery(Status: "draft", IncludeDrafts: true)))
-            .Items.Should().ContainSingle(e => e.Status == ExpertStatus.Draft);
-        (await svc.ListAsync(new ExpertListQuery(Status: "retired"))).Total.Should().Be(0);
-    }
-
     /// <summary>
     /// RosterVisibility is applied exactly as it was, and before the filters — so a paused expert
     /// in Warsaw is neither listed nor counted. A total that included them would leak the one fact
@@ -115,15 +98,16 @@ public class ExpertListFilterTests
         (await seeded.ListAsync(new ExpertListQuery(Location: "warsaw"))).Total.Should().Be(2);
     }
 
-    /// <summary>The unfiltered overload is what the REST bench list and every existing caller
-    /// use; it must keep returning exactly the rows it always did.</summary>
+    /// <summary>EXP-100 deleted the <c>ListAsync(bool)</c> overload — it had no production
+    /// caller left once the controller and the tool both moved to the query. An unfiltered query
+    /// is the same listing it used to return, in the same order.</summary>
     [Fact]
-    public async Task The_bare_list_overload_still_returns_the_same_rows()
+    public async Task An_empty_query_still_returns_the_same_rows_in_the_same_order()
     {
         await using var db = NewDb();
         var svc = await SeededAsync(db);
 
-        var rows = await svc.ListAsync();
+        var rows = (await svc.ListAsync(new ExpertListQuery())).Items;
 
         rows.Select(e => e.LastName).Should().Equal("Kowalski", "Nowak", "Nowhere", "Schmidt");
     }

@@ -287,8 +287,8 @@ Sequential, each landing on its own:
    `ResolveAgentChatClient`. resume-ingestion is covered for free. Budgets are configuration
    (`AgentBudgets` in `api/Agents/appsettings.json`), not constants.
 5. ~~**Convergence**~~ (P1T-148) — **landed**, except the two live re-runs. Instructions and
-   descriptions now point at the Convergent Path, and §6's floor prices the whole run at **7,338**
-   (1,988 × 3 calls + 87 × 2 + 1,200), inside the 8,000 target. The real-token 8,000 Cost Floor is
+   descriptions now point at the Convergent Path, and §6's floor prices the whole run at **7,221**
+   (1,949 × 3 calls + 87 × 2 + 1,200), inside the 8,000 target. The real-token 8,000 Cost Floor is
    committed as a live ceiling (`RosterQaConvergenceLiveFloorTests`, `Category=live`) rather than a
    deterministic one, because a real-token number cannot be measured without a model. The
    Tool-Selection Eval re-baseline landed in P1T-178 — see `manuals/mcp-tool-descriptions.md`.
@@ -657,3 +657,10 @@ tidy-up that drops the denial is the regression. And `expert_list` now takes `lo
 `status` filters and returns the match `total`, so the question has a cheap right answer to reach
 for instead of a dump to be refused: 187 tokens against 2,810 at demo size. The schema cost (+132
 per iteration, `expert_list` 241 → 373) is the same trade P1T-145 made for `skill_list`.
+
+**EXP-100: half of that trade bought nothing.** The `status` filter could not change an answer.
+`expert_list` never sets `IncludeDrafts`, so RosterVisibility has already narrowed the listing to
+Active rows before any filter runs, and a status needle could only return everyone or nobody. It
+came out, and with it 39 of the 132: `expert_list` 373 → 334, read surface 4,094 → 4,055,
+roster-qa's Baseline Prompt Size 1,988 → 1,949, and the convergent run 7,338 → 7,221. The
+`location` filter and `total` — the half that answers the question — stay.

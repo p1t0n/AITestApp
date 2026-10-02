@@ -82,14 +82,14 @@ public class RosterCapacityClockTests
         await using var db = NewDb();
         await SeedBookedUntilThe15th(db);
 
-        var before = await ServiceOn(db, new DateOnly(2026, 8, 14)).ListAsync();
-        var after = await ServiceOn(db, new DateOnly(2026, 8, 15)).ListAsync();
+        var before = await ServiceOn(db, new DateOnly(2026, 8, 14)).ListAsync(new ExpertListQuery());
+        var after = await ServiceOn(db, new DateOnly(2026, 8, 15)).ListAsync(new ExpertListQuery());
 
         // The same roster, the same data, two days: the only thing that moved is the clock the
         // service was handed. If `Today` still read `DateTime.UtcNow`, both of these would be
         // whatever today happens to be and this assertion would fail on every day but one.
-        before.Single().CurrentCapacityPercent.Should().Be(0);
-        after.Single().CurrentCapacityPercent.Should().Be(100);
+        before.Items.Single().CurrentCapacityPercent.Should().Be(0);
+        after.Items.Single().CurrentCapacityPercent.Should().Be(100);
     }
 
     [Fact]
