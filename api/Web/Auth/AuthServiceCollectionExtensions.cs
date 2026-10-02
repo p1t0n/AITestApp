@@ -64,7 +64,8 @@ public static class AuthServiceCollectionExtensions
     /// <summary>
     /// Registers JWT bearer validation for the shared session token. Kept as a discrete method so
     /// the validation parameters stay in one readable place; the Agents service uses the identical
-    /// parameters (same signing key, issuer, audience) against its own configuration.
+    /// parameters against its own configuration. Only the signing key comes from there — the issuer
+    /// and audience are <see cref="SessionIdentity"/> constants in both hosts (EXP-106).
     /// </summary>
     public static void AddSessionJwtAuthentication(IServiceCollection services, JwtOptions jwt)
     {
@@ -78,9 +79,9 @@ public static class AuthServiceCollectionExtensions
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
-                    ValidIssuer = jwt.Issuer,
+                    ValidIssuer = SessionIdentity.Issuer,
                     ValidateAudience = true,
-                    ValidAudience = jwt.Audience,
+                    ValidAudience = SessionIdentity.Audience,
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.SigningKey)),
                     ValidateLifetime = true,

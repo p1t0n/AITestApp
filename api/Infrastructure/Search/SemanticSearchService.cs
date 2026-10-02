@@ -44,7 +44,7 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
             return SemanticSearchResult.Empty;
         }
 
-        var limit = Math.Clamp(topK ?? _options.DefaultTopK, 1, _options.MaxTopK);
+        var limit = Math.Clamp(topK ?? SemanticSearchOptions.DefaultTopK, 1, SemanticSearchOptions.MaxTopK);
 
         // Embed the query. Retrieval failing must not fault the caller: an embeddings backend that
         // cannot serve this deployment at all — quota spent, or no credential on a development host
@@ -95,7 +95,7 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
                 ExpertId = g.Key,
                 BestDistance = g.Min(x => x.Distance),
                 Snippets = g.OrderBy(x => x.Distance)
-                    .Take(_options.MaxSnippetsPerExpert)
+                    .Take(SemanticSearchOptions.MaxSnippetsPerExpert)
                     .Select(x => Truncate(x.Content))
                     .ToList(),
             })
@@ -144,7 +144,8 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
             return ShortlistSearchResult.None;
         }
 
-        var limit = Math.Clamp(topK ?? _options.ShortlistDefaultTopK, 1, _options.ShortlistMaxTopK);
+        var limit = Math.Clamp(
+            topK ?? SemanticSearchOptions.ShortlistDefaultTopK, 1, SemanticSearchOptions.ShortlistMaxTopK);
 
         // One batched embed call for all requirements. Retrieval failing must not fault the caller —
         // return a soft error so the agent can fall back to structured tools.
@@ -272,7 +273,7 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
                 ExpertId = g.Key,
                 BestRank = g.Max(x => x.Rank),
                 Snippets = g.OrderByDescending(x => x.Rank)
-                    .Take(_options.MaxSnippetsPerExpert)
+                    .Take(SemanticSearchOptions.MaxSnippetsPerExpert)
                     .Select(x => Truncate(x.Content))
                     .ToList(),
             })
@@ -411,7 +412,7 @@ public sealed class SemanticSearchService : ISemanticSearchService, IShortlistSe
     }
 
     private string Truncate(string text)
-        => text.Length <= _options.SnippetMaxChars
+        => text.Length <= SemanticSearchOptions.SnippetMaxChars
             ? text
-            : text[.._options.SnippetMaxChars] + "…";
+            : text[..SemanticSearchOptions.SnippetMaxChars] + "…";
 }

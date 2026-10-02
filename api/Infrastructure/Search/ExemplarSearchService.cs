@@ -55,7 +55,10 @@ public sealed class ExemplarSearchService : IExemplarSearchService
             throw new ValidationException(ExclusivityFailures(requested.Count > 0, hasTheme));
         }
 
-        var topK = Math.Clamp(topKPerBullet ?? _options.ExemplarsPerBullet, 1, _options.ExemplarsPerBulletMax);
+        var topK = Math.Clamp(
+            topKPerBullet ?? SemanticSearchOptions.ExemplarsPerBullet,
+            1,
+            SemanticSearchOptions.ExemplarsPerBulletMax);
 
         return hasTheme
             ? await SearchByThemeAsync(trimmedTheme!, topK, ct)
@@ -121,8 +124,8 @@ public sealed class ExemplarSearchService : IExemplarSearchService
                     // Anonymised or not, it is still a paused person's own writing being put to
                     // work (P1T-185). The seam decides, here as everywhere else.
                     && _db.Experts.OnTheBench().Any(e => e.Id == c.ExpertId)
-                    && c.Content.Length >= _options.ExemplarMinChars
-                    && c.Content.Length <= _options.ExemplarMaxChars)
+                    && c.Content.Length >= SemanticSearchOptions.ExemplarMinChars
+                    && c.Content.Length <= SemanticSearchOptions.ExemplarMaxChars)
                 .Select(c => new
                 {
                     c.SourceId,
@@ -137,7 +140,10 @@ public sealed class ExemplarSearchService : IExemplarSearchService
 
             // Closest first; a bullet claims a source exemplar only if no earlier bullet took it.
             var hits = rows
-                .Where(x => ExemplarQualityFilter.Passes(x.Content, _options.ExemplarMinChars, _options.ExemplarMaxChars))
+                .Where(x => ExemplarQualityFilter.Passes(
+                    x.Content,
+                    SemanticSearchOptions.ExemplarMinChars,
+                    SemanticSearchOptions.ExemplarMaxChars))
                 .Where(x => usedSourceIds.Add(x.SourceId))
                 .Take(perBullet)
                 .Select(x => new ExemplarHit(x.ExpertId, x.Content, x.Distance))
@@ -178,8 +184,8 @@ public sealed class ExemplarSearchService : IExemplarSearchService
             // See the id-keyed path: only vectors this embedder made are comparable (EXP-65).
             .Where(c => c.Embedding != null && c.Model == tag
                 && c.SourceType == SearchChunkSource.Achievement
-                && c.Content.Length >= _options.ExemplarMinChars
-                && c.Content.Length <= _options.ExemplarMaxChars)
+                && c.Content.Length >= SemanticSearchOptions.ExemplarMinChars
+                && c.Content.Length <= SemanticSearchOptions.ExemplarMaxChars)
             .Select(c => new
             {
                 c.SourceId,
@@ -194,7 +200,10 @@ public sealed class ExemplarSearchService : IExemplarSearchService
 
         var usedSourceIds = new HashSet<Guid>();
         var hits = rows
-            .Where(x => ExemplarQualityFilter.Passes(x.Content, _options.ExemplarMinChars, _options.ExemplarMaxChars))
+            .Where(x => ExemplarQualityFilter.Passes(
+                x.Content,
+                SemanticSearchOptions.ExemplarMinChars,
+                SemanticSearchOptions.ExemplarMaxChars))
             .Where(x => usedSourceIds.Add(x.SourceId))
             .Take(topK)
             .Select(x => new ExemplarHit(x.ExpertId, x.Content, x.Distance))

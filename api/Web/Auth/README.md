@@ -29,9 +29,14 @@ explicitly rather than leaving the legacy WS-\* mapping to rename them behind th
 
 ### Shared configuration (must match across services)
 
-`Auth:Jwt` — `SigningKey` (≥32 bytes), `Issuer`, `Audience`. Present in both `Web/appsettings.json`
-and `Agents/appsettings.json`. The dev key is insecure and committed only for local convenience —
+`Auth:Jwt` — `SigningKey` (≥32 bytes), and only that. Present in both `Web/appsettings.json` and
+`Agents/appsettings.json`. The dev key is insecure and committed only for local convenience —
 **override from a secret store in production.**
+
+The `iss` and `aud` are *not* configuration (EXP-106). They are the name of this product's session,
+not an operator knob, so both hosts read `ExpertToJob.Application.Auth.SessionIdentity` — one copy,
+in the layer both reference. A re-added `Auth:Jwt:Issuer` line would be read by neither host;
+`Agents.Tests/WebSessionTokenLockstepTests` asserts neither shipped configuration carries one.
 
 The Agents service does **not** reference the Web project (it stays decoupled, reaching data only
 through MCP). So the JWT *validation* parameters are duplicated in

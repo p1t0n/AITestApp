@@ -19,8 +19,11 @@ public static class SearchIndexingServiceCollectionExtensions
                            ?? new SearchIndexOptions();
         services.AddSingleton(Options.Create(indexOptions));
 
-        var searchOptions = config.GetSection(SemanticSearchOptions.Section).Get<SemanticSearchOptions>()
-                            ?? new SemanticSearchOptions();
+        // Not bound from a section: the similarity floor below is the only value this object
+        // carries, and the sizes beside it are constants (EXP-106). A `SemanticSearch` section in
+        // configuration reaches nothing — the one key it used to hold that mattered, MinSimilarity,
+        // throws from ResolveProvider rather than binding here.
+        var searchOptions = new SemanticSearchOptions();
 
         // The similarity floor is the one search setting that belongs to the embedding model rather
         // than to the search (EXP-64): Gemini's 0.55 hides 70% of the correct matches on Azure

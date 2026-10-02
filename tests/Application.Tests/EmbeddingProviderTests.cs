@@ -151,16 +151,22 @@ public class EmbeddingProviderTests
                 "the throw has to name the key that replaced it, not just refuse");
     }
 
-    /// <summary>The rest of the <c>SemanticSearch</c> section is untouched: only the one key moved.</summary>
+    /// <summary>Nothing is left for the <c>SemanticSearch</c> section to bind (EXP-106). The floor
+    /// moved to the active provider's own block, and the ten sizes became constants, so a key under
+    /// this section is inert rather than load-bearing — the sizes are pinned in
+    /// <c>SearchSizeConstantTests</c> now, which is the only place they can be changed.</summary>
     [Fact]
-    public void The_remaining_SemanticSearch_keys_still_bind()
+    public void The_SemanticSearch_section_binds_nothing_any_more()
     {
         using var services = new ServiceCollection()
             .AddLogging()
             .AddSearchIndexing(Config(("SemanticSearch:DefaultTopK", "7")))
             .BuildServiceProvider();
 
-        services.GetRequiredService<IOptions<SemanticSearchOptions>>().Value.DefaultTopK.Should().Be(7);
+        // The options object is still built and still registered — it carries the floor. What it no
+        // longer does is read a size out of configuration.
+        services.GetRequiredService<IOptions<SemanticSearchOptions>>().Value.Should().NotBeNull();
+        SemanticSearchOptions.DefaultTopK.Should().Be(5, "the shipped size, whatever a stale key says");
     }
 
     /// <summary>The Gemini branch binds its settings from its own block, and the embedder it builds

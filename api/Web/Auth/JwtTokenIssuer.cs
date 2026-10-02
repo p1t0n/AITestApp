@@ -37,8 +37,8 @@ public sealed class JwtTokenIssuer(IOptions<AuthOptions> options, TimeProvider c
         };
 
         var token = new JwtSecurityToken(
-            issuer: _jwt.Issuer,
-            audience: _jwt.Audience,
+            issuer: SessionIdentity.Issuer,
+            audience: SessionIdentity.Audience,
             claims: claims,
             notBefore: now.UtcDateTime,
             expires: expiresAt.UtcDateTime,

@@ -57,8 +57,11 @@ public sealed class RosterScanOptions
     /// <summary>Base for the exponential retry backoff (base, 2×base, 4×base…).</summary>
     public double RetryBaseSeconds { get; set; } = 2;
 
-    /// <summary>How often the worker sweeps for due paused / orphaned jobs.</summary>
-    public double ResumeSweepSeconds { get; set; } = 30;
+    /// <summary>How often the worker sweeps for due paused / orphaned jobs. A constant, not a knob
+    /// (EXP-106): nothing ever set it, and it is a liveness detail of the worker rather than an
+    /// operator's decision — unlike the quota numbers beside it, which an operator may genuinely
+    /// need to move without a deploy.</summary>
+    public const double ResumeSweepSeconds = 30;
 
     /// <summary>The day's call budget the submit estimate is judged against (the pinned model's
     /// free-tier RPD, P1T-114).</summary>

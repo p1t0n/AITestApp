@@ -1,3 +1,4 @@
+using System.Reflection;
 using ExpertToJob.Application.Auth;
 using ExpertToJob.Web.Auth;
 using FluentAssertions;
@@ -24,16 +25,26 @@ public class AuthOptionResolutionTests(WebApiFactory factory)
     private AuthOptions Resolved =>
         factory.Services.GetRequiredService<IOptions<AuthOptions>>().Value;
 
-    /// <summary>The session identity, from the shared constants rather than from two JSON lines.
-    /// <c>Agents.Tests/WebSessionTokenLockstepTests</c> holds the other host to the same pair.</summary>
+    /// <summary>The session identity is no longer an option at all (EXP-106). EXP-89 left it
+    /// bindable with the shared constant as its default; nothing ever bound it, and a knob nobody
+    /// turns is just a second place the name can be — which is the shape of P1T-176. Both hosts mint
+    /// and validate against <see cref="SessionIdentity"/> directly now, so there is nothing here to
+    /// resolve and no way for one host's configuration to move without the other's.
+    ///
+    /// <para>The names stay pinned as literals, here and in
+    /// <c>Agents.Tests/WebSessionTokenLockstepTests</c>, so neither can drift unnoticed.</para></summary>
     [Fact]
-    public void The_host_resolves_the_shared_session_identity()
+    public void The_session_identity_is_a_constant_and_not_an_option()
     {
         using var _ = new AssertionScope();
-        Resolved.Jwt.Issuer.Should().Be("experttojob");
-        Resolved.Jwt.Audience.Should().Be("experttojob-app");
         SessionIdentity.Issuer.Should().Be("experttojob");
         SessionIdentity.Audience.Should().Be("experttojob-app");
+        typeof(JwtOptions)
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Select(p => p.Name)
+            .Should().BeEquivalentTo(
+                [nameof(JwtOptions.SigningKey), nameof(JwtOptions.AccessTokenMinutes)],
+                "an Auth:Jwt:Issuer property is a second copy of a name both hosts already share");
     }
 
     /// <summary>Session lifetime. Short on purpose — <c>User.TokenVersion</c> is the revocation

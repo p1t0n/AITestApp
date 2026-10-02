@@ -10,9 +10,10 @@ namespace ExpertToJob.Agents.Auth;
 /// <summary>
 /// Validates the shared session JWT issued by the Web host. The Agents service is a separate
 /// process that does not reference the Web project, so the validation parameters are duplicated
-/// here — they MUST stay in sync with ExpertToJob.Web.Auth (same signing key, issuer, audience,
-/// read from the same "Auth:Jwt" configuration section). Validation only; the Agents service never
-/// issues session tokens.
+/// here — they MUST stay in sync with ExpertToJob.Web.Auth. The signing key is the one that is
+/// genuinely configured per deployment, read from the same "Auth:Jwt" section both hosts use; the
+/// issuer and audience are shared constants rather than configuration (EXP-106). Validation only;
+/// the Agents service never issues session tokens.
 ///
 /// <para>Two things are deliberately *not* duplicated: the claim names and the revocation rule.
 /// Both live in <c>ExpertToJob.Application.Auth</c>, which both hosts reference, because a token
@@ -26,12 +27,6 @@ public static class SessionAuthExtensions
     {
         var signingKey = config["Auth:Jwt:SigningKey"]
             ?? throw new InvalidOperationException("Auth:Jwt:SigningKey is not configured.");
-        // The same two constants the Web host mints with, from the layer both hosts reference —
-        // not a literal here and a JSON line there (EXP-89). A deployment that overrides them has
-        // to override them in both hosts, which is the agreement P1T-176 was about.
-        var issuer = config["Auth:Jwt:Issuer"] ?? SessionIdentity.Issuer;
-        var audience = config["Auth:Jwt:Audience"] ?? SessionIdentity.Audience;
-
         services
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
@@ -40,9 +35,13 @@ public static class SessionAuthExtensions
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
-                    ValidIssuer = issuer,
+                    // The same two constants the Web host mints with, from the layer both hosts
+                    // reference — not a literal here and a JSON line there, and since EXP-106 not a
+                    // configuration key either. There is one copy of the session's name, so the two
+                    // hosts cannot be configured apart: that is the agreement P1T-176 was about.
+                    ValidIssuer = SessionIdentity.Issuer,
                     ValidateAudience = true,
-                    ValidAudience = audience,
+                    ValidAudience = SessionIdentity.Audience,
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey)),
                     ValidateLifetime = true,

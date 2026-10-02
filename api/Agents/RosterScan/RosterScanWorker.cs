@@ -24,7 +24,6 @@ public sealed class RosterScanQueue
 public sealed class RosterScanWorker(
     RosterScanQueue queue,
     IServiceScopeFactory scopeFactory,
-    RosterScanOptions options,
     TimeProvider clock,
     ILogger<RosterScanWorker> logger) : BackgroundService
 {
@@ -45,7 +44,8 @@ public sealed class RosterScanWorker(
 
     private async Task SweepLoopAsync(CancellationToken ct)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(options.ResumeSweepSeconds), clock);
+        using var timer = new PeriodicTimer(
+            TimeSpan.FromSeconds(RosterScanOptions.ResumeSweepSeconds), clock);
         try
         {
             while (await timer.WaitForNextTickAsync(ct))

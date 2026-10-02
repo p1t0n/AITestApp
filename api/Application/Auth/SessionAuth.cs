@@ -27,14 +27,15 @@ public static class SessionClaims
 /// <b>both</b> hosts validate against them, from separate processes that share no configuration
 /// file — so the values live once, here, in the layer both reference.
 ///
-/// <para>Code constants rather than shipped <c>Auth:Jwt</c> JSON lines (EXP-89). These are not an
-/// operator knob: they are the name of this product's session, pinned by
+/// <para>Code constants and nothing else (EXP-89, then EXP-106). These are not an operator knob:
+/// they are the name of this product's session, pinned by
 /// <c>Agents.Tests/WebSessionTokenLockstepTests</c> so that neither host can drift and neither can
-/// both hosts drift together into a name nobody chose. A deployment that really does need a
-/// different issuer still sets <c>Auth:Jwt:Issuer</c> — in both hosts, which is the point: two
-/// copies of a JSON line are what made P1T-176, where a rename landing in one
-/// <c>appsettings.json</c> and not the other 401s every agent call while the app still starts and
-/// still serves the SPA.</para>
+/// both hosts drift together into a name nobody chose. EXP-89 stopped them being shipped as two
+/// <c>Auth:Jwt</c> JSON lines but left them bindable; nothing ever bound them, and a knob nobody
+/// turns is only a way for one host's configuration to move without the other's. That is P1T-176
+/// exactly: a rename landing in one <c>appsettings.json</c> and not the other 401s every agent call
+/// while the app still starts and still serves the SPA. So there is one copy, here, and a
+/// deployment that genuinely needs a different session name changes it here.</para>
 ///
 /// <para>The signing key is deliberately not here. It is a secret, it differs per environment, and
 /// it has no default worth shipping.</para>

@@ -30,20 +30,19 @@ public sealed class AuthOptions
 /// Symmetric (HS256) session-token settings. The signing key MUST match in the Web and Agents
 /// configuration — Web issues tokens, both services validate them. Keep the production key in a
 /// secret store, not source control.
+///
+/// <para>The <c>iss</c> and <c>aud</c> are deliberately absent: they are not an operator knob but
+/// the name of this product's session, so both hosts mint and validate against
+/// <see cref="SessionIdentity"/> directly (EXP-106). EXP-89 had already stopped them being shipped
+/// twice in JSON and left them bindable with the shared constant as the default — and nothing ever
+/// bound them, which left a settable property whose only effect would have been to let one host's
+/// configuration move without the other's. That is exactly the shape of P1T-176.</para>
 /// </summary>
 public sealed class JwtOptions
 {
     /// <summary>HS256 signing key. Must be at least 32 bytes.</summary>
     public string SigningKey { get; set; } = string.Empty;
-    /// <summary>The <c>iss</c> minted into every session token. The default is the shared
-    /// <see cref="SessionIdentity"/> constant rather than a literal here and a line in
-    /// <c>appsettings.json</c>: the Agents host validates against the same value from its own
-    /// process, and two copies are how P1T-176 happened.</summary>
-    public string Issuer { get; set; } = SessionIdentity.Issuer;
 
-    /// <summary>The <c>aud</c> minted into every session token. Shared for the same reason as
-    /// <see cref="Issuer"/>.</summary>
-    public string Audience { get; set; } = SessionIdentity.Audience;
     /// <summary>
     /// Session lifetime. Short on purpose: <c>User.TokenVersion</c> is the revocation mechanism,
     /// and this is the window in which a *lifetime*-only failure (a token version check that never

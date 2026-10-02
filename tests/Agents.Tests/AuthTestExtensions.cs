@@ -45,13 +45,10 @@ internal static class AuthTestExtensions
         var config = factory.Services.GetRequiredService<IConfiguration>();
         var key = config["Auth:Jwt:SigningKey"]
             ?? throw new InvalidOperationException("Auth:Jwt:SigningKey missing from test host config.");
-        var issuer = config["Auth:Jwt:Issuer"] ?? SessionIdentity.Issuer;
-        var audience = config["Auth:Jwt:Audience"] ?? SessionIdentity.Audience;
-
         var client = factory.CreateClient();
         client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue(
-                "Bearer", MintHs256(key, issuer, audience, account));
+                "Bearer", MintHs256(key, SessionIdentity.Issuer, SessionIdentity.Audience, account));
         return client;
     }
 
@@ -100,8 +97,11 @@ internal static class AuthTestExtensions
     }
 
     /// <summary>A client whose token carries a caller-chosen issuer and audience, for the
-    /// lockstep check: the identity comes from the Web host's shipped config (or deliberately does
-    /// not), while the signing key still comes from the Agents host under test.</summary>
+    /// lockstep check: the identity is whatever the caller names — the shared constants, or
+    /// deliberately not them — while the signing key still comes from the Agents host under test.
+    /// The parameters are the point of this helper, so they are never defaulted to
+    /// <see cref="SessionIdentity"/> here: a token the test meant to be foreign has to stay
+    /// foreign.</summary>
     public static HttpClient CreateClientWithToken(
         this WebApplicationFactory<Program> factory, string issuer, string audience)
     {
@@ -136,8 +136,8 @@ internal static class AuthTestExtensions
                 "Bearer",
                 MintHs256(
                     key,
-                    config["Auth:Jwt:Issuer"] ?? SessionIdentity.Issuer,
-                    config["Auth:Jwt:Audience"] ?? SessionIdentity.Audience,
+                    SessionIdentity.Issuer,
+                    SessionIdentity.Audience,
                     userId,
                     claims));
         return client;
