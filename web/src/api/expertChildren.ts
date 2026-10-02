@@ -1,10 +1,15 @@
 // Every child collection hanging off one expert: skills, availability, languages,
 // qualifications, experiences (P1T-142).
 //
-// All five collections are the same three mutations over two URLs — a collection URL under the
-// expert to add to, and a top-level item URL to update or delete — so they are generated from one
-// factory rather than written out fifteen times (EXP-80). The exported names are unchanged, and
-// each is the only thing a component ever imports.
+// All five collections are the same two mutations over two URLs — a collection URL under the
+// expert to post to, and a top-level item URL to put to or delete — so they are generated from one
+// factory rather than written out fifteen times (EXP-80). Each export is the only thing a
+// component ever imports.
+//
+// Saving is one hook, not an add and an update (EXP-103). Every call site had the same `edit.id ?
+// update : add` ternary, so the id now picks the verb inside the factory: present means PUT to the
+// item, absent means POST to the collection. `expertChildren.test.tsx` pins that branch, because
+// it is no longer visible at the call site.
 //
 // They are only ever read back through that expert's detail projection, so every mutation
 // invalidates ["experts", expertId] and nothing else. That covers the CV too: React Query matches
@@ -17,49 +22,40 @@
 // the other three children already had.
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type {
-  AvailabilityEntry,
-  ExpertSkill,
-  Experience,
-  Qualification,
   SaveAvailabilityEntry,
   SaveExpertSkill,
   SaveExperience,
   SaveQualification,
   SaveSpokenLanguage,
-  SpokenLanguage,
 } from "../types";
 import { http } from "./http";
 
 /**
- * The add/update/delete trio for one child collection.
+ * The save/delete pair for one child collection.
  *
  * `collectionPath` is the segment under the expert that POST adds to; `itemPath` is the top-level
  * segment that addresses one row for PUT and DELETE. They differ per collection (skills post to
  * `/experts/:id/skills` but update at `/expert-skills/:itemId`), which is why both are arguments
  * and neither is derived from the other.
+ *
+ * Nothing reads a mutation's result — every call site awaits it and throws the row away — so the
+ * response is left untyped rather than carrying a `Row` parameter no one looks at.
  */
-function childCrud<Save extends object, Row>(collectionPath: string, itemPath: string) {
+function childCrud<Save extends object>(collectionPath: string, itemPath: string) {
   /** Refresh the expert's detail projection — and, by prefix, everything hanging off it. */
   function useRefreshExpert(expertId: string) {
     const qc = useQueryClient();
     return () => qc.invalidateQueries({ queryKey: ["experts", expertId] });
   }
 
-  function useAdd(expertId: string) {
+  function useSave(expertId: string) {
     const onSuccess = useRefreshExpert(expertId);
     return useMutation({
-      mutationFn: async (dto: Save) =>
-        (await http.post<Row>(`/experts/${expertId}/${collectionPath}`, dto)).data,
-      onSuccess,
-    });
-  }
-
-  function useUpdate(expertId: string) {
-    const onSuccess = useRefreshExpert(expertId);
-    return useMutation({
-      // The id addresses the row; it is not part of the payload.
-      mutationFn: async ({ id, ...dto }: Save & { id: string }) =>
-        (await http.put<Row>(`/${itemPath}/${id}`, dto)).data,
+      // The id addresses the row; it is not part of the payload, and an absent one means create.
+      mutationFn: async ({ id, ...dto }: Save & { id?: string }) =>
+        id
+          ? (await http.put(`/${itemPath}/${id}`, dto)).data
+          : (await http.post(`/experts/${expertId}/${collectionPath}`, dto)).data,
       onSuccess,
     });
   }
@@ -72,40 +68,36 @@ function childCrud<Save extends object, Row>(collectionPath: string, itemPath: s
     });
   }
 
-  return { useAdd, useUpdate, useDelete };
+  return { useSave, useDelete };
 }
 
-const expertSkills = childCrud<SaveExpertSkill, ExpertSkill>("skills", "expert-skills");
-const availability = childCrud<SaveAvailabilityEntry, AvailabilityEntry>("availability", "availability");
-const languages = childCrud<SaveSpokenLanguage, SpokenLanguage>("languages", "languages");
-const qualifications = childCrud<SaveQualification, Qualification>("qualifications", "qualifications");
-const experiences = childCrud<SaveExperience, Experience>("experiences", "experiences");
+const expertSkills = childCrud<SaveExpertSkill>("skills", "expert-skills");
+const availability = childCrud<SaveAvailabilityEntry>("availability", "availability");
+const languages = childCrud<SaveSpokenLanguage>("languages", "languages");
+const qualifications = childCrud<SaveQualification>("qualifications", "qualifications");
+const experiences = childCrud<SaveExperience>("experiences", "experiences");
 
-export const useAddExpertSkill = expertSkills.useAdd;
 /**
- * The level and the years, never the catalog link (P1T-156): `ExpertSkillService.UpdateAsync`
- * validates `skillId` and then assigns only `Level` and `YearsExperience`. The id still rides along
- * so the payload is the one shape the API documents, and the form does not offer to change it.
+ * With an id: the level and the years, never the catalog link (P1T-156).
+ * `ExpertSkillService.UpdateAsync` validates `skillId` and then assigns only `Level` and
+ * `YearsExperience`. The id still rides along so the payload is the one shape the API documents,
+ * and the form does not offer to change it.
  */
-export const useUpdateExpertSkill = expertSkills.useUpdate;
+export const useSaveExpertSkill = expertSkills.useSave;
 export const useDeleteExpertSkill = expertSkills.useDelete;
 
 // ---- Availability ----
 
-export const useAddAvailability = availability.useAdd;
-export const useUpdateAvailability = availability.useUpdate;
+export const useSaveAvailability = availability.useSave;
 export const useDeleteAvailability = availability.useDelete;
 
 // ---- Languages, qualifications, experiences (P1T-142) ----
 
-export const useAddLanguage = languages.useAdd;
-export const useUpdateLanguage = languages.useUpdate;
+export const useSaveLanguage = languages.useSave;
 export const useDeleteLanguage = languages.useDelete;
 
-export const useAddQualification = qualifications.useAdd;
-export const useUpdateQualification = qualifications.useUpdate;
+export const useSaveQualification = qualifications.useSave;
 export const useDeleteQualification = qualifications.useDelete;
 
-export const useAddExperience = experiences.useAdd;
-export const useUpdateExperience = experiences.useUpdate;
+export const useSaveExperience = experiences.useSave;
 export const useDeleteExperience = experiences.useDelete;

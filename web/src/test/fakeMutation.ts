@@ -21,9 +21,6 @@ export function useFakeMutation<Req, Res>(spy: MutationSpy<Req, Res>) {
     error: state.error ?? null,
     variables: state.variables,
     isPending: spy.isPending,
-    isError: state.error !== undefined,
-    isSuccess: state.data !== undefined,
-    mutateAsync: spy.mutateAsync,
     // Like the real one: the previous result and error are dropped the moment a run starts.
     mutate: (req: Req) => {
       setState({ variables: req });

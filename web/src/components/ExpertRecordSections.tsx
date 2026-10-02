@@ -13,21 +13,16 @@ import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import {
-  useAddAvailability,
-  useAddExpertSkill,
-  useAddExperience,
-  useAddLanguage,
-  useAddQualification,
   useDeleteAvailability,
   useDeleteExpertSkill,
   useDeleteExperience,
   useDeleteLanguage,
   useDeleteQualification,
-  useUpdateAvailability,
-  useUpdateExpertSkill,
-  useUpdateExperience,
-  useUpdateLanguage,
-  useUpdateQualification,
+  useSaveAvailability,
+  useSaveExpertSkill,
+  useSaveExperience,
+  useSaveLanguage,
+  useSaveQualification,
 } from "../api";
 import type {
   AvailabilityEntry,
@@ -143,20 +138,15 @@ export default function ExpertRecordSections({
   expertId: string;
   expert: ExpertDetail;
 }) {
-  const addSkill = useAddExpertSkill(expertId);
-  const updateSkill = useUpdateExpertSkill(expertId);
+  const saveSkill = useSaveExpertSkill(expertId);
   const delSkill = useDeleteExpertSkill(expertId);
-  const addAvail = useAddAvailability(expertId);
-  const updateAvail = useUpdateAvailability(expertId);
+  const saveAvail = useSaveAvailability(expertId);
   const delAvail = useDeleteAvailability(expertId);
-  const addLanguage = useAddLanguage(expertId);
-  const updateLanguage = useUpdateLanguage(expertId);
+  const saveLanguage = useSaveLanguage(expertId);
   const delLanguage = useDeleteLanguage(expertId);
-  const addQualification = useAddQualification(expertId);
-  const updateQualification = useUpdateQualification(expertId);
+  const saveQualification = useSaveQualification(expertId);
   const delQualification = useDeleteQualification(expertId);
-  const addExperience = useAddExperience(expertId);
-  const updateExperience = useUpdateExperience(expertId);
+  const saveExperience = useSaveExperience(expertId);
   const delExperience = useDeleteExperience(expertId);
 
   const [languageEdit, setLanguageEdit] = useState<EditTarget<SaveSpokenLanguage>>(null);
@@ -361,11 +351,7 @@ export default function ExpertRecordSections({
           title={languageEdit.id ? "Edit language" : "Add language"}
           initial={languageEdit.initial}
           onClose={() => setLanguageEdit(null)}
-          onSave={(dto) =>
-            languageEdit.id
-              ? updateLanguage.mutateAsync({ id: languageEdit.id, ...dto })
-              : addLanguage.mutateAsync(dto)
-          }
+          onSave={(dto) => saveLanguage.mutateAsync({ id: languageEdit.id, ...dto })}
         />
       )}
 
@@ -374,11 +360,7 @@ export default function ExpertRecordSections({
           title={qualificationEdit.id ? "Edit qualification" : "Add qualification"}
           initial={qualificationEdit.initial}
           onClose={() => setQualificationEdit(null)}
-          onSave={(dto) =>
-            qualificationEdit.id
-              ? updateQualification.mutateAsync({ id: qualificationEdit.id, ...dto })
-              : addQualification.mutateAsync(dto)
-          }
+          onSave={(dto) => saveQualification.mutateAsync({ id: qualificationEdit.id, ...dto })}
         />
       )}
 
@@ -387,11 +369,7 @@ export default function ExpertRecordSections({
           title={availabilityEdit.id ? "Edit availability" : "Add availability"}
           initial={availabilityEdit.initial}
           onClose={() => setAvailabilityEdit(null)}
-          onSave={(dto) =>
-            availabilityEdit.id
-              ? updateAvail.mutateAsync({ id: availabilityEdit.id, ...dto })
-              : addAvail.mutateAsync(dto)
-          }
+          onSave={(dto) => saveAvail.mutateAsync({ id: availabilityEdit.id, ...dto })}
         />
       )}
 
@@ -401,11 +379,7 @@ export default function ExpertRecordSections({
           initial={skillEdit.initial}
           lockedSkillName={skillEdit.skillName}
           onClose={() => setSkillEdit(null)}
-          onSave={(dto) =>
-            skillEdit.id
-              ? updateSkill.mutateAsync({ id: skillEdit.id, ...dto })
-              : addSkill.mutateAsync(dto)
-          }
+          onSave={(dto) => saveSkill.mutateAsync({ id: skillEdit.id, ...dto })}
         />
       )}
 
@@ -414,11 +388,7 @@ export default function ExpertRecordSections({
           title={experienceEdit.id ? "Edit experience" : "Add experience"}
           initial={experienceEdit.initial}
           onClose={() => setExperienceEdit(null)}
-          onSave={(dto) =>
-            experienceEdit.id
-              ? updateExperience.mutateAsync({ id: experienceEdit.id, ...dto })
-              : addExperience.mutateAsync(dto)
-          }
+          onSave={(dto) => saveExperience.mutateAsync({ id: experienceEdit.id, ...dto })}
         />
       )}
     </>

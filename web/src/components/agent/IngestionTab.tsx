@@ -21,13 +21,13 @@ import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlined";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import {
   apiErrorMessage,
-  useAddExpertSkill,
   useCategories,
   useCreateSkill,
   useDeleteExpert,
   useExpert,
   usePromoteExpert,
   useResumeIngestion,
+  useSaveExpertSkill,
   useSkills,
   useUpdateExpert,
   type IngestionResponse,
@@ -45,7 +45,7 @@ type ProposalState =
 function ProposalRow({ name, expertId }: { name: string; expertId: string }) {
   const skills = useSkills();
   const categories = useCategories();
-  const addSkill = useAddExpertSkill(expertId);
+  const addSkill = useSaveExpertSkill(expertId);
   const createSkill = useCreateSkill();
 
   const [state, setState] = useState<ProposalState>({ kind: "pending" });
