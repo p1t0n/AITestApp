@@ -4,6 +4,7 @@ using ExpertToJob.Domain.Enums;
 using ExpertToJob.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Xunit;
@@ -26,7 +27,14 @@ public class UsageServiceTests
             .Options);
 
     private static UsageService Service(AppDbContext db, UsageOptions? opts = null) =>
-        new(db, Options.Create(opts ?? new UsageOptions()), new FixedClock(Now), NullLogger<UsageService>.Instance);
+        new(db, Options.Create(opts ?? ShippedCaps()), new FixedClock(Now), NullLogger<UsageService>.Instance);
+
+    /// <summary>The system-default caps as shipped. Read from the settings file, which is their
+    /// only home since EXP-107: <c>new UsageOptions()</c> is all zeroes now, and a zero cap blocks
+    /// every user at no tokens. The literals the cases below name (50,000 daily) are pinned in
+    /// <see cref="OperatorKnobTests"/>.</summary>
+    private static UsageOptions ShippedCaps() =>
+        ShippedAgentsSettings.Configuration.GetSection(UsageOptions.Section).Get<UsageOptions>()!;
 
     private static async Task AddUsage(AppDbContext db, Guid userId, string agent, long tokens, DateTimeOffset at)
     {
@@ -42,18 +50,6 @@ public class UsageServiceTests
             Timestamp = at,
         });
         await db.SaveChangesAsync();
-    }
-
-    [Fact]
-    public void Default_caps_are_50k_daily_150k_weekly_500k_monthly()
-    {
-        // Raised from 25k for the staffing pipeline (P1T-75): one run spends shortlist + N match
-        // + narrative tokens, so the old daily default left too little headroom for real use.
-        var defaults = new UsageOptions();
-
-        defaults.DefaultDailyTokens.Should().Be(50_000);
-        defaults.DefaultWeeklyTokens.Should().Be(150_000);
-        defaults.DefaultMonthlyTokens.Should().Be(500_000);
     }
 
     [Fact]

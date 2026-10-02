@@ -313,6 +313,12 @@ branch each, and everything after the seam provider-neutral, so a third provider
 rather than a rewrite. Every agent call is metered against per-user token caps (defaults
 50k/150k/500k daily/weekly/monthly), and each usage row records which provider served it.
 
+The knobs an operator turns without a deploy live in that same file and nowhere else: raise the
+system-default token caps under `Usage:*`, the staffing match concurrency under
+`Staffing:MaxConcurrentMatches` (size it to the deployment's TPM), and the Roster Scan quota
+budget under `RosterScan:RequestsPerMinute` / `RequestsPerDay`. None of them has a code default,
+so a missing or zero value stops the host at startup naming the key rather than running at nothing.
+
 A content filter on either provider surfaces as one typed failure, so orchestration degrades a
 filtered stage without knowing whose filter it was. The Art. 15 recipient disclosure on the expert's
 privacy page names the **configured** providers, from both keys: one recipient where one company does

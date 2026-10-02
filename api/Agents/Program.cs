@@ -87,7 +87,10 @@ builder.Services.AddSessionJwtAuthentication(builder.Configuration);
 // DB access for token-usage metering (and, next, per-user cap enforcement). Expert data still
 // flows only through MCP; this is the operational usage log.
 builder.Services.AddInfrastructure(builder.Configuration);
-builder.Services.AddOptions<UsageOptions>().Bind(builder.Configuration.GetSection(UsageOptions.Section));
+// The operator knobs (EXP-107): the system-default token caps, the Roster Scan quota budget and
+// the staffing match concurrency, bound from appsettings.json — their only home — and validated on
+// start, because without a property default a missing key binds to a silent, useless zero.
+builder.Services.AddOperatorKnobs(builder.Configuration);
 // Runtime Budgets: the per-run ceiling every agent's chat client is wrapped in (P1T-147).
 builder.Services.AddOptions<AgentBudgetOptions>()
     .Bind(builder.Configuration.GetSection(AgentBudgetOptions.Section));
@@ -189,9 +192,6 @@ builder.Services.AddSingleton<IJdRequirementExtractor>(sp => new JdRequirementEx
 // Roster Scan scoring transport (P1T-123): the sync-vs-batch seam. The limiter is process-wide —
 // it protects the model's RPM across every concurrent scan, like the staffing throttle. The
 // runner (P1T-124) consumes both.
-builder.Services.AddSingleton(sp =>
-    builder.Configuration.GetSection(ExpertToJob.Agents.RosterScan.RosterScanOptions.Section)
-        .Get<ExpertToJob.Agents.RosterScan.RosterScanOptions>() ?? new ExpertToJob.Agents.RosterScan.RosterScanOptions());
 builder.Services.AddSingleton<System.Threading.RateLimiting.RateLimiter>(sp =>
     new System.Threading.RateLimiting.FixedWindowRateLimiter(new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
     {
@@ -232,7 +232,6 @@ builder.Services.AddSingleton(sp => new JdMatchRunService(
 // call on the default chat client. The match throttle is process-wide — it protects the model
 // endpoint's rate limit across all concurrent staffing requests — while the pipeline itself is
 // scoped because it meters/cap-checks through the request-scoped usage services.
-builder.Services.AddOptions<StaffingOptions>().Bind(builder.Configuration.GetSection(StaffingOptions.Section));
 builder.Services.AddSingleton(sp => new StaffingThrottle(
     sp.GetRequiredService<IOptions<StaffingOptions>>().Value.MaxConcurrentMatches));
 // The proposal ledger (P1T-100): staffing runs persist a pending proposal; humans decide it.
