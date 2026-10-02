@@ -246,9 +246,16 @@ public class EmbeddingProviderTests
             .Which.QuotaBreakerWindow.Should().Be(TimeSpan.FromSeconds(seconds));
     }
 
-    /// <summary>The shipped MCP settings bind where the options class reads. Asserted against the
-    /// literals in the file, never the property defaults: those agreeing is what would hide an
-    /// unbound section.</summary>
+    /// <summary>What the MCP host actually resolves from its shipped file: the provider it names,
+    /// and the four values that provider's defaults carry. Since EXP-102 the file names only the
+    /// provider — the rest equalled <see cref="EmbeddingOptions.Defaults"/> and the duplicate was
+    /// deleted — so these literals now pin the <em>code</em> side, which is where the measurement
+    /// comments that justify each number live. Changing one of them has to come past this test.
+    ///
+    /// <para>The binding path the deleted rows used to pin is pinned by
+    /// <see cref="An_operator_can_still_override_a_default_through_the_shipped_section"/> instead,
+    /// and <see cref="The_shipped_mcp_settings_repeat_no_embedding_code_default"/> keeps the
+    /// duplicate from coming back.</para></summary>
     [Fact]
     public void The_shipped_mcp_settings_name_the_embeddings_provider_and_its_floor()
     {
@@ -270,9 +277,11 @@ public class EmbeddingProviderTests
         options.ApiKey.Should().BeEmpty("the key comes from AZURE_FOUNDRY_API_KEY, never a tracked file");
     }
 
-    /// <summary>The Gemini block stays shipped and stays bindable: it is one configuration key away
-    /// from being active again (ADR §5 keeps it for development and demo), and a block that quietly
-    /// stopped binding would only be discovered by someone switching back.</summary>
+    /// <summary>Gemini stays one configuration key away from being active again (ADR §5 keeps it for
+    /// development and demo), and that switch has to land on its own measured numbers rather than on
+    /// Azure's. Asserted through the same resolve the host runs, because that is the only thing the
+    /// key flips: since EXP-102 neither provider has a block in the shipped file, so a switch that
+    /// quietly picked up the wrong floor would only be discovered by someone switching back.</summary>
     [Fact]
     public void The_shipped_mcp_settings_still_bind_the_provider_that_is_not_active()
     {
@@ -287,6 +296,112 @@ public class EmbeddingProviderTests
         options.MinSimilarity.Should().Be(0.55);
         options.EmbeddingModel.Should().Be("gemini-embedding-001");
         options.QuotaBreakerSeconds.Should().Be(1800);
+    }
+
+    /// <summary>
+    /// EXP-102, which is EXP-89's "each value on one side" rule applied to the embedding blocks. A
+    /// value shipped in JSON that equals the provider's code default is the same number written
+    /// twice, and two copies are free to drift — at which point the file wins in silence while the
+    /// comment recording how the number was <em>measured</em> still describes the other one.
+    ///
+    /// <para>None of these is tuned per environment, which is the rule's test for where a value
+    /// belongs. <see cref="EmbeddingOptions.MinSimilarity"/> and
+    /// <see cref="EmbeddingOptions.QuotaBreakerSeconds"/> are calibrated per embedding model and per
+    /// provider rate-limit regime; <see cref="EmbeddingOptions.EmbeddingModel"/> and
+    /// <see cref="EmbeddingOptions.Endpoint"/> identify the provider itself. So they live in
+    /// <see cref="EmbeddingOptions.Defaults"/>, next to the measurement that produced them, and the
+    /// shipped file names only what an operator actually chooses: which provider is active.</para>
+    ///
+    /// <para>This removes the duplicate, not the knob —
+    /// <see cref="An_operator_can_still_override_a_default_through_the_shipped_section"/> is the
+    /// other half.</para>
+    /// </summary>
+    [Theory]
+    [InlineData(EmbeddingsProvider.AzureFoundry)]
+    [InlineData(EmbeddingsProvider.Gemini)]
+    public void The_shipped_mcp_settings_repeat_no_embedding_code_default(EmbeddingsProvider provider)
+    {
+        var sectionName = EmbeddingOptions.SectionFor(provider);
+        var section = new ConfigurationBuilder()
+            .AddJsonFile(Path.Combine(RepoRoot(), "api/Mcp/appsettings.json"))
+            .Build()
+            .GetSection(sectionName);
+        var defaults = EmbeddingOptions.Defaults(provider);
+
+        var repeated = new List<string>();
+
+        // Typed, not string-compared: the file spells the floor "0.30" and the code default renders
+        // "0.3", so a textual comparison would call an exact duplicate a difference.
+        void Pin<T>(string key, T fromCode)
+        {
+            if (section.GetSection(key).Value is null)
+            {
+                return;
+            }
+
+            if (EqualityComparer<T>.Default.Equals(section.GetValue<T>(key)!, fromCode))
+            {
+                repeated.Add($"{sectionName}:{key}");
+            }
+        }
+
+        Pin(nameof(EmbeddingOptions.Endpoint), defaults.Endpoint);
+        Pin(nameof(EmbeddingOptions.EmbeddingModel), defaults.EmbeddingModel);
+        Pin(nameof(EmbeddingOptions.MinSimilarity), defaults.MinSimilarity);
+        Pin(nameof(EmbeddingOptions.QuotaBreakerSeconds), defaults.QuotaBreakerSeconds);
+        Pin(nameof(EmbeddingOptions.ApiKey), defaults.ApiKey);
+
+        repeated.Should().BeEmpty(
+            "each of these already has exactly this value in EmbeddingOptions.Defaults, so the "
+            + "shipped file is a second copy that can drift from the one carrying the measurement. "
+            + "Found: " + string.Join(", ", repeated));
+    }
+
+    /// <summary>
+    /// The half that keeps EXP-102 from being a removal of operator control: the provider's section
+    /// is still bound <em>over</em> its code defaults, so an operator who does need a different
+    /// endpoint or a different floor sets one key and gets it. Only the tracked duplicate is gone.
+    ///
+    /// <para>Also the binding pin the deleted settings rows used to be: this spells
+    /// <c>Ai:AzureFoundry</c> the way <see cref="EmbeddingOptions.SectionFor"/> does, so a rename on
+    /// one side without the other shows up here rather than as a host reading none of the values
+    /// anyone set.</para>
+    /// </summary>
+    [Fact]
+    public void An_operator_can_still_override_a_default_through_the_shipped_section()
+    {
+        var config = new ConfigurationBuilder()
+            .AddJsonFile(Path.Combine(RepoRoot(), "api/Mcp/appsettings.json"))
+            .AddInMemoryCollection(
+            [
+                new KeyValuePair<string, string?>("Ai:AzureFoundry:MinSimilarity", "0.42"),
+                new KeyValuePair<string, string?>("Ai:AzureFoundry:Endpoint", "https://override.example/openai/v1/"),
+            ])
+            .Build();
+
+        var (provider, options) = EmbeddingServiceCollectionExtensions.ResolveProvider(config);
+
+        provider.Should().Be(EmbeddingsProvider.AzureFoundry);
+        options.MinSimilarity.Should().Be(0.42);
+        options.Endpoint.Should().Be("https://override.example/openai/v1/");
+        options.EmbeddingModel.Should().Be("text-embedding-3-small",
+            "a key nobody overrode still comes from the code default");
+    }
+
+    /// <summary>A configuration key no code reads is a value nobody maintains and everybody
+    /// believes. <c>Mcp:ApiKey</c> was left by the skeleton commit <c>c16cd5b</c> and had 0 readers
+    /// — the MCP host reads <c>Mcp:Authority</c> and <c>Mcp:Resource</c> and nothing else — so it
+    /// read as a credential slot that authenticated something (EXP-102).</summary>
+    [Fact]
+    public void The_shipped_mcp_settings_carry_no_key_the_host_never_reads()
+    {
+        var config = new ConfigurationBuilder()
+            .AddJsonFile(Path.Combine(RepoRoot(), "api/Mcp/appsettings.json"))
+            .Build();
+
+        config["Mcp:ApiKey"].Should().BeNull(
+            "nothing in api/, tools/ or tests/ reads it; a key that looks like a credential and "
+            + "feeds nothing is worse than an absent one");
     }
 
     /// <summary>A bare <see cref="SemanticSearchOptions"/> — what every search unit test builds —
