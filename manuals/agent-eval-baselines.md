@@ -152,7 +152,8 @@ Baseline Prompt Size:
 Instructions only (no tools reach the model): shortlist 121, bench-report 199, roster-scan
 scorer 199, JD-requirement extractor 237.
 
-The read surface totals **4,094** across 11 tools (3,962 before EXP-94 taught `expert_list` its filters); the widest single schemas are
+The read surface totals **4,055** across 11 tools (3,962 before EXP-94 taught `expert_list` its
+filters, 4,094 before EXP-100 took the `status` one back out); the widest single schemas are
 `style_exemplar_search` 689, `roster_shortlist_search` 635 and `roster_semantic_search` 611. Since
 P1T-146 no agent is shown all of it — each identity's Tool Allowlist is declared in
 `CostFloors.AgentToolAllowlists` and configured under `McpAuth:<agent>:Tools`.
@@ -198,11 +199,12 @@ description that does not change what comes back — is not.
 
 ### Convergent run (P1T-148)
 
-The reference question *"who knows react and lives in London"* prices at **7,338** along
-`skill_list` → `roster_semantic_search` → answer: 1,988 × 3 model calls, plus 87 × 2 and 1,200 × 1
+The reference question *"who knows react and lives in London"* prices at **7,221** along
+`skill_list` → `roster_semantic_search` → answer: 1,949 × 3 model calls, plus 87 × 2 and 1,200 × 1
 for the results each following call re-sends. It was 6,984 at a 1,870 baseline; EXP-94 raised the
 baseline by 132 for `expert_list`'s two filters, which this path does not call and still pays for,
-because the tool is in roster-qa's allowlist. Its iteration ratchet is **4** model calls; the
+because the tool is in roster-qa's allowlist, and EXP-100 gave 39 of them back by dropping the
+filter that could not change an answer (7,338 → 7,221). Its iteration ratchet is **4** model calls; the
 traced run took 10. This ceiling is composed from the two tables above rather than pinned
 independently, so it tightens whenever they do — re-read it off the test output, never re-derive
 it by hand:

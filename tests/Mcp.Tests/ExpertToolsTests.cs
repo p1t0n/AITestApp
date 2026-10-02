@@ -202,29 +202,40 @@ public class ExpertToolsTests
         doc.RootElement.GetProperty("items").GetArrayLength().Should().Be(0);
     }
 
-    /// <summary>Drafts stay out of expert_list, which its description promises — so a status
-    /// filter naming them narrows to nobody rather than opening the gate.</summary>
+    /// <summary>
+    /// EXP-100: the status filter is gone, and the tool advertises exactly one input. The MCP
+    /// path never sets <c>IncludeDrafts</c>, so every row it can return is Active and a status
+    /// filter could only ever answer "everyone" or "nobody" — a parameter the model paid 132
+    /// tokens per iteration to be taught and could not use. Asserted on the advertised schema
+    /// rather than on a call, because the cost is in being offered it at all.
+    /// </summary>
     [Fact]
-    public async Task expert_list_filtered_by_status_matches_the_status_name_case_insensitively()
+    public async Task expert_list_advertises_location_as_its_only_input()
     {
-        using var factory = McpTestHost.CreateFactory(nameof(expert_list_filtered_by_status_matches_the_status_name_case_insensitively));
+        using var factory = McpTestHost.CreateFactory(nameof(expert_list_advertises_location_as_its_only_input));
         await using var client = await McpTestHost.ConnectAsync(factory);
 
-        await SeedAsync(client, ("Kowalski", "Warsaw, Poland"));
-        var draft = ValidDto("Draftsman");
-        draft["email"] = "";
-        draft["location"] = "Warsaw, Poland";
-        (await client.CallToolAsync("expert_create_draft", new Dictionary<string, object?> { ["dto"] = draft }))
-            .IsError.Should().NotBe(true);
+        var tool = (await client.ListToolsAsync()).Single(t => t.Name == "expert_list");
 
-        var active = await client.CallToolAsync(
-            "expert_list", new Dictionary<string, object?> { ["status"] = "active" });
-        var drafts = await client.CallToolAsync(
-            "expert_list", new Dictionary<string, object?> { ["status"] = "Draft" });
+        using var schema = JsonDocument.Parse(JsonSerializer.Serialize(tool.ProtocolTool.InputSchema));
+        schema.RootElement.GetProperty("properties").EnumerateObject()
+            .Select(p => p.Name).Should().Equal("location");
+    }
 
-        using var activeDoc = JsonDocument.Parse(ResultText(active));
-        activeDoc.RootElement.GetProperty("total").GetInt32().Should().Be(1);
-        using var draftDoc = JsonDocument.Parse(ResultText(drafts));
-        draftDoc.RootElement.GetProperty("total").GetInt32().Should().Be(0);
+    /// <summary>A status argument is no longer a filter the tool knows, so passing one cannot
+    /// quietly narrow (or quietly widen) the bench.</summary>
+    [Fact]
+    public async Task expert_list_ignores_a_status_argument_it_no_longer_declares()
+    {
+        using var factory = McpTestHost.CreateFactory(nameof(expert_list_ignores_a_status_argument_it_no_longer_declares));
+        await using var client = await McpTestHost.ConnectAsync(factory);
+
+        await SeedAsync(client, ("Kowalski", "Warsaw, Poland"), ("Schmidt", "Berlin, Germany"));
+
+        var result = await client.CallToolAsync(
+            "expert_list", new Dictionary<string, object?> { ["status"] = "retired" });
+
+        using var doc = JsonDocument.Parse(ResultText(result));
+        doc.RootElement.GetProperty("total").GetInt32().Should().Be(2);
     }
 }

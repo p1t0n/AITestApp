@@ -32,20 +32,19 @@ public class ExpertsController : ControllerBase
     }
 
     /// <summary>
-    /// The bench listing. <c>location</c> and <c>status</c> are the same optional case-insensitive
-    /// substring filters <c>expert_list</c> offers, reaching the same Application-layer query, so
-    /// REST and MCP narrow identically (EXP-94). The response stays a bare array — that shape is
-    /// the SPA's contract; the match total rides on the MCP result, where a model needs it to
-    /// answer a count without a row dump.
+    /// The bench listing. It takes <c>includeDrafts</c> and nothing else: EXP-94 also exposed
+    /// <c>location</c> and <c>status</c> here for symmetry with <c>expert_list</c>, and no caller
+    /// ever sent either (the SPA asks for drafts and nothing more), so EXP-100 took them back out.
+    /// The narrowing still lives in the Application layer, where MCP reaches it. The response
+    /// stays a bare array — that shape is the SPA's contract; the match total rides on the MCP
+    /// result, where a model needs it to answer a count without a row dump.
     /// </summary>
     [Authorize(Policy = AuthPolicies.Administrator)]
     [HttpGet]
     public async Task<IReadOnlyList<ExpertSummaryDto>> List(
         [FromQuery] bool includeDrafts,
-        CancellationToken ct,
-        [FromQuery] string? location = null,
-        [FromQuery] string? status = null) =>
-        (await _experts.ListAsync(new ExpertListQuery(location, status, includeDrafts), ct)).Items;
+        CancellationToken ct) =>
+        (await _experts.ListAsync(new ExpertListQuery(IncludeDrafts: includeDrafts), ct)).Items;
 
     /// <summary>
     /// One page of the staff roster (EXP-45): the whole Roster — Draft, Active and Paused —

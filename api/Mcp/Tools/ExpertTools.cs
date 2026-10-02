@@ -22,7 +22,7 @@ public class ExpertTools
          "roster_shortlist_search returns coverage and per-requirement evidence; do NOT use it to " +
          "sweep career narratives in bulk — roster_digest_list pages compact digests; do NOT use " +
          "it for one person — expert_get returns their child records, cv_get the assembled CV. " +
-         "Input, all optional: location, status; e.g. {\"location\": \"Warsaw\"} to narrow, " +
+         "Input, optional: location; e.g. {\"location\": \"Warsaw\"} to narrow, " +
          "e.g. {} for the whole bench. Rows carry NO skills, languages, qualifications, " +
          "experiences, availability history or CV prose, and draft experts are excluded."),
      Authorize(Policy = McpScopes.Read)]
@@ -30,10 +30,8 @@ public class ExpertTools
         IExpertService experts,
         CancellationToken ct,
         [Description("Case-insensitive substring of the expert's location; omit for every place.")]
-        string? location = null,
-        [Description("Case-insensitive substring of the expert's status name; omit for any.")]
-        string? status = null)
-        => await experts.ListAsync(new ExpertListQuery(location, status), ct);
+        string? location = null)
+        => await experts.ListAsync(new ExpertListQuery(location), ct);
 
     [McpServerTool(Name = "expert_get", ReadOnly = true, Destructive = false),
      Description(

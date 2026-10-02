@@ -18,11 +18,10 @@ public record IngestionDraftDto(ExpertDetailDto Expert, string? DuplicateWarning
 
 public interface IExpertService
 {
-    /// <summary>Active experts only by default; drafts opt in (review surfaces).</summary>
-    Task<IReadOnlyList<ExpertSummaryDto>> ListAsync(bool includeDrafts = false, CancellationToken ct = default);
-    /// <summary>The same bench listing, narrowed and counted (EXP-94): optional case-insensitive
-    /// substring filters on location and status, plus the total of the whole match. The filters are
-    /// here rather than in a shell so REST and MCP narrow identically.</summary>
+    /// <summary>The bench listing, narrowed and counted (EXP-94): Active experts only unless
+    /// drafts opt in (review surfaces), an optional case-insensitive substring filter on location,
+    /// plus the total of the whole match. The filter is here rather than in a shell so REST and
+    /// MCP narrow identically.</summary>
     Task<ExpertListResult> ListAsync(ExpertListQuery query, CancellationToken ct = default);
     /// <summary>One page of the whole Roster — Draft, Active and Paused — searched, sorted and
     /// counted in SQL (EXP-45). The staff roster's query; <see cref="ListAsync"/> stays the bench's.</summary>
@@ -76,9 +75,6 @@ public class ExpertService : IExpertService
     /// </summary>
     private DateOnly Today => DateOnly.FromDateTime(_clock.GetUtcNow().UtcDateTime);
 
-    public async Task<IReadOnlyList<ExpertSummaryDto>> ListAsync(bool includeDrafts = false, CancellationToken ct = default)
-        => (await ListAsync(new ExpertListQuery(IncludeDrafts: includeDrafts), ct)).Items;
-
     public async Task<ExpertListResult> ListAsync(ExpertListQuery query, CancellationToken ct = default)
     {
         // Scoped too, though the roster endpoint itself is Administrator only: this is the one
@@ -106,8 +102,8 @@ public class ExpertService : IExpertService
     }
 
     /// <summary>
-    /// The bench listing's optional narrowing (EXP-94). Both filters are case-insensitive
-    /// substrings, because the caller is a person (or a model) typing "warsaw", not picking from a
+    /// The bench listing's optional narrowing (EXP-94). The filter is a case-insensitive
+    /// substring, because the caller is a person (or a model) typing "warsaw", not picking from a
     /// facet list — the roster screen's exact-match <see cref="RosterQuery.Locations"/> is the
     /// other question and keeps its own code.
     /// </summary>
@@ -120,19 +116,6 @@ public class ExpertService : IExpertService
             // on Postgres and on the in-memory provider the unit tests run on.
             var needle = query.Location.Trim().ToLower();
             experts = experts.Where(e => e.Location != null && e.Location.ToLower().Contains(needle));
-        }
-
-        if (!string.IsNullOrWhiteSpace(query.Status))
-        {
-            // Resolved to enum values here rather than compared in SQL: the status is stored as a
-            // number, so there is no column to run a substring over. A needle that names no status
-            // leaves this empty, and an empty set matches nobody — a misspelled filter answers
-            // zero rather than silently answering "everyone".
-            var needle = query.Status.Trim().ToLowerInvariant();
-            var named = Enum.GetValues<ExpertStatus>()
-                .Where(s => s.ToString().ToLowerInvariant().Contains(needle))
-                .ToArray();
-            experts = experts.Where(e => named.Contains(e.Status));
         }
 
         return experts;

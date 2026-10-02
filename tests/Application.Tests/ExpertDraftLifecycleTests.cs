@@ -37,8 +37,9 @@ public class ExpertDraftLifecycleTests
         await svc.CreateAsync(Dto("Alice", "Active", "a@example.com"));
         var draft = await svc.CreateDraftAsync(Dto("Danny", "Draft", "d@example.com"));
 
-        (await svc.ListAsync()).Should().OnlyContain(e => e.Status == ExpertStatus.Active);
-        (await svc.ListAsync(includeDrafts: true)).Should()
+        (await svc.ListAsync(new ExpertListQuery())).Items.Should()
+            .OnlyContain(e => e.Status == ExpertStatus.Active);
+        (await svc.ListAsync(new ExpertListQuery(IncludeDrafts: true))).Items.Should()
             .Contain(e => e.Id == draft.Expert.Id && e.Status == ExpertStatus.Draft);
     }
 
@@ -76,7 +77,7 @@ public class ExpertDraftLifecycleTests
 
         var again = await svc.PromoteAsync(draft.Expert.Id);
         again.Status.Should().Be(ExpertStatus.Active);
-        (await svc.ListAsync()).Should().ContainSingle(e => e.Id == draft.Expert.Id);
+        (await svc.ListAsync(new ExpertListQuery())).Items.Should().ContainSingle(e => e.Id == draft.Expert.Id);
     }
 
     [Fact]
@@ -89,7 +90,7 @@ public class ExpertDraftLifecycleTests
         var act = () => svc.PromoteAsync(draft.Expert.Id);
 
         await act.Should().ThrowAsync<ValidationException>();
-        (await svc.ListAsync()).Should().NotContain(e => e.Id == draft.Expert.Id,
+        (await svc.ListAsync(new ExpertListQuery())).Items.Should().NotContain(e => e.Id == draft.Expert.Id,
             "a refused promote must leave the draft hidden");
     }
 
