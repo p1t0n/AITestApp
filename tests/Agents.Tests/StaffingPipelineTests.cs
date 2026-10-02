@@ -91,9 +91,26 @@ public class StaffingPipelineTests
     private static ResiliencePipeline MatchLadder(TimeProvider clock) =>
         RateLimitRetry.Linear(maxAttempts: 3, step: TimeSpan.FromSeconds(5), clock);
 
-    private static Task<StaffingRunOutcome> RunAsync(
+    private static Task<StaffingRun> RunAsync(
         StaffingPipeline pipeline, int? matchTop = null, string jobDescription = "Platform engineer.") =>
         pipeline.RunAsync(new StaffingPipelineRequest(jobDescription, MatchTop: matchTop), UserId);
+
+    /// <summary>The report case of the run's outcome, asserted as a case: a fault here fails as a
+    /// fault rather than as a null-reference two lines later — which is the point of the union.</summary>
+    private static StaffingReport Report(StaffingRun run) => run.Outcome switch
+    {
+        StaffingReport report => report,
+        StaffingRunFault fault => throw new InvalidOperationException(
+            $"Expected a report; the run faulted with: {fault.Message}"),
+    };
+
+    /// <summary>The mirror of <see cref="Report"/> for the one unrecoverable outcome.</summary>
+    private static StaffingRunFault Fault(StaffingRun run) => run.Outcome switch
+    {
+        StaffingReport => throw new InvalidOperationException("Expected a fault; the run produced a report."),
+        StaffingRunFault fault => fault,
+    };
+
 
     // ----- Happy path -----------------------------------------------------------------------
 
@@ -106,9 +123,7 @@ public class StaffingPipelineTests
 
         var outcome = await RunAsync(pipeline);
 
-        outcome.ShortlistFault.Should().BeNull();
-        outcome.Report.Should().NotBeNull();
-        var report = outcome.Report!;
+        var report = Report(outcome);
 
         report.Requirements.Should().Equal(
             "event streaming with Kafka", "Kubernetes operations", "team leadership");
@@ -286,8 +301,8 @@ public class StaffingPipelineTests
         var outcome = await RunAsync(pipeline, matchTop: 2);
 
         match.Calls.Should().Be(2);
-        outcome.Report!.Candidates.Should().HaveCount(2);
-        outcome.Report.Candidates.Select(c => c.ExpertId).Should().Equal(Id(1), Id(2));
+        Report(outcome).Candidates.Should().HaveCount(2);
+        Report(outcome).Candidates.Select(c => c.ExpertId).Should().Equal(Id(1), Id(2));
     }
 
     // ----- Narrative corruption guards ------------------------------------------------------
@@ -307,8 +322,8 @@ public class StaffingPipelineTests
 
         // Unknown-id rationales never reach the report; the affected candidates degrade to the
         // deterministic template, but the validated recommendation survives.
-        outcome.Report!.Candidates.Should().OnlyContain(c => c.Rationale.Contains("Matched 2/3"));
-        outcome.Report.Recommendation!.ExpertId.Should().Be(Id(1));
+        Report(outcome).Candidates.Should().OnlyContain(c => c.Rationale.Contains("Matched 2/3"));
+        Report(outcome).Recommendation!.ExpertId.Should().Be(Id(1));
     }
 
     [Fact]
@@ -324,11 +339,11 @@ public class StaffingPipelineTests
 
         var outcome = await RunAsync(pipeline);
 
-        outcome.Report!.Recommendation.Should().BeNull();
-        outcome.Report.Degraded.Should().BeTrue();
-        outcome.Report.Notes.Should().Contain(n => n.Contains("recommendation", StringComparison.OrdinalIgnoreCase));
+        Report(outcome).Recommendation.Should().BeNull();
+        Report(outcome).Degraded.Should().BeTrue();
+        Report(outcome).Notes.Should().Contain(n => n.Contains("recommendation", StringComparison.OrdinalIgnoreCase));
         // The valid rationales still ship.
-        outcome.Report.Candidates[0].Rationale.Should().Be("R1");
+        Report(outcome).Candidates[0].Rationale.Should().Be("R1");
     }
 
     // ----- Throttle and retry ---------------------------------------------------------------
@@ -374,8 +389,8 @@ public class StaffingPipelineTests
         var outcome = await RunAsync(pipeline, matchTop: 1);
 
         match.Calls.Should().Be(3);
-        outcome.Report!.Candidates[0].Match.Status.Value.Should().Be("completed");
-        outcome.Report.Degraded.Should().BeFalse();
+        Report(outcome).Candidates[0].Match.Status.Value.Should().Be("completed");
+        Report(outcome).Degraded.Should().BeFalse();
     }
 
     [Fact]
@@ -392,8 +407,8 @@ public class StaffingPipelineTests
         var outcome = await RunAsync(pipeline, matchTop: 1);
 
         match.Calls.Should().Be(3);
-        outcome.Report!.Candidates[0].Match.Status.Value.Should().Be("failed");
-        outcome.Report.Degraded.Should().BeTrue();
+        Report(outcome).Candidates[0].Match.Status.Value.Should().Be("failed");
+        Report(outcome).Degraded.Should().BeTrue();
     }
 
     /// <summary>
@@ -419,7 +434,7 @@ public class StaffingPipelineTests
         match.Calls.Should().Be(3, "the budget is attempts, not retries-after-first");
         clock.Waits.Should().Equal(
             TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10));
-        outcome.Report!.Candidates[0].Match.Status.Value.Should().Be("failed");
+        Report(outcome).Candidates[0].Match.Status.Value.Should().Be("failed");
     }
 
     [Fact]
@@ -434,8 +449,8 @@ public class StaffingPipelineTests
         var outcome = await RunAsync(pipeline, matchTop: 1);
 
         match.Calls.Should().Be(1);
-        outcome.Report!.Candidates[0].Match.Status.Value.Should().Be("failed");
-        outcome.Report.Candidates[0].Match.Error.Should().Contain("boom");
+        Report(outcome).Candidates[0].Match.Status.Value.Should().Be("failed");
+        Report(outcome).Candidates[0].Match.Error.Should().Contain("boom");
     }
 
     // ----- Partial failure ladder -----------------------------------------------------------
@@ -453,8 +468,7 @@ public class StaffingPipelineTests
 
         var outcome = await RunAsync(pipeline);
 
-        outcome.Report.Should().BeNull();
-        outcome.ShortlistFault.Should().Contain("semantic search backend");
+        Fault(outcome).Message.Should().Contain("semantic search backend");
         match.Calls.Should().Be(0);
         chat.CallCount.Should().Be(0);
         meter.Records.Should().ContainSingle().Which.AgentName.Should().Be("shortlist");
@@ -469,8 +483,7 @@ public class StaffingPipelineTests
 
         var outcome = await RunAsync(pipeline);
 
-        outcome.Report.Should().BeNull();
-        outcome.ShortlistFault.Should().Contain("model endpoint unreachable");
+        Fault(outcome).Message.Should().Contain("model endpoint unreachable");
     }
 
     [Fact]
@@ -487,7 +500,7 @@ public class StaffingPipelineTests
 
         var outcome = await RunAsync(pipeline);
 
-        var report = outcome.Report!;
+        var report = Report(outcome);
         report.Candidates[0].Match.Status.Value.Should().Be("completed");
         var failed = report.Candidates[1].Match;
         failed.Status.Value.Should().Be("failed");
@@ -511,7 +524,7 @@ public class StaffingPipelineTests
 
         var outcome = await RunAsync(pipeline);
 
-        var report = outcome.Report!;
+        var report = Report(outcome);
         report.Candidates.Should().HaveCount(2);
         report.Candidates.Should().OnlyContain(c => c.Match.Status.Value == "failed");
         report.Candidates.Should().OnlyContain(c => c.Shortlist.Coverage.Total == 3);
@@ -527,7 +540,7 @@ public class StaffingPipelineTests
 
         var outcome = await RunAsync(pipeline);
 
-        var report = outcome.Report!;
+        var report = Report(outcome);
         report.Candidates.Should().OnlyContain(c => c.Rationale.Contains("Matched 2/3"));
         report.Candidates.Should().OnlyContain(c => c.Match.Status.Value == "completed");
         report.Recommendation.Should().BeNull();
@@ -567,9 +580,8 @@ public class StaffingPipelineTests
 
         var outcome = await RunAsync(pipeline);
 
-        outcome.Report.Should().NotBeNull(
-            "a filtered stage is degraded, never propagated as a failed call");
-        var report = outcome.Report!;
+        // A filtered stage is degraded, never propagated as a failed call.
+        var report = Report(outcome);
         report.Candidates.Should().OnlyContain(c => c.Rationale.Contains("Matched 2/3"),
             "the rationales fall back to the template built from shortlist and match evidence");
         report.Recommendation.Should().BeNull();
@@ -596,9 +608,9 @@ public class StaffingPipelineTests
 
         var outcome = await RunAsync(pipeline, matchTop: 1);
 
-        outcome.Report!.Candidates[0].Rationale.Should().Contain("Matched 2/3");
-        outcome.Report.Recommendation.Should().BeNull();
-        outcome.Report.Degraded.Should().BeTrue();
+        Report(outcome).Candidates[0].Rationale.Should().Contain("Matched 2/3");
+        Report(outcome).Recommendation.Should().BeNull();
+        Report(outcome).Degraded.Should().BeTrue();
     }
 
     // ----- Cap re-checks --------------------------------------------------------------------
@@ -618,7 +630,7 @@ public class StaffingPipelineTests
 
         match.Calls.Should().Be(0);
         chat.CallCount.Should().Be(0);
-        var report = outcome.Report!;
+        var report = Report(outcome);
         report.Candidates.Should().OnlyContain(c => c.Match.Status.Value == "skipped");
         report.Candidates.Should().OnlyContain(c => c.Rationale.Contains("Matched 2/3"));
         report.Recommendation.Should().BeNull();
@@ -639,7 +651,7 @@ public class StaffingPipelineTests
 
         match.Calls.Should().Be(2);
         chat.CallCount.Should().Be(0);
-        var report = outcome.Report!;
+        var report = Report(outcome);
         report.Candidates.Should().OnlyContain(c => c.Match.Status.Value == "completed");
         report.Recommendation.Should().BeNull();
         report.Degraded.Should().BeTrue();

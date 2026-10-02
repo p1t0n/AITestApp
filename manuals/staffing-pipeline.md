@@ -69,7 +69,7 @@ fakes (`tests/Agents.Tests/Fakes/FakeStaffingSteps.cs`); the real services need 
 
 The graph is an explicit `WorkflowBuilder` chain of typed `FunctionExecutor`s exchanging private
 stage DTOs (`PreparedStage → ShortlistStage → MatchStage → EvidenceStage → NarrativeStage →
-ReportResult`) — **not** the chat-message high-level builders, whose protocol would force our typed
+StaffingRunOutcome`) — **not** the chat-message high-level builders, whose protocol would force our typed
 outcomes through chat messages. Executors are per-run instances closing over a per-run `Runner`,
 so every stage is strictly request-scoped; the run executes via `InProcessExecution.RunAsync` and
 the sink yields the result with `context.YieldOutputAsync` (declared through the executor's
@@ -154,7 +154,7 @@ Everything downstream of a successful shortlist **degrades into the report and n
 
 | Failure | Outcome |
 | --- | --- |
-| Shortlist step fails (MCP/auth/model fault, or the model skipped the tool) | The pipeline's **one** error outcome (without a shortlist there is nothing to report), surfaced as data: `StaffingRunOutcome.ShortlistFault` → SSE terminal `error` event (the one-shot endpoints map the same class of fault to 502) |
+| Shortlist step fails (MCP/auth/model fault, or the model skipped the tool) | The pipeline's **one** error outcome (without a shortlist there is nothing to report), surfaced as data: the `StaffingRunFault` case of the `StaffingRunOutcome` union → SSE terminal `error` event (the one-shot endpoints map the same class of fault to 502) |
 | One match run fails (after retries) | `match.status: "failed"` + per-candidate error + a report note; other candidates unaffected; `degraded: true` |
 | Cap trips mid-run | `skipped` statuses + cap note (see above); `degraded: true` |
 | Narrative call fails or its JSON is unparseable | Templated rationales + note; no recommendation; `degraded: true` |

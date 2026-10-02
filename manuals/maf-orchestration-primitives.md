@@ -53,7 +53,7 @@ deliberate narrowing and one wrinkle discovered in the package:
   Rationale documented on the class and in [`staffing-pipeline.md`](staffing-pipeline.md).
 - **`ExecutorOptions` has no public constructor in 1.10.0**, so an executor can't declare its
   workflow outputs through options; the report sink instead passes `outputTypes:
-  [typeof(ReportResult)]` to the `FunctionExecutor` constructor and yields the result explicitly
+  [typeof(StaffingRunOutcome)]` to the `FunctionExecutor` constructor and yields the result explicitly
   with `context.YieldOutputAsync(...)`, and the builder marks it via `WithOutputFrom`.
 - `StreamingRun` events were not needed for the UI in the end: the pipeline emits its own ordered,
   domain-shaped progress events (`StaffingProgressEvent`) that the SSE endpoint maps to the wire —

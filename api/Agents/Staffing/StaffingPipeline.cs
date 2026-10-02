@@ -81,7 +81,7 @@ public sealed class StaffingPipeline
 
     /// <summary>Runs the pipeline once for <paramref name="userId"/> (null: unmetered, uncapped —
     /// mirrors the endpoints' treatment of an unidentified principal).</summary>
-    public Task<StaffingRunOutcome> RunAsync(
+    public Task<StaffingRun> RunAsync(
         StaffingPipelineRequest request,
         Guid? userId,
         IProgress<StaffingProgressEvent>? progress = null,
@@ -93,7 +93,7 @@ public sealed class StaffingPipeline
     private sealed record PreparedStage(StaffingPipelineRequest Request, ShortlistAgentRequest Shortlist, int MatchTop);
 
     private sealed record ShortlistStage(
-        PreparedStage Prepared, ShortlistRunOutcome? Run, string? Fault, string? FaultTitle = null);
+        PreparedStage Prepared, ShortlistRunOutcome? Run, StaffingRunFault? Fault);
 
     private sealed record CandidateMatch(ShortlistCandidateItem Candidate, StaffingMatchDetail Detail);
 
@@ -108,18 +108,6 @@ public sealed class StaffingPipeline
         StaffingRecommendation? Recommendation,
         IReadOnlyList<string> Notes,
         bool Degraded);
-
-    /// <summary>Why there is no report: the shortlist step — the one stage nothing downstream can
-    /// degrade around — failed. <paramref name="Title"/> carries a headline of its own for a fault
-    /// that is not upstream (EXP-93); null leaves the terminal event's usual one.</summary>
-    private sealed record ShortlistFault(string Message, string? Title = null);
-
-    /// <summary>
-    /// The pipeline's single output: a report, or the shortlist fault that made one impossible.
-    /// A C# 15 union rather than a pair of nullables, so the sink below cannot hand back a result
-    /// with both halves null and the runner cannot read the half that was not set.
-    /// </summary>
-    private union ReportResult(StaffingReport, ShortlistFault);
 
     // ----- Per-run state ----------------------------------------------------------------------
 
@@ -136,7 +124,7 @@ public sealed class StaffingPipeline
         private IReadOnlyDictionary<string, string?> _inputs = new Dictionary<string, string?>();
         private RunProvenance _provenance = new(null, [], default);
 
-        public async Task<StaffingRunOutcome> RunAsync(StaffingPipelineRequest request, CancellationToken ct)
+        public async Task<StaffingRun> RunAsync(StaffingPipelineRequest request, CancellationToken ct)
         {
             var workflow = BuildWorkflow();
 
@@ -144,11 +132,11 @@ public sealed class StaffingPipeline
             var events = run.NewEvents.ToList();
 
             // Is<T>(out …) rather than As<T>(): the union is a value type, so a failed As would
-            // hand back default(ReportResult) — a value matching neither case — instead of null.
-            ReportResult? result = null;
+            // hand back default(StaffingRunOutcome) — a value matching neither case — instead of null.
+            StaffingRunOutcome? result = null;
             foreach (var output in events.OfType<WorkflowOutputEvent>())
             {
-                if (output.Is<ReportResult>(out var yielded))
+                if (output.Is<StaffingRunOutcome>(out var yielded))
                 {
                     result = yielded;
                     break;
@@ -170,11 +158,7 @@ public sealed class StaffingPipeline
                 package = new HandoffPackage(_inputs, _provenance, [.. _slices], [.. _degradations]);
             }
 
-            return outcome switch
-            {
-                StaffingReport report => new StaffingRunOutcome(report, null, _events, package),
-                ShortlistFault fault => new StaffingRunOutcome(null, fault.Message, _events, package, fault.Title),
-            };
+            return new StaffingRun(outcome, _events, package);
         }
 
         /// <summary>The explicit workflow spine. Executors are per-run instances (they close over
@@ -188,7 +172,7 @@ public sealed class StaffingPipeline
             var narrative = new FunctionExecutor<EvidenceStage, NarrativeStage>("narrative", NarrativeAsync);
             // The sink: composes the report and yields it as the workflow's output explicitly.
             var report = new FunctionExecutor<NarrativeStage>(
-                "report", ReportAsync, outputTypes: [typeof(ReportResult)]);
+                "report", ReportAsync, outputTypes: [typeof(StaffingRunOutcome)]);
 
             var builder = new WorkflowBuilder(prepare);
             // Per-executor spans (workflow_invoke, executor.process; P1T-94). No-ops without a
@@ -389,7 +373,7 @@ public sealed class StaffingPipeline
                     AddDegradation("shortlist", "The entire staffing report", fault);
                     Emit("shortlist", "Shortlist step failed (upstream retrieval fault).",
                         status: new StaffingStepStatus.Failed(), error: fault);
-                    return new ShortlistStage(prepared, run, fault);
+                    return new ShortlistStage(prepared, run, new StaffingRunFault(fault));
                 }
 
                 AddSlice(Slice("shortlist", run.AgentName, run.Reply, startedAt, new StageSliceStatus.Completed()));
@@ -415,8 +399,9 @@ public sealed class StaffingPipeline
                 Emit("shortlist", "Shortlist step failed (upstream dependency).",
                     status: new StaffingStepStatus.Failed(), error: ex.Message);
                 return new ShortlistStage(
-                    prepared, Run: null, ex.Message,
-                    (ex as Configuration.ChatCredentialMissingException)?.Title);
+                    prepared, Run: null,
+                    new StaffingRunFault(
+                        ex.Message, (ex as Configuration.ChatCredentialMissingException)?.Title));
             }
         }
 
@@ -770,7 +755,7 @@ public sealed class StaffingPipeline
             if (match.Shortlist.Fault is { } fault)
             {
                 Emit("report", "No report: the shortlist step failed.");
-                ReportResult faulted = new ShortlistFault(fault, match.Shortlist.FaultTitle);
+                StaffingRunOutcome faulted = fault;
                 await context.YieldOutputAsync(faulted, ct);
                 return;
             }
@@ -798,7 +783,7 @@ public sealed class StaffingPipeline
                 degraded,
                 [.. match.Notes, .. stage.Notes],
                 Extraction: match.Shortlist.Run.Response.Extraction);
-            ReportResult completed = report;
+            StaffingRunOutcome completed = report;
             await context.YieldOutputAsync(completed, ct);
         }
 

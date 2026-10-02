@@ -81,39 +81,14 @@ public static class StaffingSse
             await response.Body.FlushAsync(ct);
             await PumpAsync(response, channel.Reader, json, keepAliveInterval, ct);
 
-            var outcome = await run;
-            if (outcome.ShortlistFault is { } fault)
+            var finished = await run;
+            // The union arrives intact from the pipeline, so the terminal frame is chosen by an
+            // exhaustive switch the compiler checks — no null test, and no half to read wrongly.
+            await (finished.Outcome switch
             {
-                // The title the run reported, when it had one of its own: a host with no chat
-                // credential names the setting to set (EXP-93) rather than blaming an upstream
-                // nothing asked anything of. Everything else is the upstream-fault title.
-                await WriteFrameAsync(response, ErrorEvent, new ErrorPayload(
-                    outcome.FaultTitle ?? "Upstream dependency failed (staffing shortlist step).",
-                    fault), json, ct);
-            }
-            else
-            {
-                var report = outcome.Report!;
-                if (persistProposal is not null)
-                {
-                    // Best-effort: the store returns null on failure, and the report ships anyway
-                    // with a note instead of a proposal id (degrade, never fail a finished run).
-                    if (await persistProposal(report, outcome.Package, ct) is { } proposalId)
-                    {
-                        report = report with { ProposalId = proposalId };
-                    }
-                    else
-                    {
-                        report = report with
-                        {
-                            Degraded = true,
-                            Notes = [.. report.Notes, "The approval record could not be created; this report is view-only."],
-                        };
-                    }
-                }
-
-                await WriteFrameAsync(response, ReportEvent, report, json, ct);
-            }
+                StaffingReport report => WriteReportAsync(report, finished.Package),
+                StaffingRunFault fault => WriteFaultAsync(fault),
+            });
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -135,7 +110,42 @@ public static class StaffingSse
             }
         }
 
-        async Task<StaffingRunOutcome> RunPipelineAsync()
+        // The title the run reported, when it had one of its own: a host with no chat credential
+        // names the setting to set (EXP-93) rather than blaming an upstream nothing asked anything
+        // of. Everything else is the upstream-fault title.
+        Task WriteFaultAsync(StaffingRunFault fault) => WriteFrameAsync(
+            response,
+            ErrorEvent,
+            new ErrorPayload(
+                fault.Title ?? "Upstream dependency failed (staffing shortlist step).",
+                fault.Message),
+            json,
+            ct);
+
+        async Task WriteReportAsync(StaffingReport report, Handoff.HandoffPackage package)
+        {
+            if (persistProposal is not null)
+            {
+                // Best-effort: the store returns null on failure, and the report ships anyway
+                // with a note instead of a proposal id (degrade, never fail a finished run).
+                if (await persistProposal(report, package, ct) is { } proposalId)
+                {
+                    report = report with { ProposalId = proposalId };
+                }
+                else
+                {
+                    report = report with
+                    {
+                        Degraded = true,
+                        Notes = [.. report.Notes, "The approval record could not be created; this report is view-only."],
+                    };
+                }
+            }
+
+            await WriteFrameAsync(response, ReportEvent, report, json, ct);
+        }
+
+        async Task<StaffingRun> RunPipelineAsync()
         {
             try
             {

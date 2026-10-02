@@ -153,19 +153,32 @@ public closed record StaffingStepStatus : IClosedStatus<StaffingStepStatus>
 }
 
 /// <summary>
-/// What one pipeline run produced. Exactly one of <see cref="Report"/> and
-/// <see cref="ShortlistFault"/> is non-null: everything downstream of a successful shortlist
-/// degrades into the report (never throws), but without a shortlist there is nothing to report,
-/// so that one failure surfaces as data for the endpoint to map (502).
+/// Why there is no report: the shortlist step — the one stage nothing downstream can degrade
+/// around — failed, so that one failure surfaces as data for the endpoint to map (502).
 ///
-/// <para><see cref="FaultTitle"/> is set only when the fault is not an upstream one and so needs a
+/// <para><see cref="Title"/> is set only when the fault is not an upstream one and so needs a
 /// different headline — today a host with no chat credential (EXP-93), which is a configuration
 /// mistake the terminal event names rather than blaming a dependency nothing reached. Null means
-/// the usual upstream-fault title.</para>
+/// the usual upstream-fault title. It lives here and nowhere else: a successful run has no
+/// headline to carry.</para>
 /// </summary>
-public sealed record StaffingRunOutcome(
-    StaffingReport? Report,
-    string? ShortlistFault,
+public sealed record StaffingRunFault(string Message, string? Title = null);
+
+/// <summary>
+/// What one pipeline run produced: the report, or the fault that made one impossible — never
+/// both, and never neither. A C# 15 union that reaches the SSE boundary intact, so
+/// <see cref="StaffingSse"/> switches over the two cases and the compiler checks the switch is
+/// exhaustive. Everything downstream of a successful shortlist degrades into the report (never
+/// throws), so the fault case means exactly one thing: the shortlist step failed.
+/// </summary>
+public union StaffingRunOutcome(StaffingReport, StaffingRunFault);
+
+/// <summary>
+/// One finished pipeline run: its <see cref="Outcome"/> plus the run-level records both outcomes
+/// have — the ordered progress events and the handoff package, which a failed run keeps (the
+/// degradation it recorded is the point of looking).
+/// </summary>
+public sealed record StaffingRun(
+    StaffingRunOutcome Outcome,
     IReadOnlyList<StaffingProgressEvent> Events,
-    Handoff.HandoffPackage Package,
-    string? FaultTitle = null);
+    Handoff.HandoffPackage Package);

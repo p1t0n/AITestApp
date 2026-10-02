@@ -87,8 +87,25 @@ public class StaffingHandoffPackageTests
         TimeProvider.System,
         NullLogger<StaffingPipeline>.Instance);
 
-    private static Task<StaffingRunOutcome> RunAsync(StaffingPipeline pipeline, Guid? userId) =>
+    private static Task<StaffingRun> RunAsync(StaffingPipeline pipeline, Guid? userId) =>
         pipeline.RunAsync(new StaffingPipelineRequest("Platform engineer.", MatchTop: 2), userId);
+
+    /// <summary>The report case of the run's outcome, asserted as a case: a fault here fails as a
+    /// fault rather than as a null-reference two lines later — which is the point of the union.</summary>
+    private static StaffingReport Report(StaffingRun run) => run.Outcome switch
+    {
+        StaffingReport report => report,
+        StaffingRunFault fault => throw new InvalidOperationException(
+            $"Expected a report; the run faulted with: {fault.Message}"),
+    };
+
+    /// <summary>The mirror of <see cref="Report"/> for the one unrecoverable outcome.</summary>
+    private static StaffingRunFault Fault(StaffingRun run) => run.Outcome switch
+    {
+        StaffingReport => throw new InvalidOperationException("Expected a fault; the run produced a report."),
+        StaffingRunFault fault => fault,
+    };
+
 
     // ----- Happy path -------------------------------------------------------------------------
 
@@ -195,7 +212,7 @@ public class StaffingHandoffPackageTests
 
         var outcome = await RunAsync(pipeline, UserId);
 
-        outcome.Report.Should().NotBeNull();
+        Report(outcome).Should().NotBeNull("the run produced a report, not a fault");
         outcome.Package.Provenance.CapsSnapshotAtStart.Should().BeEmpty();
     }
 
@@ -280,7 +297,7 @@ public class StaffingHandoffPackageTests
         var entry = outcome.Package.Degradations.Should().ContainSingle().Subject;
         entry.Why.Should().Be(
             "The daily token cap was reached after the shortlist step; match runs and the narrative were skipped.");
-        outcome.Report!.Notes.Should().Contain(entry.Why, "the package mirrors the report's notes");
+        Report(outcome).Notes.Should().Contain(entry.Why, "the package mirrors the report's notes");
     }
 
     [Fact]
@@ -296,7 +313,7 @@ public class StaffingHandoffPackageTests
 
         var outcome = await RunAsync(pipeline, UserId);
 
-        outcome.Report.Should().BeNull();
+        Fault(outcome).Message.Should().Contain("semantic search backend");
         var slice = outcome.Package.Slices.Should().ContainSingle().Subject;
         slice.Stage.Should().Be("shortlist");
         slice.Status.Should().Be(new StageSliceStatus.Failed());
