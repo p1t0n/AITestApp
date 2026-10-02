@@ -152,6 +152,11 @@ Merging stays human; this step only records what a human already merged.
   no stacked PRs — branch from `main`, and never from another unmerged branch.
 - If the ticket turns out to be wrong, blocked in reality, or already done, say so in a Linear
   comment, move it back to `Todo`, and stop. A wrong ticket is a finding, not a thing to force.
+- **A finding you file goes in `Todo`, without `ready-for-agent`.** Pass the state explicitly:
+  Linear's default is `Backlog`, which neither this loop nor the human's view shows, so a
+  follow-up filed there is lost (EXP-90 sat unseen that way). The label is the human's call —
+  whether and when the loop takes it is not yours to decide for yourself. Link it to the ticket
+  that surfaced it.
 
 ## Nothing to do
 
