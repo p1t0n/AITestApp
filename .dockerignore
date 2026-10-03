@@ -1,0 +1,24 @@
+# Build context for every image under deploy/images is the repo root. This is what keeps the
+# daemon from being handed a working tree full of build output — and, more to the point, what
+# guarantees a developer's local overrides never land in a layer.
+**/bin/
+**/obj/
+**/node_modules/
+web/dist/
+web/test-results/
+web/playwright-report/
+web/.vitest/
+.git
+.github
+.claude
+.rtk
+/docs
+/issues
+ralph/logs
+
+# Production is the effective environment in a container. appsettings.Development.json carries
+# developer-local overrides and, in a dirty working tree, has carried a real provider key — so it
+# is excluded from the context rather than merely not copied.
+**/appsettings.Development.json
+**/*.user
+.env
