@@ -35,6 +35,7 @@
 
   <ItemGroup>
     <None Include="..\..\keycloak\realm-export.json" Link="realm-export.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\keycloak\realm-export.prod.json" Link="realm-export.prod.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
@@ -43,6 +44,7 @@
     <ProjectReference Include="..\..\tools\RetrievalEval.Core\RetrievalEval.Core.csproj" />
     <ProjectReference Include="..\..\tools\ToolSelectionEval.Core\ToolSelectionEval.Core.csproj" />
     <ProjectReference Include="..\..\tools\CostFloors.Core\CostFloors.Core.csproj" />
+    <ProjectReference Include="..\..\tools\KeycloakRealm.Core\KeycloakRealm.Core.csproj" />
   </ItemGroup>
 
 </Project>

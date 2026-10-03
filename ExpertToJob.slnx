@@ -50,6 +50,8 @@
     <Project Path="tools/CostFloors.Core/CostFloors.Core.csproj" />
     <Project Path="tools/ExtractionEval.Core/ExtractionEval.Core.csproj" />
     <Project Path="tools/ExtractionEval/ExtractionEval.csproj" />
+    <Project Path="tools/KeycloakRealm.Core/KeycloakRealm.Core.csproj" />
+    <Project Path="tools/MakeProdRealm/MakeProdRealm.csproj" />
     <Project Path="tools/ToolSelectionEval.Core/ToolSelectionEval.Core.csproj" />
     <Project Path="tools/ToolSelectionEval/ToolSelectionEval.csproj" />
   </Folder>

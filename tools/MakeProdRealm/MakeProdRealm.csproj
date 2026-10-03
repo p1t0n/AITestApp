@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net11.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>ExpertToJob.Tools.MakeProdRealm</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The transform itself lives in the Core library so the drift test calls the same code
+         in-process rather than shelling out to a runtime the backend CI job may not have. -->
+    <ProjectReference Include="..\KeycloakRealm.Core\KeycloakRealm.Core.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,4 @@
+# The development realm still carries the eight dev client secrets and the e2e client. It is the
+# *input* to tools/MakeProdRealm, never an input to this image — keeping it out of the build
+# context means it cannot reach a layer even by a typo in a COPY.
+realm-export.json

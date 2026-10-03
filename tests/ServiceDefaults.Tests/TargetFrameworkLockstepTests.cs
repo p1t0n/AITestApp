@@ -31,7 +31,7 @@ public class TargetFrameworkLockstepTests
             .OrderBy(p => p, StringComparer.Ordinal)
             .ToList();
 
-        projects.Should().HaveCount(24, "the solution has 24 projects across api/, tests/ and tools/");
+        projects.Should().HaveCount(26, "the solution has 26 projects across api/, tests/ and tools/");
 
         var offenders = projects
             .Select(p => (Path: Path.GetRelativePath(root, p), Document: XDocument.Load(p)))

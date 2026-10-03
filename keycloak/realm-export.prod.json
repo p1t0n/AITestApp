@@ -1,0 +1,465 @@
+{
+  "realm": "expert-to-job",
+  "enabled": true,
+  "accessTokenLifespan": 3600,
+  "clientScopes": [
+    {
+      "name": "mcp-audience",
+      "description": "Adds the MCP server as the token audience (RFC 8707).",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "mcp-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "https://localhost/mcp",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
+      "name": "mcp:read",
+      "description": "Read-only MCP tools.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true"
+      }
+    },
+    {
+      "name": "mcp:write",
+      "description": "Create/update MCP tools.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true"
+      }
+    },
+    {
+      "name": "mcp:admin",
+      "description": "Destructive (delete) MCP tools.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true"
+      }
+    },
+    {
+      "name": "mcp:tool:cv_get",
+      "description": "Grants the cv_get MCP tool.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    },
+    {
+      "name": "mcp:tool:expert_create_draft",
+      "description": "Grants the expert_create_draft MCP tool.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    },
+    {
+      "name": "mcp:tool:expert_list",
+      "description": "Grants the expert_list MCP tool.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    },
+    {
+      "name": "mcp:tool:expert_skill_add",
+      "description": "Grants the expert_skill_add MCP tool.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    },
+    {
+      "name": "mcp:tool:experience_add",
+      "description": "Grants the experience_add MCP tool.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    },
+    {
+      "name": "mcp:tool:language_add",
+      "description": "Grants the language_add MCP tool.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    },
+    {
+      "name": "mcp:tool:qualification_add",
+      "description": "Grants the qualification_add MCP tool.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    },
+    {
+      "name": "mcp:tool:roster_digest_list",
+      "description": "Grants the roster_digest_list MCP tool.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    },
+    {
+      "name": "mcp:tool:roster_semantic_search",
+      "description": "Grants the roster_semantic_search MCP tool.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    },
+    {
+      "name": "mcp:tool:roster_shortlist_search",
+      "description": "Grants the roster_shortlist_search MCP tool.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    },
+    {
+      "name": "mcp:tool:skill_list",
+      "description": "Grants the skill_list MCP tool.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    },
+    {
+      "name": "mcp:tool:style_exemplar_search",
+      "description": "Grants the style_exemplar_search MCP tool.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "agent-roster-qa",
+      "name": "Roster Q&A agent (confidential, mcp:read only)",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "${AGENT_ROSTER_QA_SECRET}",
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": [
+        "mcp-audience",
+        "mcp:read",
+        "mcp:tool:cv_get",
+        "mcp:tool:expert_list",
+        "mcp:tool:roster_semantic_search",
+        "mcp:tool:skill_list"
+      ]
+    },
+    {
+      "clientId": "agent-cv-tailoring",
+      "name": "CV Tailoring agent (confidential, mcp:read only)",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "${AGENT_CV_TAILORING_SECRET}",
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": [
+        "mcp-audience",
+        "mcp:read",
+        "mcp:tool:cv_get",
+        "mcp:tool:style_exemplar_search"
+      ]
+    },
+    {
+      "clientId": "agent-match",
+      "name": "Match agent (confidential, mcp:read only)",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "${AGENT_MATCH_SECRET}",
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": [
+        "mcp-audience",
+        "mcp:read",
+        "mcp:tool:cv_get"
+      ]
+    },
+    {
+      "clientId": "agent-shortlist",
+      "name": "Shortlist agent (confidential, mcp:read only)",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "${AGENT_SHORTLIST_SECRET}",
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": [
+        "mcp-audience",
+        "mcp:read",
+        "mcp:tool:roster_shortlist_search"
+      ]
+    },
+    {
+      "clientId": "agent-interview-kit",
+      "name": "Interview Kit agent (confidential, mcp:read only)",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "${AGENT_INTERVIEW_KIT_SECRET}",
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": [
+        "mcp-audience",
+        "mcp:read",
+        "mcp:tool:cv_get"
+      ]
+    },
+    {
+      "clientId": "agent-bench-report",
+      "name": "Bench report agent (confidential, mcp:read only)",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "${AGENT_BENCH_REPORT_SECRET}",
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": [
+        "mcp-audience",
+        "mcp:read",
+        "mcp:tool:expert_list"
+      ]
+    },
+    {
+      "clientId": "agent-resume-ingestion",
+      "name": "Resume Ingestion agent (confidential, mcp:read + mcp:write — stages drafts only)",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "${AGENT_RESUME_INGESTION_SECRET}",
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": [
+        "mcp-audience",
+        "mcp:read",
+        "mcp:write",
+        "mcp:tool:expert_create_draft",
+        "mcp:tool:expert_skill_add",
+        "mcp:tool:experience_add",
+        "mcp:tool:language_add",
+        "mcp:tool:qualification_add",
+        "mcp:tool:skill_list"
+      ]
+    },
+    {
+      "clientId": "agent-roster-scan",
+      "name": "Roster Scan runner (confidential, mcp:read — digest sweeps only)",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "${AGENT_ROSTER_SCAN_SECRET}",
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": [
+        "mcp-audience",
+        "mcp:read",
+        "mcp:tool:roster_digest_list"
+      ]
+    }
+  ],
+  "components": {
+    "org.keycloak.services.clientregistration.policy.ClientRegistrationPolicy": [
+      {
+        "name": "Trusted Hosts",
+        "providerId": "trusted-hosts",
+        "subType": "anonymous",
+        "config": {
+          "trusted-hosts": [],
+          "host-sending-registration-request-must-match": [
+            "true"
+          ],
+          "client-uris-must-match": [
+            "true"
+          ]
+        }
+      },
+      {
+        "name": "Allowed Client Scopes",
+        "providerId": "allowed-client-templates",
+        "subType": "anonymous",
+        "config": {
+          "allow-default-scopes": [
+            "false"
+          ],
+          "allowed-client-scopes": [
+            "mcp:read",
+            "mcp-audience"
+          ]
+        }
+      },
+      {
+        "name": "Allowed Protocol Mapper Types",
+        "providerId": "allowed-protocol-mappers",
+        "subType": "anonymous",
+        "config": {
+          "allowed-protocol-mapper-types": [
+            "oidc-full-name-mapper",
+            "oidc-sha256-pairwise-sub-mapper",
+            "oidc-usermodel-attribute-mapper",
+            "oidc-usermodel-property-mapper",
+            "oidc-address-mapper",
+            "saml-role-list-mapper",
+            "saml-user-attribute-mapper",
+            "saml-user-property-mapper"
+          ]
+        }
+      },
+      {
+        "name": "Full Scope Disabled",
+        "providerId": "scope",
+        "subType": "anonymous",
+        "config": {}
+      },
+      {
+        "name": "Max Clients Limit",
+        "providerId": "max-clients",
+        "subType": "anonymous",
+        "config": {
+          "max-clients": [
+            "200"
+          ]
+        }
+      },
+      {
+        "name": "Allowed Client Scopes",
+        "providerId": "allowed-client-templates",
+        "subType": "authenticated",
+        "config": {
+          "allow-default-scopes": [
+            "false"
+          ],
+          "allowed-client-scopes": [
+            "mcp:read",
+            "mcp-audience"
+          ]
+        }
+      },
+      {
+        "name": "Allowed Protocol Mapper Types",
+        "providerId": "allowed-protocol-mappers",
+        "subType": "authenticated",
+        "config": {
+          "allowed-protocol-mapper-types": [
+            "oidc-full-name-mapper",
+            "oidc-sha256-pairwise-sub-mapper",
+            "oidc-usermodel-attribute-mapper",
+            "oidc-usermodel-property-mapper",
+            "oidc-address-mapper",
+            "saml-role-list-mapper",
+            "saml-user-attribute-mapper",
+            "saml-user-property-mapper"
+          ]
+        }
+      },
+      {
+        "name": "Full Scope Disabled",
+        "providerId": "scope",
+        "subType": "authenticated",
+        "config": {}
+      },
+      {
+        "name": "Max Clients Limit",
+        "providerId": "max-clients",
+        "subType": "authenticated",
+        "config": {
+          "max-clients": [
+            "200"
+          ]
+        }
+      }
+    ]
+  },
+  "clientProfiles": {
+    "profiles": [
+      {
+        "name": "mcp-dcr-oauth-2-1",
+        "description": "OAuth 2.1 baseline stamped onto a dynamically registered client at registration time. Every executor auto-configures, so the rules land on the client record itself and hold at runtime without a runtime policy.",
+        "executors": [
+          {
+            "executor": "pkce-enforcer",
+            "configuration": {
+              "auto-configure": true
+            }
+          },
+          {
+            "executor": "reject-implicit-grant",
+            "configuration": {
+              "auto-configure": true
+            }
+          },
+          {
+            "executor": "reject-ropc-grant",
+            "configuration": {
+              "auto-configure": true
+            }
+          },
+          {
+            "executor": "full-scope-disabled",
+            "configuration": {
+              "auto-configure": true
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "clientPolicies": {
+    "policies": [
+      {
+        "name": "mcp-dynamically-registered-clients",
+        "description": "Binds the OAuth 2.1 baseline to the three registration contexts and to nothing else. ByAuthenticatedUser is deliberately absent: an operator editing a client through the admin API is not the untrusted path, and the realm's own imported clients must keep client_secret_basic and client_credentials.",
+        "enabled": true,
+        "conditions": [
+          {
+            "condition": "client-updater-context",
+            "configuration": {
+              "update-client-source": [
+                "ByAnonymous",
+                "ByInitialAccessToken",
+                "ByRegistrationAccessToken"
+              ]
+            }
+          }
+        ],
+        "profiles": [
+          "mcp-dcr-oauth-2-1"
+        ]
+      }
+    ]
+  }
+}
