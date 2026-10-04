@@ -102,6 +102,12 @@ jobs:
         # back out of the ARM JSON. No Azure credentials: nothing here talks to Azure.
         run: ./infra/base.test.sh
 
+      - name: Check the apps deployment
+        if: steps.filter.outputs.run == 'true'
+        # Same shape for apps.bicep: the edge lockdown, the five apps, the migrator job, and the
+        # rule that no secret ever rides as a plain env value. Also no Azure credentials.
+        run: ./infra/apps.test.sh
+
   images:
     name: Images (build)
     runs-on: ubuntu-latest

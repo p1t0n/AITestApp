@@ -13,6 +13,9 @@ is created and what it costs.
 | `base.bicep` | the base: network, database, registry, logs, Container Apps environment, budget |
 | `base.bicepparam` | its parameters. No secret: the admin password is read from `ETJ_PG_ADMIN_PASSWORD` |
 | `base.test.sh` | compiles both, with the linter, and asserts the non-negotiables out of the ARM JSON |
+| `apps.bicep` | the five container apps, the migrator job and the IP lockdown |
+| `apps.bicepparam` | their parameters. No secret: every one is read from the environment |
+| `apps.test.sh` | the same again for `apps` — the lockdown, the probes, and "no secret rides as a value" |
 
 ## Order of use
 
@@ -23,17 +26,66 @@ is created and what it costs.
    part. Run once, then only to change the base.
 3. **Push the images** (EXP-115) to `experttojobacr` — `base` created the registry, so it has to
    come first, and the apps cannot start without the tags.
-4. **`apps`** (EXP-121) — the five container apps, the migrator job and the IP lockdown, taking
-   `base`'s outputs (`acrLoginServer`, `environmentId`, `environmentDefaultDomain`, `postgresFqdn`,
-   `appsIdentityId`) as its inputs.
+4. **`apps`** — `az deployment group create -g rg-experttojob-app -f infra/apps.bicep -p infra/apps.bicepparam`,
+   with every variable in the table below exported. It reaches `base`'s resources **by name**
+   rather than taking its outputs as parameters, so nothing has to be threaded between the two
+   deployments — which also means the environment's default domain, the one value nobody can know
+   before step 2, is read live every time instead of being copied into a pipeline variable that
+   can go stale.
+5. **Run the migrator job once** — `az containerapp job start -g rg-experttojob-app -n etj-migrator`.
+   It is a manual-trigger job precisely so that redeploying step 4 never touches the schema on its
+   own. The apps do not wait for it: no host applies migrations any more.
 
-Steps 2–4 are what the deploy workflow (EXP-122) automates; 2 and 3 are also the only order that
-works by hand.
+Steps 2–5 are what the deploy workflow (EXP-122) automates; by hand, the order above is the only
+one that works — the registry has to exist before the images, the images before the apps, and the
+schema before anything reads it.
 
-A `.bicepparam` file cannot be combined with inline `--parameters` overrides, which is why the one
-secret arrives as an environment variable rather than on the command line. It has no default: with
-`ETJ_PG_ADMIN_PASSWORD` unset, the params file fails to compile, so there is no path from "forgot
-the secret" to a deployed server.
+A `.bicepparam` file cannot be combined with inline `--parameters` overrides, which is why every
+secret arrives as an environment variable rather than on the command line. None of them has a
+default: with any one unset, the params file fails to **compile**, so there is no path from
+"forgot a secret" to a deployment that half worked.
+
+## What `apps` needs, and what each parameter is
+
+Everything in the first table is a secret and lives in the GitHub `production` environment; nothing
+in it is ever written down in this repository. Everything in the second is a decision with a
+default, overridable on the command line.
+
+| Environment variable | Parameter | What it is |
+|---|---|---|
+| `ETJ_IMAGE_TAG` | `imageTag` | the git SHA all six images were built and pushed under. Not `latest`: a rollback is "deploy the previous tag", and a tag that moves makes the deployed revision unknowable |
+| `ETJ_PG_ADMIN_PASSWORD` | `postgresAdminPassword` | the same password `base` created the server with — one login serves both databases |
+| `ETJ_JWT_SIGNING_KEY` | `jwtSigningKey` | the session JWT key. The Web host issues with it, Web and Agents both validate with it |
+| `ETJ_KEYCLOAK_ADMIN_PASSWORD` | `keycloakAdminPassword` | Keycloak's bootstrap admin. The console is not browser-reachable; this is for `az containerapp exec` |
+| `ETJ_AZURE_FOUNDRY_API_KEY` | `aiFoundryApiKey` | the Foundry **key2** (local development keeps key1). Prefixed so a deploy cannot silently pick up whichever key the operator had exported |
+| `AGENT_ROSTER_QA_SECRET` … `AGENT_ROSTER_SCAN_SECRET` (8) | `agentRosterQaSecret` … | the eight Keycloak client secrets. **Each one reaches two containers**: Keycloak resolves its realm-import placeholder from it, and the Agents host reads it as `McpAuth:<agent>:ClientSecret` |
+
+| Parameter | Default | What it is |
+|---|---|---|
+| `location` | `swedencentral` | must be the region `base` was deployed into |
+| `environmentName` | `cae-experttojob` | `base`'s Container Apps environment, read as an existing resource |
+| `registryName` | `experttojobacr` | `base`'s registry; supplies the login server every image name is built from |
+| `appsIdentityName` | `id-etj-apps` | `base`'s user-assigned identity. It holds `AcrPull`, and it is how every app pulls — there is no registry password |
+| `postgresServerName` | `pg-experttojob-swc` | `base`'s flexible server; supplies the private FQDN both connection strings are built from |
+| `allowedIp` | `46.231.152.114/32` | the one address allowed to reach the edge |
+| `postgresAdminLogin` | `etjadmin` | matches `base` |
+| `aiFoundryEndpoint` | the `experttojob-openai-swc` v1 endpoint | shared by chat and embeddings |
+| `keycloakAdminUsername` | `admin` | |
+| `seedAdministratorEmail` | `expert2job@hotmail.com` | the account made staff on first sign-in (EXP-112) |
+
+Output: `edgeFqdn` — the edge app's own ingress FQDN, which is what the deploy workflow smoke-tests.
+
+### Two things worth knowing before the first deploy
+
+**The Web host is given no AI key.** It constructs neither provider; it reads `Ai__Chat__Provider`
+and `Ai__Embeddings__Provider` only to name the right recipient on the privacy page (EXP-61), and
+all three hosts have to agree on those two values. The key goes to the two hosts that actually call
+a model — MCP (embeddings) and Agents (chat) — and nowhere else.
+
+**One string is the Keycloak issuer.** `KC_HOSTNAME`, `Mcp__Authority` and all eight
+`McpAuth__<agent>__Authority` values are computed from a single expression, because a token minted
+under one issuer and validated against another is a 401 with nothing in the logs to explain it.
+`apps.test.sh` asserts they cannot drift apart.
 
 ## What `base` creates, and what it costs
 
@@ -48,7 +100,8 @@ the demo is, not of this file.
 | Private DNS zone | `pg-experttojob-swc.private.postgres.database.azure.com` | linked to the VNet; it is also the server's FQDN | not priced in EXP-109 | — |
 | Log Analytics | `log-experttojob` | 30-day retention, capped at 1 GB/day ingestion | included free tier | $2.99/GB over 5 GB |
 | Container Apps environment | `cae-experttojob` | **Consumption-only**, VNet-integrated, logs to the workspace | $0 | $0 |
-| — the five apps' compute | `etj-edge\|web\|mcp\|agents\|keycloak` (EXP-121) | all min 1 / max 1 | $33.86 | $112.86 |
+| — the five apps' compute | `etj-edge\|web\|mcp\|agents\|keycloak` (`apps.bicep`) | all min 1 / max 1; 0.25 vCPU / 0.5 GiB each except Keycloak at 0.5 / 1 GiB — the split these figures were costed against | $33.86 | $112.86 |
+| — the migrator job | `etj-migrator` (`apps.bicep`) | 0.5 vCPU / 1 GiB, manual trigger, a minute or two per release | negligible | negligible |
 | PostgreSQL flexible server | `pg-experttojob-swc` | Burstable B1ms, PG17, 32 GiB, private access only, `azure.extensions=VECTOR`, databases `experttojob` + `keycloak` | $18.91 | $18.91 |
 | Container registry | `experttojobacr` | Basic, admin user off, 10 GiB included | $5.07 | $5.07 |
 | Managed identity | `id-etj-apps` | `AcrPull` on the registry; how the apps pull without a password | $0 | $0 |
@@ -70,8 +123,14 @@ Two numbers to watch on the first invoice, both flagged as unverified in EXP-109
 
 ```bash
 ./infra/base.test.sh                       # uses the Azure CLI's bicep
+./infra/apps.test.sh
 BICEP=/path/to/bicep ./infra/base.test.sh  # or a standalone bicep binary
 ```
 
-CI runs the same script in the `Infra (bicep)` job, only when something under `infra/` changed.
-It needs `jq`, and no Azure credentials — nothing here talks to Azure.
+CI runs both scripts in the `Infra (bicep)` job, only when something under `infra/` changed. They
+need `jq`, and no Azure credentials — nothing here talks to Azure.
+
+Both read the **compiled ARM JSON**, which is why `apps.bicep` writes every `env`, `probes`,
+`secrets` and `ingress` block out literally instead of building them from variables, `concat()` or
+`[for …]` loops: each of those compiles to a single opaque ARM expression string, and a test that
+can no longer see inside one passes whatever happens to be in there.
