@@ -160,8 +160,12 @@ subnets="$work/subnets.json"
 jq '.resources[] | select(.type == "Microsoft.Network/virtualNetworks") | .properties.subnets' "$arm" > "$subnets"
 # Subnet *names* compile to variable references, so each one is picked out by the parameter its
 # address prefix comes from.
-cae_delegations=$(jq -r '.[] | select(.properties.addressPrefix | contains("containerAppsSubnetPrefix")) | (.properties.delegations // []) | length' "$subnets")
-[ "$cae_delegations" = "0" ] || note "the Container Apps subnet must carry no delegation — it has $cae_delegations"
+# Azure rejects a VNet-integrated environment on an undelegated subnet
+# (ManagedEnvironmentSubnetDelegationError, first deploy run 37189179528, EXP-126) — whatever the
+# older networking docs say about Consumption-only environments.
+cae_delegation=$(jq -r '.[] | select(.properties.addressPrefix | contains("containerAppsSubnetPrefix")) | (.properties.delegations // [])[0].properties.serviceName // ""' "$subnets")
+[ "$cae_delegation" = "Microsoft.App/environments" ] \
+  || note "the Container Apps subnet must be delegated to Microsoft.App/environments — it is '$cae_delegation'"
 pg_delegation=$(jq -r '.[] | select(.properties.addressPrefix | contains("postgresSubnetPrefix")) | (.properties.delegations // [])[0].properties.serviceName // ""' "$subnets")
 [ "$pg_delegation" = "Microsoft.DBforPostgreSQL/flexibleServers" ] \
   || note "the Postgres subnet must be delegated to Microsoft.DBforPostgreSQL/flexibleServers — it is '$pg_delegation'"

@@ -29,9 +29,10 @@ param postgresAdminPassword string
 @description('Address space of the virtual network. Must hold the /23 infrastructure subnet and the /24 database subnet.')
 param vnetAddressPrefix string = '10.20.0.0/16'
 
-// A Consumption-only Container Apps environment needs a /23 or larger infrastructure subnet, and
-// that subnet must carry no delegation (workload-profile environments are the ones that take /27
-// and a Microsoft.App/environments delegation).
+// A Consumption-only Container Apps environment needs a /23 or larger infrastructure subnet. The
+// subnet must also be delegated to Microsoft.App/environments: the older networking docs say a
+// Consumption-only environment takes no delegation, but Azure rejects that with
+// ManagedEnvironmentSubnetDelegationError (first deploy run, EXP-126).
 // https://learn.microsoft.com/en-us/azure/container-apps/networking
 param containerAppsSubnetPrefix string = '10.20.0.0/23'
 
@@ -72,6 +73,14 @@ resource vnet 'Microsoft.Network/virtualNetworks@2024-05-01' = {
         name: containerAppsSubnetName
         properties: {
           addressPrefix: containerAppsSubnetPrefix
+          delegations: [
+            {
+              name: 'container-apps-environments'
+              properties: {
+                serviceName: 'Microsoft.App/environments'
+              }
+            }
+          ]
         }
       }
       {
