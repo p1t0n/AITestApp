@@ -209,10 +209,12 @@ jobs:
             for _ in $(seq 1 18); do
               line=$(az containerapp revision list \
                 --resource-group "$RESOURCE_GROUP" --name "$app" \
-                --query "[?properties.active] | [0].[properties.runningState, properties.replicas]" \
+                --query "[?properties.active] | [0].join(' ', [properties.runningState, to_string(properties.replicas)])" \
                 -o tsv || true)
-              state=$(printf '%s' "$line" | cut -f1)
-              replicas=$(printf '%s' "$line" | cut -f2)
+              # One row, "<state> <replicas>": tsv would print a two-value projection on two lines
+              # (EXP-129), and cut-ing a tab out of that read every app as 0 replicas.
+              state=${line%% *}
+              replicas=${line##* }
               case "$replicas" in ''|*[!0-9]*) replicas=0 ;; esac
               # An app whose replica count equals its maxReplicas — all five here, min 1 / max 1 —
               # reports RunningAtMaxScale, never plain Running (EXP-127).

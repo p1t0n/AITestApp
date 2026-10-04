@@ -265,6 +265,13 @@ contains smoke 'az containerapp revision list' 'the smoke test must check that e
 # whole retry budget on a perfectly healthy deployment (first deploy, run 37191731314, EXP-127).
 code_of smoke | grep -q 'RunningAtMaxScale' \
   || note 'the smoke test must accept RunningAtMaxScale: a min 1 / max 1 app reports that, never plain Running'
+# `az ... -o tsv` prints a [a, b] projection as two *lines*, not one tab row: `cut -f2` then comes
+# back empty and every app reads as 0 replicas (fifth deploy run, 37193772236, EXP-129). The query
+# has to join the two values into one row, and nothing may split the result on a tab.
+code_of smoke | grep -q "join(" \
+  || note 'the smoke test must join state and replicas into one row in the query — tsv prints a two-value projection on two lines'
+! code_of smoke | grep -qE 'cut -f[0-9]' \
+  || note 'the smoke test must not cut tab fields out of the revision query — it is not tab separated'
 for name in etj-edge etj-web etj-mcp etj-agents etj-keycloak; do
   contains smoke "$name" "the smoke test must cover $name"
 done
