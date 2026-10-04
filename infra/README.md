@@ -168,7 +168,7 @@ the demo is, not of this file.
 
 | Resource | Name | What it is | Floor | Ceiling |
 |---|---|---|---|---|
-| Virtual network | `vnet-experttojob` | `10.20.0.0/16`; `snet-cae-infra` /23 for the environment, `snet-postgres` /24 delegated to the database | $0 | $0 |
+| Virtual network | `vnet-experttojob` | `10.20.0.0/16`; `snet-cae-infra` /23 delegated to `Microsoft.App/environments`, `snet-postgres` /24 delegated to the database | $0 | $0 |
 | Private DNS zone | `pg-experttojob-swc.private.postgres.database.azure.com` | linked to the VNet; it is also the server's FQDN | not priced in EXP-109 | — |
 | Log Analytics | `log-experttojob` | 30-day retention, capped at 1 GB/day ingestion | included free tier | $2.99/GB over 5 GB |
 | Container Apps environment | `cae-experttojob` | **Consumption-only**, VNet-integrated, logs to the workspace | $0 | $0 |
