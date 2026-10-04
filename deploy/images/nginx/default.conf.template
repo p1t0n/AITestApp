@@ -1,0 +1,57 @@
+# The edge: the built SPA, plus the two backends it calls, on one origin.
+#
+# Rendered into /etc/nginx/conf.d/default.conf at container start by the nginx image's own
+# envsubst step. Only WEB_UPSTREAM and AGENTS_UPSTREAM are substituted — NGINX_ENVSUBST_FILTER in
+# edge.Dockerfile is what keeps nginx's runtime variables ($host, $uri, …) out of envsubst's
+# reach, which matters because the result would still parse, just with every one of them empty.
+#
+# Each upstream is a host or host:port that nginx resolves once, when it loads this config.
+
+server {
+    listen 8080;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Same-origin is the point: the browser never makes a cross-origin call, so the Web host's
+    # hardcoded localhost CORS policy never comes into it and the bearer flow is unchanged.
+    #
+    # The /api prefix is passed through, not stripped. The Web controllers are routed at
+    # `api/...` ([Route("api/experts")] and friends) and the Vite dev proxy rewrites nothing
+    # (web/vite.config.ts), so the SPA's axios baseURL of /api means the same thing in both.
+    location /api/ {
+        proxy_pass http://${WEB_UPSTREAM}/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Same prefix rule for the Agents host, whose endpoints are mapped at /agents/... .
+    #
+    # One of them streams: POST /agents/staffing is Server-Sent Events with a `: ka` keep-alive
+    # every 15 s, and a 3-5 candidate run plus 429 backoff can take minutes. Buffering is what
+    # turns that into one lump delivered at the end, which the SPA (web/src/sse.ts, no reconnect)
+    # cannot tell apart from a stall. So: no buffering, no caching, a read timeout that outlives
+    # the run, an empty Connection header so the upstream keep-alive holds, and X-Accel-Buffering
+    # on the way out for whatever proxy sits in front of this one.
+    location /agents/ {
+        proxy_pass http://${AGENTS_UPSTREAM}/agents/;
+        proxy_http_version 1.1;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 3600s;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        add_header X-Accel-Buffering no always;
+    }
+
+    # Everything else is the SPA. react-router owns those paths client-side, so an unknown one is
+    # index.html rather than a 404 — otherwise a deep link pasted into a fresh tab dies.
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

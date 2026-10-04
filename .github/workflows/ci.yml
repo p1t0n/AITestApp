@@ -102,6 +102,32 @@ jobs:
         # back out of the ARM JSON. No Azure credentials: nothing here talks to Azure.
         run: ./infra/base.test.sh
 
+  images:
+    name: Images (build)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Build the five deployable images
+        # Build only — no registry, no push. The deploy workflow is what tags and pushes these
+        # (EXP-122); this job exists so a Dockerfile that stopped building is a red PR rather
+        # than a red deploy. Docker is preinstalled on ubuntu-latest runners.
+        run: |
+          for name in web mcp agents migrator edge; do
+            echo "::group::$name"
+            docker build -f "deploy/images/$name.Dockerfile" -t "etj-$name:ci" .
+            echo "::endgroup::"
+          done
+
+      - name: Check the image definitions
+        run: ./deploy/images/dockerfiles.test.sh
+
+      - name: Check the edge's nginx config
+        # Renders the template through the nginx image's own envsubst step and runs nginx -t on
+        # the result, so a config that only greps right still fails here.
+        run: ./deploy/images/nginx-conf.test.sh
+
   e2e:
     name: E2E (Playwright)
     runs-on: ubuntu-latest
