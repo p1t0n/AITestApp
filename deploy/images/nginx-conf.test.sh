@@ -60,7 +60,11 @@ root=$(block /)
 # The SPA's axios baseURL is /api and the Web controllers are routed at api/... , and the Vite dev
 # proxy rewrites nothing (web/vite.config.ts). The edge must not rewrite either.
 has "$api" "proxy_pass http://$WEB_UPSTREAM/api/;" "/api/ must pass the /api prefix through"
-has "$api" 'proxy_set_header Host $host;' "/api/ must forward Host"
+# Container Apps routes internal-ingress traffic by the Host header. Forwarding the edge's own
+# host ($host) lands on Envoy's "Container App - Unavailable" page and every /api call 404s (live
+# sign-up page, EXP-130). The upstream's own name is the only Host that routes.
+has "$api" "proxy_set_header Host $WEB_UPSTREAM;" "/api/ must send the upstream's own name as Host, not the edge's"
+has "$api" 'proxy_set_header X-Forwarded-Host $host;' "/api/ must still pass the original host as X-Forwarded-Host"
 has "$api" 'proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;' "/api/ must forward X-Forwarded-For"
 has "$api" 'proxy_set_header X-Forwarded-Proto $scheme;' "/api/ must forward X-Forwarded-Proto"
 
@@ -74,7 +78,8 @@ has "$agents" 'proxy_cache off;' "/agents/ must not cache the response"
 has "$agents" 'proxy_read_timeout 3600s;' "/agents/ must outlive a long staffing run"
 has "$agents" 'proxy_set_header Connection "";' "/agents/ must clear Connection so keep-alive holds"
 has "$agents" 'X-Accel-Buffering no' "/agents/ must tell the ingress in front of it not to buffer"
-has "$agents" 'proxy_set_header Host $host;' "/agents/ must forward Host"
+has "$agents" "proxy_set_header Host $AGENTS_UPSTREAM;" "/agents/ must send the upstream's own name as Host, not the edge's"
+has "$agents" 'proxy_set_header X-Forwarded-Host $host;' "/agents/ must still pass the original host as X-Forwarded-Host"
 has "$agents" 'proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;' "/agents/ must forward X-Forwarded-For"
 has "$agents" 'proxy_set_header X-Forwarded-Proto $scheme;' "/agents/ must forward X-Forwarded-Proto"
 
