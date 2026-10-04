@@ -124,11 +124,52 @@ expect "[$acr] | length" 1 'exactly one container registry'
 expect "$acr | .sku.name" Basic 'ACR SKU'
 expect "$acr | .properties.adminUserEnabled" false 'ACR admin user must be off — the apps pull with the managed identity'
 
-# AcrPull for the apps identity, on the registry and nowhere wider.
-expect '[.resources[] | select(.type == "Microsoft.Authorization/roleAssignments")] | length' 1 'exactly one role assignment'
-ra='.resources[] | select(.type == "Microsoft.Authorization/roleAssignments")'
-if ! get "$ra | .properties.roleDefinitionId" | grep -q '7f951dda-4ed3-4680-a7ca-43fe172d538d'; then
-  note 'the role assignment must grant AcrPull (7f951dda-4ed3-4680-a7ca-43fe172d538d)'
+# Two role assignments, both on the registry and nowhere wider: AcrPull for the apps identity (how
+# the five apps pull with no registry password) and AcrPush for the deploy identity (how the
+# pipeline pushes — granted by hand on 2026-10-04, codified by EXP-128). A third assignment, or
+# either of these at resource-group scope, would hand the same rights over Postgres and the
+# environment as well, so the count is asserted and not just the contents.
+ras='.resources[] | select(.type == "Microsoft.Authorization/roleAssignments")'
+expect "[$ras] | length" 2 'exactly two role assignments'
+
+acr_pull="$ras | select(.properties.roleDefinitionId | contains(\"7f951dda-4ed3-4680-a7ca-43fe172d538d\"))"
+acr_push="$ras | select(.properties.roleDefinitionId | contains(\"8311e382-0749-4cb8-b61a-304f252e45ec\"))"
+expect "[$acr_pull] | length" 1 'exactly one AcrPull assignment (7f951dda-4ed3-4680-a7ca-43fe172d538d)'
+expect "[$acr_push] | length" 1 'exactly one AcrPush assignment (8311e382-0749-4cb8-b61a-304f252e45ec)'
+
+# `principalType: ServicePrincipal` is not decoration: without it Azure looks the principal up in
+# Entra, and a freshly created identity that has not replicated yet fails the deployment.
+expect "$acr_pull | .properties.principalType" ServicePrincipal 'AcrPull principalType'
+expect "$acr_push | .properties.principalType" ServicePrincipal 'AcrPush principalType'
+
+# AcrPull goes to the identity this template creates; AcrPush goes to the parameter, because the
+# deploy identity is created by the bootstrap (EXP-119) and this template never sees it.
+if ! get "$acr_pull | .properties.principalId" | grep -q 'userAssignedIdentities'; then
+  note "AcrPull must go to the apps identity — it goes to '$(get "$acr_pull | .properties.principalId")'"
+fi
+expect "$acr_push | .properties.principalId" "[parameters('deployPrincipalObjectId')]" 'AcrPush must go to deployPrincipalObjectId'
+
+for ra in "$acr_pull" "$acr_push"; do
+  if ! get "$ra | .scope" | grep -q "Microsoft.ContainerRegistry/registries"; then
+    note "a registry role assignment is scoped to '$(get "$ra | .scope")', not to the registry"
+  fi
+  # Deterministic names. A role assignment named with newGuid() or a literal is a new name on
+  # every deployment, and Azure rejects a second name for the same principal/role/scope with
+  # RoleAssignmentExists — so a non-deterministic name turns every redeploy into a failed release.
+  ra_name=$(get "$ra | .name")
+  case "$ra_name" in
+    "[guid("*) ;;
+    *) note "role assignment name '$ra_name' is not a deterministic guid(...) expression" ;;
+  esac
+done
+
+# An Entra object id identifies a principal; it is not a credential and grants nothing on its own,
+# which is why it is a plain string in a tracked params file rather than a secret. If it ever
+# became a securestring the params file would have to stop carrying it.
+expect '.parameters.deployPrincipalObjectId.type' string 'deployPrincipalObjectId must be a plain string parameter'
+expect '.parameters.deployPrincipalObjectId | has("defaultValue")' false 'deployPrincipalObjectId must have no default — a wrong-by-default grant is worse than a failed compile'
+if ! grep -qE "^param deployPrincipalObjectId = '[0-9a-fA-F-]{36}'" infra/base.bicepparam; then
+  note 'infra/base.bicepparam must assign deployPrincipalObjectId an object id literal'
 fi
 
 # ------------------------------------------------------------------------------- environment
