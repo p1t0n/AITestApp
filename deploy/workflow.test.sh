@@ -195,6 +195,13 @@ for v in $(params_vars infra/apps.bicepparam); do
       *steps.target.outputs.sha*) ;;
       *) note "ETJ_IMAGE_TAG must be the resolved SHA — the apps step sets it to '$val'" ;;
     esac
+  elif [ "$v" = ETJ_ALLOWED_IP ]; then
+    # Not a secret, but not a tracked literal either (EXP-131): it is a production-environment
+    # variable, which is where the address lives.
+    case "$val" in
+      *vars.ALLOWED_IP*) ;;
+      *) note "ETJ_ALLOWED_IP must come from the ALLOWED_IP environment variable — the apps step sets it to '$val'" ;;
+    esac
   else
     case "$val" in
       *secrets.*) ;;

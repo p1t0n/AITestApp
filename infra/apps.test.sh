@@ -57,6 +57,9 @@ fi
 # Keycloak realm whose client secret is a string printed in this public repository (EXP-117).
 secrets=(
   ETJ_IMAGE_TAG=0000000000000000000000000000000000000000
+  # A documentation address (RFC 5737 TEST-NET-3) — the real one comes from the production
+  # environment's ALLOWED_IP variable and is deliberately not in this public repository (EXP-131).
+  ETJ_ALLOWED_IP=203.0.113.7/32
   ETJ_PG_ADMIN_PASSWORD=test-only-not-a-real-password
   ETJ_JWT_SIGNING_KEY=test-only-not-a-real-signing-key-32-bytes
   ETJ_KEYCLOAK_ADMIN_PASSWORD=test-only-not-a-real-password
@@ -149,7 +152,13 @@ expect "$edge | .properties.configuration.ingress.ipSecurityRestrictions[0].acti
   'the edge IP rule must be an Allow (one Allow denies everything else; a lone Deny allows everything else)'
 expect "$edge | .properties.configuration.ingress.ipSecurityRestrictions[0].ipAddressRange" "[parameters('allowedIp')]" \
   'the edge IP rule must be the allowedIp parameter, not a literal'
-expect '.parameters.allowedIp.defaultValue' '46.231.152.114/32' 'the address the demo is opened to (EXP-111)'
+# No default: the address the demo is opened to is somebody's own, and a default here would put it
+# back in a public repository (EXP-131). With none, a missing value fails the compile.
+expect '.parameters.allowedIp | has("defaultValue")' false 'allowedIp must have no default — the address is supplied at deploy time'
+# Nothing tracked under infra/, deploy/ or .github/ may carry a literal /32 other than a
+# documentation address. Matches the shape, not the one address, so it holds for any future one.
+leaked=$(grep -rnE '([0-9]{1,3}\.){3}[0-9]{1,3}/32' infra deploy .github 2>/dev/null | grep -vE '203\.0\.113\.[0-9]+/32' | grep -vE 'apps\.test\.sh' || true)
+[ -z "$leaked" ] || note "a literal single-address CIDR is tracked (the allowed IP belongs in the ALLOWED_IP variable): $(printf '%s' "$leaked" | head -3 | cut -c1-120)"
 
 # An IP rule on an internal app would be a decoration that reads like a defence.
 for name in etj-web etj-mcp etj-agents etj-keycloak; do
