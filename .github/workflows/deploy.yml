@@ -143,6 +143,9 @@ jobs:
           # them: a secret missing from the production environment fails the compile here, before
           # anything is deployed. infra/README.md is the table of what each one is.
           ETJ_IMAGE_TAG: ${{ steps.target.outputs.sha }}
+          # A variable, not a secret and not a literal: the address is a person's own and this
+          # repository is public (EXP-131).
+          ETJ_ALLOWED_IP: ${{ vars.ALLOWED_IP }}
           ETJ_PG_ADMIN_PASSWORD: ${{ secrets.ETJ_PG_ADMIN_PASSWORD }}
           ETJ_JWT_SIGNING_KEY: ${{ secrets.ETJ_JWT_SIGNING_KEY }}
           ETJ_KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.ETJ_KEYCLOAK_ADMIN_PASSWORD }}
@@ -188,7 +191,7 @@ jobs:
           [ -n "$fqdn" ] || { echo "the apps deployment produced no edgeFqdn" >&2; exit 1; }
           echo "edge: https://$fqdn"
 
-          # The runner is not 46.231.152.114, so the edge must refuse it. This is the only check in
+          # The runner is not the allowed address, so the edge must refuse it. This is the only check in
           # the pipeline that can tell a locked-down demo from one on the public internet, and it
           # is the reason a 403 is the pass. The allow path is a human's to verify once, from the
           # allowed address (EXP-123).

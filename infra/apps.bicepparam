@@ -43,6 +43,11 @@ param agentBenchReportSecret = readEnvironmentVariable('AGENT_BENCH_REPORT_SECRE
 param agentResumeIngestionSecret = readEnvironmentVariable('AGENT_RESUME_INGESTION_SECRET')
 param agentRosterScanSecret = readEnvironmentVariable('AGENT_ROSTER_SCAN_SECRET')
 
+// The one address allowed to reach the edge. Not a secret, but not a tracked literal either: this
+// repository is public and the address is a person's own. The deploy workflow sets it from the
+// production environment's ALLOWED_IP variable, and an empty value fails the compile (EXP-131).
+param allowedIp = readEnvironmentVariable('ETJ_ALLOWED_IP')
+
 // The project mailbox (EXP-112 item 4), not a personal one. The account that first signs in with
 // this address is made staff.
 param seedAdministratorEmail = 'expert2job@hotmail.com'

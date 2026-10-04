@@ -78,7 +78,7 @@ The same script is what a human runs to apply migrations by hand:
 ### What the smoke test proves, and what it cannot
 
 It resolves `edgeFqdn` from the apps deployment's outputs, curls it **from the runner**, and
-requires **403**. The runner is not `46.231.152.114`, so a 403 is the lockdown working and a 200 is
+requires **403**. The runner is not the allowed address, so a 403 is the lockdown working and a 200 is
 the demo sitting on the public internet. Then it waits for each of the five apps to report an
 active revision in `Running` with at least one replica.
 
@@ -141,7 +141,7 @@ default, overridable on the command line.
 | `registryName` | `experttojobacr` | `base`'s registry; supplies the login server every image name is built from |
 | `appsIdentityName` | `id-etj-apps` | `base`'s user-assigned identity. It holds `AcrPull`, and it is how every app pulls — there is no registry password |
 | `postgresServerName` | `pg-experttojob-swc` | `base`'s flexible server; supplies the private FQDN both connection strings are built from |
-| `allowedIp` | `46.231.152.114/32` | the one address allowed to reach the edge |
+| `allowedIp` | the `ALLOWED_IP` variable of the GitHub `production` environment, as `ETJ_ALLOWED_IP` | the one address allowed to reach the edge; no default and no tracked literal, because the repository is public (EXP-131) |
 | `postgresAdminLogin` | `etjadmin` | matches `base` |
 | `aiFoundryEndpoint` | the `experttojob-openai-swc` v1 endpoint | shared by chat and embeddings |
 | `keycloakAdminUsername` | `admin` | |

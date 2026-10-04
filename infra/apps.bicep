@@ -41,8 +41,11 @@ param imageTag string
 // One Allow rule denies everything else, which is the whole lockdown (EXP-111 item 1). A *Deny*
 // rule does the opposite — it allows everything it does not name — so the action is asserted in
 // `apps.test.sh` rather than left to whoever edits this next.
-@description('The single CIDR allowed to reach the edge app. Everything else is denied.')
-param allowedIp string = '46.231.152.114/32'
+// No default, on purpose: the address is somebody's own, and this repository is public (EXP-131).
+// It arrives from the production environment's ALLOWED_IP variable via apps.bicepparam.
+@minLength(9)
+@description('The single CIDR allowed to reach the edge app, e.g. 203.0.113.7/32. Everything else is denied.')
+param allowedIp string
 
 @description('Administrator login of the PostgreSQL flexible server. One login for both databases (EXP-112 item 2, demo scope).')
 param postgresAdminLogin string = 'etjadmin'
