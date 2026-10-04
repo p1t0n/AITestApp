@@ -1,0 +1,228 @@
+name: Deploy
+
+# Production CD for the one Azure environment (EXP-113). It deploys a commit CI went green on and
+# nothing else, which is why the trigger is `workflow_run` on the CI workflow rather than a push:
+# a push-triggered deploy races the tests it is supposed to depend on.
+#
+# Nothing here can succeed until the one-time bootstrap (EXP-119) exists: the resource group, the
+# federated credential for `repo:p1t0n/AITestApp:environment:production`, and the `production`
+# environment holding every secret below. Without them the sign-in step fails, which is the
+# intended failure.
+#
+# Order, and why it is the only order: `base` creates the registry, so it comes before the push;
+# the apps cannot start without the tags, so the push comes before `apps`; and the migration has
+# to be applied *and waited on* before any app revision changes, so it sits between them. The one
+# exception is the very first deploy, where the migrator job does not exist until `apps` creates
+# it — `deploy/migrate.sh` says what happens then.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: 'Commit to deploy. Empty deploys the tip of main; an earlier SHA is the rollback.'
+        required: false
+        type: string
+
+# Never two at once, and never cancel one that is running: killed between the migration and the
+# apps deployment is the worst state this release can be in.
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  RESOURCE_GROUP: rg-experttojob-app
+  REGISTRY: experttojobacr
+  MIGRATOR_JOB: etj-migrator
+
+jobs:
+  deploy:
+    name: Deploy to Azure
+    runs-on: ubuntu-latest
+    # Where the secrets and the OIDC subject live. No approval reviewer — the gate is that CI was
+    # green on main (EXP-113 item 2).
+    environment: production
+    # `types: [completed]` fires on a red CI run too, so the conclusion is re-checked here.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Resolve the commit to deploy
+        id: target
+        env:
+          # Through env rather than interpolated into the script: a value from the event payload
+          # that reaches a shell as text is a shell injection waiting for the right branch name.
+          DISPATCH_SHA: ${{ inputs.sha }}
+          CI_SHA: ${{ github.event.workflow_run.head_sha }}
+          FALLBACK_SHA: ${{ github.sha }}
+        run: |
+          sha="$DISPATCH_SHA"
+          [ -n "$sha" ] || sha="$CI_SHA"
+          [ -n "$sha" ] || sha="$FALLBACK_SHA"
+          case "$sha" in
+            [0-9a-f]*) ;;
+            *) echo "'$sha' is not a commit SHA" >&2; exit 1 ;;
+          esac
+          echo "deploying $sha"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      - name: Check out that commit
+        uses: actions/checkout@v7
+        with:
+          # Not the default branch: the templates, Dockerfiles and this file itself have to be the
+          # ones from the commit being deployed, or a rollback redeploys today's pipeline.
+          ref: ${{ steps.target.outputs.sha }}
+
+      - name: Sign in to Azure
+        id: login
+        # OIDC federation, no client secret: the credential is scoped to this repository's
+        # `production` environment and to rg-experttojob-app alone (EXP-113 item 7).
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy the base infrastructure
+        id: base
+        env:
+          SHA: ${{ steps.target.outputs.sha }}
+          # The params file reads this; it has no default, so a missing secret fails the compile
+          # rather than deploying a server with some other password (infra/base.bicepparam).
+          ETJ_PG_ADMIN_PASSWORD: ${{ secrets.ETJ_PG_ADMIN_PASSWORD }}
+        run: |
+          az deployment group create \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "base-$SHA" \
+            --template-file infra/base.bicep \
+            --parameters infra/base.bicepparam \
+            --only-show-errors -o none
+
+      - name: Build and push the six images
+        id: images
+        env:
+          SHA: ${{ steps.target.outputs.sha }}
+        run: |
+          az acr login --name "$REGISTRY"
+          server=$(az acr show --name "$REGISTRY" --query loginServer -o tsv)
+          echo "registry=$server" >> "$GITHUB_OUTPUT"
+
+          # Tagged by the full SHA and never `latest`: a rollback is "deploy the previous tag",
+          # and a tag that moves makes the deployed revision unknowable (infra/README.md).
+          for image in etj-web etj-mcp etj-agents etj-migrator etj-edge; do
+            echo "::group::$image"
+            docker build -f "deploy/images/${image#etj-}.Dockerfile" -t "$server/$image:$SHA" .
+            docker push "$server/$image:$SHA"
+            echo "::endgroup::"
+          done
+
+          # Keycloak is the odd one: its build context is keycloak/, because the only thing the
+          # image adds to the official distribution is the realm export that lives there.
+          echo "::group::etj-keycloak"
+          docker build -f keycloak/Dockerfile -t "$server/etj-keycloak:$SHA" keycloak
+          docker push "$server/etj-keycloak:$SHA"
+          echo "::endgroup::"
+
+      - name: Migrate the database
+        id: migrate
+        env:
+          SHA: ${{ steps.target.outputs.sha }}
+          REGISTRY_SERVER: ${{ steps.images.outputs.registry }}
+        run: |
+          MIGRATOR_IMAGE="$REGISTRY_SERVER/etj-migrator:$SHA" ./deploy/migrate.sh
+
+      - name: Deploy the apps
+        id: apps
+        env:
+          # Every one of these is read by infra/apps.bicepparam, which has a default for none of
+          # them: a secret missing from the production environment fails the compile here, before
+          # anything is deployed. infra/README.md is the table of what each one is.
+          ETJ_IMAGE_TAG: ${{ steps.target.outputs.sha }}
+          ETJ_PG_ADMIN_PASSWORD: ${{ secrets.ETJ_PG_ADMIN_PASSWORD }}
+          ETJ_JWT_SIGNING_KEY: ${{ secrets.ETJ_JWT_SIGNING_KEY }}
+          ETJ_KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.ETJ_KEYCLOAK_ADMIN_PASSWORD }}
+          ETJ_AZURE_FOUNDRY_API_KEY: ${{ secrets.ETJ_AZURE_FOUNDRY_API_KEY }}
+          # Eight client secrets, each of which reaches both Keycloak and the Agents host from
+          # this one value. A missing one does not fail Keycloak's realm import — it imports the
+          # literal `${AGENT_X_SECRET}` as the client's password (EXP-124), which is why the
+          # params file refuses to compile without it.
+          AGENT_ROSTER_QA_SECRET: ${{ secrets.AGENT_ROSTER_QA_SECRET }}
+          AGENT_CV_TAILORING_SECRET: ${{ secrets.AGENT_CV_TAILORING_SECRET }}
+          AGENT_MATCH_SECRET: ${{ secrets.AGENT_MATCH_SECRET }}
+          AGENT_SHORTLIST_SECRET: ${{ secrets.AGENT_SHORTLIST_SECRET }}
+          AGENT_INTERVIEW_KIT_SECRET: ${{ secrets.AGENT_INTERVIEW_KIT_SECRET }}
+          AGENT_BENCH_REPORT_SECRET: ${{ secrets.AGENT_BENCH_REPORT_SECRET }}
+          AGENT_RESUME_INGESTION_SECRET: ${{ secrets.AGENT_RESUME_INGESTION_SECRET }}
+          AGENT_ROSTER_SCAN_SECRET: ${{ secrets.AGENT_ROSTER_SCAN_SECRET }}
+        run: |
+          az deployment group create \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "apps-$ETJ_IMAGE_TAG" \
+            --template-file infra/apps.bicep \
+            --parameters infra/apps.bicepparam \
+            --only-show-errors -o none
+
+      - name: Migrate the database (first deploy only)
+        id: migrate-first-run
+        # Only reachable when the step above found no migrator job, which happens exactly once:
+        # the job is created by the deployment that just ran. MIGRATOR_REQUIRED makes a second
+        # miss a failure rather than another shrug.
+        if: steps.migrate.outputs.deferred == 'true'
+        env:
+          MIGRATOR_REQUIRED: '1'
+        run: ./deploy/migrate.sh
+
+      - name: Smoke-test the deployment
+        id: smoke
+        env:
+          SHA: ${{ steps.target.outputs.sha }}
+        run: |
+          fqdn=$(az deployment group show \
+            --resource-group "$RESOURCE_GROUP" --name "apps-$SHA" \
+            --query properties.outputs.edgeFqdn.value -o tsv)
+          [ -n "$fqdn" ] || { echo "the apps deployment produced no edgeFqdn" >&2; exit 1; }
+          echo "edge: https://$fqdn"
+
+          # The runner is not 46.231.152.114, so the edge must refuse it. This is the only check in
+          # the pipeline that can tell a locked-down demo from one on the public internet, and it
+          # is the reason a 403 is the pass. The allow path is a human's to verify once, from the
+          # allowed address (EXP-123).
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "https://$fqdn/" || echo 000)
+          if [ "$code" != 403 ]; then
+            echo "the edge answered $code to the runner; the IP lockdown requires 403" >&2
+            exit 1
+          fi
+          echo "edge refused the runner with 403"
+
+          # Each app's active revision has to be running with at least one replica. A new revision
+          # takes a minute or two to get there, so this waits rather than reading once.
+          failed=0
+          for app in etj-edge etj-web etj-mcp etj-agents etj-keycloak; do
+            state=''
+            replicas=0
+            for _ in $(seq 1 30); do
+              line=$(az containerapp revision list \
+                --resource-group "$RESOURCE_GROUP" --name "$app" \
+                --query "[?properties.active] | [0].[properties.runningState, properties.replicas]" \
+                -o tsv || true)
+              state=$(printf '%s' "$line" | cut -f1)
+              replicas=$(printf '%s' "$line" | cut -f2)
+              case "$replicas" in ''|*[!0-9]*) replicas=0 ;; esac
+              if [ "$state" = Running ] && [ "$replicas" -ge 1 ]; then
+                break
+              fi
+              sleep 10
+            done
+            if [ "$state" = Running ] && [ "$replicas" -ge 1 ]; then
+              echo "$app: $state, $replicas replica(s)"
+            else
+              echo "$app: active revision is '${state:-missing}' with $replicas replica(s)" >&2
+              failed=1
+            fi
+          done
+          [ "$failed" -eq 0 ] || exit 1
