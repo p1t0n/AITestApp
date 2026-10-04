@@ -190,7 +190,7 @@ fi
 # ------------------------------------------------------------------------------- outputs
 
 for name in acrLoginServer environmentId environmentDefaultDomain postgresFqdn appsIdentityId; do
-  # The apps deployment (EXP-121) reads every one of these; dropping one breaks it, not this file.
+  # The deploy workflow reads these; infra/apps.bicep reaches the same resources by name instead.
   [ "$(get ".outputs | has(\"$name\")")" = "true" ] || note "output $name is missing"
 done
 
