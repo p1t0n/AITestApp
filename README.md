@@ -226,7 +226,10 @@ The MCP server is an **OAuth 2.1 Resource Server**. Keycloak (the Authorization 
 with the stack and imports an `expert-to-job` realm with a public PKCE client
 (`expert-to-job-mcp`), the `mcp:read` / `mcp:write` / `mcp:admin` scopes, and an audience mapper.
 The realm is imported into a fresh container on every start, so an edit to
-`keycloak/realm-export.json` takes effect on the next one.
+`keycloak/realm-export.json` takes effect on the next one. A deployment imports a *generated*
+realm instead — `keycloak/realm-export.prod.json`, which drops the dev-only clients and replaces
+every client secret with an environment placeholder; `manuals/keycloak-prod-realm.md` is the
+whole story.
 
 Config (`Mcp:Authority` = Keycloak realm issuer, `Mcp:Resource` = this server's audience)
 defaults to that Keycloak. An MCP-capable agent discovers the AS via
