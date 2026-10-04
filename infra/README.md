@@ -100,7 +100,9 @@ Without all three, the workflow cannot succeed — which is the intended failure
 * one Entra app registration with a federated credential for
   `repo:p1t0n/AITestApp:environment:production`, holding **Contributor** and **Role Based Access
   Control Administrator** on that resource group only — RBAC admin because `base.bicep` grants
-  `AcrPull` to the apps identity — and nothing on the Foundry resource group;
+  `AcrPull` to the apps identity and `AcrPush` to this app registration — and nothing on the
+  Foundry resource group. Its **object id** goes into `base.bicepparam` as
+  `deployPrincipalObjectId`;
 * the GitHub `production` environment, restricted to `main`, holding `AZURE_CLIENT_ID`,
   `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` and every secret in the first table below.
 
@@ -147,6 +149,36 @@ default, overridable on the command line.
 
 Output: `edgeFqdn` — the edge app's own ingress FQDN, which is what the deploy workflow smoke-tests.
 
+### The one manual grant that has to be removed before the next `base` deploy
+
+`base.bicep` grants the deploy identity **AcrPush** on `experttojobacr`. The same grant already
+exists in Azure, made by hand on 2026-10-04 to get the first release unstuck (EXP-128): Contributor
+on the resource group is a control-plane role and cannot push a layer, so `az acr login` failed with
+*"Unable to authenticate using AAD or admin login credentials"*
+([run 37190558603](https://github.com/p1t0n/AITestApp/actions/runs/37190558603)).
+
+Azure enforces role-assignment uniqueness on the **(scope, principal, role)** triple, not on the
+assignment's name. The template names its assignment deterministically — `guid(registry.id,
+deployPrincipalObjectId, '8311e382-…')` — which makes **its own** redeploys idempotent: the same
+input gives the same name, so the second deployment is a no-op update rather than a second
+assignment. It does nothing for an assignment created outside the template: `az role assignment
+create` picks a random GUID, so the template's PUT is a *different name for the same triple*, and
+Azure answers **409 `RoleAssignmentExists`** ([Azure/bicep#19936](https://github.com/Azure/bicep/issues/19936),
+[Troubleshoot Azure RBAC](https://learn.microsoft.com/en-us/azure/role-based-access-control/troubleshooting?tabs=bicep)).
+
+Bicep has no "adopt it if it is already there" for role assignments, so this is not something the
+template can tolerate. **Before the next `base` deployment, delete the manual assignment:**
+
+```bash
+az role assignment delete \
+  --assignee 822c48bb-d583-4772-8f56-3c21ab4ed426 \
+  --role AcrPush \
+  --scope "$(az acr show -n experttojobacr -g rg-experttojob-app --query id -o tsv)"
+```
+
+There is no window to worry about: the deployment recreates it in the same run, before the images
+step that needs it. Afterwards the grant is the template's, and every later deploy is a no-op on it.
+
 ### Two things worth knowing before the first deploy
 
 **The Web host is given no AI key.** It constructs neither provider; it reads `Ai__Chat__Provider`
@@ -177,6 +209,7 @@ the demo is, not of this file.
 | PostgreSQL flexible server | `pg-experttojob-swc` | Burstable B1ms, PG17, 32 GiB, private access only, `azure.extensions=VECTOR`, databases `experttojob` + `keycloak` | $18.91 | $18.91 |
 | Container registry | `experttojobacr` | Basic, admin user off, 10 GiB included | $5.07 | $5.07 |
 | Managed identity | `id-etj-apps` | `AcrPull` on the registry; how the apps pull without a password | $0 | $0 |
+| Role assignments | — | `AcrPull` for `id-etj-apps` and `AcrPush` for the deploy identity, both on the registry only | $0 | $0 |
 | Budget | `budget-experttojob` | $60/month on the resource group, alerts at 80% actual and 100% forecast | $0 | $0 |
 | **Total** | | | **~$57.84** | **~$136.84** |
 

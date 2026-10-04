@@ -39,6 +39,12 @@ param containerAppsSubnetPrefix string = '10.20.0.0/23'
 @description('Subnet delegated to Microsoft.DBforPostgreSQL/flexibleServers. One server, so a /24 is already generous.')
 param postgresSubnetPrefix string = '10.20.2.0/24'
 
+// The deploy identity is created by the bootstrap (EXP-119) and lives outside this template, so
+// it arrives as its Entra object id. No default: a grant that lands on the wrong principal by
+// default is worse than a deployment that will not compile.
+@description('Entra object id of the deploy service principal, which pushes the images. Not a secret — see base.bicepparam.')
+param deployPrincipalObjectId string
+
 @description('Where the budget alerts go.')
 param budgetAlertEmail string
 
@@ -268,6 +274,26 @@ resource acrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
     principalId: appsIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// Contributor on the resource group is a control-plane role: it can create and delete the
+// registry and never push a layer into it. The first deploy runs died at `az acr login` with
+// "Unable to authenticate using AAD" for exactly that reason (EXP-128), and the grant below is
+// the manual fix made part of the template.
+//
+// Scoped to the registry, not the resource group: push rights are all the pipeline needs on the
+// data plane, and `AcrPush` at group scope would travel to any registry added later.
+resource acrPush 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: registry
+  // AcrPush, written out rather than hidden behind a variable, for the same reason as AcrPull.
+  name: guid(registry.id, deployPrincipalObjectId, '8311e382-0749-4cb8-b61a-304f252e45ec')
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '8311e382-0749-4cb8-b61a-304f252e45ec')
+    principalId: deployPrincipalObjectId
+    // Stated rather than inferred: without it Azure resolves the principal's type from Entra, and
+    // a lookup that has not replicated yet fails the whole deployment.
     principalType: 'ServicePrincipal'
   }
 }

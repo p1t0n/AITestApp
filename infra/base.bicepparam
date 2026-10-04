@@ -12,5 +12,13 @@ using './base.bicep'
 // deployed server. `infra/base.test.sh` compiles this file with a throwaway value of its own.
 param postgresAdminPassword = readEnvironmentVariable('ETJ_PG_ADMIN_PASSWORD')
 
+// A literal, in a tracked file, in a public repository — on purpose. An Entra object id is an
+// identifier and not a credential: it names `sp-etj-github-deploy`, it is printed by any
+// `az role assignment list` on this registry, and holding it gives nobody a token. The
+// alternative, a non-secret GitHub `vars.*`, would add a fourth value to EXP-119's bootstrap
+// contract that no test in this repository can see is missing — whereas a wrong literal here is
+// a wrong-looking line in a diff.
+param deployPrincipalObjectId = '822c48bb-d583-4772-8f56-3c21ab4ed426'
+
 // The project mailbox (EXP-112), not a personal one.
 param budgetAlertEmail = 'expert2job@hotmail.com'
