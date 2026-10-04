@@ -260,6 +260,11 @@ contains smoke 'edgeFqdn' 'the smoke test resolves the edge host from the deploy
 code_of smoke | grep -qE '(=|!=|-eq|-ne)[[:space:]]*"?403"?' \
   || note 'the smoke test must compare the edge response against 403 — that is the proof the lockdown is on'
 contains smoke 'az containerapp revision list' 'the smoke test must check that every app has a healthy active revision'
+# Azure reports an app whose replica count equals its maxReplicas as RunningAtMaxScale, not
+# Running — and every app here is min 1 / max 1. Waiting for the bare word "Running" spins for the
+# whole retry budget on a perfectly healthy deployment (first deploy, run 37191731314, EXP-127).
+code_of smoke | grep -q 'RunningAtMaxScale' \
+  || note 'the smoke test must accept RunningAtMaxScale: a min 1 / max 1 app reports that, never plain Running'
 for name in etj-edge etj-web etj-mcp etj-agents etj-keycloak; do
   contains smoke "$name" "the smoke test must cover $name"
 done
