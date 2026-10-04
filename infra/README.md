@@ -36,7 +36,7 @@ is created and what it costs.
    It is a manual-trigger job precisely so that redeploying step 4 never touches the schema on its
    own. The apps do not wait for it: no host applies migrations any more.
 
-Steps 2–5 are what the deploy workflow (EXP-122) automates; by hand, the order above is the only
+Steps 2–5 are what the deploy workflow automates; by hand, the order above is the only
 one that works — the registry has to exist before the images, the images before the apps, and the
 schema before anything reads it.
 
@@ -44,6 +44,78 @@ A `.bicepparam` file cannot be combined with inline `--parameters` overrides, wh
 secret arrives as an environment variable rather than on the command line. None of them has a
 default: with any one unset, the params file fails to **compile**, so there is no path from
 "forgot a secret" to a deployment that half worked.
+
+## Deploying
+
+`.github/workflows/deploy.yml` is steps 2–5 above, run for you. It is **not** triggered by a push:
+it fires on `workflow_run` of the `CI` workflow, only when that run concluded `success` on `main`,
+and it checks out the exact SHA CI tested. A push-triggered deploy would race the tests it depends
+on. `concurrency: deploy-prod` with `cancel-in-progress: false` means two deploys never overlap and
+a running one is never killed — the state between the migration and the apps deployment is the one
+place an interrupted release really hurts. There is no approval reviewer (EXP-113 item 2): the gate
+is that CI was green.
+
+The order inside the job, which is the order above with one wrinkle:
+
+1. `azure/login` by OIDC federation — no client secret anywhere.
+2. `base` — `az deployment group create`, idempotent, every time. It is how a base change ships.
+3. the six images, built and pushed to `experttojobacr` tagged with the **full git SHA**. Never
+   `latest`.
+4. `deploy/migrate.sh` — repoints the `etj-migrator` job at the new image, starts it, and **waits**.
+   A failure here ends the release with every app still on its previous revision.
+5. `apps` with `imageTag=<sha>` and every secret from the `production` environment.
+6. the smoke test.
+
+The wrinkle is the very first deploy, where step 4 has no job to run: `apps.bicep` is what creates
+`etj-migrator`. The script says so, writes `deferred=true`, and the workflow runs it once more
+after step 5 — that second call sets `MIGRATOR_REQUIRED=1`, so a job that is *still* missing fails
+rather than being shrugged at twice. Every deploy after the first takes the normal path.
+
+The same script is what a human runs to apply migrations by hand:
+`RESOURCE_GROUP=rg-experttojob-app ./deploy/migrate.sh` with `az` signed in, and
+`MIGRATOR_IMAGE=` left unset to run whatever image the job already carries.
+
+### What the smoke test proves, and what it cannot
+
+It resolves `edgeFqdn` from the apps deployment's outputs, curls it **from the runner**, and
+requires **403**. The runner is not `46.231.152.114`, so a 403 is the lockdown working and a 200 is
+the demo sitting on the public internet. Then it waits for each of the five apps to report an
+active revision in `Running` with at least one replica.
+
+What it cannot do is prove the *allow* path — no GitHub runner has the allowed address. That one
+check is a human's, once, from that address (EXP-123).
+
+### Rolling back
+
+Images are tagged by SHA and kept, so a rollback is a redeploy of an earlier one: **Actions → Deploy
+→ Run workflow**, with `sha` set to the commit to go back to. Leaving `sha` empty deploys the tip of
+`main`. Nothing rolls back automatically, and **migrations do not roll back at all** — they are
+forward-only, so a rollback past a schema change needs a new migration, not an older image.
+
+### What the one-time bootstrap must already have created (EXP-119)
+
+Without all three, the workflow cannot succeed — which is the intended failure, not a bug:
+
+* the resource group `rg-experttojob-app`; the deploy identity cannot create its own;
+* one Entra app registration with a federated credential for
+  `repo:p1t0n/AITestApp:environment:production`, holding **Contributor** and **Role Based Access
+  Control Administrator** on that resource group only — RBAC admin because `base.bicep` grants
+  `AcrPull` to the apps identity — and nothing on the Foundry resource group;
+* the GitHub `production` environment, restricted to `main`, holding `AZURE_CLIENT_ID`,
+  `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` and every secret in the first table below.
+
+### Checking the workflow without deploying
+
+```bash
+./deploy/workflow.test.sh   # needs jq, and yq or python3 with PyYAML
+```
+
+It reads `deploy.yml` as parsed YAML and holds it to the decisions above — the tested commit, the
+concurrency rules, the migration waited on *before* the apps move, the 403, and that every variable
+the two `.bicepparam` files read is passed and comes from a secret. The list of those variables is
+read out of the params files rather than copied, so a secret added there and forgotten here is a
+red CI job instead of a compile failure halfway through a release. CI runs it next to `actionlint`
+in the `Workflows (actionlint)` job.
 
 ## What `apps` needs, and what each parameter is
 

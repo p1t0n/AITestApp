@@ -134,6 +134,30 @@ jobs:
         # the result, so a config that only greps right still fails here.
         run: ./deploy/images/nginx-conf.test.sh
 
+  workflows:
+    name: Workflows (actionlint)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install actionlint
+        # Pinned, for the same reason the bicep compiler above is: a new actionlint release can
+        # add a rule, and a job that fails on a file nobody touched is a job nobody trusts. The
+        # download script is the project's own, read from the tag being installed.
+        run: bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.7/scripts/download-actionlint.bash) 1.7.7
+
+      - name: Lint every workflow
+        # shellcheck and pyflakes are preinstalled on ubuntu-latest, so this also checks the shell
+        # inside every `run:` block — including this workflow's own.
+        run: ./actionlint -color
+
+      - name: Check the deploy workflow
+        # actionlint says deploy.yml is a valid workflow. This says it is still the one EXP-113
+        # settled on: the tested commit, no overlapping deploys, the migration waited on before
+        # the apps move, and the lockdown proved by a 403. No Azure credentials.
+        run: ./deploy/workflow.test.sh
+
   e2e:
     name: E2E (Playwright)
     runs-on: ubuntu-latest
