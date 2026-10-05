@@ -12,6 +12,9 @@
 #     allowed address — a 200 there means the demo is on the public internet
 #   * every secret the two params files read is actually passed, and every one of them arrives
 #     from the `production` environment rather than written down here
+#   * every `secrets.*` and `vars.*` name it reads is one the environment actually holds —
+#     `deploy/github-environment.contract`, because an undefined secret expands to the empty
+#     string and surfaces three steps later as a Bicep length error (EXP-125)
 #
 # It reads the workflow as parsed YAML rather than as text, because the order of steps and the
 # shape of `on:` are structure, not prose. Nothing here talks to Azure or to GitHub.
@@ -209,6 +212,76 @@ for v in $(params_vars infra/apps.bicepparam); do
     esac
   fi
 done
+
+# ------------------------------------------------- every name the workflow reads, against the environment
+
+# The block above tests the *left* of each `ETJ_X: ${{ secrets.Y }}` line — the env var a params
+# file reads. This tests the right. GitHub expands an undefined secret to the empty string, so a
+# wrong Y does not fail at the reference: it surfaces three steps later as a Bicep length error,
+# on a release that has already pushed six images (EXP-125). Nothing in the workflow can catch
+# that, so the names the `production` environment actually holds are tracked in a file and the
+# workflow is held to them.
+contract=deploy/github-environment.contract
+if [ ! -f "$contract" ]; then
+  note "$contract does not exist — there is nothing to check the workflow's secret and variable names against"
+else
+  # One `<secret|variable> <NAME> <used|unread>` per line; blanks and whole-line comments dropped.
+  contract_rows() { grep -vE '^[[:space:]]*(#|$)' "$contract" || true; }
+  listed() { contract_rows | awk -v k="$1" -v n="$2" '$1==k && $2==n {f=1} END {exit !f}'; }
+  state_of() { contract_rows | awk -v n="$1" '$2==n {print $3; exit}'; }
+
+  malformed=$(contract_rows | awk 'NF!=3 || !($1=="secret" || $1=="variable") || $2 !~ /^[A-Z][A-Z0-9_]*$/ || !($3=="used" || $3=="unread") {print "["$0"]"}')
+  [ -z "$malformed" ] || note "$contract has lines that are not '<secret|variable> <NAME> <used|unread>': $malformed"
+
+  # Read out of the parsed YAML, not the text: a name that only appears in a comment is not a
+  # reference, and should not be able to keep a deleted secret on the list.
+  refs() { jq -r '.. | strings' "$json" | grep -oE "\\b$1\\.[A-Za-z_][A-Za-z0-9_]*" | cut -d. -f2 | sort -u || true; }
+  secret_refs=$(refs secrets)
+  vars_refs=$(refs vars)
+
+  for name in $secret_refs; do
+    # The one secret no environment holds: GitHub mints it per run.
+    if [ "$name" = GITHUB_TOKEN ]; then continue; fi
+    if listed secret "$name"; then
+      [ "$(state_of "$name")" = used ] \
+        || note "the workflow reads secrets.$name, which $contract marks 'unread' — move that line to 'used'"
+    else
+      note "the workflow reads secrets.$name, which is not a secret on $contract — either the name is a typo or the environment and the list have drifted apart"
+    fi
+  done
+  for name in $vars_refs; do
+    if listed variable "$name"; then
+      [ "$(state_of "$name")" = used ] \
+        || note "the workflow reads vars.$name, which $contract marks 'unread' — move that line to 'used'"
+    else
+      note "the workflow reads vars.$name, which is not a variable on $contract"
+    fi
+  done
+
+  # And the other way. A name listed `used` that no step reads is the list drifting away from the
+  # workflow, which is how a list stops being evidence of anything.
+  referenced=$(printf '%s\n%s\n' "$secret_refs" "$vars_refs" | grep -v '^$' | sort -u || true)
+  while read -r kind name state; do
+    [ "$state" = used ] || continue
+    grep -qx -- "$name" <<<"$referenced" \
+      || note "$contract lists $kind $name as 'used' and no step of the workflow reads it"
+  done < <(contract_rows)
+
+  # The join this file exists for: every variable the two params files read arrives from a name
+  # the environment holds, rather than from a literal or from one nobody put there.
+  for v in $(params_vars infra/base.bicepparam) $(params_vars infra/apps.bicepparam); do
+    val=$(jq -r --arg v "$v" '[.jobs.deploy.steps[]? | (.env // {}) | .[$v] // empty] | first // ""' "$json")
+    # Unset is already reported above, and ETJ_IMAGE_TAG is a step output rather than a name.
+    [ -n "$val" ] || continue
+    ref=$(grep -oE '\b(secrets|vars)\.[A-Za-z_][A-Za-z0-9_]*' <<<"$val" | head -1 || true)
+    case "$ref" in
+      secrets.*) listed secret "${ref#secrets.}" \
+        || note "$v is supplied from $ref, which is not a secret the production environment holds" ;;
+      vars.*) listed variable "${ref#vars.}" \
+        || note "$v is supplied from $ref, which is not a variable the production environment holds" ;;
+    esac
+  done
+fi
 
 # ------------------------------------------------------------------- the six images
 

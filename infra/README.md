@@ -75,6 +75,48 @@ The same script is what a human runs to apply migrations by hand:
 `RESOURCE_GROUP=rg-experttojob-app ./deploy/migrate.sh` with `az` signed in, and
 `MIGRATOR_IMAGE=` left unset to run whatever image the job already carries.
 
+### What the `production` environment must hold, and what reads each name
+
+`deploy/github-environment.contract` is the tracked list of names — never values. It mirrors the
+environment rather than creating it; the real inventory is `gh secret list --env production` and
+`gh variable list --env production`, and when the two disagree it is the tracked file that is
+wrong. It exists because GitHub expands an **undefined secret to the empty string**: a wrong name
+in `${{ secrets.X }}` does not fail at the reference, it surfaces three steps later as a Bicep
+length error, on a release that has already built and pushed six images (EXP-125).
+`deploy/workflow.test.sh` holds `deploy.yml` to the list in both directions — a reference to a
+name that is not on it fails, and a name on it marked `used` that no step reads fails too.
+
+The GitHub name on the left, the environment variable `deploy.yml` sets from it on the right. They
+are the same word often enough that the one that differs is worth reading twice:
+
+| GitHub `production` | Kind | Set in `deploy.yml` as | Read by |
+|---|---|---|---|
+| `AZURE_CLIENT_ID` | secret | `with: client-id` | `azure/login` |
+| `AZURE_TENANT_ID` | secret | `with: tenant-id` | `azure/login` |
+| `AZURE_SUBSCRIPTION_ID` | secret | `with: subscription-id` | `azure/login` |
+| `ETJ_PG_ADMIN_PASSWORD` | secret | `ETJ_PG_ADMIN_PASSWORD` | both params files — one login serves both databases |
+| `ETJ_JWT_SIGNING_KEY` | secret | `ETJ_JWT_SIGNING_KEY` | `apps.bicepparam` |
+| `ETJ_KEYCLOAK_ADMIN_PASSWORD` | secret | `ETJ_KEYCLOAK_ADMIN_PASSWORD` | `apps.bicepparam` |
+| `ETJ_AZURE_FOUNDRY_API_KEY` | secret | `ETJ_AZURE_FOUNDRY_API_KEY` | `apps.bicepparam` |
+| `AGENT_ROSTER_QA_SECRET` … `AGENT_ROSTER_SCAN_SECRET` (8) | secret | the same eight names | `apps.bicepparam`; each reaches Keycloak *and* the Agents host |
+| `ALLOWED_IP` | variable | **`ETJ_ALLOWED_IP`** | `apps.bicepparam` → `allowedIp` (EXP-131) |
+| `SEED_ADMIN_EMAIL` | variable | — | nothing, on purpose (below) |
+| `BUDGET_ALERT_EMAIL` | variable | — | nothing, on purpose (below) |
+
+`ALLOWED_IP` is the one name that changes across the colon, and it is the one the test pins by
+name rather than by shape.
+
+`SEED_ADMIN_EMAIL` and `BUDGET_ALERT_EMAIL` exist in the environment and are deliberately left
+unwired (EXP-132). Both addresses are the project mailbox `expert2job@hotmail.com`, and both are
+already tracked literals — `seedAdministratorEmail` in `apps.bicepparam`, `budgetAlertEmail` in
+`base.bicepparam`. Wiring them would buy no privacy, since the mailbox is the project's rather
+than a person's and is already in the repository, while adding two more values to the bootstrap
+contract that no test here can see are missing. That is the trade `deployPrincipalObjectId` is a
+literal for: a wrong literal is a wrong-looking line in a diff, a wrong environment value is a
+release that fails on the fifth step. They are listed as `unread` instead, and the test fails if
+a later edit reads one without moving the line. Deleting them from the environment is a human's
+call; until then they are inert, not pending.
+
 ### What the smoke test proves, and what it cannot
 
 It resolves `edgeFqdn` from the apps deployment's outputs, curls it **from the runner**, and
@@ -103,8 +145,9 @@ Without all three, the workflow cannot succeed — which is the intended failure
   `AcrPull` to the apps identity and `AcrPush` to this app registration — and nothing on the
   Foundry resource group. Its **object id** goes into `base.bicepparam` as
   `deployPrincipalObjectId`;
-* the GitHub `production` environment, restricted to `main`, holding `AZURE_CLIENT_ID`,
-  `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` and every secret in the first table below.
+* the GitHub `production` environment, restricted to `main`, holding every name in
+  `deploy/github-environment.contract` — the three `AZURE_*` ids, the four `ETJ_*` secrets, the
+  eight `AGENT_*_SECRET`, and the `ALLOWED_IP` variable.
 
 ### Checking the workflow without deploying
 
@@ -116,8 +159,10 @@ It reads `deploy.yml` as parsed YAML and holds it to the decisions above — the
 concurrency rules, the migration waited on *before* the apps move, the 403, and that every variable
 the two `.bicepparam` files read is passed and comes from a secret. The list of those variables is
 read out of the params files rather than copied, so a secret added there and forgotten here is a
-red CI job instead of a compile failure halfway through a release. CI runs it next to `actionlint`
-in the `Workflows (actionlint)` job.
+red CI job instead of a compile failure halfway through a release. It also checks the *other* side
+of each of those lines — every `secrets.X` and `vars.X` the workflow names, against
+`deploy/github-environment.contract` — which is the half a typo actually hides in. CI runs it next
+to `actionlint` in the `Workflows (actionlint)` job.
 
 ## What `apps` needs, and what each parameter is
 

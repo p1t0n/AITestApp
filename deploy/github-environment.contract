@@ -1,0 +1,70 @@
+# What the GitHub `production` environment holds — names only, never values.
+#
+# This file mirrors the environment; it does not create it. The real inventory is
+#
+#   gh secret list --env production
+#   gh variable list --env production
+#
+# and when the two disagree it is this file that is wrong. It exists because GitHub expands an
+# undefined secret to the empty string: a wrong name in `${{ secrets.X }}` does not fail at the
+# reference, it surfaces three steps later as a Bicep length error, on a release that has already
+# built and pushed six images (EXP-125). `deploy/workflow.test.sh` holds `.github/workflows/
+# deploy.yml` to these names, in both directions — a reference to a name that is not here fails,
+# and a name here marked `used` that no step reads fails too.
+#
+# One line per name: <secret|variable> <NAME> <used|unread>.
+#   secret   — set as an environment secret; the value never leaves GitHub's masking
+#   variable — set as an environment variable; not a credential, but not a tracked literal either
+#   used     — some step of deploy.yml reads it
+#   unread   — the environment holds it and nothing reads it (see the note at the bottom)
+#
+# `secrets.GITHUB_TOKEN` is deliberately absent: GitHub mints it per run, no environment holds it,
+# and the test lets it through for that reason.
+
+# The deploy identity. Not credentials — ids of the app registration OIDC federates to
+# (EXP-119's bootstrap). azure/login reads all three; there is no client secret anywhere.
+secret   AZURE_CLIENT_ID                used
+secret   AZURE_TENANT_ID                used
+secret   AZURE_SUBSCRIPTION_ID          used
+
+# The four the two .bicepparam files read, each with no default so a missing one fails the
+# compile rather than deploying something half configured. infra/README.md maps each to the
+# env-var name the params file reads it under.
+secret   ETJ_PG_ADMIN_PASSWORD          used
+secret   ETJ_JWT_SIGNING_KEY            used
+secret   ETJ_KEYCLOAK_ADMIN_PASSWORD    used
+secret   ETJ_AZURE_FOUNDRY_API_KEY      used
+
+# The eight Keycloak client secrets. Each reaches two containers from this one value: Keycloak
+# resolves its realm-import placeholder from it, and the Agents host reads it as
+# `McpAuth:<agent>:ClientSecret`. A missing one does not fail the realm import — it imports the
+# literal `${AGENT_X_SECRET}` as the client's password (EXP-124).
+secret   AGENT_ROSTER_QA_SECRET         used
+secret   AGENT_CV_TAILORING_SECRET      used
+secret   AGENT_MATCH_SECRET             used
+secret   AGENT_SHORTLIST_SECRET         used
+secret   AGENT_INTERVIEW_KIT_SECRET     used
+secret   AGENT_BENCH_REPORT_SECRET      used
+secret   AGENT_RESUME_INGESTION_SECRET  used
+secret   AGENT_ROSTER_SCAN_SECRET       used
+
+# The one address allowed to reach the edge. A variable rather than a secret — it is not a
+# credential — and not a tracked literal either, because this repository is public and the
+# address is a person's own (EXP-131).
+variable ALLOWED_IP                     used
+
+# Two the environment holds that nothing reads, and that nothing should (EXP-132).
+#
+# Both addresses are the project mailbox `expert2job@hotmail.com`, and both are already tracked
+# literals: `seedAdministratorEmail` in infra/apps.bicepparam, `budgetAlertEmail` in
+# infra/base.bicepparam. Moving them into the environment would buy no privacy — the mailbox is
+# the project's, not a person's, and it is already in the repository — while adding two more
+# values to EXP-119's bootstrap contract that no test here can see are missing. That is the same
+# trade `deployPrincipalObjectId` is a literal for: a wrong literal is a wrong-looking line in a
+# diff, a wrong environment value is a release that fails on the fifth step.
+#
+# So they are listed as `unread` rather than wired, and the test fails if a future edit reads one
+# without moving the line. A human may delete them from the environment and this block with it;
+# until then, a reader finding them in `gh variable list` should know they are inert.
+variable SEED_ADMIN_EMAIL               unread
+variable BUDGET_ALERT_EMAIL             unread
