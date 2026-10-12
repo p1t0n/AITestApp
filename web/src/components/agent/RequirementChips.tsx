@@ -1,4 +1,4 @@
-// The "How the JD was read" chips (P1T-120). When the response carries the structured extraction
+// The "How the job description was read" chips (P1T-120). When the response carries the structured extraction
 // the chips gain honesty badges: must-have color, an "inferred" marker where the evidence quote
 // couldn't be verified verbatim, evidence/kind tooltips, and the model's explicit ambiguities
 // note. Without an extraction (degraded runs, older payloads) they fall back to the plain

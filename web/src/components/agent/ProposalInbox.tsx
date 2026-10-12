@@ -26,7 +26,11 @@ import {
   type StaffingProposalSummary,
 } from "../../api";
 import RequirementChips from "./RequirementChips";
-import { StaffingCandidateCard, StaffingRecommendation } from "./StaffingCandidateCard";
+import {
+  StaffingCandidateCard,
+  StaffingRecommendation,
+  recommendedName,
+} from "./StaffingCandidateCard";
 import { ProposalDecisionCard } from "./StaffingTab";
 import { ErrorNotice } from "../ErrorNotice";
 
@@ -88,13 +92,9 @@ function PackageView({
 
       <StaffingRecommendation report={report} />
 
-      {detail.status === "pending" && (
-        <ProposalDecisionCard proposalId={detail.id} onDecided={onDecided} />
-      )}
-
       <Box>
         <Typography variant="caption" sx={{ color: "text.secondary" }}>
-          How the JD was read
+          How the job description was read
         </Typography>
         <RequirementChips requirements={report.requirements} extraction={report.extraction} />
       </Box>
@@ -107,6 +107,14 @@ function PackageView({
           onTailorCv={(expertId) => onTailorCv(expertId, jd)}
         />
       ))}
+
+      {detail.status === "pending" && (
+        <ProposalDecisionCard
+          proposalId={detail.id}
+          expertName={recommendedName(report)}
+          onDecided={onDecided}
+        />
+      )}
     </>
   );
 }

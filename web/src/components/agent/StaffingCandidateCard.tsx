@@ -18,6 +18,58 @@ import HighlightOffIcon from "@mui/icons-material/HighlightOff";
 import type { StaffingReport, StaffingReportCandidate } from "../../api";
 import { AgentMarkdown } from "./AgentMarkdown";
 
+type EvidenceRequirement = StaffingReportCandidate["shortlist"]["requirements"][number];
+
+/** How many matched and how many unmatched requirements a card shows without being opened. */
+const INLINE_EVIDENCE = 2;
+
+/** Lines of a CV quote shown inline. A real quote is a whole CV chunk and can run seven lines;
+ * the full text is one click away behind "Evidence". */
+const INLINE_QUOTE_LINES = 3;
+
+/** One requirement with its verbatim CV quote — the proof the recommendation rests on. */
+function EvidenceRow({
+  requirement: r,
+  clamp = false,
+}: {
+  requirement: EvidenceRequirement;
+  clamp?: boolean;
+}) {
+  return (
+    <Stack direction="row" spacing={1} sx={{ alignItems: "flex-start" }}>
+      {r.matched ? (
+        <CheckCircleOutlineIcon fontSize="small" color="success" />
+      ) : (
+        <HighlightOffIcon fontSize="small" color="disabled" />
+      )}
+      <Box sx={{ minWidth: 0 }}>
+        <Typography variant="body2">{r.text}</Typography>
+        {r.snippet && (
+          <Typography
+            variant="body2"
+            component="blockquote"
+            sx={{
+              m: 0,
+              color: "text.secondary",
+              fontStyle: "italic",
+              ...(clamp && {
+                display: "-webkit-box",
+                WebkitBoxOrient: "vertical",
+                WebkitLineClamp: INLINE_QUOTE_LINES,
+                overflow: "hidden",
+              }),
+              "&::before": { content: '"\\201C"' },
+              "&::after": { content: '"\\201D"' },
+            }}
+          >
+            {r.snippet}
+          </Typography>
+        )}
+      </Box>
+    </Stack>
+  );
+}
+
 export function StaffingCandidateCard({
   candidate,
   onOpenInMatch,
@@ -31,6 +83,11 @@ export function StaffingCandidateCard({
   const [showEvidence, setShowEvidence] = useState(false);
   const c = candidate;
   const hasMatchDetails = c.match.status === "completed" && !!c.match.answer;
+  const reqs = c.shortlist.requirements;
+  const inline = [
+    ...reqs.filter((r) => r.matched).slice(0, INLINE_EVIDENCE),
+    ...reqs.filter((r) => !r.matched).slice(0, INLINE_EVIDENCE),
+  ];
   return (
     <Paper sx={{ p: 1.5 }} data-testid={`staffing-candidate-${c.expertId}`}>
       <Stack
@@ -55,9 +112,6 @@ export function StaffingCandidateCard({
           spacing={0.5}
           useFlexGap
           sx={{ flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
-          <Tooltip title="Similarity score">
-            <Chip variant="outlined" label={c.shortlist.score.toFixed(2)} />
-          </Tooltip>
           <Tooltip title="Requirements matched">
             <Chip
               color={c.shortlist.coverage.matched === c.shortlist.coverage.total ? "success" : "default"}
@@ -81,12 +135,23 @@ export function StaffingCandidateCard({
           {c.match.status === "skipped" && (
             <Chip variant="outlined" label="Match skipped" sx={{ color: "text.secondary" }} />
           )}
+          <Tooltip title="Similarity to the job description">
+            <Chip variant="outlined" label={c.shortlist.score.toFixed(2)} />
+          </Tooltip>
         </Stack>
       </Stack>
 
       <Typography variant="body2" sx={{ mt: 1 }}>
         {c.rationale}
       </Typography>
+
+      {!showEvidence && inline.length > 0 && (
+        <Stack spacing={0.75} sx={{ mt: 1 }}>
+          {inline.map((r, i) => (
+            <EvidenceRow key={i} requirement={r} clamp />
+          ))}
+        </Stack>
+      )}
 
       <Stack
         direction="row"
@@ -118,21 +183,7 @@ export function StaffingCandidateCard({
       <Collapse in={showEvidence} unmountOnExit>
         <Stack spacing={0.75} sx={{ mt: 1 }} data-testid={`staffing-evidence-${c.expertId}`}>
           {c.shortlist.requirements.map((r, i) => (
-            <Stack key={i} direction="row" spacing={1} sx={{ alignItems: "flex-start" }}>
-              {r.matched ? (
-                <CheckCircleOutlineIcon fontSize="small" color="success" />
-              ) : (
-                <HighlightOffIcon fontSize="small" color="disabled" />
-              )}
-              <Box>
-                <Typography variant="body2">{r.text}</Typography>
-                {r.snippet && (
-                  <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                    {r.snippet}
-                  </Typography>
-                )}
-              </Box>
-            </Stack>
+            <EvidenceRow key={i} requirement={r} />
           ))}
         </Stack>
       </Collapse>
@@ -148,11 +199,15 @@ export function StaffingCandidateCard({
   );
 }
 
+/** The recommended Expert's name, or null when the run named no one. */
+export function recommendedName(report: StaffingReport): string | null {
+  const rec = report.recommendation;
+  return rec ? (report.candidates.find((c) => c.expertId === rec.expertId)?.name ?? rec.expertId) : null;
+}
+
 export function StaffingRecommendation({ report }: { report: StaffingReport }) {
   const rec = report.recommendation;
-  const name = rec
-    ? (report.candidates.find((c) => c.expertId === rec.expertId)?.name ?? rec.expertId)
-    : null;
+  const name = recommendedName(report);
   return (
     <Paper
       sx={{ p: 1.5, borderColor: rec ? "primary.main" : "divider" }}
