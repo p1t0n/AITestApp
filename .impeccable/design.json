@@ -1,0 +1,522 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-12T03:24:21Z",
+  "title": "Design System: ExpertToJob",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Workbench Amber",
+        "canonical": "#F59E0B",
+        "tonalRamp": [
+          "#492F03",
+          "#815305",
+          "#B97708",
+          "#F19B0A",
+          "#F7B23F",
+          "#F9C977",
+          "#FCDFAF",
+          "#FEF5E7"
+        ]
+      },
+      "primary-light": {
+        "role": "primary",
+        "displayName": "Lamp Glow",
+        "canonical": "#FBBF24",
+        "tonalRamp": [
+          "#4B3701",
+          "#846002",
+          "#BE8A03",
+          "#F7B305",
+          "#FBC53A",
+          "#FCD673",
+          "#FDE7AD",
+          "#FFF8E6"
+        ]
+      },
+      "primary-deep": {
+        "role": "primary",
+        "displayName": "Banked Amber",
+        "canonical": "#B4700A",
+        "tonalRamp": [
+          "#482D04",
+          "#804F07",
+          "#B7720A",
+          "#EE940D",
+          "#F4AD41",
+          "#F8C578",
+          "#FBDDB0",
+          "#FEF5E7"
+        ]
+      },
+      "primary-ink": {
+        "role": "primary",
+        "displayName": "Deep Amber",
+        "canonical": "#8A5406",
+        "tonalRamp": [
+          "#492D03",
+          "#814F06",
+          "#B97108",
+          "#F1930A",
+          "#F7AC3F",
+          "#F9C477",
+          "#FCDCAF",
+          "#FEF4E7"
+        ]
+      },
+      "night-page": {
+        "role": "neutral",
+        "displayName": "Night Ground",
+        "canonical": "#151A28",
+        "tonalRamp": [
+          "#1A2132",
+          "#2E3958",
+          "#42527F",
+          "#576BA5",
+          "#7C8CBA",
+          "#A2ADCE",
+          "#C8CFE2",
+          "#EEF0F6"
+        ]
+      },
+      "night-surface": {
+        "role": "neutral",
+        "displayName": "Night Panel",
+        "canonical": "#1F2A3A",
+        "tonalRamp": [
+          "#1B2432",
+          "#2F4058",
+          "#435B7E",
+          "#5877A4",
+          "#7C95B9",
+          "#A2B4CE",
+          "#C8D3E2",
+          "#EEF2F6"
+        ]
+      },
+      "night-raised": {
+        "role": "neutral",
+        "displayName": "Night Raised",
+        "canonical": "#28303E",
+        "tonalRamp": [
+          "#1E242E",
+          "#353F52",
+          "#4C5B75",
+          "#637699",
+          "#8595B0",
+          "#A9B4C7",
+          "#CCD3DE",
+          "#F0F2F5"
+        ]
+      },
+      "night-outline": {
+        "role": "neutral",
+        "displayName": "Control Edge",
+        "canonical": "#7C8899",
+        "tonalRamp": [
+          "#21252B",
+          "#3B424C",
+          "#555E6D",
+          "#6E7B8D",
+          "#8E99A7",
+          "#AFB6C1",
+          "#D0D4DA",
+          "#F1F2F4"
+        ]
+      },
+      "night-divider": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#434D5E",
+        "tonalRamp": [
+          "#20252D",
+          "#38404F",
+          "#505C71",
+          "#697893",
+          "#8A96AC",
+          "#ACB5C4",
+          "#CED3DC",
+          "#F0F2F4"
+        ]
+      },
+      "night-text": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#E8ECF4",
+        "tonalRamp": [
+          "#192234",
+          "#2C3B5B",
+          "#3E5583",
+          "#516FAA",
+          "#778FBE",
+          "#9FB0D1",
+          "#C6D0E4",
+          "#EEF1F7"
+        ]
+      },
+      "night-text-muted": {
+        "role": "neutral",
+        "displayName": "Haze",
+        "canonical": "#9FAAB9",
+        "tonalRamp": [
+          "#20252C",
+          "#39424E",
+          "#515E70",
+          "#6A7B91",
+          "#8B98AB",
+          "#ADB6C3",
+          "#CFD4DC",
+          "#F0F2F4"
+        ]
+      },
+      "mist-page": {
+        "role": "neutral",
+        "displayName": "Mist Ground",
+        "canonical": "#E5EAF3",
+        "tonalRamp": [
+          "#182234",
+          "#2B3C5C",
+          "#3D5684",
+          "#4F70AC",
+          "#7690C0",
+          "#9EB0D2",
+          "#C6D1E5",
+          "#EEF1F7"
+        ]
+      },
+      "mist-surface": {
+        "role": "neutral",
+        "displayName": "Mist Panel",
+        "canonical": "#EEF1F8",
+        "tonalRamp": [
+          "#162036",
+          "#27385F",
+          "#385089",
+          "#4969B2",
+          "#718AC5",
+          "#9AACD6",
+          "#C4CEE7",
+          "#EDF0F8"
+        ]
+      },
+      "mist-raised": {
+        "role": "neutral",
+        "displayName": "Mist Raised",
+        "canonical": "#DCE3ED",
+        "tonalRamp": [
+          "#1A2433",
+          "#2E4059",
+          "#425B80",
+          "#5577A6",
+          "#7B95BB",
+          "#A1B4CF",
+          "#C8D3E3",
+          "#EEF2F6"
+        ]
+      },
+      "mist-outline": {
+        "role": "neutral",
+        "displayName": "Mist Edge",
+        "canonical": "#6E7684",
+        "tonalRamp": [
+          "#23252A",
+          "#3D424A",
+          "#585E69",
+          "#727B89",
+          "#9298A4",
+          "#B2B6BE",
+          "#D1D4D9",
+          "#F1F2F3"
+        ]
+      },
+      "mist-divider": {
+        "role": "neutral",
+        "displayName": "Mist Hairline",
+        "canonical": "#B4BECD",
+        "tonalRamp": [
+          "#1F252E",
+          "#364151",
+          "#4D5D74",
+          "#657997",
+          "#8797AF",
+          "#AAB5C6",
+          "#CDD3DD",
+          "#F0F2F5"
+        ]
+      },
+      "mist-text": {
+        "role": "neutral",
+        "displayName": "Slate Ink",
+        "canonical": "#1B2331",
+        "tonalRamp": [
+          "#1B2331",
+          "#303E57",
+          "#45597C",
+          "#5974A2",
+          "#7E93B8",
+          "#A3B2CD",
+          "#C9D2E1",
+          "#EFF1F6"
+        ]
+      },
+      "mist-text-muted": {
+        "role": "neutral",
+        "displayName": "Slate Haze",
+        "canonical": "#535E70",
+        "tonalRamp": [
+          "#21252C",
+          "#39414D",
+          "#525D6F",
+          "#6B7990",
+          "#8C97AA",
+          "#ADB5C3",
+          "#CFD4DB",
+          "#F0F2F4"
+        ]
+      },
+      "info": {
+        "role": "secondary",
+        "displayName": "Bench Teal",
+        "canonical": "#38B2AC",
+        "tonalRamp": [
+          "#123A38",
+          "#206763",
+          "#2E938E",
+          "#3CBFB9",
+          "#67CFCA",
+          "#93DDD9",
+          "#BFEBE9",
+          "#ECF9F8"
+        ]
+      },
+      "error": {
+        "role": "semantic",
+        "displayName": "Error",
+        "canonical": "#FF6B6B",
+        "tonalRamp": [
+          "#4C0000",
+          "#870000",
+          "#C10000",
+          "#FB0000",
+          "#FF3737",
+          "#FF7171",
+          "#FFABAB",
+          "#FFE5E5"
+        ]
+      },
+      "warning": {
+        "role": "semantic",
+        "displayName": "Warning",
+        "canonical": "#F97316",
+        "tonalRamp": [
+          "#4B2002",
+          "#833803",
+          "#BC5005",
+          "#F56806",
+          "#FA8A3C",
+          "#FBAC74",
+          "#FDCEAD",
+          "#FEF0E6"
+        ]
+      },
+      "success": {
+        "role": "semantic",
+        "displayName": "Success",
+        "canonical": "#4ECB86",
+        "tonalRamp": [
+          "#113B24",
+          "#1F6840",
+          "#2C955B",
+          "#39C277",
+          "#64D295",
+          "#91DFB4",
+          "#BEECD3",
+          "#EBF9F2"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Page titles, h1-h4, Plus Jakarta Sans 800."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Panel and section headings, h5-h6."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default copy at 14px; body-small 13px for dense text."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Buttons and subtitles; never uppercase."
+      },
+      "eyebrow": {
+        "displayName": "Eyebrow",
+        "purpose": "Mono uppercase counts, table heads and tags."
+      }
+    },
+    "shadows": [
+      {
+        "name": "extruded",
+        "value": "6px 6px 9px rgba(0,0,0,.5),-6px -6px 9px rgba(255,255,255,.12)",
+        "purpose": "Panels, cards, resting buttons (dark mode values)."
+      },
+      {
+        "name": "extruded-small",
+        "value": "3px 3px 6px rgba(0,0,0,.45),-3px -3px 6px rgba(255,255,255,.10)",
+        "purpose": "Buttons, chips, icon buttons."
+      },
+      {
+        "name": "inset",
+        "value": "inset 4px 4px 6px rgba(0,0,0,.5),inset -4px -4px 6px rgba(255,255,255,.12)",
+        "purpose": "Wells: message bubbles, read-only blocks."
+      },
+      {
+        "name": "inset-small",
+        "value": "inset 2px 2px 4px rgba(0,0,0,.5),inset -2px -2px 4px rgba(255,255,255,.10)",
+        "purpose": "Text fields and the pressed button."
+      },
+      {
+        "name": "float",
+        "value": "9px 9px 21px rgba(0,0,0,.6),-8px -8px 18px rgba(255,255,255,.10)",
+        "purpose": "Menus, dialogs, autocomplete, undocked agent panel; paired with backdrop-filter blur(8px)."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(0.2, 0, 0.2, 1)",
+        "purpose": "All state transitions; ceiling 150ms."
+      },
+      {
+        "name": "press",
+        "value": "translateY(2px) + inset swap",
+        "purpose": "Button active state."
+      }
+    ],
+    "breakpoints": []
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Amber fill with ink label; the only accent action. Presses into inset.",
+      "html": "<button class=\"ds-btn-primary\">Approve proposal</button>",
+      "css": ".ds-btn-primary{background:#F59E0B;color:#151A28;font:600 13px 'DM Sans Variable',system-ui,sans-serif;padding:6px 16px;border:0;border-radius:14px;box-shadow:3px 3px 6px rgba(0,0,0,.45),-3px -3px 6px rgba(255,255,255,.10);cursor:pointer;transition:box-shadow 150ms,transform 150ms}.ds-btn-primary:active{box-shadow:inset 2px 2px 4px rgba(0,0,0,.5),inset -2px -2px 4px rgba(255,255,255,.10);transform:translateY(2px)}.ds-btn-primary:focus-visible{outline:2px solid #F59E0B;outline-offset:2px}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Neutral chrome for Cancel and row actions; boundary kept under the relief.",
+      "html": "<button class=\"ds-btn-secondary\">Reject</button>",
+      "css": ".ds-btn-secondary{background:transparent;color:#E8ECF4;font:600 13px 'DM Sans Variable',system-ui,sans-serif;padding:6px 16px;border:1px solid #7C8899;border-radius:14px;box-shadow:3px 3px 6px rgba(0,0,0,.45),-3px -3px 6px rgba(255,255,255,.10);cursor:pointer;transition:box-shadow 150ms,transform 150ms}.ds-btn-secondary:hover{border-color:#9FAAB9;background:rgba(232,236,244,.08)}.ds-btn-secondary:active{box-shadow:inset 2px 2px 4px rgba(0,0,0,.5),inset -2px -2px 4px rgba(255,255,255,.10);transform:translateY(2px)}.ds-btn-secondary:focus-visible{outline:2px solid #F59E0B;outline-offset:2px}"
+    },
+    {
+      "name": "Search Field (Well)",
+      "kind": "input",
+      "refersTo": "input-well",
+      "description": "Inset field on the page ground with a measurable 1px edge.",
+      "html": "<input class=\"ds-input-well\" placeholder=\"Search the Bench\" />",
+      "css": ".ds-input-well{background:#151A28;color:#E8ECF4;font:400 14px 'DM Sans Variable',system-ui,sans-serif;padding:7px 12px;border:1px solid #7C8899;border-radius:14px;box-shadow:inset 2px 2px 4px rgba(0,0,0,.5),inset -2px -2px 4px rgba(255,255,255,.10);width:240px}.ds-input-well:hover{border-color:#9FAAB9}.ds-input-well:focus{outline:0;border:2px solid #F59E0B;padding:6px 11px}.ds-input-well::placeholder{color:#9FAAB9}"
+    },
+    {
+      "name": "Tag Chip",
+      "kind": "chip",
+      "refersTo": "chip-tag",
+      "description": "Mono uppercase pill; role colour gives a wash, ink and edge.",
+      "html": "<span class=\"ds-chip\">Inferred</span> <span class=\"ds-chip ds-chip-ok\">Active</span>",
+      "css": ".ds-chip{display:inline-block;background:#28303E;color:#E8ECF4;font:600 11px 'JetBrains Mono Variable',ui-monospace,monospace;letter-spacing:.04em;text-transform:uppercase;padding:3px 10px;border-radius:999px}.ds-chip-ok{background:rgba(78,203,134,.10);color:#4ECB86;box-shadow:inset 0 0 0 1px rgba(78,203,134,.4)}"
+    },
+    {
+      "name": "Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Extruded Paper with an Eyebrow and heading.",
+      "html": "<div class=\"ds-panel\"><div class=\"ds-eyebrow\">Roster \u00b7 42 records</div><h3>Experts</h3><p>Everyone the instance holds, whatever their state.</p></div>",
+      "css": ".ds-panel{background:#1F2A3A;color:#E8ECF4;border-radius:14px;padding:16px 20px;box-shadow:6px 6px 9px rgba(0,0,0,.5),-6px -6px 9px rgba(255,255,255,.12);font-family:'DM Sans Variable',system-ui,sans-serif;max-width:320px}.ds-eyebrow{font:700 11px/1.6 'JetBrains Mono Variable',ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase;color:#9FAAB9}.ds-panel h3{margin:2px 0 6px;font:800 22px/1.3 'Plus Jakarta Sans Variable','DM Sans Variable',system-ui,sans-serif;letter-spacing:-.01em}.ds-panel p{margin:0;font-size:14px;line-height:1.55;color:#9FAAB9}"
+    },
+    {
+      "name": "Table Head and Row",
+      "kind": "custom",
+      "refersTo": "table-head",
+      "description": "Raised mono head, hairline rules, 8% amber wash on hover.",
+      "html": "<table class=\"ds-table\"><thead><tr><th>Expert</th><th>Skills</th><th>Capacity</th></tr></thead><tbody><tr><td>A. Example</td><td>14</td><td>0.6</td></tr><tr><td>B. Example</td><td>9</td><td>1.0</td></tr></tbody></table>",
+      "css": ".ds-table{border-collapse:collapse;width:100%;color:#E8ECF4;font:400 13px 'DM Sans Variable',system-ui,sans-serif;background:#1F2A3A;border-radius:14px;box-shadow:6px 6px 9px rgba(0,0,0,.5),-6px -6px 9px rgba(255,255,255,.12)}.ds-table th{background:#28303E;color:#9FAAB9;font:700 11px 'JetBrains Mono Variable',ui-monospace,monospace;letter-spacing:.06em;text-transform:uppercase;text-align:left;padding:6px 12px;white-space:nowrap}.ds-table td{padding:6px 12px;border-bottom:1px solid #434D5E}.ds-table tr:last-child td{border-bottom:0}.ds-table tbody tr:hover{background:rgba(245,158,11,.08)}"
+    },
+    {
+      "name": "Rail Item",
+      "kind": "nav",
+      "refersTo": "panel",
+      "description": "Left rail entry; selected takes a 16% amber wash.",
+      "html": "<nav class=\"ds-rail\"><a class=\"ds-rail-item\" aria-current=\"page\">Experts</a><a class=\"ds-rail-item\">Search</a></nav>",
+      "css": ".ds-rail{display:flex;flex-direction:column;gap:2px;width:200px;padding:8px;background:#1F2A3A;border-right:1px solid #434D5E;font-family:'DM Sans Variable',system-ui,sans-serif}.ds-rail-item{color:#E8ECF4;font-size:13px;padding:7px 10px;border-radius:8px;cursor:pointer}.ds-rail-item:hover{background:rgba(232,236,244,.08)}.ds-rail-item[aria-current]{background:rgba(245,158,11,.16)}.ds-rail-item:focus-visible{outline:2px solid #F59E0B;outline-offset:2px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Lit Workbench",
+    "overview": "A dense, dark-first product UI where every panel is extruded from one ground like a matte tool on a bench, and a single amber light marks the thing you can act on. Built for Administrators and Experts as equals; a working surface first.\n\nDepth is relief: a dark and a light shadow make a surface read as lifted or pressed. Governed by manuals/adr-neumorphic-reskin.md. Light mode is an equal citizen on a grey ground.\n\nHonesty is visible: measurable boundaries under the relief, evidence and inferred badges as tags, degraded states that look like states.",
+    "keyCharacteristics": [
+      "Dark first (blued near-black), light mode equal, no white surface.",
+      "Relief Depth: two levels of shadow, then flat fill and hairline.",
+      "Amber on the primary action only; everything else neutral chrome.",
+      "Plus Jakarta Sans 800 headings, DM Sans body, JetBrains Mono for eyebrows, table heads and tags.",
+      "14px base, size small everywhere, tabular numerals.",
+      "Motion ceiling 150ms, off under prefers-reduced-motion.",
+      "Contrast and relief asserted in tests, not eyeballed."
+    ],
+    "rules": [
+      {
+        "name": "The One Light Rule",
+        "body": "Amber marks the primary action and selection only. Outlined and text primary buttons render as neutral chrome; an accent that is everywhere means nothing.",
+        "section": "colors"
+      },
+      {
+        "name": "The Measured Edge Rule",
+        "body": "A shadow edge has nothing to measure (WCAG 1.4.11). Every control keeps a real outline line under its relief.",
+        "section": "colors"
+      },
+      {
+        "name": "The Readable Step Rule",
+        "body": "In light mode, role colour used as text or boundary takes the dark step, never main.",
+        "section": "colors"
+      },
+      {
+        "name": "The Mono Is A Role Rule",
+        "body": "Mono is for eyebrows, table heads, tags and numerals, never body prose.",
+        "section": "typography"
+      },
+      {
+        "name": "The Two Levels Rule",
+        "body": "One thing lifted, one thing pressed into it, nothing deeper. A third level is a flat fill and a hairline.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Printed Flat Rule",
+        "body": "At print media every box-shadow is none !important.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do express tokens through MUI palette roles (background.paper, divider, text.secondary); never a token name in a component.",
+      "Do put a look needed twice in components.ts; sx is for spacing and layout.",
+      "Do keep a measurable boundary on every control and assert contrast on tokens and rendered composites.",
+      "Do use the pinned vocabulary (Expert, Roster, Bench, Job, Administrator) in all labels.",
+      "Do show degraded and inferred states as plain tags or notes, with evidence visible."
+    ],
+    "donts": [
+      "Don't add a third relief level or inset-inside-inset.",
+      "Don't put amber on secondary actions or use #F59E0B as text or a boundary in light mode.",
+      "Don't introduce a white surface in either mode.",
+      "Don't rename or silently add data-testids or the frozen accessible names (web/src/frozenHooks.test.ts, spa-design-system \u00a79).",
+      "Don't use React Context for theme or session; use useSyncExternalStore modules.",
+      "Don't set a bare borderColor on a Paper: MuiPaper resets the border to 0, so it draws nothing. Pair it with border: 1.",
+      "Don't expect extra relief inside the agents dock: the dock is already a Float Paper, so Papers within it are flat by the Two Levels Rule. Weight there comes from position, the accent edge and the button.",
+      "Don't set mono in body prose or shout labels with uppercase buttons.",
+      "Don't fabricate customers, testimonials or Expert data in mocks."
+    ]
+  }
+}
