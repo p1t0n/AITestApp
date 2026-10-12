@@ -2,6 +2,7 @@
 // narrative stages, then the terminal report renders recommendation-first with ranked candidate
 // cards that drill into the Match and Tailor CV tabs.
 import { useEffect, useRef, useState } from "react";
+import { isAxiosError } from "axios";
 import {
   Box,
   Button,
@@ -30,73 +31,161 @@ import {
 } from "./staffingProgress";
 import RequirementChips from "./RequirementChips";
 import { StaffingStepper } from "./StaffingStepper";
-import { StaffingCandidateCard, StaffingRecommendation } from "./StaffingCandidateCard";
+import {
+  StaffingCandidateCard,
+  StaffingRecommendation,
+  recommendedName,
+} from "./StaffingCandidateCard";
 import { ProposalInbox } from "./ProposalInbox";
 import { ErrorNotice } from "../ErrorNotice";
+
+type Decision = "approved" | "rejected";
 
 type DecisionState =
   | { phase: "pending" | "saving" }
   | { phase: "decided"; status: string }
+  // Someone else decided first (409): nothing to retry, so the card stops offering the buttons.
+  | { phase: "conflict"; status?: string }
   | { phase: "failed"; message: string };
 
+const DECISION_LABEL: Record<Decision, string> = { approved: "Approved", rejected: "Rejected" };
+
 // The human decision on a run's proposal (P1T-100): the pipeline only proposes — staffing
-// outcomes are approved or rejected here, once, by a person. A decision failure keeps the
-// buttons live for retry; a conflict (someone else decided first) reads as any other API error.
+// outcomes are approved or rejected here, once, by a person. The first click only arms a decision
+// (EXP-133): what it records is stated, and only Confirm calls the API. A decision failure keeps
+// the buttons live for retry; a conflict (someone else decided first) reads as any other API error.
 // Exported for the approval inbox drill-in (P1T-135), which decides from the persisted package.
 export function ProposalDecisionCard({
   proposalId,
+  expertName,
   onDecided,
 }: {
   proposalId: string;
+  /** The recommended Expert, when the run named one — what "Approve" ratifies. */
+  expertName?: string | null;
   onDecided?: (status: string) => void;
 }) {
   const [state, setState] = useState<DecisionState>({ phase: "pending" });
+  const [armed, setArmed] = useState<Decision | null>(null);
+  const [note, setNote] = useState("");
 
-  async function decide(decision: "approved" | "rejected") {
+  async function decide(decision: Decision) {
     setState({ phase: "saving" });
     try {
-      const result = await decideStaffingProposal(proposalId, decision);
+      const result = await decideStaffingProposal(proposalId, decision, note.trim() || undefined);
       setState({ phase: "decided", status: result.status });
       onDecided?.(result.status);
     } catch (err) {
+      if (isAxiosError(err) && err.response?.status === 409) {
+        // The problem body reads "Current status: Approved." — the one fact worth carrying over.
+        const detail = (err.response.data as { detail?: string } | undefined)?.detail;
+        const status = detail?.match(/Current status: (\w+)/)?.[1]?.toLowerCase();
+        setState({ phase: "conflict", status });
+        if (status) onDecided?.(status);
+        return;
+      }
       setState({ phase: "failed", message: apiErrorMessage(err) });
     }
   }
 
-  if (state.phase === "decided") {
+  if (state.phase === "conflict") {
+    const now = DECISION_LABEL[state.status as Decision];
     return (
       <Paper variant="well" sx={{ p: 1.5 }} data-testid="proposal-decided">
         <Typography variant="body2" sx={{ fontWeight: 600 }}>
-          Proposal {state.status}
+          Someone else decided this Proposal first.{now ? ` It is now ${now}.` : ""}
         </Typography>
       </Paper>
     );
   }
 
+  if (state.phase === "decided") {
+    const label = DECISION_LABEL[state.status as Decision] ?? state.status;
+    return (
+      <Paper variant="well" sx={{ p: 1.5 }} data-testid="proposal-decided">
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          {state.status === "approved" && expertName ? `${label}: ${expertName}` : label}
+        </Typography>
+      </Paper>
+    );
+  }
+
+  const saving = state.phase === "saving";
   return (
-    <Paper variant="well" sx={{ p: 1.5 }} data-testid="proposal-decision">
-      <Typography
-        variant="body2"
-        sx={{ fontWeight: 600, mb: 1 }}>
-        This proposal awaits your decision
+    // Pinned to the foot of the pane so the decision stays in reach after the evidence is read.
+    // Weight comes from position and the accent edge, not from more shadow: the dock is already a
+    // Float Paper, and Relief Depth stops there (manuals/adr-neumorphic-reskin.md).
+    <Paper
+      sx={{
+        p: 1.5,
+        position: "sticky",
+        bottom: 12,
+        zIndex: 1,
+        // `border: 1` is load-bearing: MuiPaper resets the border to 0, so a bare `borderColor`
+        // draws nothing.
+        border: 1,
+        borderColor: "primary.main",
+      }}
+      data-testid="proposal-decision"
+    >
+      <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+        Your decision on this Proposal
+      </Typography>
+      <Typography variant="body2" sx={{ color: "text.secondary", mb: 1 }}>
+        Deciding records your name and the time on this Proposal. Nothing else is sent or changed,
+        and a decision can&apos;t be undone.
       </Typography>
       <ErrorNotice message={state.phase === "failed" ? state.message : null} sx={{ mb: 1 }} />
+      <Typography role="status" variant="body2" sx={{ fontWeight: 600, mb: saving ? 1 : 0 }}>
+        {saving ? "Recording your decision…" : ""}
+      </Typography>
+      {/* Only at the Confirm step: the card is pinned over the evidence, so what it shows before
+          a decision is armed stays as short as the decision itself. */}
+      {armed && (
+        <TextField
+          label="Note (optional)"
+          helperText="Saved with your decision. Visible to Administrators."
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          disabled={saving}
+          fullWidth
+          sx={{ mb: 1 }}
+        />
+      )}
       <Stack direction="row" spacing={1}>
-        <Button
-          variant="contained"
-          disabled={state.phase === "saving"}
-          onClick={() => void decide("approved")}
-        >
-          Approve
-        </Button>
-        <Button
-          variant="outlined"
-          color="inherit"
-          disabled={state.phase === "saving"}
-          onClick={() => void decide("rejected")}
-        >
-          Reject
-        </Button>
+        {armed ? (
+          <>
+            {/* Its own key so it mounts fresh and `autoFocus` lands on it: focus follows the
+                decision the Administrator just armed, rather than surviving by node reuse. */}
+            <Button
+              key="confirm"
+              variant="contained"
+              autoFocus
+              disabled={saving}
+              onClick={() => void decide(armed)}
+            >
+              {armed === "approved" ? "Confirm approval" : "Confirm rejection"}
+            </Button>
+            <Button
+              key="back"
+              variant="outlined"
+              color="inherit"
+              disabled={saving}
+              onClick={() => setArmed(null)}
+            >
+              Back
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button key="approve" variant="contained" onClick={() => setArmed("approved")}>
+              {expertName ? `Approve ${expertName}` : "Approve shortlist"}
+            </Button>
+            <Button key="reject" variant="outlined" color="inherit" onClick={() => setArmed("rejected")}>
+              Reject
+            </Button>
+          </>
+        )}
       </Stack>
     </Paper>
   );
@@ -224,7 +313,9 @@ export function StaffingPanel({
         <ErrorNotice message={error?.title} detail={error?.detail} />
 
         {report && (
-          <>
+          // Its own Stack so the pinned decision is bounded by the report: it pins while the
+          // report is on screen and never floats over the form above it.
+          <Stack spacing={1.5}>
             {report.degraded && (
               <Paper
                 variant="well"
@@ -244,11 +335,9 @@ export function StaffingPanel({
 
             <StaffingRecommendation report={report} />
 
-            {report.proposalId && <ProposalDecisionCard proposalId={report.proposalId} />}
-
             <Box>
               <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                How the JD was read
+                How the job description was read
               </Typography>
               <RequirementChips requirements={report.requirements} extraction={report.extraction} />
             </Box>
@@ -267,7 +356,14 @@ export function StaffingPanel({
                 />
               ))
             )}
-          </>
+
+            {report.proposalId && (
+              <ProposalDecisionCard
+                proposalId={report.proposalId}
+                expertName={recommendedName(report)}
+              />
+            )}
+          </Stack>
         )}
       </Stack>
     </Box>

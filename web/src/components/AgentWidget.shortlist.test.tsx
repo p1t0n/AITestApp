@@ -190,8 +190,8 @@ describe("Shortlist tab", () => {
     await user.type(jdField(), "Senior React engineer");
     await user.click(submitButton());
 
-    // "How the JD was read": one chip per requirement.
-    expect(await screen.findByText("How the JD was read")).toBeInTheDocument();
+    // "How the job description was read": one chip per requirement.
+    expect(await screen.findByText("How the job description was read")).toBeInTheDocument();
     expect(screen.getByText("Team leadership")).toBeInTheDocument();
 
     // Candidate card: linked name, title, 2dp score, coverage badge, rationale.

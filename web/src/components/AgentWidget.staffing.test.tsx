@@ -232,10 +232,20 @@ describe("staffing proposal approval (P1T-100)", () => {
     await runToReport(user, { ...REPORT, proposalId: PROPOSAL_ID });
 
     const card = screen.getByTestId("proposal-decision");
-    await user.click(within(card).getByRole("button", { name: "Approve" }));
+    // The button names the recommended Expert, and the first click only arms it.
+    await user.click(within(card).getByRole("button", { name: "Approve Ada Lovelace" }));
+    expect(decisions.calls).toEqual([]);
+    expect(within(card).getByText(/can't be undone/i)).toBeInTheDocument();
 
-    expect(decisions.calls).toEqual([{ proposalId: PROPOSAL_ID, decision: "approved", note: undefined }]);
-    expect(await screen.findByTestId("proposal-decided")).toHaveTextContent(/approved/i);
+    await user.type(within(card).getByLabelText("Note (optional)"), "  Best fit on leadership ");
+    await user.click(within(card).getByRole("button", { name: "Confirm approval" }));
+
+    expect(decisions.calls).toEqual([
+      { proposalId: PROPOSAL_ID, decision: "approved", note: "Best fit on leadership" },
+    ]);
+    expect(await screen.findByTestId("proposal-decided")).toHaveTextContent(
+      "Approved: Ada Lovelace",
+    );
   });
 
   it("renders no decision card when the report has no proposal id", async () => {
@@ -252,10 +262,186 @@ describe("staffing proposal approval (P1T-100)", () => {
 
     const card = screen.getByTestId("proposal-decision");
     await user.click(within(card).getByRole("button", { name: "Reject" }));
+    await user.click(within(card).getByRole("button", { name: "Confirm rejection" }));
 
     expect(await screen.findByText("boom")).toBeInTheDocument();
-    expect(within(screen.getByTestId("proposal-decision")).getByRole("button", { name: "Reject" }))
-      .toBeEnabled();
+    expect(
+      within(screen.getByTestId("proposal-decision")).getByRole("button", {
+        name: "Confirm rejection",
+      }),
+    ).toBeEnabled();
+  });
+
+  it("puts the decision after the candidates it rests on", async () => {
+    const user = await openStaffingTab();
+    await runToReport(user, { ...REPORT, proposalId: PROPOSAL_ID });
+
+    const candidates = screen.getAllByTestId(/^staffing-candidate-/);
+    const decision = screen.getByTestId("proposal-decision");
+    const last = candidates[candidates.length - 1];
+    expect(last.compareDocumentPosition(decision) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("pins the pending decision to the bottom of the scrolling pane", async () => {
+    const user = await openStaffingTab();
+    await runToReport(user, { ...REPORT, proposalId: PROPOSAL_ID });
+
+    const style = getComputedStyle(screen.getByTestId("proposal-decision"));
+    expect(style.position).toBe("sticky");
+    expect(style.bottom).toBe("12px");
+  });
+
+  it("keeps the pinned decision compact: the note appears only once a decision is armed", async () => {
+    const user = await openStaffingTab();
+    await runToReport(user, { ...REPORT, proposalId: PROPOSAL_ID });
+
+    const card = screen.getByTestId("proposal-decision");
+    expect(within(card).queryByLabelText("Note (optional)")).toBeNull();
+
+    await user.click(within(card).getByRole("button", { name: "Reject" }));
+    expect(within(card).getByLabelText("Note (optional)")).toBeInTheDocument();
+  });
+
+  it("moves focus to Confirm when a decision is armed", async () => {
+    const user = await openStaffingTab();
+    await runToReport(user, { ...REPORT, proposalId: PROPOSAL_ID });
+
+    const card = screen.getByTestId("proposal-decision");
+    await user.click(within(card).getByRole("button", { name: "Approve Ada Lovelace" }));
+
+    expect(within(card).getByRole("button", { name: "Confirm approval" })).toHaveFocus();
+  });
+
+  it("announces that the decision is being recorded while it saves", async () => {
+    decisions.impl = () => new Promise(() => {});
+    const user = await openStaffingTab();
+    await runToReport(user, { ...REPORT, proposalId: PROPOSAL_ID });
+
+    const card = screen.getByTestId("proposal-decision");
+    await user.click(within(card).getByRole("button", { name: "Approve Ada Lovelace" }));
+    await user.click(within(card).getByRole("button", { name: "Confirm approval" }));
+
+    expect(within(card).getByRole("status")).toHaveTextContent("Recording your decision…");
+  });
+
+  it("draws an accent edge on the pending decision", async () => {
+    const user = await openStaffingTab();
+    await runToReport(user, { ...REPORT, proposalId: PROPOSAL_ID });
+
+    // MUI's Paper resets `border: 0`, which silently swallows a bare `borderColor`.
+    expect(getComputedStyle(screen.getByTestId("proposal-decision")).borderTopWidth).toBe("1px");
+  });
+
+  it("sends nothing when a rejection is armed, and Back disarms it", async () => {
+    const user = await openStaffingTab();
+    await runToReport(user, { ...REPORT, proposalId: PROPOSAL_ID });
+
+    const card = screen.getByTestId("proposal-decision");
+    await user.click(within(card).getByRole("button", { name: "Reject" }));
+    expect(decisions.calls).toEqual([]);
+
+    await user.click(within(card).getByRole("button", { name: "Back" }));
+    expect(decisions.calls).toEqual([]);
+    expect(within(card).getByRole("button", { name: "Approve Ada Lovelace" })).toBeInTheDocument();
+    expect(within(card).queryByRole("button", { name: "Confirm rejection" })).toBeNull();
+  });
+
+  it("offers 'Approve shortlist' when the run named no recommendation", async () => {
+    const user = await openStaffingTab();
+    await runToReport(user, { ...REPORT, recommendation: null, proposalId: PROPOSAL_ID });
+
+    const card = screen.getByTestId("proposal-decision");
+    expect(within(card).getByRole("button", { name: "Approve shortlist" })).toBeInTheDocument();
+  });
+
+  it("says someone else decided first when the proposal is already decided (409)", async () => {
+    decisions.impl = () =>
+      Promise.reject(
+        Object.assign(new Error("conflict"), {
+          isAxiosError: true,
+          response: { status: 409, data: { detail: "Current status: Approved." } },
+        }),
+      );
+    const user = await openStaffingTab();
+    await runToReport(user, { ...REPORT, proposalId: PROPOSAL_ID });
+
+    const card = screen.getByTestId("proposal-decision");
+    await user.click(within(card).getByRole("button", { name: "Reject" }));
+    await user.click(within(card).getByRole("button", { name: "Confirm rejection" }));
+
+    expect(await screen.findByText(/someone else decided this proposal first/i)).toBeInTheDocument();
+  });
+});
+
+describe("staffing candidate header (EXP-133)", () => {
+  it("names the similarity score for what it is, and leads with coverage", async () => {
+    const user = await openStaffingTab();
+    await runToReport(user, REPORT);
+
+    const ada = candidateCard(ADA);
+    const coverage = within(ada).getByText("2/2");
+    const similarity = within(ada).getByText("0.92");
+    expect(
+      coverage.compareDocumentPosition(similarity) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    await user.hover(similarity);
+    expect(await screen.findByText("Similarity to the job description")).toBeInTheDocument();
+  });
+});
+
+describe("staffing candidate evidence (EXP-133)", () => {
+  const req = (text: string, matched: boolean) => ({
+    text,
+    matched,
+    snippet: matched ? `CV says: ${text}` : undefined,
+  });
+  const MANY: StaffingReport = {
+    ...REPORT,
+    candidates: [
+      {
+        ...REPORT.candidates[0],
+        shortlist: {
+          score: 0.9,
+          coverage: { matched: 3, total: 6 },
+          requirements: [
+            req("Matched one", true),
+            req("Missing one", false),
+            req("Matched two", true),
+            req("Missing two", false),
+            req("Matched three", true),
+            req("Missing three", false),
+          ],
+        },
+      },
+    ],
+  };
+
+  it("shows the top two matched and unmatched requirements without expanding", async () => {
+    const user = await openStaffingTab();
+    await runToReport(user, MANY);
+
+    const card = candidateCard(ADA);
+    expect(within(card).getByText("Matched one")).toBeInTheDocument();
+    expect(within(card).getByText("CV says: Matched one")).toBeInTheDocument();
+    expect(within(card).getByText("Matched two")).toBeInTheDocument();
+    expect(within(card).getByText("Missing one")).toBeInTheDocument();
+    expect(within(card).getByText("Missing two")).toBeInTheDocument();
+    expect(within(card).queryByText("Matched three")).toBeNull();
+    expect(within(card).queryByText("Missing three")).toBeNull();
+  });
+
+  it("lists every requirement once behind Evidence", async () => {
+    const user = await openStaffingTab();
+    await runToReport(user, MANY);
+
+    const card = candidateCard(ADA);
+    await user.click(within(card).getByRole("button", { name: "Evidence" }));
+
+    for (const text of ["Matched one", "Matched three", "Missing three"]) {
+      expect(within(card).getAllByText(text)).toHaveLength(1);
+    }
+    expect(within(card).getAllByText("CV says: Matched one")).toHaveLength(1);
   });
 });
 
@@ -428,8 +614,10 @@ describe("Staffing tab — report", () => {
       recommendation.compareDocumentPosition(firstCard) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
 
-    expect(screen.getByText("How the JD was read")).toBeInTheDocument();
-    expect(screen.getByText("Team leadership")).toBeInTheDocument();
+    // The reading of the JD sits in its own block; candidate cards now repeat the same
+    // requirement text as inline evidence, so the chip is found inside that block.
+    const reading = screen.getByText("How the job description was read").parentElement!;
+    expect(within(reading).getByText("Team leadership")).toBeInTheDocument();
 
     const ada = candidateCard(ADA);
     expect(within(ada).getByRole("link", { name: "Ada Lovelace" })).toHaveAttribute(

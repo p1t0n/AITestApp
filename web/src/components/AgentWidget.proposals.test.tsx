@@ -238,7 +238,7 @@ describe("approval inbox + drill-in (P1T-135)", () => {
     screen.getByTestId(`staffing-candidate-${GRACE}`);
 
     // The extraction chips (how the JD was read) come from the package's report.
-    screen.getByText("How the JD was read");
+    screen.getByText("How the job description was read");
 
     // Provenance: when, by whom, model, cost, caps at start.
     const provenance = screen.getByTestId("proposal-provenance");
@@ -258,11 +258,24 @@ describe("approval inbox + drill-in (P1T-135)", () => {
     await openDrillIn(user);
 
     const card = screen.getByTestId("proposal-decision");
-    await user.click(within(card).getByRole("button", { name: "Approve" }));
+    await user.click(within(card).getByRole("button", { name: /^Approve / }));
+    expect(decisions.calls).toEqual([]);
+
+    await user.click(within(card).getByRole("button", { name: "Confirm approval" }));
 
     expect(decisions.calls).toEqual([{ proposalId: PROPOSAL_ID, decision: "approved" }]);
     await screen.findByTestId("proposal-decided");
     expect(inbox.refetch).toHaveBeenCalled();
+  });
+
+  it("puts the decision after the candidates it rests on", async () => {
+    const user = await openStaffingTab();
+    await openDrillIn(user);
+
+    const candidates = screen.getAllByTestId(/^staffing-candidate-/);
+    const decision = screen.getByTestId("proposal-decision");
+    const last = candidates[candidates.length - 1];
+    expect(last.compareDocumentPosition(decision) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("renders a package-less (pre-migration) proposal honestly from its snapshot", async () => {

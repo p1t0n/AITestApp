@@ -60,7 +60,7 @@ function ShortlistCandidateCard({
           </Typography>
         </Box>
         <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
-          <Tooltip title="Similarity score">
+          <Tooltip title="Similarity to the job description">
             <Chip variant="outlined" label={c.score.toFixed(2)} />
           </Tooltip>
           <Tooltip title="Requirements matched">
@@ -185,7 +185,7 @@ export function ShortlistPanel({
           <>
             <Box>
               <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                How the JD was read
+                How the job description was read
               </Typography>
               <RequirementChips
                 requirements={result.requirements}
